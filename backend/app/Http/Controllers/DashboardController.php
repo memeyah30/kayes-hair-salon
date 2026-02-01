@@ -124,32 +124,41 @@ class DashboardController extends Controller
 
         $query = Appointment::with(['stylist', 'service']);
         
-        if ($email) {
+        // Filter appointments that belong ONLY to this specific customer
+        // Use strict matching - email takes priority, then phone
+        if ($email && $phone) {
+            // If both provided, match appointments where BOTH email AND phone match
+            // OR where email matches (for appointments where phone was not provided)
+            $query->where(function($q) use ($email, $phone) {
+                $q->where(function($subQ) use ($email, $phone) {
+                    $subQ->where('customer_email', $email)
+                         ->where('customer_phone', $phone);
+                })->orWhere(function($subQ) use ($email) {
+                    $subQ->where('customer_email', $email)
+                         ->whereNull('customer_phone');
+                });
+            });
+        } elseif ($email) {
+            // Only email provided - match ONLY by exact email
             $query->where('customer_email', $email);
-        }
-        if ($phone) {
-            $query->orWhere('customer_phone', $phone);
+        } else {
+            // Only phone provided - match ONLY by exact phone
+            $query->where('customer_phone', $phone);
         }
 
-        $appointments = $query->orderBy('start_datetime', 'desc')->get();
+        $appointments = $query->orderBy('start_datetime', 'asc')->get();
 
+        // Only return upcoming appointments (future appointments with booked status)
         $upcoming = $appointments->filter(function ($apt) {
-            return Carbon::parse($apt->start_datetime)->isFuture() && $apt->status === 'booked';
-        });
-
-        $history = $appointments->filter(function ($apt) {
-            return Carbon::parse($apt->start_datetime)->isPast() || $apt->status !== 'booked';
-        });
-
-        $totalSpent = $history->where('status', 'completed')->sum(function ($apt) {
-            return $apt->service->price_cents ?? 0;
+            $appointmentDate = Carbon::parse($apt->start_datetime);
+            return $appointmentDate->isFuture() && $apt->status === 'booked';
         });
 
         return response()->json([
             'upcoming' => $upcoming->values(),
-            'history' => $history->values(),
-            'total_spent' => $totalSpent,
-            'total_appointments' => $appointments->count(),
+            'history' => [], // No history - only upcoming appointments
+            'total_spent' => 0,
+            'total_appointments' => $upcoming->count(),
         ]);
     }
 }

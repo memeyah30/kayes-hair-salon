@@ -4,6 +4,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import './App.css'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
+import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import BookAppointment from './pages/BookAppointment'
 import Stylists from './pages/Stylists'
@@ -22,12 +23,17 @@ const App = () => {
   return (
     <>
       <Routes>
+        {/* Public landing page */}
+        <Route path="/" element={<Home />} />
+        
         {/* Public login routes */}
+        <Route path="/login" element={<Login />} />
         <Route path="/login/admin" element={<Login userType="admin" />} />
+        <Route path="/login/manager" element={<Login userType="manager" />} />
         <Route path="/login/stylist" element={<Login userType="stylist" />} />
         
         {/* Customer routes (public) */}
-        <Route path="/" element={<CustomerDashboard />} />
+        <Route path="/my-appointments" element={<CustomerDashboard />} />
         <Route path="/book" element={<BookAppointment />} />
         <Route path="/stylists" element={<Stylists />} />
         <Route path="/services" element={<Services />} />

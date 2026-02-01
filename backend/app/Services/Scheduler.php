@@ -13,13 +13,24 @@ class Scheduler
 {
     public function findSlot(Stylist $stylist, Service $service, string $date, ?string $preferredTime = null): ?array
     {
+        return $this->findSlotForServices($stylist, [$service], $date, $preferredTime);
+    }
+
+    public function findSlotForServices(Stylist $stylist, array $services, string $date, ?string $preferredTime = null): ?array
+    {
         $targetDate = Carbon::parse($date)->startOfDay();
         $freeBlocks = $this->freeBlocksForDate($stylist, $date);
         if ($freeBlocks->isEmpty()) {
             return null;
         }
 
-        $duration = CarbonInterval::minutes($service->duration_minutes);
+        // Calculate total duration for all services
+        $totalDurationMinutes = 0;
+        foreach ($services as $service) {
+            $totalDurationMinutes += $service->duration_minutes;
+        }
+        $duration = CarbonInterval::minutes($totalDurationMinutes);
+        
         $preferred = $preferredTime ? $targetDate->copy()->setTimeFromTimeString($preferredTime) : null;
 
         foreach ($freeBlocks as $block) {
@@ -61,34 +72,18 @@ class Scheduler
 
     private function getWorkingBlocks(Stylist $stylist, Carbon $date): Collection
     {
-        $weekday = $date->dayOfWeek;
-        $hours = $stylist->workingHours()->where('weekday', $weekday)->get();
-
-        // Business hours: 8 AM to 8 PM
+        // ENFORCE: Monday to Sunday, 8 AM to 8 PM only
+        // All days are available with fixed business hours
         $businessStart = $date->copy()->setTime(8, 0, 0);
         $businessEnd = $date->copy()->setTime(20, 0, 0);
 
-        return $hours->map(function ($h) use ($date, $businessStart, $businessEnd) {
-            $start = $date->copy()->setTimeFromTimeString($h->start_time);
-            $end = $date->copy()->setTimeFromTimeString($h->end_time);
-            
-            // Clamp to business hours (8 AM - 8 PM)
-            if ($start->lt($businessStart)) {
-                $start = $businessStart->copy();
-            }
-            if ($end->gt($businessEnd)) {
-                $end = $businessEnd->copy();
-            }
-            
-            // Only return if there's a valid time range
-            if ($start->lt($end)) {
-                return [
-                    'start' => $start,
-                    'end' => $end,
-                ];
-            }
-            return null;
-        })->filter();
+        // Return single block for 8 AM to 8 PM regardless of stylist working hours
+        return collect([
+            [
+                'start' => $businessStart,
+                'end' => $businessEnd,
+            ]
+        ]);
     }
 
     private function getBusyBlocks(Stylist $stylist, Carbon $date): Collection

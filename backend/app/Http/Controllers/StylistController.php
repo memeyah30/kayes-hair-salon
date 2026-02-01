@@ -30,18 +30,9 @@ class StylistController extends Controller
             'phone' => 'nullable|string',
             'password' => 'nullable|string|min:6',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'specializations' => 'nullable|string', // Accept as string, will parse
             'active' => 'nullable', // Will convert to boolean manually
             'working_hours' => 'nullable|string', // Accept as JSON string, will parse
         ]);
-
-        // Parse specializations if it's a JSON string
-        if (isset($data['specializations']) && is_string($data['specializations'])) {
-            $data['specializations'] = json_decode($data['specializations'], true) ?? [];
-        }
-        if (empty($data['specializations'])) {
-            $data['specializations'] = [];
-        }
 
         // Parse working_hours if it's a JSON string
         if (isset($data['working_hours']) && is_string($data['working_hours'])) {
@@ -101,15 +92,9 @@ class StylistController extends Controller
             'phone' => 'sometimes|nullable|string',
             'password' => 'sometimes|nullable|string|min:6',
             'image' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'specializations' => 'sometimes|nullable|string', // Accept as string, will parse
             'active' => 'sometimes|nullable', // Will convert to boolean manually
             'working_hours' => 'sometimes|nullable|string', // Accept as JSON string, will parse
         ]);
-
-        // Parse specializations if it's a JSON string
-        if (isset($data['specializations']) && is_string($data['specializations'])) {
-            $data['specializations'] = json_decode($data['specializations'], true) ?? [];
-        }
 
         // Parse working_hours if it's a JSON string
         if (isset($data['working_hours']) && is_string($data['working_hours'])) {
@@ -161,7 +146,8 @@ class StylistController extends Controller
             }
         }
 
-        return $stylist->load('workingHours');
+        // Return fresh instance with all relationships loaded
+        return $stylist->fresh()->load(['workingHours', 'timeOffs']);
     }
 
     public function availability(Request $request, Stylist $stylist, Scheduler $scheduler)
@@ -175,41 +161,84 @@ class StylistController extends Controller
 
         $durationMinutes = $data['service_duration']
             ?? ($data['service_id'] ? Service::find($data['service_id'])->duration_minutes : 30);
-        $step = CarbonInterval::minutes($data['step_minutes'] ?? 30); // Changed to 30 minutes
+        $stepMinutes = $data['step_minutes'] ?? 30; // Fixed interval for slots (30 minutes)
+        $step = CarbonInterval::minutes($stepMinutes);
 
+        // Get free blocks to determine availability
         $freeBlocks = $scheduler->freeBlocksForDate($stylist, $data['date']);
-        $slots = [];
         
-        // Business hours: 8 AM to 8 PM
+        // Business hours: Fixed 8 AM to 8 PM (local time)
         $targetDate = \Carbon\Carbon::parse($data['date'])->startOfDay();
         $businessStart = $targetDate->copy()->setTime(8, 0, 0);
         $businessEnd = $targetDate->copy()->setTime(20, 0, 0);
         
-        foreach ($freeBlocks as $block) {
-            // Clamp block to business hours
-            $blockStart = $block['start']->gt($businessStart) ? $block['start']->copy() : $businessStart->copy();
-            $blockEnd = $block['end']->lt($businessEnd) ? $block['end']->copy() : $businessEnd->copy();
-            
-            if ($blockStart->gte($blockEnd)) {
-                continue;
+        // Generate FIXED time slots from 8 AM to 8 PM at regular intervals
+        // Ensure we start exactly at 8:00 AM and end by 8:00 PM
+        $allSlots = [];
+        $cursor = $businessStart->copy();
+        $latestStart = $businessEnd->copy()->subMinutes($durationMinutes);
+        
+        // Debug: Verify we're starting at 8 AM
+        // $cursor should be at hour 8 (8 AM)
+        
+        while ($cursor->lte($latestStart)) {
+            // Ensure cursor hour is between 8 and 20 (8 AM to 8 PM)
+            $currentHour = (int)$cursor->format('H');
+            if ($currentHour < 8 || $currentHour >= 20) {
+                break; // Safety check: stop if we go outside business hours
             }
+            $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
             
-            $cursor = $blockStart->copy();
-            $latestStart = $blockEnd->copy()->subMinutes($durationMinutes);
-            while ($cursor->lte($latestStart)) {
-                $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
-                // Only add slot if it's within business hours
-                if ($slotEnd->lte($businessEnd)) {
-                    $slots[] = [
-                        'start' => $cursor->copy(),
-                        'end' => $slotEnd,
-                    ];
+            // Check if this slot is available (fits within a free block)
+            $isAvailable = false;
+            foreach ($freeBlocks as $block) {
+                $blockStart = $block['start']->copy();
+                $blockEnd = $block['end']->copy();
+                
+                // Clamp block to business hours
+                if ($blockStart->lt($businessStart)) {
+                    $blockStart = $businessStart->copy();
                 }
-                $cursor->add($step);
+                if ($blockEnd->gt($businessEnd)) {
+                    $blockEnd = $businessEnd->copy();
+                }
+                
+                // Check if slot fits completely within this free block
+                if ($cursor->gte($blockStart) && 
+                    $slotEnd->lte($blockEnd) &&
+                    $slotEnd->lte($businessEnd)) {
+                    $isAvailable = true;
+                    break;
+                }
             }
+            
+            // Return dates as local time strings (no timezone conversion)
+            // Extract hour and minute directly to avoid timezone issues
+            $dateStr = $data['date']; // e.g., "2025-12-26"
+            
+            // Get hour and minute from the cursor (should be 8-20 for 8 AM to 8 PM)
+            $hour = (int)$cursor->format('H');
+            $minute = (int)$cursor->format('i');
+            $second = (int)$cursor->format('s');
+            
+            $endHour = (int)$slotEnd->format('H');
+            $endMinute = (int)$slotEnd->format('i');
+            $endSecond = (int)$slotEnd->format('s');
+            
+            // Format as "YYYY-MM-DDTHH:MM:SS" (no timezone, JavaScript treats as local)
+            $timeStr = sprintf('%02d:%02d:%02d', $hour, $minute, $second);
+            $endTimeStr = sprintf('%02d:%02d:%02d', $endHour, $endMinute, $endSecond);
+            
+            $allSlots[] = [
+                'start' => "{$dateStr}T{$timeStr}",
+                'end' => "{$dateStr}T{$endTimeStr}",
+                'available' => $isAvailable,
+            ];
+            
+            $cursor->add($step);
         }
 
-        return response()->json($slots);
+        return response()->json($allSlots);
     }
 
     public function addTimeOff(Request $request, Stylist $stylist)
@@ -228,6 +257,31 @@ class StylistController extends Controller
         $timeOff = $stylist->timeOffs()->findOrFail($timeOffId);
         $timeOff->delete();
         return response()->json(['message' => 'Time off removed']);
+    }
+
+    public function destroy(Stylist $stylist)
+    {
+        // Check if stylist has any appointments
+        $appointmentCount = \App\Models\Appointment::where('stylist_id', $stylist->id)->count();
+        
+        if ($appointmentCount > 0) {
+            return response()->json([
+                'message' => 'Cannot delete stylist with existing appointments. Please deactivate instead.',
+                'appointment_count' => $appointmentCount
+            ], 422);
+        }
+
+        // Delete associated data
+        $stylist->workingHours()->delete();
+        $stylist->timeOffs()->delete();
+        
+        // Delete image if exists
+        if ($stylist->image && file_exists(public_path($stylist->image))) {
+            unlink(public_path($stylist->image));
+        }
+
+        $stylist->delete();
+        return response()->json(['message' => 'Stylist deleted successfully']);
     }
 }
 

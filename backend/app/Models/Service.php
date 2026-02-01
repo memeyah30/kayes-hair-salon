@@ -14,7 +14,6 @@ class Service extends Model
         'image',
         'duration_minutes',
         'price_cents',
-        'specialization_tag',
     ];
 
     public function appointments()

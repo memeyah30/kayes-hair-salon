@@ -15,19 +15,26 @@ class ResetPasswords extends Command
 
     public function handle()
     {
-        // Reset admin password (bypass mutator by using DB directly)
-        DB::table('admins')
-            ->where('email', 'admin@tholits.local')
-            ->update(['password' => Hash::make('admin123')]);
-        
-        $this->info('Admin password reset to: admin123');
+        // Update admin email from old format to new format if needed
+        $oldAdmin = DB::table('admins')->where('email', 'admin@tholits.local')->first();
+        if ($oldAdmin) {
+            DB::table('admins')
+                ->where('email', 'admin@tholits.local')
+                ->update(['email' => 'admin']);
+            $this->info('Updated admin email from admin@tholits.local to admin');
+        }
 
-        // Reset stylist password
-        DB::table('stylists')
-            ->where('email', 'stylist1@tholits.local')
-            ->update(['password' => Hash::make('stylist123')]);
-        
-        $this->info('Stylist password reset to: stylist123');
+        // Reset admin password (bypass mutator by using DB directly)
+        $admin = DB::table('admins')->where('email', 'admin')->first();
+        if ($admin) {
+            DB::table('admins')
+                ->where('email', 'admin')
+                ->update(['password' => Hash::make('admin123')]);
+            $this->info('Admin password reset to: admin123');
+            $this->info('Admin login: admin / admin123');
+        } else {
+            $this->error('Admin user not found. Please run: php artisan db:seed --class=DatabaseSeeder');
+        }
 
         return 0;
     }

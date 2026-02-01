@@ -16,8 +16,9 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Create admin user (password will be hashed by mutator)
+        // Use 'admin' as the email/login identifier
         $admin = Admin::firstOrCreate(
-            ['email' => 'admin@tholits.local'],
+            ['email' => 'admin'],
             [
                 'name' => 'Admin User',
                 'password' => 'admin123', // Mutator will hash this
@@ -29,38 +30,17 @@ class DatabaseSeeder extends Seeder
             $admin->save();
         }
 
-        $stylist = Stylist::firstOrCreate(
-            ['email' => 'stylist1@tholits.local'],
-            [
-                'name' => 'Jamie Stylist',
-                'phone' => '0999-000-0000',
-                'password' => Hash::make('stylist123'),
-                'specializations' => ['hair', 'color'],
-            ]
-        );
-        // Update password if stylist already exists
-        if ($stylist->wasRecentlyCreated === false) {
-            $stylist->password = Hash::make('stylist123');
-            $stylist->save();
-        }
-
-        $stylist->workingHours()->delete();
-        foreach ([1, 2, 3, 4, 5] as $weekday) { // Mon-Fri 9-5
-            $stylist->workingHours()->create([
-                'weekday' => $weekday,
-                'start_time' => '09:00',
-                'end_time' => '17:00',
-            ]);
-        }
+        // Remove default stylist - stylists will be registered through admin panel
+        // $stylist = Stylist::firstOrCreate(...) - REMOVED
 
         Service::firstOrCreate(
             ['name' => 'Haircut'],
-            ['duration_minutes' => 45, 'price_cents' => 80000, 'specialization_tag' => 'hair']
+            ['duration_minutes' => 45, 'price_cents' => 80000]
         );
 
         Service::firstOrCreate(
             ['name' => 'Coloring'],
-            ['duration_minutes' => 90, 'price_cents' => 150000, 'specialization_tag' => 'color']
+            ['duration_minutes' => 90, 'price_cents' => 150000]
         );
     }
 }

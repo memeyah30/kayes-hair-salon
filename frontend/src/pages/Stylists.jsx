@@ -58,10 +58,6 @@ const Stylists = () => {
                 </div>
               )}
               <div className="font-semibold text-lg mb-2">{s.name}</div>
-              <div className="text-sm text-gray-600 mb-2">
-                <div className="font-medium">Specializations:</div>
-                <div className="text-gray-500">{s.specializations?.join(', ') || 'General'}</div>
-              </div>
               <div className="text-sm text-gray-600 mb-1">
                 <span className="font-medium">Email:</span> {s.email}
               </div>

@@ -32,7 +32,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
   return (
     <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col">
-      <div className="px-5 py-4 text-xl font-bold border-b border-slate-800">Tholits Salon</div>
+      <div className="px-5 py-4 text-xl font-bold border-b border-slate-800">Kaye's Hair Salon and Spa</div>
       <nav className="flex-1 px-3 py-4 space-y-2 text-sm">
         {links.map(link => (
           <NavLink

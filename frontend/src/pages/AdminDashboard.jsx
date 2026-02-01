@@ -15,7 +15,6 @@ const StatCard = ({ title, value, accent }) => (
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
     appointments: { today: 0, week: 0, month: 0, total: 0 },
-    revenue: { today: 0, week: 0, month: 0 },
     stylists: { active: 0, total: 0 },
     customers: 0,
     services: 0,
@@ -52,8 +51,6 @@ const AdminDashboard = () => {
     })
   }
 
-  const currency = cents => `₱${(cents / 100).toFixed(2)}`
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -80,16 +77,6 @@ const AdminDashboard = () => {
               <StatCard title="Total Appointments" value={stats.appointments.total} accent="#1e40af" />
               <StatCard title="Active Stylists" value={stats.stylists.active} accent="#22c55e" />
               <StatCard title="Total Customers" value={stats.customers} accent="#10b981" />
-            </div>
-          </div>
-
-          {/* Revenue Metrics */}
-          <div>
-            <h2 className="text-lg font-semibold mb-3">Revenue</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <StatCard title="Today Revenue" value={currency(stats.revenue.today)} accent="#ef4444" />
-              <StatCard title="Week Revenue" value={currency(stats.revenue.week)} accent="#f59e0b" />
-              <StatCard title="Month Revenue" value={currency(stats.revenue.month)} accent="#dc2626" />
             </div>
           </div>
 
@@ -127,7 +114,7 @@ const AdminDashboard = () => {
               <h2 className="font-semibold mb-3">Stylist Management</h2>
               <div className="space-y-2">
                 <button
-                  onClick={() => navigate('/manage/stylists')}
+                  onClick={() => navigate('/admin/manage/stylists')}
                   className="w-full text-left px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded"
                 >
                   Manage Stylists
@@ -142,7 +129,7 @@ const AdminDashboard = () => {
               <h2 className="font-semibold mb-3">Service Management</h2>
               <div className="space-y-2">
                 <button
-                  onClick={() => navigate('/manage/services')}
+                  onClick={() => navigate('/admin/manage/services')}
                   className="w-full text-left px-4 py-2 bg-green-50 hover:bg-green-100 rounded"
                 >
                   Manage Services

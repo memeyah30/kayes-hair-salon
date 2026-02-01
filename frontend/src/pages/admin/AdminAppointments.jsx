@@ -47,10 +47,25 @@ const AdminAppointments = () => {
       } else if (action === 'confirm') {
         await api.post(`/appointments/${id}/confirm`)
         toast.success('Appointment confirmed')
+      } else if (action === 'delete') {
+        await api.delete(`/appointments/${id}`)
+        toast.success('Appointment deleted successfully')
       }
       loadData()
     } catch (e) {
       toast.error('Failed to update appointment')
+    }
+  }
+
+  const handleDelete = async (apt) => {
+    const confirmMessage = `Are you sure you want to permanently delete this appointment?\n\n` +
+      `Customer: ${apt.customer_name}\n` +
+      `Service: ${apt.service?.name}\n` +
+      `Date: ${new Date(apt.start_datetime).toLocaleString()}\n\n` +
+      `This action cannot be undone.`
+    
+    if (window.confirm(confirmMessage)) {
+      await handleAction(apt.id, 'delete')
     }
   }
 
@@ -121,7 +136,14 @@ const AdminAppointments = () => {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filteredAppointments.map(apt => (
+              {filteredAppointments.map(apt => {
+                // Get all services for this appointment
+                const appointmentServices = apt.services && apt.services.length > 0 
+                  ? apt.services 
+                  : (apt.service ? [apt.service] : [])
+                const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
+                
+                return (
                 <tr key={apt.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="font-medium">{apt.customer_name}</div>
@@ -129,7 +151,20 @@ const AdminAppointments = () => {
                       {apt.customer_email || apt.customer_phone}
                     </div>
                   </td>
-                  <td className="px-4 py-3">{apt.service?.name}</td>
+                  <td className="px-4 py-3">
+                    {appointmentServices.length > 1 ? (
+                      <div>
+                        <div className="font-medium">{appointmentServices.length} Services</div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {appointmentServices.map((s, idx) => (
+                            <div key={idx}>• {s.name}</div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <span>{appointmentServices[0]?.name || 'N/A'}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{apt.stylist?.name}</td>
                   <td className="px-4 py-3">
                     {new Date(apt.start_datetime).toLocaleString([], {
@@ -147,26 +182,38 @@ const AdminAppointments = () => {
                       {apt.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">{currency(apt.service?.price_cents || 0)}</td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
+                    {appointmentServices.length > 1 ? (
+                      <div>
+                        <div className="font-semibold text-green-600">{currency(totalPrice)}</div>
+                        <div className="text-xs text-gray-500">Total</div>
+                      </div>
+                    ) : (
+                      <span>{currency(totalPrice)}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2 flex-wrap">
                       {apt.status === 'booked' && (
                         <>
                           <button
                             onClick={() => handleAction(apt.id, 'confirm')}
                             className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                            title="Confirm appointment"
                           >
                             Confirm
                           </button>
                           <button
                             onClick={() => navigate(`/book?reschedule=${apt.id}`)}
                             className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                            title="Reschedule appointment"
                           >
                             Reschedule
                           </button>
                           <button
                             onClick={() => handleAction(apt.id, 'cancel')}
-                            className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                            className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+                            title="Cancel appointment"
                           >
                             Cancel
                           </button>
@@ -176,14 +223,23 @@ const AdminAppointments = () => {
                         <button
                           onClick={() => handleAction(apt.id, 'complete')}
                           className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
+                          title="Mark as completed"
                         >
                           Complete
                         </button>
                       )}
+                      <button
+                        onClick={() => handleDelete(apt)}
+                        className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                        title="Permanently delete appointment"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
           {filteredAppointments.length === 0 && (

@@ -16,8 +16,8 @@ class Stylist extends Model
         'phone',
         'password',
         'image',
-        'specializations',
         'active',
+        'role',
     ];
 
     protected $hidden = [
@@ -25,7 +25,6 @@ class Stylist extends Model
     ];
 
     protected $casts = [
-        'specializations' => 'array',
         'active' => 'boolean',
     ];
 
@@ -52,6 +51,11 @@ class Stylist extends Model
     public function appointments()
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    public function ratings()
+    {
+        return $this->hasMany(CustomerRating::class);
     }
 }
 

@@ -12,9 +12,10 @@ const ManageServices = () => {
     name: '',
     duration_minutes: 30,
     price_cents: 0,
-    specialization_tag: '',
     image: null,
   })
+  const [durationUnit, setDurationUnit] = useState('minutes') // 'minutes' or 'hours'
+  const [durationValue, setDurationValue] = useState(30)
   const [imagePreview, setImagePreview] = useState(null)
 
   useEffect(() => {
@@ -24,9 +25,11 @@ const ManageServices = () => {
   const refreshData = async () => {
     try {
       const res = await api.get('/services')
+      console.log('Refreshed services:', res.data) // Debug log
       setServices(res.data)
     } catch (e) {
       toast.error('Failed to load services')
+      console.error('Refresh error:', e)
     }
   }
 
@@ -39,52 +42,135 @@ const ManageServices = () => {
         setImagePreview(reader.result)
       }
       reader.readAsDataURL(file)
+    } else {
+      // If no file selected, keep existing image if editing
+      if (editing && editing.image) {
+        setImagePreview(`http://localhost:8000/${editing.image}`)
+      }
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const data = new FormData()
-      data.append('name', formData.name)
-      data.append('duration_minutes', formData.duration_minutes)
-      data.append('price_cents', Math.round(formData.price_cents * 100)) // Convert to cents
-      data.append('specialization_tag', formData.specialization_tag)
-      if (formData.image) {
-        data.append('image', formData.image)
+      // Convert duration to minutes based on selected unit
+      const durationInMinutes = durationUnit === 'hours' 
+        ? durationValue * 60 
+        : durationValue
+
+      // Validate required fields before submitting
+      if (!formData.name || !formData.name.trim()) {
+        toast.error('Name is required')
+        return
+      }
+      if (!durationValue || durationValue <= 0) {
+        toast.error('Duration must be greater than 0')
+        return
+      }
+      if (!formData.price_cents || formData.price_cents <= 0) {
+        toast.error('Price must be greater than 0')
+        return
       }
 
+      const data = new FormData()
+      const wasEditing = editing // Store before clearing
+      const editingId = editing?.id // Store ID before clearing
+      
+      // Always append all required fields with proper values
+      data.append('name', formData.name.trim())
+      data.append('duration_minutes', durationInMinutes.toString())
+      data.append('price_cents', Math.round(formData.price_cents * 100).toString())
+      // Only append image if it's a File object (new upload)
+      if (formData.image && formData.image instanceof File) {
+        data.append('image', formData.image)
+      }
+      
+      // Debug: Log what we're sending
+      console.log('Sending FormData:', {
+        name: formData.name.trim(),
+        duration_minutes: durationInMinutes,
+        price_cents: Math.round(formData.price_cents * 100),
+        hasImage: formData.image instanceof File
+      })
+      
+      // Debug: Log FormData entries
+      console.log('FormData entries:')
+      for (let pair of data.entries()) {
+        console.log(pair[0] + ': ' + (pair[1] instanceof File ? pair[1].name : pair[1]))
+      }
+      
       if (editing) {
-        await api.patch(`/services/${editing.id}`, data, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+        // Use POST with _method=PATCH for FormData compatibility with Laravel
+        data.append('_method', 'PATCH')
+        const response = await api.post(`/services/${editing.id}`, data, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+          }
         })
-        toast.success('Service updated')
+        
+        console.log('Update response:', response.data) // Debug log
+        
+        toast.success('Service updated successfully')
+        
+        // Immediately update the service in the list with the response data
+        setServices(prevServices => {
+          const updated = prevServices.map(s => {
+            if (s.id === editingId) {
+              return { ...s, ...response.data }
+            }
+            return s
+          })
+          console.log('Updated services list:', updated) // Debug log
+          return updated
+        })
       } else {
-        await api.post('/services', data, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
+        // Don't set Content-Type header - let axios handle it for FormData
+        await api.post('/services', data)
         toast.success('Service created')
       }
 
       setEditing(null)
-      setFormData({ name: '', duration_minutes: 30, price_cents: 0, specialization_tag: '', image: null })
+      setFormData({ name: '', duration_minutes: 30, price_cents: 0, image: null })
+      setDurationUnit('minutes')
+      setDurationValue(30)
       setImagePreview(null)
-      refreshData()
+      
+      // Always refresh data to ensure everything is up to date
+      // Use a longer delay for updates to ensure backend has fully processed
+      setTimeout(() => {
+        refreshData()
+      }, wasEditing ? 1000 : 100)
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Failed to save service')
+      console.error('Service save error:', e)
+      const errorMessage = e.response?.data?.message || 
+                          (e.response?.data?.errors ? JSON.stringify(e.response.data.errors) : null) ||
+                          'Failed to save service'
+      toast.error(errorMessage)
+      
+      // Log validation errors for debugging
+      if (e.response?.data?.errors) {
+        console.error('Validation errors:', e.response.data.errors)
+      }
     }
   }
 
   const handleEdit = (service) => {
     setEditing(service)
+    const duration = service.duration_minutes || 30
+    
+    // Determine if duration is better shown in hours or minutes
+    const showAsHours = duration >= 60 && duration % 60 === 0
+    
     setFormData({
       name: service.name,
-      duration_minutes: service.duration_minutes,
+      duration_minutes: duration,
       price_cents: service.price_cents / 100, // Convert from cents
-      specialization_tag: service.specialization_tag || '',
-      image: null,
+      image: null, // Reset to null - user must select new image to update
     })
-    setImagePreview(service.image ? `http://localhost:8000/${service.image}` : null)
+    setDurationUnit(showAsHours ? 'hours' : 'minutes')
+    setDurationValue(showAsHours ? duration / 60 : duration)
+    // Show existing image as preview when editing
+    setImagePreview(service.image ? `http://localhost:8000/${service.image}?t=${Date.now()}` : null)
   }
 
   const navigate = useNavigate()
@@ -120,15 +206,40 @@ const ManageServices = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Duration (minutes) *</label>
-              <input
-                type="number"
-                required
-                min="5"
-                className="w-full border rounded px-3 py-2"
-                value={formData.duration_minutes}
-                onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
-              />
+              <label className="block text-sm font-medium mb-1">Duration *</label>
+              <div className="flex gap-2">
+                <select
+                  className="border rounded px-3 py-2"
+                  value={durationUnit}
+                  onChange={(e) => {
+                    setDurationUnit(e.target.value)
+                    // Reset value when switching units
+                    if (e.target.value === 'hours') {
+                      setDurationValue(1)
+                    } else {
+                      setDurationValue(30)
+                    }
+                  }}
+                >
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                </select>
+                <input
+                  type="number"
+                  required
+                  min={durationUnit === 'hours' ? 1 : 5}
+                  step={durationUnit === 'hours' ? 0.5 : 5}
+                  className="flex-1 border rounded px-3 py-2"
+                  value={durationValue}
+                  onChange={(e) => setDurationValue(parseFloat(e.target.value) || 0)}
+                  placeholder={durationUnit === 'hours' ? 'e.g., 1.5' : 'e.g., 30'}
+                />
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {durationUnit === 'hours' 
+                  ? `= ${(durationValue * 60).toFixed(0)} minutes`
+                  : `= ${(durationValue / 60).toFixed(2)} hours`}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Price (₱) *</label>
@@ -140,16 +251,6 @@ const ManageServices = () => {
                 className="w-full border rounded px-3 py-2"
                 value={formData.price_cents}
                 onChange={(e) => setFormData({ ...formData, price_cents: parseFloat(e.target.value) })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Specialization Tag</label>
-              <input
-                type="text"
-                className="w-full border rounded px-3 py-2"
-                value={formData.specialization_tag}
-                onChange={(e) => setFormData({ ...formData, specialization_tag: e.target.value })}
-                placeholder="e.g., hair-color, nails"
               />
             </div>
             <div className="md:col-span-2">
@@ -174,7 +275,9 @@ const ManageServices = () => {
                 type="button"
                 onClick={() => {
                   setEditing(null)
-                  setFormData({ name: '', duration_minutes: 30, price_cents: 0, specialization_tag: '', image: null })
+                  setFormData({ name: '', duration_minutes: 30, price_cents: 0, image: null })
+                  setDurationUnit('minutes')
+                  setDurationValue(30)
                   setImagePreview(null)
                 }}
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
@@ -191,22 +294,70 @@ const ManageServices = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {services.map(s => (
             <div key={s.id} className="border rounded-lg overflow-hidden">
-              {s.image && (
+              {s.image ? (
                 <img
-                  src={`http://localhost:8000/${s.image}`}
+                  key={`${s.id}-${s.image}`}
+                  src={`http://localhost:8000/${s.image}?v=${Date.now()}`}
                   alt={s.name}
                   className="w-full h-32 object-cover"
+                  onError={(e) => {
+                    // Hide broken images
+                    e.target.style.display = 'none'
+                  }}
                 />
+              ) : (
+                <div className="w-full h-32 bg-gray-200 flex items-center justify-center text-gray-400 text-sm">
+                  No Image
+                </div>
               )}
               <div className="p-4">
                 <div className="font-semibold">{s.name}</div>
-                <div className="text-sm text-gray-600">{s.duration_minutes} min • ₱{(s.price_cents / 100).toFixed(2)}</div>
-                <button
-                  onClick={() => handleEdit(s)}
-                  className="mt-2 text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                >
-                  Edit
-                </button>
+                <div className="text-sm text-gray-600">
+                  {(() => {
+                    const hours = Math.floor(s.duration_minutes / 60)
+                    const minutes = s.duration_minutes % 60
+                    if (hours > 0 && minutes > 0) {
+                      return `${hours}h ${minutes}m`
+                    } else if (hours > 0) {
+                      return `${hours} hour${hours > 1 ? 's' : ''}`
+                    } else {
+                      return `${minutes} minute${minutes > 1 ? 's' : ''}`
+                    }
+                  })()} • ₱{(s.price_cents / 100).toFixed(2)}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleEdit(s)}
+                    className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm(`Are you sure you want to delete "${s.name}"? This action cannot be undone.`)) {
+                        return
+                      }
+                      try {
+                        await api.delete(`/services/${s.id}`)
+                        toast.success('Service deleted successfully')
+                        refreshData()
+                      } catch (e) {
+                        const errorData = e.response?.data
+                        const message = errorData?.message || 'Failed to delete service'
+                        const appointmentCount = errorData?.appointment_count
+                        
+                        if (appointmentCount) {
+                          toast.error(message)
+                        } else {
+                          toast.error(message)
+                        }
+                      }
+                    }}
+                    className="text-sm bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           ))}

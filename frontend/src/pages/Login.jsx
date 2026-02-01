@@ -8,7 +8,8 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
 })
 
-const Login = ({ userType = 'admin' }) => {
+const Login = ({ userType: propUserType }) => {
+  const [selectedType, setSelectedType] = useState(propUserType || 'admin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -22,7 +23,7 @@ const Login = ({ userType = 'admin' }) => {
       const res = await api.post('/login', {
         email,
         password,
-        type: userType,
+        type: selectedType,
       })
       
       localStorage.setItem('token', res.data.token)
@@ -31,8 +32,10 @@ const Login = ({ userType = 'admin' }) => {
       
       toast.success(`Welcome, ${res.data.user.name}!`)
       
-      if (userType === 'admin') {
+      if (selectedType === 'admin') {
         navigate('/admin/dashboard')
+      } else if (selectedType === 'manager') {
+        navigate('/admin/dashboard') // Manager uses admin dashboard for now
       } else {
         navigate('/stylist/dashboard')
       }
@@ -44,32 +47,78 @@ const Login = ({ userType = 'admin' }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-2">
-          {userType === 'admin' ? 'Admin' : 'Stylist'} Login
-        </h1>
-        <p className="text-center text-gray-600 mb-6">Tholits Salon</p>
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold mb-2">Staff Login</h1>
+          <p className="text-gray-600">Kaye's Hair Salon and Spa</p>
+        </div>
+        
+        {/* User Type Selector */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2 text-gray-700">Login As</label>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedType('admin')}
+              className={`px-4 py-2 rounded text-sm font-medium transition ${
+                selectedType === 'admin'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Admin/Owner
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedType('manager')}
+              className={`px-4 py-2 rounded text-sm font-medium transition ${
+                selectedType === 'manager'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Manager
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedType('stylist')}
+              className={`px-4 py-2 rounded text-sm font-medium transition ${
+                selectedType === 'stylist'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Staff
+            </button>
+          </div>
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              {selectedType === 'admin' ? 'Username or Email' : selectedType === 'manager' ? 'Username' : 'Email'}
+            </label>
             <input
-              type="email"
+              type={selectedType === 'stylist' ? 'email' : 'text'}
               required
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2 text-gray-900"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
+              placeholder={
+                selectedType === 'admin' ? 'admin' : 
+                selectedType === 'manager' ? 'username' : 
+                'your@email.com'
+              }
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                className="w-full border rounded px-3 py-2 pr-10"
+                className="w-full border rounded px-3 py-2 pr-10 text-gray-900"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -95,18 +144,18 @@ const Login = ({ userType = 'admin' }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <div className="mt-4 text-center text-sm text-gray-600">
+        <div className="mt-6 text-center">
           <button
-            onClick={() => navigate(userType === 'admin' ? '/login/stylist' : '/login/admin')}
-            className="text-blue-600 hover:underline"
+            onClick={() => navigate('/')}
+            className="text-sm text-gray-600 hover:text-gray-800"
           >
-            Login as {userType === 'admin' ? 'Stylist' : 'Admin'}
+            ← Back to Home
           </button>
         </div>
       </div>
