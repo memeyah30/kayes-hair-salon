@@ -367,16 +367,16 @@ const ManageStylists = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-100 flex text-gray-800">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
       <Sidebar userType="admin" />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">Manage Stylists</h1>
             <button
               onClick={() => navigate('/admin/dashboard')}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
             >
               ← Return to Dashboard
             </button>
@@ -603,7 +603,7 @@ const ManageStylists = () => {
 
             {/* Schedule Table */}
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full min-w-[720px] border-collapse">
                 <thead>
                   <tr className="bg-gray-100">
                     <th className="border p-2 text-left font-semibold">Day</th>
@@ -756,10 +756,10 @@ const ManageStylists = () => {
                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                   <div>
                     <span className="text-sm font-medium">
-                      {new Date(to.start_datetime).toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                      {new Date(to.start_datetime).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
                     </span>
                     <span className="text-sm text-gray-600 ml-2">
-                      {new Date(to.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(to.end_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(to.start_datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - {new Date(to.end_datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} PHT
                     </span>
                   </div>
                   <button

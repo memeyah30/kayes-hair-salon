@@ -12,6 +12,9 @@ const StylistAppointments = () => {
   const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
+  const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
+  const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
+
   useEffect(() => {
     loadAppointments()
   }, [])
@@ -23,7 +26,7 @@ const StylistAppointments = () => {
       // Filter appointments for this stylist
       const myAppointments = res.data
         .filter(a => a.stylist_id === user.id)
-        .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime))
+        .sort((a, b) => new Date(getStart(a)) - new Date(getStart(b)))
       setAppointments(myAppointments)
     } catch (e) {
       console.error(e)
@@ -61,7 +64,7 @@ const StylistAppointments = () => {
 
   const filteredAppointments = appointments.filter(apt => {
     const now = new Date()
-    const aptDate = new Date(apt.start_datetime)
+    const aptDate = new Date(getStart(apt))
     
     if (filter === 'today') {
       return aptDate.toDateString() === now.toDateString()
@@ -82,22 +85,22 @@ const StylistAppointments = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex text-gray-800">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
       <Sidebar userType="stylist" onLogout={handleLogout} />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">My Appointments</h1>
             <button
               onClick={() => navigate('/stylist/dashboard')}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
             >
               ← Return to Dashboard
             </button>
           </div>
 
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => setFilter('all')}
               className={`px-4 py-2 rounded text-sm ${
@@ -176,10 +179,11 @@ const StylistAppointments = () => {
                             <div>
                               <span className="text-gray-500">Date & Time:</span>{' '}
                               <span className="font-medium">
-                                {new Date(apt.start_datetime).toLocaleString([], {
+                                {new Date(getStart(apt)).toLocaleString('en-US', {
                                   dateStyle: 'full',
-                                  timeStyle: 'short'
-                                })}
+                                  timeStyle: 'short',
+                                  timeZone: 'Asia/Manila'
+                                })} PHT
                               </span>
                             </div>
                             <div>
@@ -248,4 +252,3 @@ const StylistAppointments = () => {
 }
 
 export default StylistAppointments
-

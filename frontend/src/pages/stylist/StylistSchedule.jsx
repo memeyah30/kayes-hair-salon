@@ -12,6 +12,9 @@ const StylistSchedule = () => {
   const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
+  const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
+  const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
+
   useEffect(() => {
     loadAppointments()
   }, [selectedDate])
@@ -23,7 +26,7 @@ const StylistSchedule = () => {
       // Filter appointments for this stylist
       const myAppointments = res.data
         .filter(a => a.stylist_id === user.id)
-        .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime))
+        .sort((a, b) => new Date(getStart(a)) - new Date(getStart(b)))
       setAppointments(myAppointments)
     } catch (e) {
       console.error(e)
@@ -46,7 +49,7 @@ const StylistSchedule = () => {
 
   // Group appointments by date
   const appointmentsByDate = appointments.reduce((acc, apt) => {
-    const date = new Date(apt.start_datetime).toISOString().slice(0, 10)
+    const date = new Date(getStart(apt)).toISOString().slice(0, 10)
     if (!acc[date]) {
       acc[date] = []
     }
@@ -65,16 +68,16 @@ const StylistSchedule = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex text-gray-800">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
       <Sidebar userType="stylist" onLogout={handleLogout} />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">My Schedule</h1>
             <button
               onClick={() => navigate('/stylist/dashboard')}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
             >
               ← Return to Dashboard
             </button>
@@ -105,7 +108,7 @@ const StylistSchedule = () => {
             ) : (
               <div className="space-y-3">
                 {selectedDateAppointments
-                  .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime))
+                  .sort((a, b) => new Date(getStart(a)) - new Date(getStart(b)))
                   .map(apt => (
                     <div key={apt.id} className="border-l-4 border-blue-500 rounded-lg p-4 bg-blue-50">
                       <div className="flex items-start justify-between">
@@ -121,13 +124,15 @@ const StylistSchedule = () => {
                           </div>
                           <div className="text-sm text-gray-600 mt-1">
                             <span className="font-medium">Time:</span>{' '}
-                            {new Date(apt.start_datetime).toLocaleTimeString([], {
+                            {new Date(getStart(apt)).toLocaleTimeString('en-US', {
                               hour: '2-digit',
-                              minute: '2-digit'
-                            })} - {new Date(apt.end_datetime).toLocaleTimeString([], {
+                              minute: '2-digit',
+                              timeZone: 'Asia/Manila'
+                            })} - {new Date(getEnd(apt)).toLocaleTimeString('en-US', {
                               hour: '2-digit',
-                              minute: '2-digit'
-                            })}
+                              minute: '2-digit',
+                              timeZone: 'Asia/Manila'
+                            })} PHT
                           </div>
                           <div className="text-sm font-medium text-gray-700 mt-1">
                             <span className="text-gray-500">Service:</span> {apt.service?.name}
@@ -208,4 +213,3 @@ const StylistSchedule = () => {
 }
 
 export default StylistSchedule
-

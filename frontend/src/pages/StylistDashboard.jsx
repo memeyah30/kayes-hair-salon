@@ -13,6 +13,9 @@ const StylistDashboard = () => {
     total: 0,
   })
   const [loading, setLoading] = useState(true)
+
+  const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
+  const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
   const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
@@ -69,21 +72,21 @@ const StylistDashboard = () => {
 
   const todayAppointments = stats.today_appointments || []
   const upcomingAppointments = todayAppointments.filter(apt => 
-    new Date(apt.start_datetime) > new Date() && apt.status === 'booked'
+    new Date(getStart(apt)) > new Date() && apt.status === 'booked'
   )
   const pastAppointments = todayAppointments.filter(apt => 
-    new Date(apt.start_datetime) <= new Date() || apt.status !== 'booked'
+    new Date(getStart(apt)) <= new Date() || apt.status !== 'booked'
   )
 
   return (
-    <div className="min-h-screen bg-gray-100 flex text-gray-800">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
       <Sidebar userType="stylist" onLogout={handleLogout} />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">Welcome, {user.name}!</h1>
-            <div className="flex gap-4 text-sm">
+            <div className="flex flex-wrap gap-3 text-sm">
               <div className="bg-white px-4 py-2 rounded shadow">
                 <div className="text-gray-500">Today's Appointments</div>
                 <div className="font-bold text-lg">{todayAppointments.length}</div>
@@ -118,7 +121,7 @@ const StylistDashboard = () => {
                           </div>
                           <div className="text-sm text-gray-600 mt-1">
                             <span className="font-medium">Time:</span>{' '}
-                            {new Date(appt.start_datetime).toLocaleTimeString([], { timeStyle: 'short' })} - {new Date(appt.end_datetime).toLocaleTimeString([], { timeStyle: 'short' })}
+                            {new Date(getStart(appt)).toLocaleTimeString('en-US', { timeStyle: 'short', timeZone: 'Asia/Manila' })} - {new Date(getEnd(appt)).toLocaleTimeString('en-US', { timeStyle: 'short', timeZone: 'Asia/Manila' })} PHT
                           </div>
                           <div className="text-sm font-medium text-gray-700 mt-1">
                             <span className="text-gray-500">Service:</span> {appt.service?.name}
@@ -169,7 +172,7 @@ const StylistDashboard = () => {
                         <div>
                           <div className="font-medium">{appt.customer_name}</div>
                           <div className="text-sm text-gray-600">
-                            {new Date(appt.start_datetime).toLocaleTimeString([], { timeStyle: 'short' })} • {appt.service?.name}
+                            {new Date(getStart(appt)).toLocaleTimeString('en-US', { timeStyle: 'short', timeZone: 'Asia/Manila' })} PHT • {appt.service?.name}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
                             {appt.customer_phone && `📞 ${appt.customer_phone}`}
@@ -217,4 +220,3 @@ const StylistDashboard = () => {
 }
 
 export default StylistDashboard
-

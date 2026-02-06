@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 
@@ -7,6 +8,7 @@ const api = axios.create({
 })
 
 const Stylists = () => {
+  const navigate = useNavigate()
   const [stylists, setStylists] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -67,6 +69,14 @@ const Stylists = () => {
               <div className={`inline-block px-2 py-1 rounded text-xs ${s.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                 {s.active ? 'Active' : 'Inactive'}
               </div>
+              {s.active && (
+                <button
+                  onClick={() => navigate(`/book?stylist=${s.id}`)}
+                  className="w-full mt-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition"
+                >
+                  Book with {s.name.split(' ')[0]}
+                </button>
+              )}
             </div>
           ))}
         </div>

@@ -1,7 +1,7 @@
 const Navbar = () => {
   return (
-    <header className="bg-white shadow px-4 py-3 flex items-center justify-between">
-      <div className="font-semibold text-lg">Dashboard</div>
+    <header className="bg-white shadow px-3 md:px-4 py-3 flex items-center justify-between">
+      <div className="font-semibold text-base md:text-lg">Dashboard</div>
       <div className="flex items-center gap-3">
         <input
           type="text"

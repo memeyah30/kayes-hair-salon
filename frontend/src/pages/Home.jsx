@@ -18,6 +18,7 @@ const formatDuration = (minutes) => {
 }
 
 const Home = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
   const [services, setServices] = useState([])
   const [stylists, setStylists] = useState([])
@@ -42,6 +43,7 @@ const Home = () => {
       setLoading(false)
     }
   }
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -81,7 +83,53 @@ const Home = () => {
                 My Appointments
               </button>
             </div>
+            <button
+              onClick={() => setMobileMenuOpen(prev => !prev)}
+              className="md:hidden px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-sm"
+            >
+              Menu
+            </button>
           </div>
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-white/10 pb-4 pt-3 space-y-2">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  navigate('/book')
+                }}
+                className="w-full text-left text-white hover:text-gray-200 text-sm font-medium transition"
+              >
+                Book Appointment
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  navigate('/stylists')
+                }}
+                className="w-full text-left text-white hover:text-gray-200 text-sm font-medium transition"
+              >
+                Stylists
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  navigate('/services')
+                }}
+                className="w-full text-left text-white hover:text-gray-200 text-sm font-medium transition"
+              >
+                Services
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  navigate('/my-appointments')
+                }}
+                className="w-full text-left text-white hover:text-gray-200 text-sm font-medium transition"
+              >
+                My Appointments
+              </button>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -160,7 +208,7 @@ const Home = () => {
                         </span>
                       </div>
                       <button
-                        onClick={() => navigate('/book')}
+                        onClick={() => navigate(`/book?services=${service.id}`)}
                         className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition"
                       >
                         Book Now

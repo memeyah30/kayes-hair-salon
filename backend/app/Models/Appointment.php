@@ -6,10 +6,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Carbon\Carbon;
+use DateTimeInterface;
 
 class Appointment extends Model
 {
     use HasFactory;
+
+    protected $appends = [
+        'start_datetime_pht',
+        'end_datetime_pht',
+    ];
 
     protected $fillable = [
         'stylist_id',
@@ -38,6 +45,35 @@ class Appointment extends Model
         'rescheduled_at' => 'datetime',
     ];
 
+    protected function serializeDate(DateTimeInterface $date)
+    {
+        return Carbon::instance($date)
+            ->setTimezone('Asia/Manila')
+            ->format('Y-m-d\TH:i:sP');
+    }
+
+    public function getStartDatetimePhtAttribute()
+    {
+        $rawStart = $this->getRawOriginal('start_datetime');
+        if (!$rawStart) {
+            return null;
+        }
+        return Carbon::createFromFormat('Y-m-d H:i:s', $rawStart, 'UTC')
+            ->setTimezone('Asia/Manila')
+            ->format('Y-m-d\TH:i:sP');
+    }
+
+    public function getEndDatetimePhtAttribute()
+    {
+        $rawEnd = $this->getRawOriginal('end_datetime');
+        if (!$rawEnd) {
+            return null;
+        }
+        return Carbon::createFromFormat('Y-m-d H:i:s', $rawEnd, 'UTC')
+            ->setTimezone('Asia/Manila')
+            ->format('Y-m-d\TH:i:sP');
+    }
+
     public function stylist(): BelongsTo
     {
         return $this->belongsTo(Stylist::class);
@@ -53,6 +89,7 @@ class Appointment extends Model
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'appointment_services')
+            ->withPivot('service_variant_id')
             ->withTimestamps();
     }
 
@@ -61,8 +98,6 @@ class Appointment extends Model
         return $this->hasMany(CustomerRating::class);
     }
 }
-
-
 
 
 

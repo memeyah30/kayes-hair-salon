@@ -6,6 +6,9 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
 })
 
+const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
+const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
+
 const StatCard = ({ title, value, accent }) => (
   <div className="bg-white rounded-xl shadow p-4 border-l-4" style={{ borderColor: accent }}>
     <div className="text-gray-500 text-sm font-semibold">{title}</div>
@@ -25,7 +28,7 @@ const AppointmentList = ({ appointments, onCancel, onStartReschedule }) => (
           <div>
             <div className="font-semibold">{appt.customer_name}</div>
             <div className="text-sm text-gray-600">
-              {new Date(appt.start_datetime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+              {new Date(getStart(appt)).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' })} PHT
               {' • '}
               {appt.service?.name} with {appt.stylist?.name}
             </div>
@@ -77,7 +80,7 @@ const Dashboard = () => {
     const cancelled = appointments.filter(a => a.status === 'cancelled')
     const today = new Date().toISOString().slice(0,10)
     const todaySales = booked
-      .filter(a => a.start_datetime.slice(0,10) === today)
+      .filter(a => getStart(a).slice(0,10) === today)
       .reduce((sum, a) => sum + (a.service?.price_cents || 0), 0)
     return {
       customers: new Set(appointments.map(a => a.customer_email || a.customer_phone)).size || appointments.length,
@@ -110,8 +113,6 @@ const Dashboard = () => {
 }
 
 export default Dashboard
-
-
 
 
 

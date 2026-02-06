@@ -159,18 +159,19 @@ class StylistController extends Controller
             'step_minutes' => 'nullable|integer|min:5|max:60',
         ]);
 
-        $durationMinutes = $data['service_duration']
-            ?? ($data['service_id'] ? Service::find($data['service_id'])->duration_minutes : 30);
+        // Use default duration of 30 minutes (since duration is removed from services)
+        $durationMinutes = $data['service_duration'] ?? 30;
         $stepMinutes = $data['step_minutes'] ?? 30; // Fixed interval for slots (30 minutes)
         $step = CarbonInterval::minutes($stepMinutes);
 
         // Get free blocks to determine availability
         $freeBlocks = $scheduler->freeBlocksForDate($stylist, $data['date']);
         
-        // Business hours: Fixed 8 AM to 8 PM (local time)
-        $targetDate = \Carbon\Carbon::parse($data['date'])->startOfDay();
-        $businessStart = $targetDate->copy()->setTime(8, 0, 0);
-        $businessEnd = $targetDate->copy()->setTime(20, 0, 0);
+        // Business hours: Fixed 8 AM to 8 PM (Asia/Manila timezone)
+        $timezone = 'Asia/Manila';
+        $targetDate = \Carbon\Carbon::parse($data['date'], $timezone)->startOfDay();
+        $businessStart = $targetDate->copy()->setTime(8, 0, 0)->setTimezone($timezone);
+        $businessEnd = $targetDate->copy()->setTime(20, 0, 0)->setTimezone($timezone);
         
         // Generate FIXED time slots from 8 AM to 8 PM at regular intervals
         // Ensure we start exactly at 8:00 AM and end by 8:00 PM
@@ -225,13 +226,14 @@ class StylistController extends Controller
             $endMinute = (int)$slotEnd->format('i');
             $endSecond = (int)$slotEnd->format('s');
             
-            // Format as "YYYY-MM-DDTHH:MM:SS" (no timezone, JavaScript treats as local)
-            $timeStr = sprintf('%02d:%02d:%02d', $hour, $minute, $second);
-            $endTimeStr = sprintf('%02d:%02d:%02d', $endHour, $endMinute, $endSecond);
+            // Format as ISO 8601 with Asia/Manila timezone to ensure correct timezone handling
+            // Use the cursor's timezone-aware datetime
+            $slotStartDateTime = $cursor->copy()->setTimezone($timezone);
+            $slotEndDateTime = $slotEnd->copy()->setTimezone($timezone);
             
             $allSlots[] = [
-                'start' => "{$dateStr}T{$timeStr}",
-                'end' => "{$dateStr}T{$endTimeStr}",
+                'start' => $slotStartDateTime->toIso8601String(),
+                'end' => $slotEndDateTime->toIso8601String(),
                 'available' => $isAvailable,
             ];
             

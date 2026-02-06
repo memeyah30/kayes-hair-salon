@@ -14,6 +14,9 @@ const CustomerDashboard = () => {
   const [appointments, setAppointments] = useState({ upcoming: [], history: [] })
   const [loading, setLoading] = useState(false)
 
+  const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
+  const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
+
   useEffect(() => {
     // Load appointments if email/phone is available
     if (customerEmail || customerPhone) {
@@ -28,8 +31,10 @@ const CustomerDashboard = () => {
     }
     try {
       setLoading(true)
+      const normalizedEmail = customerEmail ? customerEmail.trim().toLowerCase() : ''
+      const normalizedPhone = customerPhone ? customerPhone.replace(/[\s-]/g, '') : ''
       const res = await api.get('/dashboard/customer/stats', {
-        params: { email: customerEmail, phone: customerPhone }
+        params: { email: normalizedEmail, phone: normalizedPhone }
       })
       setAppointments({
         upcoming: res.data.upcoming || [],
@@ -49,8 +54,12 @@ const CustomerDashboard = () => {
       toast.warn('Please enter at least email or phone')
       return
     }
-    localStorage.setItem('customer_email', customerEmail)
-    localStorage.setItem('customer_phone', customerPhone)
+    const normalizedEmail = customerEmail ? customerEmail.trim().toLowerCase() : ''
+    const normalizedPhone = customerPhone ? customerPhone.replace(/[\s-]/g, '') : ''
+    localStorage.setItem('customer_email', normalizedEmail)
+    localStorage.setItem('customer_phone', normalizedPhone)
+    setCustomerEmail(normalizedEmail)
+    setCustomerPhone(normalizedPhone)
     setShowProfile(false)
     loadAppointments()
     toast.success('Profile saved! Loading your appointments...')
@@ -70,9 +79,9 @@ const CustomerDashboard = () => {
 
   if (showProfile) {
     return (
-      <div className="min-h-screen bg-gray-100 flex text-gray-800">
+      <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
         <Sidebar userType="customer" />
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 min-w-0 flex flex-col">
           <Navbar />
           <div className="p-4 md:p-6">
             <div className="max-w-md mx-auto bg-white rounded-xl shadow p-6">
@@ -118,9 +127,9 @@ const CustomerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex text-gray-800">
+      <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
         <Sidebar userType="customer" />
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 min-w-0 flex flex-col">
           <Navbar />
           <div className="flex items-center justify-center min-h-screen">
             <div>Loading your appointments...</div>
@@ -131,23 +140,23 @@ const CustomerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex text-gray-800">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
       <Sidebar userType="customer" />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">My Appointments</h1>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => navigate('/')}
-                className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-sm"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-sm"
               >
                 ← Back to Home
               </button>
               <button
                 onClick={() => navigate('/book')}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
               >
                 📅 Book New
               </button>
@@ -179,18 +188,42 @@ const CustomerDashboard = () => {
               <div className="space-y-3">
                 {appointments.upcoming
                   .filter(appt => {
-                    const appointmentDate = new Date(appt.start_datetime)
+                    const appointmentDate = new Date(getStart(appt))
                     const now = new Date()
                     return appointmentDate > now
                   })
                   .map(appt => {
-                  const appointmentDate = new Date(appt.start_datetime)
+                  const appointmentDate = new Date(getStart(appt))
+                  
+                  // Helper function to get service name (with variant if applicable)
+                  const getServiceName = (service) => {
+                    const variantId = service.pivot?.service_variant_id
+                    if (variantId && service.variants) {
+                      const variant = service.variants.find(v => v.id === variantId)
+                      if (variant) {
+                        return `${service.name} - ${variant.name}`
+                      }
+                    }
+                    return service.name
+                  }
+                  
+                  // Helper function to get service price (variant price if applicable)
+                  const getServicePrice = (service) => {
+                    const variantId = service.pivot?.service_variant_id
+                    if (variantId && service.variants) {
+                      const variant = service.variants.find(v => v.id === variantId)
+                      if (variant) {
+                        return variant.price_cents
+                      }
+                    }
+                    return service.price_cents || 0
+                  }
                   
                   // Get all services for this appointment
                   const appointmentServices = appt.services && appt.services.length > 0 
                     ? appt.services 
                     : (appt.service ? [appt.service] : [])
-                  const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
+                  const totalPrice = appointmentServices.reduce((sum, s) => sum + getServicePrice(s), 0)
                   
                   return (
                     <div key={appt.id} className="border rounded-lg p-4">
@@ -207,7 +240,7 @@ const CustomerDashboard = () => {
                             <div className="text-sm text-gray-600 mt-1">
                               <ul className="list-disc list-inside ml-2 space-y-0.5">
                                 {appointmentServices.map((s, idx) => (
-                                  <li key={idx}>{s.name} - {currency(s.price_cents || 0)}</li>
+                                  <li key={idx}>{getServiceName(s)} - {currency(getServicePrice(s))}</li>
                                 ))}
                               </ul>
                             </div>
@@ -217,12 +250,14 @@ const CustomerDashboard = () => {
                               weekday: 'long', 
                               year: 'numeric', 
                               month: 'long', 
-                              day: 'numeric' 
+                              day: 'numeric',
+                              timeZone: 'Asia/Manila'
                             })} at {appointmentDate.toLocaleTimeString('en-US', { 
                               hour: 'numeric', 
                               minute: '2-digit',
-                              hour12: true 
-                            })}
+                              hour12: true,
+                              timeZone: 'Asia/Manila'
+                            })} PHT
                           </div>
                           <div className="text-sm text-gray-500 mt-1">
                             with {appt.stylist?.name}
@@ -413,4 +448,3 @@ const CustomerDashboard = () => {
 }
 
 export default CustomerDashboard
-

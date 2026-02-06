@@ -33,12 +33,19 @@ const AdminDashboard = () => {
       const res = await api.get('/dashboard/admin/stats')
       setStats(res.data)
     } catch (e) {
-      console.error(e)
+      console.error('Dashboard load error:', e)
+      console.error('Response status:', e.response?.status)
+      console.error('Response data:', e.response?.data)
+      
       if (e.response?.status === 401) {
         localStorage.clear()
         navigate('/login/admin')
+        toast.error('Session expired. Please log in again.')
+      } else if (e.response?.status === 403) {
+        toast.error('You do not have permission to access this page')
+      } else {
+        toast.error(`Failed to load dashboard data: ${e.response?.data?.message || e.message || 'Unknown error'}`)
       }
-      toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
@@ -60,9 +67,9 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex text-gray-800">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
       <Sidebar userType="admin" onLogout={handleLogout} />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
@@ -154,6 +161,72 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </div>
+
+            <div className="bg-white rounded-xl shadow p-4">
+              <h2 className="font-semibold mb-3">Customer Ratings</h2>
+              <div className="space-y-2">
+                <button
+                  onClick={() => navigate('/admin/ratings')}
+                  className="w-full text-left px-4 py-2 bg-yellow-50 hover:bg-yellow-100 rounded"
+                >
+                  View Customer Ratings
+                </button>
+                <div className="text-xs text-gray-500 mt-2">
+                  View and manage customer feedback
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow p-4">
+              <h2 className="font-semibold mb-3">Holidays & Occasions</h2>
+              <div className="space-y-2">
+                <button
+                  onClick={() => navigate('/admin/holidays')}
+                  className="w-full text-left px-4 py-2 bg-orange-50 hover:bg-orange-100 rounded"
+                >
+                  Manage Holidays
+                </button>
+                <div className="text-xs text-gray-500 mt-2">
+                  Set salon closure dates
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow p-4">
+              <h2 className="font-semibold mb-3">Payment Accounts</h2>
+              <div className="space-y-2">
+                <button
+                  onClick={() => navigate('/admin/payment-accounts')}
+                  className="w-full text-left px-4 py-2 bg-teal-50 hover:bg-teal-100 rounded"
+                >
+                  Manage Payment Accounts
+                </button>
+                <div className="text-xs text-gray-500 mt-2">
+                  Add/Edit GCash, PayMaya, etc.
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow p-4">
+              <h2 className="font-semibold mb-3">Inventory & Sales</h2>
+              <div className="space-y-2">
+                <button
+                  onClick={() => navigate('/admin/inventory')}
+                  className="w-full text-left px-4 py-2 bg-orange-50 hover:bg-orange-100 rounded"
+                >
+                  Manage Inventory
+                </button>
+                <button
+                  onClick={() => navigate('/admin/sales')}
+                  className="w-full text-left px-4 py-2 bg-indigo-50 hover:bg-indigo-100 rounded"
+                >
+                  Sales Monitoring
+                </button>
+                <div className="text-xs text-gray-500 mt-2">
+                  Track inventory and monitor sales
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -162,4 +235,3 @@ const AdminDashboard = () => {
 }
 
 export default AdminDashboard
-

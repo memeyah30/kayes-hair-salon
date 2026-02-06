@@ -19,6 +19,10 @@ class CustomerRating extends Model
         'comment',
     ];
 
+    protected $casts = [
+        'rating' => 'integer',
+    ];
+
     public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class);

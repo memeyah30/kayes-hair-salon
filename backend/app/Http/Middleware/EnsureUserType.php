@@ -15,21 +15,30 @@ class EnsureUserType
      */
     public function handle(Request $request, Closure $next, ...$types)
     {
-        $user = $request->user();
+        $user = null;
+        $userType = null;
+
+        // Check all guards to find the authenticated user
+        foreach (['admin', 'manager', 'stylist'] as $guardName) {
+            if (\Illuminate\Support\Facades\Auth::guard($guardName)->check()) {
+                $user = \Illuminate\Support\Facades\Auth::guard($guardName)->user();
+                // Determine user type based on model instance
+                if ($user instanceof Admin) {
+                    $userType = 'admin';
+                } elseif ($user instanceof Manager) {
+                    $userType = 'manager';
+                } elseif ($user instanceof Stylist) {
+                    $userType = 'stylist';
+                }
+                break; // Found the authenticated user
+            }
+        }
+
         if (!$user) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $type = null;
-        if ($user instanceof Admin) {
-            $type = 'admin';
-        } elseif ($user instanceof Manager) {
-            $type = 'manager';
-        } elseif ($user instanceof Stylist) {
-            $type = 'stylist';
-        }
-
-        if (!$type || (count($types) > 0 && !in_array($type, $types, true))) {
+        if (!$userType || (count($types) > 0 && !in_array($userType, $types, true))) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

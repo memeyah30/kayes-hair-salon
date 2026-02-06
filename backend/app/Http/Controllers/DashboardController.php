@@ -10,6 +10,26 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    private function formatAppointmentForResponse($appointment)
+    {
+        $timezone = 'Asia/Manila';
+
+        $rawStart = $appointment->getRawOriginal('start_datetime');
+        if ($rawStart) {
+            $startCarbon = Carbon::createFromFormat('Y-m-d H:i:s', $rawStart, 'UTC')->setTimezone($timezone);
+            $appointment->start_datetime = $startCarbon->format('Y-m-d\TH:i:sP');
+            $appointment->start_datetime_pht = $startCarbon->format('Y-m-d\TH:i:sP');
+        }
+
+        $rawEnd = $appointment->getRawOriginal('end_datetime');
+        if ($rawEnd) {
+            $endCarbon = Carbon::createFromFormat('Y-m-d H:i:s', $rawEnd, 'UTC')->setTimezone($timezone);
+            $appointment->end_datetime = $endCarbon->format('Y-m-d\TH:i:sP');
+            $appointment->end_datetime_pht = $endCarbon->format('Y-m-d\TH:i:sP');
+        }
+
+        return $appointment;
+    }
     public function adminStats()
     {
         $today = Carbon::today();
@@ -106,7 +126,9 @@ class DashboardController extends Controller
             ->count();
 
         return response()->json([
-            'today_appointments' => $todayAppointments->values(),
+            'today_appointments' => $todayAppointments->values()->map(function ($apt) {
+                return $this->formatAppointmentForResponse($apt);
+            }),
             'total_completed' => $completed,
             'upcoming' => $upcoming,
             'total' => $appointments->count(),
@@ -118,26 +140,21 @@ class DashboardController extends Controller
         $email = $request->input('email');
         $phone = $request->input('phone');
 
+        $email = $email ? strtolower(trim($email)) : null;
+        $phone = $phone ? preg_replace('/[\s\-]/', '', trim($phone)) : null;
+
         if (!$email && !$phone) {
             return response()->json(['message' => 'Email or phone required'], 400);
         }
 
-        $query = Appointment::with(['stylist', 'service']);
+        $query = Appointment::with(['stylist', 'service', 'services.variants']);
         
         // Filter appointments that belong ONLY to this specific customer
         // Use strict matching - email takes priority, then phone
         if ($email && $phone) {
-            // If both provided, match appointments where BOTH email AND phone match
-            // OR where email matches (for appointments where phone was not provided)
-            $query->where(function($q) use ($email, $phone) {
-                $q->where(function($subQ) use ($email, $phone) {
-                    $subQ->where('customer_email', $email)
-                         ->where('customer_phone', $phone);
-                })->orWhere(function($subQ) use ($email) {
-                    $subQ->where('customer_email', $email)
-                         ->whereNull('customer_phone');
-                });
-            });
+            // Strict match when both are provided
+            $query->where('customer_email', $email)
+                  ->where('customer_phone', $phone);
         } elseif ($email) {
             // Only email provided - match ONLY by exact email
             $query->where('customer_email', $email);
@@ -155,11 +172,12 @@ class DashboardController extends Controller
         });
 
         return response()->json([
-            'upcoming' => $upcoming->values(),
+            'upcoming' => $upcoming->values()->map(function ($apt) {
+                return $this->formatAppointmentForResponse($apt);
+            }),
             'history' => [], // No history - only upcoming appointments
             'total_spent' => 0,
             'total_appointments' => $upcoming->count(),
         ]);
     }
 }
-

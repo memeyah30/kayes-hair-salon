@@ -10,13 +10,17 @@ const ManageServices = () => {
   const [editing, setEditing] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
-    duration_minutes: 30,
-    price_cents: 0,
+    price_cents: '',
     image: null,
   })
-  const [durationUnit, setDurationUnit] = useState('minutes') // 'minutes' or 'hours'
-  const [durationValue, setDurationValue] = useState(30)
   const [imagePreview, setImagePreview] = useState(null)
+  const [hasCategories, setHasCategories] = useState(false) // Toggle for whether service has categories/variants
+  const [variants, setVariants] = useState([])
+  const [editingVariant, setEditingVariant] = useState(null)
+  const [variantForm, setVariantForm] = useState({
+    name: '',
+    price_cents: '',
+  })
 
   useEffect(() => {
     refreshData()
@@ -53,21 +57,21 @@ const ManageServices = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      // Convert duration to minutes based on selected unit
-      const durationInMinutes = durationUnit === 'hours' 
-        ? durationValue * 60 
-        : durationValue
-
       // Validate required fields before submitting
       if (!formData.name || !formData.name.trim()) {
         toast.error('Name is required')
         return
       }
-      if (!durationValue || durationValue <= 0) {
-        toast.error('Duration must be greater than 0')
+      
+      // If service has categories, must have at least one variant
+      if (hasCategories && variants.length === 0) {
+        toast.error('Please add at least one category/variant for this service')
         return
       }
-      if (!formData.price_cents || formData.price_cents <= 0) {
+      
+      // Price is only required if no categories/variants exist
+      const priceValue = parseFloat(formData.price_cents) || 0
+      if (!hasCategories && (!formData.price_cents || priceValue <= 0)) {
         toast.error('Price must be greater than 0')
         return
       }
@@ -78,8 +82,13 @@ const ManageServices = () => {
       
       // Always append all required fields with proper values
       data.append('name', formData.name.trim())
-      data.append('duration_minutes', durationInMinutes.toString())
-      data.append('price_cents', Math.round(formData.price_cents * 100).toString())
+      // Only add price if provided (variants may have their own prices)
+      if (priceValue > 0) {
+        data.append('price_cents', Math.round(priceValue * 100).toString())
+      } else {
+        // Set a default price if no variants (for backward compatibility)
+        data.append('price_cents', '0')
+      }
       // Only append image if it's a File object (new upload)
       if (formData.image && formData.image instanceof File) {
         data.append('image', formData.image)
@@ -88,8 +97,7 @@ const ManageServices = () => {
       // Debug: Log what we're sending
       console.log('Sending FormData:', {
         name: formData.name.trim(),
-        duration_minutes: durationInMinutes,
-        price_cents: Math.round(formData.price_cents * 100),
+        price_cents: Math.round(priceValue * 100),
         hasImage: formData.image instanceof File
       })
       
@@ -125,15 +133,25 @@ const ManageServices = () => {
         })
       } else {
         // Don't set Content-Type header - let axios handle it for FormData
-        await api.post('/services', data)
+        const response = await api.post('/services', data)
         toast.success('Service created')
+        // After creating service, save variants if any
+        if (variants.length > 0 && response.data?.id) {
+          await saveVariants(response.data.id)
+        }
+      }
+      
+      // After updating service, save variants
+      if (wasEditing && variants.length > 0) {
+        await saveVariants(editingId)
       }
 
       setEditing(null)
-      setFormData({ name: '', duration_minutes: 30, price_cents: 0, image: null })
-      setDurationUnit('minutes')
-      setDurationValue(30)
+      setFormData({ name: '', price_cents: 0, image: null })
       setImagePreview(null)
+      setVariants([])
+      setEditingVariant(null)
+      setVariantForm({ name: '', price_cents: '' })
       
       // Always refresh data to ensure everything is up to date
       // Use a longer delay for updates to ensure backend has fully processed
@@ -154,38 +172,144 @@ const ManageServices = () => {
     }
   }
 
-  const handleEdit = (service) => {
+  const handleEdit = async (service) => {
     setEditing(service)
-    const duration = service.duration_minutes || 30
-    
-    // Determine if duration is better shown in hours or minutes
-    const showAsHours = duration >= 60 && duration % 60 === 0
     
     setFormData({
       name: service.name,
-      duration_minutes: duration,
-      price_cents: service.price_cents / 100, // Convert from cents
+      price_cents: (service.price_cents / 100).toString(), // Convert from cents to string
       image: null, // Reset to null - user must select new image to update
     })
-    setDurationUnit(showAsHours ? 'hours' : 'minutes')
-    setDurationValue(showAsHours ? duration / 60 : duration)
     // Show existing image as preview when editing
     setImagePreview(service.image ? `http://localhost:8000/${service.image}?t=${Date.now()}` : null)
+    
+    // Load variants for this service
+    try {
+      const variantsRes = await api.get(`/services/${service.id}/variants`)
+      const loadedVariants = (variantsRes.data || []).map(v => ({
+        ...v,
+        price_cents: v.price_cents / 100 // Convert from cents (database) to pesos (local state)
+      }))
+      
+      
+      
+      
+      
+      
+      
+      setVariants(loadedVariants)
+      setHasCategories(loadedVariants.length > 0) // Set hasCategories based on existing variants
+    } catch (e) {
+      console.error('Failed to load variants:', e)
+      setVariants([])
+      setHasCategories(false)
+    }
+  }
+
+  const saveVariants = async (serviceId) => {
+    // Save all variants
+    for (const variant of variants) {
+      try {
+        if (variant.id) {
+          // Update existing variant
+          // If variant was edited, price_cents might be in pesos (from form), convert to cents
+          // If variant wasn't edited, price_cents is already in cents (from database)
+          const priceInPesos = typeof variant.price_cents === 'number' && variant.price_cents < 10000
+            ? variant.price_cents  // Likely in pesos if less than 10000
+            : (variant.price_cents / 100)  // Already in cents, convert to pesos first
+          await api.patch(`/service-variants/${variant.id}`, {
+            name: variant.name,
+            price_cents: Math.round(priceInPesos * 100),
+          })
+        } else {
+          // Create new variant
+          await api.post(`/services/${serviceId}/variants`, {
+            name: variant.name,
+            price_cents: Math.round(variant.price_cents * 100),
+          })
+        }
+      } catch (e) {
+        console.error('Failed to save variant:', e)
+        toast.error(`Failed to save variant: ${variant.name}`)
+      }
+    }
+  }
+
+  const handleAddVariant = () => {
+    const priceValue = parseFloat(variantForm.price_cents) || 0
+    if (!variantForm.name || !variantForm.price_cents || priceValue <= 0) {
+      toast.error('Please enter variant name and price')
+      return
+    }
+    
+    const newVariant = {
+      id: editingVariant?.id || null,
+      name: variantForm.name,
+      price_cents: priceValue, // Store as peso value (will convert to cents when saving)
+    }
+    
+    if (editingVariant) {
+      // When editing, update the variant in the list
+      setVariants(variants.map(v => {
+        if (v.id === editingVariant.id) {
+          // Keep the ID from the existing variant
+          return { ...newVariant, id: editingVariant.id }
+        }
+        return v
+      }))
+      setEditingVariant(null)
+    } else {
+      setVariants([...variants, newVariant])
+    }
+    
+    setVariantForm({ name: '', price_cents: '' })
+  }
+
+  const handleEditVariant = (variant) => {
+    setEditingVariant(variant)
+    setVariantForm({
+      name: variant.name,
+      price_cents: (variant.price_cents / 100).toString(),
+    })
+  }
+
+  const handleDeleteVariant = async (variantId, variantName) => {
+    if (!window.confirm(`Are you sure you want to delete variant "${variantName}"?`)) {
+      return
+    }
+    
+    if (variantId) {
+      // Delete from backend
+      try {
+        await api.delete(`/service-variants/${variantId}`)
+        toast.success('Variant deleted')
+      } catch (e) {
+        toast.error('Failed to delete variant')
+        return
+      }
+    }
+    
+    // Remove from local state
+    setVariants(variants.filter(v => v.id !== variantId))
+    if (editingVariant?.id === variantId) {
+      setEditingVariant(null)
+      setVariantForm({ name: '', price_cents: '' })
+    }
   }
 
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-100 flex text-gray-800">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
       <Sidebar userType="admin" />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">Manage Services</h1>
             <button
               onClick={() => navigate('/admin/dashboard')}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
             >
               ← Return to Dashboard
             </button>
@@ -205,54 +329,49 @@ const ManageServices = () => {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Duration *</label>
-              <div className="flex gap-2">
-                <select
-                  className="border rounded px-3 py-2"
-                  value={durationUnit}
+            {/* Service has categories/variants toggle */}
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                <input
+                  type="checkbox"
+                  checked={hasCategories}
                   onChange={(e) => {
-                    setDurationUnit(e.target.value)
-                    // Reset value when switching units
-                    if (e.target.value === 'hours') {
-                      setDurationValue(1)
-                    } else {
-                      setDurationValue(30)
+                    const checked = e.target.checked
+                    setHasCategories(checked)
+                    if (!checked) {
+                      // Clear variants if unchecking
+                      setVariants([])
+                      setEditingVariant(null)
+                      setVariantForm({ name: '', price_cents: '' })
                     }
                   }}
-                >
-                  <option value="minutes">Minutes</option>
-                  <option value="hours">Hours</option>
-                </select>
+                  className="w-5 h-5 text-blue-600 rounded"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">This service has categories/variants</div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Check this if the service has different options (e.g., Premium Rebonding with different brands, Hair Curl for Women/Men)
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            {/* Base Price - only show if no categories */}
+            {!hasCategories && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Price (₱) *</label>
                 <input
                   type="number"
                   required
-                  min={durationUnit === 'hours' ? 1 : 5}
-                  step={durationUnit === 'hours' ? 0.5 : 5}
-                  className="flex-1 border rounded px-3 py-2"
-                  value={durationValue}
-                  onChange={(e) => setDurationValue(parseFloat(e.target.value) || 0)}
-                  placeholder={durationUnit === 'hours' ? 'e.g., 1.5' : 'e.g., 30'}
+                  min="0"
+                  step="0.01"
+                  className="w-full border rounded px-3 py-2"
+                  value={formData.price_cents}
+                  onChange={(e) => setFormData({ ...formData, price_cents: e.target.value })}
+                  placeholder="Enter price"
                 />
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {durationUnit === 'hours' 
-                  ? `= ${(durationValue * 60).toFixed(0)} minutes`
-                  : `= ${(durationValue / 60).toFixed(2)} hours`}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Price (₱) *</label>
-              <input
-                type="number"
-                required
-                min="0"
-                step="0.01"
-                className="w-full border rounded px-3 py-2"
-                value={formData.price_cents}
-                onChange={(e) => setFormData({ ...formData, price_cents: parseFloat(e.target.value) })}
-              />
-            </div>
+            )}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Image</label>
               <input
@@ -266,6 +385,115 @@ const ManageServices = () => {
               )}
             </div>
           </div>
+
+          {/* Service Variants/Categories Section */}
+          {hasCategories && (
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-lg font-semibold mb-3">Service Categories/Variants</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Add different categories, brands, or types for this service with different prices.
+                <br />
+                <span className="font-medium">Examples:</span> Premium Rebonding - LOREAL (₱3,500), SCHWARZKOPF (₱2,500) | Hair Curl - For Women (₱1,000), For Men (₱600)
+              </p>
+              
+              {/* Variants List */}
+              {variants.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {variants.map((variant, idx) => (
+                    <div key={variant.id || idx} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{variant.name}</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          <span className="font-semibold">Price:</span> ₱{
+                            // All variants in local state are stored in pesos (converted when loading from DB)
+                            (() => {
+                              const price = typeof variant.price_cents === 'number' 
+                                ? variant.price_cents 
+                                : parseFloat(variant.price_cents || 0)
+                              return price > 0 ? price.toFixed(2) : '0.00'
+                            })()
+                          }
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEditVariant(variant)}
+                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteVariant(variant.id, variant.name)}
+                          className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add/Edit Variant Form */}
+              <div className="bg-gray-50 rounded p-4 border-2 border-dashed border-gray-300">
+                <h4 className="font-medium mb-3 text-gray-900">{editingVariant ? 'Edit' : 'Add'} Category/Variant</h4>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category/Variant Name *</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded px-3 py-2"
+                      value={variantForm.name}
+                      onChange={(e) => setVariantForm({ ...variantForm, name: e.target.value })}
+                      placeholder="e.g., LOREAL, For Women, SCHWARZKOPF, For Men"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter the category name (brand, type, gender, etc.)
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Price (₱) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-full border rounded px-3 py-2"
+                      value={variantForm.price_cents}
+                      onChange={(e) => setVariantForm({ ...variantForm, price_cents: e.target.value })}
+                      placeholder="e.g., 3500, 1000, 600"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter the price for this specific category/variant
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={handleAddVariant}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
+                  >
+                    {editingVariant ? 'Update' : 'Add'} Category
+                  </button>
+                  {editingVariant && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingVariant(null)
+                        setVariantForm({ name: '', price_cents: '' })
+                      }}
+                      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
               {editing ? 'Update' : 'Create'} Service
@@ -274,11 +502,13 @@ const ManageServices = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setEditing(null)
-                  setFormData({ name: '', duration_minutes: 30, price_cents: 0, image: null })
-                  setDurationUnit('minutes')
-                  setDurationValue(30)
-                  setImagePreview(null)
+      setEditing(null)
+      setFormData({ name: '', price_cents: '', image: null })
+      setImagePreview(null)
+      setHasCategories(false)
+      setVariants([])
+      setEditingVariant(null)
+      setVariantForm({ name: '', price_cents: '' })
                 }}
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
@@ -313,17 +543,18 @@ const ManageServices = () => {
               <div className="p-4">
                 <div className="font-semibold">{s.name}</div>
                 <div className="text-sm text-gray-600">
-                  {(() => {
-                    const hours = Math.floor(s.duration_minutes / 60)
-                    const minutes = s.duration_minutes % 60
-                    if (hours > 0 && minutes > 0) {
-                      return `${hours}h ${minutes}m`
-                    } else if (hours > 0) {
-                      return `${hours} hour${hours > 1 ? 's' : ''}`
-                    } else {
-                      return `${minutes} minute${minutes > 1 ? 's' : ''}`
-                    }
-                  })()} • ₱{(s.price_cents / 100).toFixed(2)}
+                  {s.variants && s.variants.length > 0 ? (
+                    <div>
+                      <span className="text-xs text-blue-600 font-medium">
+                        {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
+                      </span>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {s.variants.map(v => v.name).join(', ')}
+                      </div>
+                    </div>
+                  ) : (
+                    <span>₱{(s.price_cents / 100).toFixed(2)}</span>
+                  )}
                 </div>
                 <div className="flex gap-2 mt-2">
                   <button
@@ -370,4 +601,3 @@ const ManageServices = () => {
 }
 
 export default ManageServices
-

@@ -14,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'userType' => \App\Http\Middleware\EnsureUserType::class,
+            'auth.any' => \App\Http\Middleware\AuthenticateAnyGuard::class,
+        ]);
+        
+        // Use custom CSRF middleware
+        $middleware->validateCsrfTokens(except: [
+            // No routes excluded - all should have CSRF protection
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

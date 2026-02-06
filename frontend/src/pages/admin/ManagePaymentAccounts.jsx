@@ -1,0 +1,372 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import api from '../../utils/api'
+import Sidebar from '../../components/Sidebar'
+import Navbar from '../../components/Navbar'
+
+const ManagePaymentAccounts = () => {
+  const [accounts, setAccounts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [formData, setFormData] = useState({
+    account_name: '',
+    account_number: '',
+    account_type: 'gcash',
+    bank_name: '',
+    qr_code_url: '',
+    instructions: '',
+    is_active: true,
+  })
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    loadAccounts()
+  }, [])
+
+  const loadAccounts = async () => {
+    try {
+      setLoading(true)
+      const res = await api.get('/payment-accounts/all')
+      setAccounts(res.data)
+    } catch (e) {
+      toast.error('Failed to load payment accounts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      if (editing) {
+        await api.patch(`/payment-accounts/${editing.id}`, formData)
+        toast.success('Payment account updated successfully')
+      } else {
+        await api.post('/payment-accounts', formData)
+        toast.success('Payment account created successfully')
+      }
+      setShowModal(false)
+      setEditing(null)
+      setFormData({
+        account_name: '',
+        account_number: '',
+        account_type: 'gcash',
+        bank_name: '',
+        qr_code_url: '',
+        instructions: '',
+        is_active: true,
+      })
+      loadAccounts()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to save payment account')
+    }
+  }
+
+  const handleEdit = (account) => {
+    setEditing(account)
+    setFormData({
+      account_name: account.account_name,
+      account_number: account.account_number,
+      account_type: account.account_type,
+      bank_name: account.bank_name || '',
+      qr_code_url: account.qr_code_url || '',
+      instructions: account.instructions || '',
+      is_active: account.is_active,
+    })
+    setShowModal(true)
+  }
+
+  const handleDelete = async (accountId) => {
+    if (!window.confirm('Are you sure you want to delete this payment account? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      await api.delete(`/payment-accounts/${accountId}`)
+      toast.success('Payment account deleted successfully')
+      loadAccounts()
+    } catch (e) {
+      toast.error('Failed to delete payment account')
+    }
+  }
+
+  const handleLogout = () => {
+    api.post('/logout').finally(() => {
+      localStorage.clear()
+      navigate('/login/admin')
+    })
+  }
+
+  const getAccountTypeLabel = (type) => {
+    const labels = {
+      gcash: 'GCash',
+      paymaya: 'PayMaya',
+      bank: 'Bank Account',
+      other: 'Other',
+    }
+    return labels[type] || type
+  }
+
+  const getAccountTypeColor = (type) => {
+    const colors = {
+      gcash: 'bg-green-100 text-green-800',
+      paymaya: 'bg-blue-100 text-blue-800',
+      bank: 'bg-purple-100 text-purple-800',
+      other: 'bg-gray-100 text-gray-800',
+    }
+    return colors[type] || colors.other
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+      <Sidebar userType="admin" onLogout={handleLogout} />
+      <main className="flex-1 min-w-0 flex flex-col">
+        <Navbar />
+        <div className="p-4 md:p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold">Manage Payment Accounts</h1>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="w-full sm:w-auto px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+              >
+                ← Return to Dashboard
+              </button>
+              <button
+                onClick={() => {
+                  setEditing(null)
+                  setFormData({
+                    account_name: '',
+                    account_number: '',
+                    account_type: 'gcash',
+                    bank_name: '',
+                    qr_code_url: '',
+                    instructions: '',
+                    is_active: true,
+                  })
+                  setShowModal(true)
+                }}
+                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              >
+                + Add Payment Account
+              </button>
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Payment accounts are displayed to customers during booking. 
+              Only active accounts will be shown to customers. You can add GCash, PayMaya, bank accounts, or other payment methods.
+            </p>
+          </div>
+
+          {/* Accounts List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {accounts.map(account => (
+              <div
+                key={account.id}
+                className={`bg-white rounded-xl shadow p-4 border-l-4 ${
+                  account.is_active ? 'border-green-500' : 'border-gray-300 opacity-60'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 className="font-semibold text-lg">{account.account_name}</h3>
+                    <span className={`px-2 py-1 rounded text-xs ${getAccountTypeColor(account.account_type)}`}>
+                      {getAccountTypeLabel(account.account_type)}
+                    </span>
+                  </div>
+                  {account.is_active ? (
+                    <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">Active</span>
+                  ) : (
+                    <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">Inactive</span>
+                  )}
+                </div>
+                <div className="space-y-2 mt-3">
+                  <div>
+                    <span className="text-xs text-gray-500">Account Number:</span>
+                    <p className="font-mono text-sm">{account.account_number}</p>
+                  </div>
+                  {account.bank_name && (
+                    <div>
+                      <span className="text-xs text-gray-500">Bank:</span>
+                      <p className="text-sm">{account.bank_name}</p>
+                    </div>
+                  )}
+                  {account.qr_code_url && (
+                    <div>
+                      <span className="text-xs text-gray-500">QR Code:</span>
+                      <div className="mt-1">
+                        <img
+                          src={account.qr_code_url}
+                          alt="QR Code"
+                          className="w-24 h-24 object-contain border rounded"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {account.instructions && (
+                    <div>
+                      <span className="text-xs text-gray-500">Instructions:</span>
+                      <p className="text-sm text-gray-700 mt-1">{account.instructions}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => handleEdit(account)}
+                    className="flex-1 text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(account.id)}
+                    className="flex-1 text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {accounts.length === 0 && (
+            <div className="text-center py-8 text-gray-500 bg-white rounded-xl shadow">
+              No payment accounts found. Click "Add Payment Account" to create one.
+            </div>
+          )}
+
+          {/* Modal */}
+          {showModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+                <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Payment Account</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Account Name *</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full border rounded px-3 py-2"
+                      value={formData.account_name}
+                      onChange={(e) => setFormData({ ...formData, account_name: e.target.value })}
+                      placeholder="e.g., GCash - Main Account"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Account Number *</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full border rounded px-3 py-2"
+                      value={formData.account_number}
+                      onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                      placeholder="e.g., 09171234567"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Account Type *</label>
+                    <select
+                      required
+                      className="w-full border rounded px-3 py-2"
+                      value={formData.account_type}
+                      onChange={(e) => setFormData({ ...formData, account_type: e.target.value })}
+                    >
+                      <option value="gcash">GCash</option>
+                      <option value="paymaya">PayMaya</option>
+                      <option value="bank">Bank Account</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  {formData.account_type === 'bank' && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Bank Name</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded px-3 py-2"
+                        value={formData.bank_name}
+                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                        placeholder="e.g., BDO, BPI, Metrobank"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">QR Code URL (Optional)</label>
+                    <input
+                      type="url"
+                      className="w-full border rounded px-3 py-2"
+                      value={formData.qr_code_url}
+                      onChange={(e) => setFormData({ ...formData, qr_code_url: e.target.value })}
+                      placeholder="https://example.com/qr-code.png"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Upload QR code image to a hosting service and paste the URL here</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Payment Instructions (Optional)</label>
+                    <textarea
+                      className="w-full border rounded px-3 py-2"
+                      rows="3"
+                      value={formData.instructions}
+                      onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                      placeholder="e.g., Send payment to this number and include appointment reference"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_active}
+                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                        className="rounded"
+                      />
+                      <span className="text-sm font-medium">Active (visible to customers)</span>
+                    </label>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    >
+                      {editing ? 'Update' : 'Create'} Account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModal(false)
+                        setEditing(null)
+                        setFormData({
+                          account_name: '',
+                          account_number: '',
+                          account_type: 'gcash',
+                          bank_name: '',
+                          qr_code_url: '',
+                          instructions: '',
+                          is_active: true,
+                        })
+                      }}
+                      className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default ManagePaymentAccounts

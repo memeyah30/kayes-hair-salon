@@ -7,8 +7,13 @@ use Illuminate\Http\Request;
 
 class PaymentAccountController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // For admin route /payment-accounts/all, return all accounts
+        // For public route /payment-accounts, return only active accounts
+        if ($request->user()) {
+            return PaymentAccount::orderBy('is_active', 'desc')->orderBy('account_name')->get();
+        }
         return PaymentAccount::where('is_active', true)->get();
     }
 

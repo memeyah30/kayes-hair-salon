@@ -18,20 +18,20 @@ class Scheduler
 
     public function findSlotForServices(Stylist $stylist, array $services, string $date, ?string $preferredTime = null): ?array
     {
-        $targetDate = Carbon::parse($date)->startOfDay();
+        // Use Asia/Manila timezone for all date/time operations
+        $timezone = 'Asia/Manila';
+        $targetDate = Carbon::parse($date, $timezone)->startOfDay();
         $freeBlocks = $this->freeBlocksForDate($stylist, $date);
         if ($freeBlocks->isEmpty()) {
             return null;
         }
 
-        // Calculate total duration for all services
-        $totalDurationMinutes = 0;
-        foreach ($services as $service) {
-            $totalDurationMinutes += $service->duration_minutes;
-        }
+        // Use default duration of 30 minutes per service (since duration is removed)
+        $defaultDurationMinutes = 30;
+        $totalDurationMinutes = count($services) * $defaultDurationMinutes;
         $duration = CarbonInterval::minutes($totalDurationMinutes);
         
-        $preferred = $preferredTime ? $targetDate->copy()->setTimeFromTimeString($preferredTime) : null;
+        $preferred = $preferredTime ? $targetDate->copy()->setTimeFromTimeString($preferredTime)->setTimezone($timezone) : null;
 
         foreach ($freeBlocks as $block) {
             $start = $preferred && $preferred->betweenIncluded($block['start'], $block['end'])
@@ -60,7 +60,8 @@ class Scheduler
 
     public function freeBlocksForDate(Stylist $stylist, string $date): Collection
     {
-        $targetDate = Carbon::parse($date)->startOfDay();
+        $timezone = 'Asia/Manila';
+        $targetDate = Carbon::parse($date, $timezone)->startOfDay();
         $workBlocks = $this->getWorkingBlocks($stylist, $targetDate);
         if ($workBlocks->isEmpty()) {
             return collect();
@@ -74,8 +75,11 @@ class Scheduler
     {
         // ENFORCE: Monday to Sunday, 8 AM to 8 PM only
         // All days are available with fixed business hours
-        $businessStart = $date->copy()->setTime(8, 0, 0);
-        $businessEnd = $date->copy()->setTime(20, 0, 0);
+        // Ensure timezone is Asia/Manila
+        $timezone = 'Asia/Manila';
+        $date = $date->setTimezone($timezone);
+        $businessStart = $date->copy()->setTime(8, 0, 0)->setTimezone($timezone);
+        $businessEnd = $date->copy()->setTime(20, 0, 0)->setTimezone($timezone);
 
         // Return single block for 8 AM to 8 PM regardless of stylist working hours
         return collect([
@@ -88,6 +92,8 @@ class Scheduler
 
     private function getBusyBlocks(Stylist $stylist, Carbon $date): Collection
     {
+        $timezone = 'Asia/Manila';
+        $date = $date->setTimezone($timezone);
         $start = $date->copy()->startOfDay();
         $end = $date->copy()->endOfDay();
 

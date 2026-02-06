@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import axios from 'axios'
 import { QRCodeSVG } from 'qrcode.react'
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
-})
+import api from '../utils/api'
 
 // Validation helpers
 const validateEmail = (email) => {
@@ -32,6 +28,23 @@ const validatePhone = (phone) => {
   return { valid: true, message: '' }
 }
 
+// Helper function to convert ISO string to HH:MM format in Asia/Manila timezone
+const toManilaHHmm = (isoString) => {
+  const d = new Date(isoString)
+
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  const parts = fmt.formatToParts(d)
+  const hh = parts.find(p => p.type === 'hour')?.value ?? '00'
+  const mm = parts.find(p => p.type === 'minute')?.value ?? '00'
+  return `${hh}:${mm}`
+}
+
 const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
   const start = new Date(year, month, 1)
   const end = new Date(year, month + 1, 0)
@@ -53,6 +66,7 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
     const newDate = new Date(year, month + 1, 1)
     onMonthChange(newDate.getMonth(), newDate.getFullYear())
   }
+  
 
   // Check if previous month button should be disabled (can't go before today)
   const todayMonth = today.getMonth()
@@ -122,24 +136,30 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
 const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const isToday = selectedDate && new Date(selectedDate).getTime() === today.getTime()
+  const selectedDateObj = new Date(selectedDate + 'T00:00:00')
+  const isToday = selectedDateObj && selectedDateObj.getTime() === today.getTime()
   
   // Minimum advance booking time: 30 minutes
   const minAdvanceMinutes = 30
   const minAdvanceTime = new Date(now.getTime() + minAdvanceMinutes * 60000)
   
-  // Filter out past slots and slots less than 30 minutes away if booking for today
+  // Filter out past slots and slots less than 30 minutes away
   const filteredSlots = slots.map(slot => {
-    if (!isToday) return slot
     const slotTime = new Date(slot.start)
-    // Check if slot is in the past OR less than 30 minutes from now
+    
+    // Check if slot is in the past (relative to current time)
     const isPast = slotTime < now
+    
+    // Check if slot is less than 30 minutes away (only for today or if slot is very close to now)
     const isTooSoon = slotTime < minAdvanceTime
+    
+    // Slot is unavailable if it's in the past OR too soon
     const isUnavailable = isPast || isTooSoon
     
     return {
       ...slot,
       available: slot.available !== false && !isUnavailable ? slot.available : false,
+      isPast: isPast,
       isTooSoon: isTooSoon && !isPast // Track if it's too soon (for tooltip)
     }
   })
@@ -155,31 +175,46 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
             {filteredSlots.map((slot, idx) => {
-              // Parse the date string - treat as local time
+              // Parse the date string and convert to Asia/Manila timezone
               const slotDate = new Date(slot.start)
-              // Extract hours and minutes from the date
-              let hours = slotDate.getHours()
-              const minutes = slotDate.getMinutes()
+              
+              // Extract hours and minutes in Asia/Manila timezone
+              const phTimeFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Manila',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+              })
+              
+              const formatted = phTimeFormatter.formatToParts(slotDate)
+              const hours = parseInt(formatted.find(p => p.type === 'hour')?.value || '0')
+              const minutes = formatted.find(p => p.type === 'minute')?.value.padStart(2, '0') || '00'
+              const ampm = formatted.find(p => p.type === 'dayPeriod')?.value.toUpperCase() || 'AM'
               
               // Format as 12-hour time with AM/PM
               const displayHour = hours % 12 || 12
-              const ampm = hours >= 12 ? 'PM' : 'AM'
-              const label = `${String(displayHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`
+              const label = `${String(displayHour).padStart(2, '0')}:${minutes} ${ampm}`
               
               const selectedKey = selected?.start
               const isSelected = selectedKey && new Date(selectedKey).getTime() === slotDate.getTime()
               const isAvailable = slot.available !== false
-              const isPast = isToday && slotDate < now
-              const isTooSoon = slot.isTooSoon || (isToday && slotDate < minAdvanceTime)
+              
+              // Use the pre-calculated flags from filteredSlots
+              const isPast = slot.isPast || false
+              const isTooSoon = slot.isTooSoon || false
               const isDisabled = !isAvailable || isPast || isTooSoon
               
               // Generate appropriate tooltip message
               let tooltipMessage = 'This time slot is not available'
-              if (isTooSoon && !isPast) {
+              if (isPast) {
+                tooltipMessage = 'This time slot has already passed. Please select a future time.'
+              } else if (isTooSoon) {
                 const minutesUntilSlot = Math.ceil((slotDate.getTime() - now.getTime()) / 60000)
-                tooltipMessage = `Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`
-              } else if (isPast) {
-                tooltipMessage = 'This time slot has already passed'
+                if (minutesUntilSlot > 0) {
+                  tooltipMessage = `Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`
+                } else {
+                  tooltipMessage = 'This time slot is too soon. Please book at least 30 minutes in advance.'
+                }
               } else if (!isAvailable) {
                 tooltipMessage = 'This time slot is not available'
               } else {
@@ -224,18 +259,28 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
 const ReceiptModal = ({ appointment, onClose }) => {
   const currency = cents => `₱${(cents / 100).toFixed(2)}`
   
-  // Format duration in hours and minutes
-  const formatDuration = (minutes) => {
-    if (!minutes) return 'N/A'
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    if (hours > 0 && mins > 0) {
-      return `${hours} hour${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`
-    } else if (hours > 0) {
-      return `${hours} hour${hours > 1 ? 's' : ''}`
-    } else {
-      return `${mins} minute${mins > 1 ? 's' : ''}`
+  // Helper function to get service name (with variant if applicable)
+  const getServiceName = (service) => {
+    const variantId = service.pivot?.service_variant_id
+    if (variantId && service.variants) {
+      const variant = service.variants.find(v => v.id === variantId)
+      if (variant) {
+        return `${service.name} - ${variant.name}`
+      }
     }
+    return service.name
+  }
+  
+  // Helper function to get service price (variant price if applicable)
+  const getServicePrice = (service) => {
+    const variantId = service.pivot?.service_variant_id
+    if (variantId && service.variants) {
+      const variant = service.variants.find(v => v.id === variantId)
+      if (variant) {
+        return variant.price_cents
+      }
+    }
+    return service.price_cents || 0
   }
   
   if (!appointment || !appointment.id) {
@@ -267,9 +312,8 @@ const ReceiptModal = ({ appointment, onClose }) => {
     )
   }
   
-  // Calculate totals
-  const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
-  const totalDuration = appointmentServices.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
+  // Calculate totals using helper function
+  const totalPrice = appointmentServices.reduce((sum, s) => sum + getServicePrice(s), 0)
   
   const handlePrint = () => {
     const printContent = document.getElementById('receipt-content')
@@ -299,14 +343,17 @@ const ReceiptModal = ({ appointment, onClose }) => {
 
   const handleDownload = () => {
     const servicesList = appointmentServices.map(s => 
-      `  - ${s.name}: ${currency(s.price_cents || 0)} (${formatDuration(s.duration_minutes)})`
+      `  - ${getServiceName(s)}: ${currency(getServicePrice(s))}`
     ).join('\n')
+
+    const startSource = appointment.start_datetime_pht || appointment.start_datetime
+    const endSource = appointment.end_datetime_pht || appointment.end_datetime
     
     const receiptContent = `
 KAYE'S HAIR SALON AND SPA - APPOINTMENT RECEIPT
 ====================================
 Receipt #: ${'APT-' + String(appointment.id).padStart(6, '0')}
-Date: ${new Date(appointment.created_at).toLocaleString()}
+Date: ${new Date(appointment.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT
 
 CUSTOMER INFORMATION:
 --------------------
@@ -319,9 +366,8 @@ APPOINTMENT DETAILS:
 Service${appointmentServices.length > 1 ? 's' : ''}:
 ${servicesList}
 Stylist: ${appointment.stylist?.name}
-Date: ${new Date(appointment.start_datetime).toLocaleDateString()}
-Time: ${new Date(appointment.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(appointment.end_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-Total Duration: ${formatDuration(totalDuration)}
+Date: ${new Date(startSource).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+Time: ${new Date(startSource).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - ${new Date(endSource).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} PHT
 
 PRICING:
 --------
@@ -359,7 +405,7 @@ Thank you for choosing Kaye's Hair Salon and Spa!
             <div>
               <div className="text-sm text-gray-500">Receipt #</div>
               <div className="font-bold text-lg">{'APT-' + String(appointment.id).padStart(6, '0')}</div>
-              <div className="text-sm text-gray-500 mt-1">Booking Date: {new Date(appointment.created_at).toLocaleString()}</div>
+              <div className="text-sm text-gray-500 mt-1">Booking Date: {new Date(appointment.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT</div>
             </div>
 
             <div className="border-t pt-4">
@@ -378,14 +424,41 @@ Thank you for choosing Kaye's Hair Salon and Spa!
                   <span className="font-medium">Service{appointmentServices.length > 1 ? 's' : ''}:</span>
                   <ul className="list-disc list-inside ml-2 mt-1">
                     {appointmentServices.map((s, idx) => (
-                      <li key={idx}>{s.name} - {currency(s.price_cents || 0)} ({formatDuration(s.duration_minutes)})</li>
+                      <li key={idx}>{getServiceName(s)} - {currency(getServicePrice(s))}</li>
                     ))}
                   </ul>
                 </div>
                 <div><span className="font-medium">Stylist:</span> {appointment.stylist?.name}</div>
-                <div><span className="font-medium">Date:</span> {new Date(appointment.start_datetime).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                <div><span className="font-medium">Time:</span> {new Date(appointment.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(appointment.end_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                <div><span className="font-medium">Total Duration:</span> {formatDuration(totalDuration)}</div>
+                <div><span className="font-medium">Date:</span> {(() => {
+                  const startSource = appointment.start_datetime_pht || appointment.start_datetime
+                  const startDate = new Date(startSource)
+                  return startDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    timeZone: 'Asia/Manila'
+                  })
+                })()}</div>
+                <div><span className="font-medium">Time:</span> {(() => {
+                  const startSource = appointment.start_datetime_pht || appointment.start_datetime
+                  const endSource = appointment.end_datetime_pht || appointment.end_datetime
+                  const startDate = new Date(startSource)
+                  const endDate = new Date(endSource)
+                  const startTime = startDate.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    timeZone: 'Asia/Manila',
+                    hour12: true 
+                  })
+                  const endTime = endDate.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    timeZone: 'Asia/Manila',
+                    hour12: true 
+                  })
+                  return `${startTime} - ${endTime} PHT`
+                })()}</div>
               </div>
             </div>
 
@@ -395,8 +468,8 @@ Thank you for choosing Kaye's Hair Salon and Spa!
                 <div className="space-y-2">
                   {appointmentServices.map((s, idx) => (
                     <div key={idx} className="flex justify-between items-center text-sm">
-                      <span>{s.name}:</span>
-                      <span className="font-medium">{currency(s.price_cents || 0)}</span>
+                      <span>{getServiceName(s)}:</span>
+                      <span className="font-medium">{currency(getServicePrice(s))}</span>
                     </div>
                   ))}
                   <div className="border-t pt-2 flex justify-between items-center">
@@ -406,7 +479,7 @@ Thank you for choosing Kaye's Hair Salon and Spa!
                 </div>
               ) : (
                 <div className="flex justify-between items-center">
-                  <span>Service Price:</span>
+                  <span>{getServiceName(appointmentServices[0])}:</span>
                   <span className="font-bold text-lg text-green-600">{currency(totalPrice)}</span>
                 </div>
               )}
@@ -494,9 +567,10 @@ Thank you for choosing Kaye's Hair Salon and Spa!
 }
 
 const BookAppointment = () => {
-  const [step, setStep] = useState(1) // 1: Customer Info, 2: Booking Details
+  const [step, setStep] = useState(1) // 1: Customer Info, 2: Booking Details, 3: Payment
   const [stylists, setStylists] = useState([])
   const [services, setServices] = useState([])
+  const [paymentAccounts, setPaymentAccounts] = useState([])
   const [availability, setAvailability] = useState([])
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date()
@@ -512,25 +586,98 @@ const BookAppointment = () => {
   const [selectedStylist, setSelectedStylist] = useState('')
   const [selectedService, setSelectedService] = useState('') // Keep for backward compatibility
   const [selectedServices, setSelectedServices] = useState([]) // New: array of selected service IDs
+  const [selectedVariants, setSelectedVariants] = useState({}) // Map of serviceId -> variantId
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [booking, setBooking] = useState({ 
     name: '', 
     phone: '',
     address: ''
   })
-  const [formErrors, setFormErrors] = useState({ phone: '' })
+  const [payment, setPayment] = useState({
+    method: 'on_hand', // 'on_hand' or 'online'
+    paymentType: 'full', // 'full' or 'downpayment'
+    selectedAccount: '',
+    amount: '',
+    proofFile: null,
+    proofPreview: null,
+  })
+  const [formErrors, setFormErrors] = useState({ phone: '', payment: '' })
   const [rescheduling, setRescheduling] = useState(null)
   const [receipt, setReceipt] = useState(null)
+  const [prefillServiceIds, setPrefillServiceIds] = useState([])
+  const [prefillStylistId, setPrefillStylistId] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
     refreshData()
     const params = new URLSearchParams(window.location.search)
     const appointmentId = params.get('reschedule') || params.get('appointment')
+    const servicesParam = params.get('services')
+    const stylistParam = params.get('stylist')
+    if (servicesParam) {
+      const ids = servicesParam
+        .split(',')
+        .map(id => id.trim())
+        .filter(Boolean)
+      setPrefillServiceIds(ids)
+    } else {
+      setPrefillServiceIds([])
+    }
+    if (stylistParam) {
+      setPrefillStylistId(stylistParam.trim())
+    } else {
+      setPrefillStylistId('')
+    }
     if (appointmentId) {
       loadAppointmentForReschedule(appointmentId)
     }
   }, [])
+
+  useEffect(() => {
+    if (rescheduling) {
+      return
+    }
+
+    if (services.length === 0) {
+      return
+    }
+
+    if (prefillServiceIds.length > 0) {
+      const validIds = services
+        .map(s => s.id.toString())
+        .filter(id => prefillServiceIds.includes(id))
+      setSelectedServices(validIds)
+      setSelectedService(validIds[0] || '')
+      return
+    }
+
+    // No services selected from homepage, keep booking dashboard cleared
+    setSelectedServices([])
+    setSelectedService('')
+    setSelectedVariants({})
+    setSelectedSlot(null)
+  }, [services, prefillServiceIds, rescheduling])
+
+  useEffect(() => {
+    if (rescheduling) {
+      return
+    }
+
+    if (stylists.length === 0) {
+      return
+    }
+
+    if (prefillStylistId) {
+      const stylistMatch = stylists.find(s => s.id.toString() === prefillStylistId)
+      if (stylistMatch) {
+        setSelectedStylist(stylistMatch.id)
+      }
+      return
+    }
+
+    // No prefill stylist provided, keep stylist selection cleared
+    setSelectedStylist('')
+  }, [stylists, prefillStylistId, rescheduling])
 
   useEffect(() => {
     if (step === 2 && (selectedStylist || stylists[0])) {
@@ -547,18 +694,18 @@ const BookAppointment = () => {
 
   const refreshData = async () => {
     try {
-      const [sRes, svcRes] = await Promise.all([
+      const [sRes, svcRes, paymentRes] = await Promise.all([
         api.get('/stylists'),
         api.get('/services'),
+        api.get('/payment-accounts').catch(() => ({ data: [] })), // Don't fail if payment accounts fail
       ])
       setStylists(sRes.data.filter(s => s.active))
-      setSelectedStylist(sRes.data[0]?.id || '')
       // Show ALL services from all stylists
       setServices(svcRes.data)
-      setSelectedService(svcRes.data[0]?.id || '')
-      // Initialize selectedServices with first service for backward compatibility
-      if (svcRes.data[0]?.id) {
-        setSelectedServices([svcRes.data[0].id.toString()])
+      // Set payment accounts
+      setPaymentAccounts(paymentRes.data || [])
+      if (paymentRes.data && paymentRes.data.length > 0) {
+        setPayment(prev => ({ ...prev, selectedAccount: paymentRes.data[0].id.toString() }))
       }
     } catch (e) {
       console.error('API Error:', e)
@@ -571,7 +718,8 @@ const BookAppointment = () => {
       const res = await api.get(`/appointments/${id}`)
       const appt = res.data
       setRescheduling(appt)
-      setSelectedDate(appt.start_datetime.slice(0,10))
+      const startSource = appt.start_datetime_pht || appt.start_datetime
+      setSelectedDate(startSource.slice(0, 10))
       setSelectedStylist(appt.stylist_id)
       setSelectedService(appt.service_id)
       setBooking({
@@ -643,12 +791,42 @@ const BookAppointment = () => {
       return
     }
     
+    // Validate that the selected slot is not in the past and is at least 30 minutes away
+    const now = new Date()
+    const slotTime = new Date(selectedSlot.start)
+    const minAdvanceTime = new Date(now.getTime() + 30 * 60000) // 30 minutes from now
+    
+    if (slotTime < now) {
+      toast.error('Cannot book appointments in the past. Please select a future time slot.')
+      setSelectedSlot(null)
+      return
+    }
+    
+    if (slotTime < minAdvanceTime) {
+      const minutesUntilSlot = Math.ceil((slotTime.getTime() - now.getTime()) / 60000)
+      toast.error(`Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`)
+      setSelectedSlot(null)
+      return
+    }
+    
     // Use selectedServices if available, otherwise fall back to selectedService
     const serviceIds = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
     if (serviceIds.length === 0) {
       toast.warn('Please select at least one service')
       return
     }
+    
+    // Check if all services with variants have a variant selected
+    const selectedServicesData = services.filter(s => serviceIds.includes(s.id.toString()))
+    for (const service of selectedServicesData) {
+      if (service.variants && service.variants.length > 0) {
+        if (!selectedVariants[service.id]) {
+          toast.warn(`Please select a variant for "${service.name}"`)
+          return
+        }
+      }
+    }
+    
     if (!selectedStylist) {
       toast.warn('Please select a stylist')
       return
@@ -661,12 +839,10 @@ const BookAppointment = () => {
     }
     
     try {
-      // Extract time from slot start (HH:MM format) - use local time, not UTC
-      const slotDate = new Date(selectedSlot.start)
-      // Get local hours and minutes to avoid timezone conversion issues
-      const hours = String(slotDate.getHours()).padStart(2, '0')
-      const minutes = String(slotDate.getMinutes()).padStart(2, '0')
-      const preferredTime = `${hours}:${minutes}`
+      // Extract time from slot start (HH:MM format) - treat as Philippine Time (Asia/Manila)
+      // Use the helper function to convert to HH:MM format
+      const preferredTime = toManilaHHmm(selectedSlot.start)
+
       
       // Ensure date is in YYYY-MM-DD format (local date, not UTC)
       let bookingDate
@@ -688,17 +864,74 @@ const BookAppointment = () => {
         bookingDate = `${year}-${month}-${day}`
       }
 
-      const res = await api.post('/appointments', {
-        customer_name: booking.name,
-        customer_phone: booking.phone ? booking.phone.replace(/[\s-]/g, '') : null,
-        customer_address: booking.address || null,
-        service_id: serviceIds[0], // Keep for backward compatibility
-        service_ids: serviceIds, // New: array of service IDs
-        stylist_id: selectedStylist,
-        date: bookingDate,
-        preferred_time: preferredTime,
-        payment_method: 'on_hand', // Default payment method
+      // Calculate total amount
+      const serviceIdsForCalc = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
+      const selectedServicesData = services.filter(s => serviceIdsForCalc.includes(s.id.toString()))
+      // Calculate total: use variant price if selected, otherwise service price
+      const totalAmountCents = selectedServicesData.reduce((sum, s) => {
+        if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+          const variant = s.variants.find(v => v.id === selectedVariants[s.id])
+          return sum + (variant ? variant.price_cents : s.price_cents || 0)
+        }
+        return sum + (s.price_cents || 0)
+      }, 0)
+      
+      // Calculate payment amount
+      let paymentAmountCents = 0
+      let paymentStatus = 'pending'
+      
+      if (payment.method === 'online') {
+        if (payment.paymentType === 'full') {
+          paymentAmountCents = totalAmountCents
+          paymentStatus = 'paid'
+        } else {
+          // Downpayment - use entered amount or default to 50%
+          paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.5)
+          paymentStatus = 'downpayment'
+        }
+      }
+
+      // Create FormData for file upload
+      const formData = new FormData()
+      formData.append('customer_name', booking.name)
+      formData.append('customer_phone', booking.phone ? booking.phone.replace(/[\s-]/g, '') : '')
+      formData.append('customer_address', booking.address || '')
+      formData.append('service_id', serviceIds[0])
+      serviceIds.forEach(id => formData.append('service_ids[]', id))
+      
+      // Add service variants mapping (service_id => variant_id)
+      const serviceVariantsMap = {}
+      selectedServicesData.forEach(s => {
+        if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+          serviceVariantsMap[s.id] = selectedVariants[s.id]
+        }
       })
+      if (Object.keys(serviceVariantsMap).length > 0) {
+        formData.append('service_variants', JSON.stringify(serviceVariantsMap))
+      }
+      
+      formData.append('stylist_id', selectedStylist)
+      formData.append('date', bookingDate)
+      formData.append('preferred_time', preferredTime)
+      formData.append('payment_method', payment.method)
+      formData.append('payment_status', paymentStatus)
+      
+      if (payment.method === 'online') {
+        formData.append('downpayment_amount_cents', paymentAmountCents)
+        if (payment.proofFile) {
+          formData.append('payment_proof', payment.proofFile)
+        }
+      }
+
+      // Don't set Content-Type header manually - let axios handle it for FormData
+      // This ensures the boundary is set correctly
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:870',message:'Submitting appointment booking',data:{date:bookingDate,preferred_time:preferredTime,selectedSlotStart:selectedSlot?.start,selectedSlotEnd:selectedSlot?.end,selectedServicesCount:selectedServicesData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T4'})}).catch(()=>{});
+      // #endregion
+      const res = await api.post('/appointments', formData)
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:872',message:'Booking response received',data:{appointmentId:res.data?.id,start_datetime:res.data?.start_datetime,end_datetime:res.data?.end_datetime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T4'})}).catch(()=>{});
+      // #endregion
       
       toast.success('Appointment booked successfully!')
       
@@ -707,6 +940,9 @@ const BookAppointment = () => {
       try {
         const receiptRes = await api.get(`/appointments/${res.data.id}`)
         if (receiptRes.data && receiptRes.data.service && receiptRes.data.stylist) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:878',message:'Receipt data fetched',data:{appointmentId:receiptRes.data?.id,start_datetime:receiptRes.data?.start_datetime,end_datetime:receiptRes.data?.end_datetime,start_datetime_pht:receiptRes.data?.start_datetime_pht,end_datetime_pht:receiptRes.data?.end_datetime_pht},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T5'})}).catch(()=>{});
+          // #endregion
           setReceipt(receiptRes.data)
         } else {
           // If relationships not loaded, use response data
@@ -725,6 +961,10 @@ const BookAppointment = () => {
       // Handle validation errors
       let errorMessage = 'Booking failed. Please try again.'
       
+      // Log the full error for debugging
+      console.error('Booking error:', e)
+      console.error('Error response:', e.response)
+      
       if (e.response?.data) {
         // Check for validation errors object
         if (e.response.data.errors) {
@@ -733,6 +973,13 @@ const BookAppointment = () => {
         } else if (e.response.data.message) {
           errorMessage = e.response.data.message
         }
+      } else if (e.message) {
+        errorMessage = e.message
+      }
+      
+      // Show specific error for CSRF token issues
+      if (e.response?.status === 419) {
+        errorMessage = 'CSRF token mismatch. Please refresh the page and try again.'
       }
       
       toast.error(errorMessage, {
@@ -755,11 +1002,9 @@ const BookAppointment = () => {
       return
     }
     try {
-      // Extract time from slot start (HH:MM format) - use local time, not UTC
-      const slotDate = new Date(selectedSlot.start)
-      const hours = String(slotDate.getHours()).padStart(2, '0')
-      const minutes = String(slotDate.getMinutes()).padStart(2, '0')
-      const preferredTime = `${hours}:${minutes}`
+      // Extract time from slot start (HH:MM format) - use Asia/Manila timezone
+      const preferredTime = toManilaHHmm(selectedSlot.start)
+
       
       await api.patch(`/appointments/${rescheduling.id}`, {
         date: selectedDate,
@@ -780,7 +1025,7 @@ const BookAppointment = () => {
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <div className="bg-slate-900 text-white py-4 px-4 md:px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/')}
@@ -792,7 +1037,7 @@ const BookAppointment = () => {
           </div>
           <button
             onClick={() => navigate('/my-appointments')}
-            className="px-4 py-2 bg-white/10 rounded hover:bg-white/20 text-sm transition"
+            className="w-full sm:w-auto px-4 py-2 bg-white/10 rounded hover:bg-white/20 text-sm transition"
           >
             My Appointments
           </button>
@@ -805,16 +1050,22 @@ const BookAppointment = () => {
       {/* Step Indicator */}
       <div className="flex items-center justify-center mb-6">
         <div className="flex items-center">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
             step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
           }`}>
             1
           </div>
-          <div className={`w-24 h-1 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+          <div className={`w-10 md:w-24 h-1 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
             step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
           }`}>
             2
+          </div>
+          <div className={`w-10 md:w-24 h-1 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
+            step >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
+          }`}>
+            3
           </div>
         </div>
       </div>
@@ -879,6 +1130,45 @@ const BookAppointment = () => {
       {/* Step 2: Booking Details */}
       {step === 2 && (
         <>
+          {/* Payment Method Selection */}
+          <div className="bg-white rounded-xl shadow p-4 mb-4">
+            <h3 className="font-semibold mb-3 text-gray-900">Payment Method</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                payment.method === 'on_hand' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              }`}>
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="on_hand"
+                  checked={payment.method === 'on_hand'}
+                  onChange={(e) => setPayment({ ...payment, method: e.target.value })}
+                  className="sr-only"
+                />
+                <div className="text-center">
+                  <div className="font-semibold text-gray-900">Pay on Hand</div>
+                  <div className="text-sm text-gray-600 mt-1">Pay at the salon</div>
+                </div>
+              </label>
+              <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                payment.method === 'online' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              }`}>
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="online"
+                  checked={payment.method === 'online'}
+                  onChange={(e) => setPayment({ ...payment, method: e.target.value })}
+                  className="sr-only"
+                />
+                <div className="text-center">
+                  <div className="font-semibold text-gray-900">Pay Online (GCash)</div>
+                  <div className="text-sm text-gray-600 mt-1">Pay via GCash or other online methods</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
           <div className="bg-white rounded-xl shadow p-4">
             <div className="grid md:grid-cols-3 gap-4">
               <div>
@@ -898,18 +1188,6 @@ const BookAppointment = () => {
                 <label className="text-sm text-gray-900 font-medium">Services * (Select one or more)</label>
                 <div className="mt-2 max-h-48 overflow-y-auto border rounded p-2 space-y-2">
                   {services.map(s => {
-                    const formatDuration = (minutes) => {
-                      if (!minutes) return 'N/A'
-                      const hours = Math.floor(minutes / 60)
-                      const mins = minutes % 60
-                      if (hours > 0 && mins > 0) {
-                        return `${hours}h ${mins}m`
-                      } else if (hours > 0) {
-                        return `${hours}h`
-                      } else {
-                        return `${mins}m`
-                      }
-                    }
                     const serviceIdStr = s.id.toString()
                     const isSelected = selectedServices.includes(serviceIdStr) || selectedService === serviceIdStr
                     
@@ -947,9 +1225,45 @@ const BookAppointment = () => {
                         />
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">{s.name}</div>
-                          <div className="text-xs text-gray-700">
-                            {currency(s.price_cents)} • {formatDuration(s.duration_minutes)}
-                          </div>
+                          {s.variants && s.variants.length > 0 ? (
+                            <div className="text-xs text-gray-700 mt-1">
+                              <div className="font-medium text-blue-600 mb-1">
+                                {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
+                              </div>
+                              {isSelected && (
+                                <div className="mt-2 space-y-1">
+                                  {s.variants.map(variant => (
+                                    <label
+                                      key={variant.id}
+                                      className="flex items-center gap-2 p-1 hover:bg-gray-100 rounded cursor-pointer"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`variant-${s.id}`}
+                                        checked={selectedVariants[s.id] === variant.id}
+                                        onChange={() => {
+                                          setSelectedVariants({
+                                            ...selectedVariants,
+                                            [s.id]: variant.id
+                                          })
+                                          setSelectedSlot(null) // Reset slot when variant changes
+                                        }}
+                                        className="w-3 h-3"
+                                      />
+                                      <span className="text-xs">
+                                        {variant.name} - {currency(variant.price_cents)}
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-700">
+                              {currency(s.price_cents)}
+                            </div>
+                          )}
                         </div>
                       </label>
                     )
@@ -957,24 +1271,18 @@ const BookAppointment = () => {
                 </div>
                 {selectedServices.length > 0 && (() => {
                   const selectedServicesData = services.filter(s => selectedServices.includes(s.id.toString()))
-                  const totalPrice = selectedServicesData.reduce((sum, s) => sum + s.price_cents, 0)
-                  const totalDuration = selectedServicesData.reduce((sum, s) => sum + s.duration_minutes, 0)
-                  const formatDuration = (minutes) => {
-                    if (!minutes) return 'N/A'
-                    const hours = Math.floor(minutes / 60)
-                    const mins = minutes % 60
-                    if (hours > 0 && mins > 0) {
-                      return `${hours} hour${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`
-                    } else if (hours > 0) {
-                      return `${hours} hour${hours > 1 ? 's' : ''}`
-                    } else {
-                      return `${mins} minute${mins > 1 ? 's' : ''}`
+                  // Calculate price: use variant price if selected, otherwise service price
+                  const totalPrice = selectedServicesData.reduce((sum, s) => {
+                    if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+                      const variant = s.variants.find(v => v.id === selectedVariants[s.id])
+                      return sum + (variant ? variant.price_cents : s.price_cents)
                     }
-                  }
+                    return sum + s.price_cents
+                  }, 0)
                   return (
                     <div className="text-sm font-semibold text-blue-600 mt-2">
                       {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected • 
-                      Total: {currency(totalPrice)} • Duration: {formatDuration(totalDuration)}
+                      Total: {currency(totalPrice)}
                     </div>
                   )
                 })()}
@@ -1026,6 +1334,23 @@ const BookAppointment = () => {
                   toast.error('This time slot is not available. Please choose another time.')
                   return
                 }
+                
+                // Validate that the slot is not in the past and is at least 30 minutes away
+                const now = new Date()
+                const slotTime = new Date(slot.start)
+                const minAdvanceTime = new Date(now.getTime() + 30 * 60000) // 30 minutes from now
+                
+                if (slotTime < now) {
+                  toast.error('Cannot book appointments in the past. Please select a future time slot.')
+                  return
+                }
+                
+                if (slotTime < minAdvanceTime) {
+                  const minutesUntilSlot = Math.ceil((slotTime.getTime() - now.getTime()) / 60000)
+                  toast.error(`Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`)
+                  return
+                }
+                
                 // Double-check against availability list
                 const isAvailable = availability.some(availSlot =>
                   new Date(availSlot.start).getTime() === new Date(slot.start).getTime() &&
@@ -1045,20 +1370,14 @@ const BookAppointment = () => {
           {((selectedServices.length > 0 || selectedService) && selectedStylistData) && (() => {
             const serviceIds = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
             const selectedServicesData = services.filter(s => serviceIds.includes(s.id.toString()))
-            const totalPrice = selectedServicesData.reduce((sum, s) => sum + s.price_cents, 0)
-            const totalDuration = selectedServicesData.reduce((sum, s) => sum + s.duration_minutes, 0)
-            const formatDuration = (minutes) => {
-              if (!minutes) return 'N/A'
-              const hours = Math.floor(minutes / 60)
-              const mins = minutes % 60
-              if (hours > 0 && mins > 0) {
-                return `${hours}h ${mins}m`
-              } else if (hours > 0) {
-                return `${hours}h`
-              } else {
-                return `${mins}m`
+            // Calculate total price: use variant price if selected, otherwise service price
+            const totalPrice = selectedServicesData.reduce((sum, s) => {
+              if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+                const variant = s.variants.find(v => v.id === selectedVariants[s.id])
+                return sum + (variant ? variant.price_cents : s.price_cents)
               }
-            }
+              return sum + s.price_cents
+            }, 0)
             
             return (
               <div className="bg-blue-50 rounded-xl p-4">
@@ -1067,27 +1386,33 @@ const BookAppointment = () => {
                   <div>
                     <span className="font-medium text-gray-900">Service{selectedServicesData.length > 1 ? 's' : ''}:</span>
                     <ul className="list-disc list-inside ml-2 mt-1 space-y-1">
-                      {selectedServicesData.map(s => (
-                        <li key={s.id} className="text-gray-800">
-                          <span className="font-medium text-gray-900">{s.name}</span> - {currency(s.price_cents)} ({formatDuration(s.duration_minutes)})
-                        </li>
-                      ))}
+                      {selectedServicesData.map(s => {
+                        // Get the price for this service (variant or base)
+                        let servicePrice = s.price_cents
+                        let serviceName = s.name
+                        if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+                          const variant = s.variants.find(v => v.id === selectedVariants[s.id])
+                          if (variant) {
+                            servicePrice = variant.price_cents
+                            serviceName = `${s.name} - ${variant.name}`
+                          }
+                        }
+                        return (
+                          <li key={s.id} className="text-gray-800">
+                            <span className="font-medium text-gray-900">{serviceName}</span> - {currency(servicePrice)}
+                          </li>
+                        )
+                      })}
                     </ul>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-300">
-                    <div>
-                      <span className="font-medium text-gray-900">Total Price:</span>
-                      <div className="font-bold text-lg text-green-700">{currency(totalPrice)}</div>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-900">Total Duration:</span>
-                      <div className="font-semibold text-gray-900">{formatDuration(totalDuration)}</div>
-                    </div>
+                  <div className="pt-2 border-t border-gray-300">
+                    <span className="font-medium text-gray-900">Total Price:</span>
+                    <div className="font-bold text-lg text-green-700">{currency(totalPrice)}</div>
                   </div>
                   <div className="text-gray-900"><span className="font-medium">Stylist:</span> {selectedStylistData.name}</div>
                   <div className="text-gray-900"><span className="font-medium">Date:</span> {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                   {selectedSlot && (
-                    <div className="text-gray-900"><span className="font-medium">Time:</span> {new Date(selectedSlot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(selectedSlot.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div className="text-gray-900"><span className="font-medium">Time:</span> {new Date(selectedSlot.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - {new Date(selectedSlot.end).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}</div>
                   )}
                 </div>
               </div>
@@ -1111,16 +1436,239 @@ const BookAppointment = () => {
               </button>
             ) : (
               <button
-                onClick={handleBook}
+                onClick={() => {
+                  if (!selectedSlot || (selectedServices.length === 0 && !selectedService) || !selectedStylist) {
+                    toast.warn('Please complete all booking details')
+                    return
+                  }
+                  // If payment method is online, go to payment step, otherwise book directly
+                  if (payment.method === 'online') {
+                    setStep(3)
+                  } else {
+                    handleBook()
+                  }
+                }}
                 disabled={!selectedSlot || (selectedServices.length === 0 && !selectedService) || !selectedStylist}
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                Confirm Booking
+                {payment.method === 'online' ? 'Continue to Payment' : 'Confirm Booking'}
               </button>
             )}
           </div>
         </>
       )}
+
+      {/* Step 3: Payment (only for online payments) */}
+      {step === 3 && payment.method === 'online' && (() => {
+        const serviceIdsForCalc = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
+        const selectedServicesData = services.filter(s => serviceIdsForCalc.includes(s.id.toString()))
+        // Calculate total: use variant price if selected, otherwise service price
+        const totalAmountCents = selectedServicesData.reduce((sum, s) => {
+          if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+            const variant = s.variants.find(v => v.id === selectedVariants[s.id])
+            return sum + (variant ? variant.price_cents : s.price_cents || 0)
+          }
+          return sum + (s.price_cents || 0)
+        }, 0)
+        const totalAmount = totalAmountCents / 100
+        
+        // Calculate payment amount based on type
+        const paymentAmount = payment.paymentType === 'full' 
+          ? totalAmount 
+          : (payment.amount ? parseFloat(payment.amount) : totalAmount * 0.5)
+        
+        return (
+          <div className="bg-white rounded-xl shadow p-6 max-w-3xl mx-auto">
+            <h2 className="text-xl font-bold mb-4 text-gray-900">Payment Details</h2>
+            
+            {/* Booking Summary */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold mb-2 text-gray-900">Booking Summary</h3>
+              <div className="text-sm space-y-1 text-gray-700">
+                <div><strong>Total Amount:</strong> {currency(totalAmountCents)}</div>
+                <div><strong>Services:</strong> {selectedServicesData.map(s => s.name).join(', ')}</div>
+                <div><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                {selectedSlot && (
+                  <div><strong>Time:</strong> {new Date(selectedSlot.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Payment Type Selection */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2 text-gray-900">Payment Type *</label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                  payment.paymentType === 'full' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                }`}>
+                  <input
+                    type="radio"
+                    name="payment_type"
+                    value="full"
+                    checked={payment.paymentType === 'full'}
+                    onChange={(e) => setPayment({ ...payment, paymentType: e.target.value, amount: '' })}
+                    className="sr-only"
+                  />
+                  <div className="text-center">
+                    <div className="font-semibold text-gray-900">Full Payment</div>
+                    <div className="text-sm text-gray-600 mt-1">{currency(totalAmountCents)}</div>
+                  </div>
+                </label>
+                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                  payment.paymentType === 'downpayment' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                }`}>
+                  <input
+                    type="radio"
+                    name="payment_type"
+                    value="downpayment"
+                    checked={payment.paymentType === 'downpayment'}
+                    onChange={(e) => setPayment({ ...payment, paymentType: e.target.value, amount: (totalAmount * 0.5).toFixed(2) })}
+                    className="sr-only"
+                  />
+                  <div className="text-center">
+                    <div className="font-semibold text-gray-900">Downpayment</div>
+                    <div className="text-sm text-gray-600 mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.5))}</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Payment Amount Input (for downpayment) */}
+            {payment.paymentType === 'downpayment' && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-1 text-gray-900">Downpayment Amount (₱) *</label>
+                <input
+                  type="number"
+                  min={totalAmount * 0.5}
+                  max={totalAmount}
+                  step="0.01"
+                  required
+                  className="w-full border rounded px-3 py-2 text-gray-900"
+                  value={payment.amount}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0
+                    if (value >= totalAmount * 0.5 && value <= totalAmount) {
+                      setPayment({ ...payment, amount: e.target.value })
+                    } else if (value < totalAmount * 0.5) {
+                      toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.5))}`)
+                    }
+                  }}
+                  placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.5))}`}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimum: {currency(Math.round(totalAmountCents * 0.5))} • Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}
+                </p>
+              </div>
+            )}
+
+            {/* Payment Account Selection */}
+            {paymentAccounts.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2 text-gray-900">Select Payment Account *</label>
+                <div className="space-y-3">
+                  {paymentAccounts.map(account => (
+                    <label
+                      key={account.id}
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition block ${
+                        payment.selectedAccount === account.id.toString() ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment_account"
+                        value={account.id}
+                        checked={payment.selectedAccount === account.id.toString()}
+                        onChange={(e) => setPayment({ ...payment, selectedAccount: e.target.value })}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-gray-900">{account.account_name}</div>
+                          <div className="text-sm text-gray-600">{account.account_number}</div>
+                          {account.instructions && (
+                            <div className="text-xs text-gray-500 mt-1">{account.instructions}</div>
+                          )}
+                        </div>
+                        {account.qr_code_url && (
+                          <img src={`http://localhost:8000/${account.qr_code_url}`} alt="QR Code" className="w-20 h-20 object-contain" />
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Proof Upload */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-1 text-gray-900">Payment Proof (Screenshot/Photo) *</label>
+              <input
+                type="file"
+                accept="image/*"
+                required
+                className="w-full border rounded px-3 py-2 text-gray-900"
+                onChange={(e) => {
+                  const file = e.target.files[0]
+                  if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error('File size must be less than 5MB')
+                      return
+                    }
+                    setPayment({ 
+                      ...payment, 
+                      proofFile: file,
+                      proofPreview: URL.createObjectURL(file)
+                    })
+                  }
+                }}
+              />
+              {payment.proofPreview && (
+                <div className="mt-3">
+                  <img src={payment.proofPreview} alt="Payment proof preview" className="max-w-xs border rounded" />
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-1">Upload a screenshot or photo of your payment transaction</p>
+            </div>
+
+            {/* Payment Summary */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-700">Total Amount:</span>
+                <span className="font-bold text-lg text-gray-900">{currency(totalAmountCents)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">
+                  {payment.paymentType === 'full' ? 'Payment Amount:' : 'Downpayment Amount:'}
+                </span>
+                <span className="font-bold text-lg text-green-600">{currency(Math.round(paymentAmount * 100))}</span>
+              </div>
+              {payment.paymentType === 'downpayment' && (
+                <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
+                  <span className="text-gray-700">Remaining Balance:</span>
+                  <span className="font-semibold text-gray-900">{currency(Math.round((totalAmount - paymentAmount) * 100))}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep(2)}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleBook}
+                disabled={!payment.proofFile || !payment.selectedAccount || (payment.paymentType === 'downpayment' && (!payment.amount || parseFloat(payment.amount) < totalAmount * 0.5))}
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                Confirm Booking & Pay
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       {receipt && receipt.id && (
         <ReceiptModal 

@@ -13,14 +13,73 @@ use Illuminate\Http\Request;
 
 class AppointmentController extends Controller
 {
+    /**
+     * Format appointment datetime fields to Asia/Manila timezone for JSON response
+     */
+    private function formatAppointmentForResponse($appointment)
+    {
+        $tz = 'Asia/Manila';
+    
+        // Use raw values from DB - these are stored in UTC
+        $rawStart = $appointment->getRawOriginal('start_datetime');
+        if ($rawStart) {
+            // Parse the raw datetime string from database (format: Y-m-d H:i:s, stored as UTC)
+            // Create Carbon instance explicitly in UTC timezone
+            $startCarbon = Carbon::createFromFormat('Y-m-d H:i:s', $rawStart, 'UTC')
+                ->setTimezone($tz);
+            // Return ISO 8601 string with timezone offset (e.g., "2026-02-05T16:00:00+08:00")
+            $appointment->start_datetime = $startCarbon->format('Y-m-d\TH:i:sP');
+            $appointment->start_datetime_pht = $startCarbon->format('Y-m-d\TH:i:sP');
+        }
+    
+        $rawEnd = $appointment->getRawOriginal('end_datetime');
+        if ($rawEnd) {
+            // Parse the raw datetime string from database (format: Y-m-d H:i:s, stored as UTC)
+            // Create Carbon instance explicitly in UTC timezone
+            $endCarbon = Carbon::createFromFormat('Y-m-d H:i:s', $rawEnd, 'UTC')
+                ->setTimezone($tz);
+            // Return ISO 8601 string with timezone offset (e.g., "2026-02-05T16:30:00+08:00")
+            $appointment->end_datetime = $endCarbon->format('Y-m-d\TH:i:sP');
+            $appointment->end_datetime_pht = $endCarbon->format('Y-m-d\TH:i:sP');
+        }
+
+        // #region agent log
+        $logData = json_encode([
+            'location' => 'AppointmentController.php:41',
+            'message' => 'Formatted appointment for response',
+            'data' => [
+                'rawStart' => $rawStart ?? null,
+                'rawEnd' => $rawEnd ?? null,
+                'start_datetime' => $appointment->start_datetime ?? null,
+                'end_datetime' => $appointment->end_datetime ?? null,
+                'start_datetime_pht' => $appointment->start_datetime_pht ?? null,
+                'end_datetime_pht' => $appointment->end_datetime_pht ?? null,
+            ],
+            'timestamp' => time() * 1000,
+            'sessionId' => 'debug-session',
+            'runId' => 'post-fix',
+            'hypothesisId' => 'T3'
+        ]);
+        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
+        // #endregion
+    
+        return $appointment;
+    }
+    
     public function index()
     {
-        return Appointment::with(['stylist', 'service', 'services'])->latest('start_datetime')->get();
+        $appointments = Appointment::with(['stylist', 'service', 'services.variants'])->latest('start_datetime')->get();
+        
+        // Format datetime fields to Asia/Manila timezone for JSON response
+        return $appointments->map(function ($appointment) {
+            return $this->formatAppointmentForResponse($appointment);
+        });
     }
 
     public function show(Appointment $appointment)
     {
-        return $appointment->load(['stylist', 'service', 'services']);
+        $appointment = $appointment->load(['stylist', 'service', 'services.variants']);
+        return $this->formatAppointmentForResponse($appointment);
     }
 
     public function store(Request $request, Scheduler $scheduler)
@@ -33,6 +92,7 @@ class AppointmentController extends Controller
             'service_id' => 'nullable|exists:services,id', // Keep for backward compatibility
             'service_ids' => 'nullable|array', // New: array of service IDs
             'service_ids.*' => 'exists:services,id',
+            'service_variants' => 'nullable|string', // JSON string of service_id => variant_id mapping
             'stylist_id' => 'nullable|exists:stylists,id',
             'date' => 'required|date',
             'preferred_time' => 'nullable|date_format:H:i',
@@ -40,6 +100,7 @@ class AppointmentController extends Controller
             'payment_status' => 'nullable|in:pending,downpayment,paid',
             'downpayment_amount_cents' => 'nullable|integer|min:0',
             'payment_proof_url' => 'nullable|url',
+            'payment_proof' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
         ]);
 
         // Validate date is today or future (use Asia/Manila timezone for Philippines)
@@ -102,21 +163,60 @@ class AppointmentController extends Controller
             }
         }
 
-        // Load all services
-        $services = Service::whereIn('id', $serviceIds)->get();
+        // Load all services with variants
+        $services = Service::with('variants')->whereIn('id', $serviceIds)->get();
         if ($services->count() !== count($serviceIds)) {
             return response()->json(['message' => 'One or more services not found'], 422);
         }
 
-        // Calculate total amount
-        $totalAmountCents = $services->sum('price_cents');
+        // Get service variants mapping from request (can be JSON string or array)
+        $serviceVariants = [];
+        if (isset($data['service_variants'])) {
+            if (is_string($data['service_variants'])) {
+                $serviceVariants = json_decode($data['service_variants'], true) ?? [];
+            } else {
+                $serviceVariants = $data['service_variants'];
+            }
+        }
         
+        // Calculate total amount using variant prices if selected, otherwise service prices
+        $totalAmountCents = 0;
+        $servicesWithVariants = [];
+        foreach ($services as $service) {
+            $variantId = $serviceVariants[$service->id] ?? null;
+            if ($variantId && $service->variants) {
+                $variant = $service->variants->find($variantId);
+                if ($variant) {
+                    $totalAmountCents += $variant->price_cents;
+                    $servicesWithVariants[$service->id] = $variant->id;
+                } else {
+                    $totalAmountCents += $service->price_cents;
+                }
+            } else {
+                $totalAmountCents += $service->price_cents;
+            }
+        }
+        
+        // Handle payment proof file upload
+        $paymentProofUrl = $data['payment_proof_url'] ?? null;
+        if ($request->hasFile('payment_proof')) {
+            $file = $request->file('payment_proof');
+            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            // Create directory if it doesn't exist
+            $uploadPath = public_path('uploads/payment-proofs');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+            $file->move($uploadPath, $fileName);
+            $paymentProofUrl = 'uploads/payment-proofs/' . $fileName;
+        }
+
         // Validate payment for online payments
         if ($data['payment_method'] === 'online') {
             if (empty($data['downpayment_amount_cents']) || $data['downpayment_amount_cents'] <= 0) {
-                return response()->json(['message' => 'Downpayment is required for online payments'], 422);
+                return response()->json(['message' => 'Payment amount is required for online payments'], 422);
             }
-            if (empty($data['payment_proof_url'])) {
+            if (empty($paymentProofUrl)) {
                 return response()->json(['message' => 'Payment proof is required for online payments'], 422);
             }
         }
@@ -125,11 +225,91 @@ class AppointmentController extends Controller
             ? Stylist::findOrFail($data['stylist_id'])
             : Stylist::where('active', true)->firstOrFail();
 
-        // Find slot for all services (total duration)
-        $slot = $scheduler->findSlotForServices($stylist, $services->all(), $data['date'], $data['preferred_time'] ?? null);
+        // Use default duration of 30 minutes per service (since duration is removed)
+        $defaultDurationMinutes = 30;
+        $totalDuration = count($services) * $defaultDurationMinutes;
+
+        // If preferred_time is provided, use it exactly (customer's exact selection)
+        $timezone = 'Asia/Manila';
+        $slot = null;
+        
+        if ($data['preferred_time']) {
+            // Use the preferred time exactly as the customer selected it
+            // Parse the time string (HH:MM format) - this is already in Asia/Manila timezone context
+            $timeParts = explode(':', $data['preferred_time']);
+            $hour = (int)$timeParts[0];
+            $minute = (int)($timeParts[1] ?? 0);
+            
+            // Create the datetime in Asia/Manila timezone
+            // First create in the specified timezone, then ensure it's set correctly
+            $selectedDate = Carbon::createFromFormat('Y-m-d', $data['date'], $timezone)->startOfDay();
+            // Create datetime in Asia/Manila timezone explicitly
+            $preferredDateTime = Carbon::createFromFormat(
+                'Y-m-d H:i:s',
+                sprintf('%s %02d:%02d:00', $data['date'], $hour, $minute),
+                $timezone
+            );
+
+            // #region agent log
+            $logData = json_encode([
+                'location' => 'AppointmentController.php:225',
+                'message' => 'Preferred time parsed',
+                'data' => [
+                    'date' => $data['date'],
+                    'preferred_time' => $data['preferred_time'],
+                    'preferredDateTime' => $preferredDateTime->format('Y-m-d H:i:s'),
+                    'preferredDateTimeTz' => $preferredDateTime->timezone->getName(),
+                ],
+                'timestamp' => time() * 1000,
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'T1'
+            ]);
+            file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
+            // #endregion
+            
+            // Calculate end time based on number of services
+            $defaultDurationMinutes = 30;
+            $totalDuration = count($services) * $defaultDurationMinutes;
+            
+            $slot = [
+                'start' => $preferredDateTime,
+                'end' => $preferredDateTime->copy()->addMinutes($totalDuration)
+            ];
+            
+            // Verify the slot is available (check for conflicts)
+            $conflictingAppointment = Appointment::where('stylist_id', $stylist->id)
+                ->where('status', 'booked')
+                ->where(function($query) use ($slot) {
+                    $query->whereBetween('start_datetime', [$slot['start'], $slot['end']])
+                          ->orWhereBetween('end_datetime', [$slot['start'], $slot['end']])
+                          ->orWhere(function($q) use ($slot) {
+                              $q->where('start_datetime', '<=', $slot['start'])
+                                ->where('end_datetime', '>=', $slot['end']);
+                          });
+                })
+                ->first();
+            
+            if ($conflictingAppointment) {
+                $overlapStart = Carbon::parse($conflictingAppointment->start_datetime)->setTimezone($timezone);
+                $overlapEnd = Carbon::parse($conflictingAppointment->end_datetime)->setTimezone($timezone);
+                return response()->json([
+                    'message' => 'This time slot is already booked. The stylist has an appointment from ' . 
+                                $overlapStart->format('g:i A') . ' to ' . $overlapEnd->format('g:i A') . 
+                                '. Please choose a different time or stylist.',
+                    'overlapping_appointment' => [
+                        'start' => $conflictingAppointment->start_datetime,
+                        'end' => $conflictingAppointment->end_datetime,
+                    ]
+                ], 409);
+            }
+        } else {
+            // If no preferred time, use scheduler to find available slot
+            $slot = $scheduler->findSlotForServices($stylist, $services->all(), $data['date'], null);
+        }
+        
         if (!$slot) {
             // Calculate total duration for error message
-            $totalDuration = $services->sum('duration_minutes');
             $requestedStart = \Carbon\Carbon::parse($data['date'] . ' ' . ($data['preferred_time'] ?? '08:00'));
             $requestedEnd = $requestedStart->copy()->addMinutes($totalDuration);
             
@@ -164,6 +344,79 @@ class AppointmentController extends Controller
             ], 409);
         }
 
+        // The slot should already be a Carbon instance in Asia/Manila timezone
+        // from the preferred_time logic above (or from scheduler)
+        $timezone = 'Asia/Manila';
+        
+        // Get the Carbon instances - they should already be in Asia/Manila
+        if ($slot['start'] instanceof Carbon) {
+            $startDateTime = $slot['start']->copy();
+            // Ensure it's in Asia/Manila timezone (it should already be)
+            if ($startDateTime->timezone->getName() !== $timezone) {
+                $startDateTime->setTimezone($timezone);
+            }
+        } else {
+            // Parse as string and assume it's in Asia/Manila timezone
+            $startDateTime = Carbon::parse($slot['start'], $timezone);
+        }
+        
+        if ($slot['end'] instanceof Carbon) {
+            $endDateTime = $slot['end']->copy();
+            if ($endDateTime->timezone->getName() !== $timezone) {
+                $endDateTime->setTimezone($timezone);
+            }
+        } else {
+            $endDateTime = Carbon::parse($slot['end'], $timezone);
+        }
+
+        // #region agent log
+        $logData = json_encode([
+            'location' => 'AppointmentController.php:331',
+            'message' => 'Slot datetimes before storage conversion',
+            'data' => [
+                'startDateTime' => $startDateTime->format('Y-m-d H:i:s'),
+                'startDateTimeTz' => $startDateTime->timezone->getName(),
+                'endDateTime' => $endDateTime->format('Y-m-d H:i:s'),
+                'endDateTimeTz' => $endDateTime->timezone->getName(),
+            ],
+            'timestamp' => time() * 1000,
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'T2'
+        ]);
+        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
+        // #endregion
+        
+        // Convert to UTC for database storage (Laravel stores datetimes in UTC)
+        // This correctly converts the time: 4:00 PM Asia/Manila becomes 8:00 AM UTC
+        // When retrieved later, we convert back to get 4:00 PM Asia/Manila
+        // Ensure the datetime is in Manila timezone, then convert to UTC
+        if ($startDateTime->timezone->getName() !== $timezone) {
+            $startDateTime->setTimezone($timezone);
+        }
+        $startDateTimeForStorage = $startDateTime->copy()->setTimezone('UTC');
+        
+        if ($endDateTime->timezone->getName() !== $timezone) {
+            $endDateTime->setTimezone($timezone);
+        }
+        $endDateTimeForStorage = $endDateTime->copy()->setTimezone('UTC');
+
+        // #region agent log
+        $logData = json_encode([
+            'location' => 'AppointmentController.php:346',
+            'message' => 'Datetimes converted to UTC for storage',
+            'data' => [
+                'startDateTimeUtc' => $startDateTimeForStorage->format('Y-m-d H:i:s'),
+                'endDateTimeUtc' => $endDateTimeForStorage->format('Y-m-d H:i:s'),
+            ],
+            'timestamp' => time() * 1000,
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'T2'
+        ]);
+        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
+        // #endregion
+        
         // Create appointment with first service_id for backward compatibility
         $appointment = Appointment::create([
             'stylist_id' => $stylist->id,
@@ -172,17 +425,23 @@ class AppointmentController extends Controller
             'customer_email' => $data['customer_email'] ?? null,
             'customer_phone' => $data['customer_phone'] ?? null,
             'customer_address' => $data['customer_address'] ?? null,
-            'payment_method' => $data['payment_method'],
-            'payment_status' => $data['payment_status'] ?? ($data['payment_method'] === 'online' ? 'downpayment' : 'pending'),
+            'payment_method' => $data['payment_method'] ?? 'on_hand',
+            'payment_status' => $data['payment_status'] ?? ($data['payment_method'] === 'online' ? ($data['downpayment_amount_cents'] >= $totalAmountCents ? 'paid' : 'downpayment') : 'pending'),
             'downpayment_amount_cents' => $data['downpayment_amount_cents'] ?? null,
             'total_amount_cents' => $totalAmountCents,
-            'payment_proof_url' => $data['payment_proof_url'] ?? null,
-            'start_datetime' => $slot['start'],
-            'end_datetime' => $slot['end'],
+            'payment_proof_url' => $paymentProofUrl,
+            'start_datetime' => $startDateTimeForStorage,
+            'end_datetime' => $endDateTimeForStorage,
         ]);
 
-        // Attach all services to the appointment
-        $appointment->services()->attach($serviceIds);
+        // Attach all services to the appointment with variant information
+        // Always include service_variant_id (even if null) to ensure consistent column structure
+        foreach ($serviceIds as $serviceId) {
+            $variantId = $servicesWithVariants[$serviceId] ?? null;
+            $appointment->services()->attach($serviceId, [
+                'service_variant_id' => $variantId
+            ]);
+        }
 
         // Send confirmation email immediately (synchronously) so customer gets instant confirmation
         if ($appointment->customer_email) {
@@ -209,8 +468,12 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // Load relationships and return
-        $appointment->load(['stylist', 'service', 'services']);
+        // Load relationships
+        $appointment->load(['stylist', 'service', 'services.variants']);
+        
+        // Format datetime fields to Asia/Manila timezone for JSON response
+        $appointment = $this->formatAppointmentForResponse($appointment);
+        
         return response()->json($appointment);
     }
 
@@ -279,7 +542,8 @@ class AppointmentController extends Controller
 
         $appointment->update($updateData);
 
-        return $appointment->fresh()->load('stylist', 'service', 'services');
+        $appointment = $appointment->fresh()->load('stylist', 'service', 'services.variants');
+        return $this->formatAppointmentForResponse($appointment);
     }
 
     public function cancel(Appointment $appointment)
@@ -290,26 +554,94 @@ class AppointmentController extends Controller
 
     public function complete(Appointment $appointment)
     {
-        $appointment->update(['status' => 'completed']);
-        return response()->json(['message' => 'Marked as completed']);
+        // Check if appointment is already completed to avoid duplicate sales
+        if ($appointment->status === 'completed') {
+            $appointment = $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
+            return $this->formatAppointmentForResponse($appointment);
+        }
+
+        // Update appointment status and mark payment as paid (service is done, payment is complete)
+        $appointment->update([
+            'status' => 'completed',
+            'payment_status' => 'paid' // Mark payment as paid when service is completed
+        ]);
+        
+        // Refresh appointment to get updated status
+        $appointment->refresh();
+
+        // Load appointment with all relationships
+        $appointment->load(['stylist', 'service', 'services.variants']);
+        
+        // Format datetime fields to Asia/Manila timezone for JSON response
+        $appointment = $this->formatAppointmentForResponse($appointment);
+
+        // Create sales records for each service in the appointment
+        $appointmentServices = $appointment->services->count() > 0 
+            ? $appointment->services 
+            : ($appointment->service ? collect([$appointment->service]) : collect());
+
+        foreach ($appointmentServices as $service) {
+            // Get the variant if one was selected
+            $variantId = $service->pivot->service_variant_id ?? null;
+            $variant = null;
+            $serviceName = $service->name;
+            $servicePrice = $service->price_cents;
+
+            if ($variantId && $service->variants) {
+                $variant = $service->variants->find($variantId);
+                if ($variant) {
+                    $serviceName = $service->name . ' - ' . $variant->name;
+                    $servicePrice = $variant->price_cents;
+                }
+            }
+
+            // Check if a sale record already exists for this appointment and service
+            $existingSale = \App\Models\Sale::where('appointment_id', $appointment->id)
+                ->where('item_name', $serviceName)
+                ->first();
+
+            if (!$existingSale) {
+                // Create sale record
+                \App\Models\Sale::create([
+                    'appointment_id' => $appointment->id,
+                    'inventory_id' => null, // Services don't have inventory
+                    'transaction_type' => 'service',
+                    'item_name' => $serviceName,
+                    'quantity' => 1,
+                    'unit_price_cents' => $servicePrice,
+                    'total_amount_cents' => $servicePrice,
+                    'payment_method' => $appointment->payment_method ?? 'cash',
+                    'payment_status' => 'paid', // Payment is complete when service is done
+                    'customer_name' => $appointment->customer_name,
+                    'customer_phone' => $appointment->customer_phone,
+                    'stylist_id' => $appointment->stylist_id,
+                    'notes' => 'Completed appointment service',
+                ]);
+            }
+        }
+
+        return $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
     }
 
     public function confirm(Appointment $appointment)
     {
-        $appointment->update(['status' => 'booked']);
+        $appointment->update(['status' => 'confirmed']);
         dispatch(new SendConfirmationJob($appointment->id));
-        return response()->json(['message' => 'Appointment confirmed']);
+        return $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
     }
 
     public function receipt(Appointment $appointment)
     {
-        $appointment->load(['stylist', 'service']);
+        $appointment->load(['stylist', 'service', 'services.variants']);
+        $appointment = $this->formatAppointmentForResponse($appointment);
+    
         return response()->json([
             'appointment' => $appointment,
             'receipt_number' => 'APT-' . str_pad($appointment->id, 6, '0', STR_PAD_LEFT),
-            'booking_date' => $appointment->created_at->format('Y-m-d H:i:s'),
+            'booking_date' => $appointment->created_at->copy()->timezone('Asia/Manila')->format('Y-m-d h:i:s A'),
         ]);
     }
+    
 
     public function reschedule(Request $request, Appointment $appointment, Scheduler $scheduler)
     {
@@ -357,9 +689,11 @@ class AppointmentController extends Controller
             'reschedule_reason' => $data['reschedule_reason'] ?? null,
         ]);
 
+        $appointment = $appointment->fresh()->load('stylist', 'service', 'services.variants');
+        $appointment = $this->formatAppointmentForResponse($appointment);
         return response()->json([
             'message' => 'Appointment rescheduled successfully',
-            'appointment' => $appointment->fresh()->load('stylist', 'service', 'services')
+            'appointment' => $appointment
         ]);
     }
 

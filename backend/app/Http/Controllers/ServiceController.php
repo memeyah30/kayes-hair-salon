@@ -10,7 +10,7 @@ class ServiceController extends Controller
 {
     public function index()
     {
-        return Service::all();
+        return Service::with('variants')->get();
     }
 
     public function store(Request $request)
@@ -18,7 +18,6 @@ class ServiceController extends Controller
         $data = $request->validate([
             'name' => 'required|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'duration_minutes' => 'required|integer|min:5',
             'price_cents' => 'required|integer|min:0',
         ]);
 
@@ -29,7 +28,8 @@ class ServiceController extends Controller
             $data['image'] = 'uploads/services/' . $imageName;
         }
 
-        return Service::create($data);
+        $service = Service::create($data);
+        return $service->load('variants');
     }
 
     public function update(Request $request, Service $service)
@@ -52,7 +52,6 @@ class ServiceController extends Controller
             $data = $request->validate([
                 'name' => 'required|string|max:255',
                 'image' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-                'duration_minutes' => 'required|integer|min:5',
                 'price_cents' => 'required|integer|min:0',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -78,8 +77,8 @@ class ServiceController extends Controller
         // Update all provided fields
         $service->update($data);
 
-        // Return fresh instance with all attributes
-        return $service->fresh();
+        // Return fresh instance with all attributes and variants
+        return $service->fresh()->load('variants');
     }
 
     public function destroy(Service $service)

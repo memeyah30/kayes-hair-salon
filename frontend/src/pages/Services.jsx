@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 
@@ -9,6 +10,7 @@ const api = axios.create({
 const currency = cents => `₱${(cents / 100).toFixed(2)}`
 
 const Services = () => {
+  const navigate = useNavigate()
   const [services, setServices] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -68,6 +70,12 @@ const Services = () => {
                 <div className="font-bold text-xl text-blue-600">
                   {currency(s.price_cents)}
                 </div>
+                <button
+                  onClick={() => navigate(`/book?services=${s.id}`)}
+                  className="w-full mt-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition"
+                >
+                  Book Now
+                </button>
               </div>
             </div>
           ))}

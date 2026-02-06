@@ -73,6 +73,9 @@ const AdminCustomers = () => {
 
   const navigate = useNavigate()
 
+  const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
+  const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
+
   const handleLogout = () => {
     api.post('/logout').finally(() => {
       localStorage.clear()
@@ -81,12 +84,12 @@ const AdminCustomers = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex text-gray-800">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
       <Sidebar userType="admin" onLogout={handleLogout} />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold">Customer Management</h1>
               <p className="text-sm text-gray-600 mt-1">
@@ -95,7 +98,7 @@ const AdminCustomers = () => {
             </div>
             <button
               onClick={() => navigate('/admin/dashboard')}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
             >
               ← Return to Dashboard
             </button>
@@ -264,7 +267,7 @@ const AdminCustomers = () => {
                 <h3 className="font-semibold mb-3">Complete Appointment History</h3>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {selectedCustomer.appointments
-                    .sort((a, b) => new Date(b.start_datetime) - new Date(a.start_datetime))
+                    .sort((a, b) => new Date(getStart(b)) - new Date(getStart(a)))
                     .map(apt => {
                       // Get all services for this appointment
                       const appointmentServices = apt.services && apt.services.length > 0 
@@ -289,21 +292,24 @@ const AdminCustomers = () => {
                               <div className="font-semibold text-lg mb-1">{appointmentServices[0]?.name || 'Service'}</div>
                             )}
                             <div className="text-sm text-gray-600 mb-1">
-                              📅 {new Date(apt.start_datetime).toLocaleDateString('en-US', {
+                              📅 {new Date(getStart(apt)).toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 year: 'numeric',
                                 month: 'long',
-                                day: 'numeric'
+                                day: 'numeric',
+                                timeZone: 'Asia/Manila'
                               })}
                             </div>
                             <div className="text-sm text-gray-600 mb-1">
-                              🕐 {new Date(apt.start_datetime).toLocaleTimeString([], {
+                              🕐 {new Date(getStart(apt)).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
-                                minute: '2-digit'
-                              })} - {new Date(apt.end_datetime).toLocaleTimeString([], {
+                                minute: '2-digit',
+                                timeZone: 'Asia/Manila'
+                              })} - {new Date(getEnd(apt)).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                                minute: '2-digit',
+                                timeZone: 'Asia/Manila'
+                              })} PHT
                             </div>
                             <div className="text-sm text-gray-500 mb-1">
                               💇 Stylist: {apt.stylist?.name}
@@ -358,4 +364,3 @@ const AdminCustomers = () => {
 }
 
 export default AdminCustomers
-

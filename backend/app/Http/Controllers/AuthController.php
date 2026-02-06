@@ -7,6 +7,7 @@ use App\Models\Manager;
 use App\Models\Stylist;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -52,24 +53,128 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken($request->type . '-token', ['*'])->plainTextToken;
+        // Use session-based authentication
+        // Determine the guard based on user type
+        $guard = match($request->type) {
+            'admin' => 'admin',
+            'manager' => 'manager',
+            'stylist' => 'stylist',
+            default => 'web',
+        };
+
+        // Login the user using the appropriate guard
+        Auth::guard($guard)->login($user);
+        
+        // Regenerate session ID for security
+        $request->session()->regenerate();
+        
+        // Ensure session is saved
+        $request->session()->save();
+
+        // #region agent log
+        $logData = json_encode([
+            'location' => 'AuthController.php:66',
+            'message' => 'Login successful, session saved',
+            'data' => [
+                'userType' => $request->type,
+                'guard' => $guard,
+                'userId' => $user->id,
+                'sessionId' => $request->session()->getId(),
+                'hasSession' => $request->hasSession(),
+                'requestHost' => $request->getHost(),
+                'requestScheme' => $request->getScheme(),
+                'requestUri' => $request->getRequestUri(),
+            ],
+            'timestamp' => time() * 1000,
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'E'
+        ]);
+        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
+        // #endregion
 
         return response()->json([
             'user' => $user,
-            'token' => $token,
             'type' => $request->type,
+            'message' => 'Logged in successfully',
         ]);
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        // Try to get user from any guard
+        $user = Auth::guard('admin')->user() 
+            ?? Auth::guard('manager')->user() 
+            ?? Auth::guard('stylist')->user();
+        
+        if ($user) {
+            $guard = $user instanceof Admin ? 'admin' 
+                : ($user instanceof Manager ? 'manager' : 'stylist');
+            
+            Auth::guard($guard)->logout();
+        }
+        
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
         return response()->json(['message' => 'Logged out']);
     }
 
     public function me(Request $request)
     {
-        $user = $request->user();
+        // #region agent log
+        $logData = json_encode([
+            'location' => 'AuthController.php:101',
+            'message' => '/me endpoint called',
+            'data' => [
+                'hasSession' => $request->hasSession(),
+                'sessionId' => $request->hasSession() ? $request->session()->getId() : null,
+            ],
+            'timestamp' => time() * 1000,
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'D'
+        ]);
+        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
+        // #endregion
+        
+        // Try to get user from any guard
+        $user = Auth::guard('admin')->user() 
+            ?? Auth::guard('manager')->user() 
+            ?? Auth::guard('stylist')->user();
+        
+        // #region agent log
+        $logData = json_encode([
+            'location' => 'AuthController.php:110',
+            'message' => 'User check result',
+            'data' => [
+                'hasUser' => $user !== null,
+                'userType' => $user ? ($user instanceof \App\Models\Admin ? 'admin' : ($user instanceof \App\Models\Manager ? 'manager' : 'stylist')) : null,
+            ],
+            'timestamp' => time() * 1000,
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'D'
+        ]);
+        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
+        // #endregion
+        
+        if (!$user) {
+            // #region agent log
+            $logData = json_encode([
+                'location' => 'AuthController.php:115',
+                'message' => '/me endpoint returning 401',
+                'data' => [],
+                'timestamp' => time() * 1000,
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'D'
+            ]);
+            file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
+            // #endregion
+            return response()->json(['message' => 'Not authenticated'], 401);
+        }
+        
         // Determine user type
         $type = $user instanceof \App\Models\Admin
             ? 'admin'

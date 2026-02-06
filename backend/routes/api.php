@@ -4,11 +4,14 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\ServiceVariantController;
 use App\Http\Controllers\StylistController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\CustomerRatingController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\SaleController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -21,6 +24,7 @@ Route::get('/appointments/{appointment}/receipt', [AppointmentController::class,
 Route::get('/holidays/check', [HolidayController::class, 'checkDate']); // Check if date is holiday
 Route::get('/payment-accounts', [PaymentAccountController::class, 'index']); // Public payment accounts
 Route::get('/locations', [LocationController::class, 'index']); // Public locations
+
 Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public - customers can rate
 
 // Auth routes
@@ -42,6 +46,12 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
     Route::post('/services', [ServiceController::class, 'store']);
     Route::match(['patch', 'post'], '/services/{service}', [ServiceController::class, 'update'])->where('service', '[0-9]+');
     Route::delete('/services/{service}', [ServiceController::class, 'destroy']);
+    
+    // Service variants management
+    Route::get('/services/{service}/variants', [ServiceVariantController::class, 'index']);
+    Route::post('/services/{service}/variants', [ServiceVariantController::class, 'store']);
+    Route::patch('/service-variants/{serviceVariant}', [ServiceVariantController::class, 'update']);
+    Route::delete('/service-variants/{serviceVariant}', [ServiceVariantController::class, 'destroy']);
 
     // Holidays management
     Route::get('/holidays', [HolidayController::class, 'index']);
@@ -64,6 +74,22 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
     // Ratings management
     Route::get('/ratings', [CustomerRatingController::class, 'index']);
     Route::delete('/ratings/{customerRating}', [CustomerRatingController::class, 'destroy']);
+
+    // Inventory management
+    Route::get('/inventory', [InventoryController::class, 'index']);
+    Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
+    Route::get('/inventory/stats', [InventoryController::class, 'stats']);
+    Route::post('/inventory', [InventoryController::class, 'store']);
+    Route::patch('/inventory/{inventory}', [InventoryController::class, 'update']);
+    Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy']);
+
+    // Sales management
+    Route::get('/sales', [SaleController::class, 'index']);
+    Route::get('/sales/stats', [SaleController::class, 'stats']);
+    Route::post('/sales', [SaleController::class, 'store']);
+    Route::get('/sales/{sale}', [SaleController::class, 'show']);
+    Route::patch('/sales/{sale}', [SaleController::class, 'update']);
+    Route::delete('/sales/{sale}', [SaleController::class, 'destroy']);
 
     // Dashboard stats
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);

@@ -16,6 +16,11 @@ import ManageStylists from './pages/ManageStylists'
 import ManageServices from './pages/ManageServices'
 import AdminAppointments from './pages/admin/AdminAppointments'
 import AdminCustomers from './pages/admin/AdminCustomers'
+import AdminRatings from './pages/admin/AdminRatings'
+import ManageHolidays from './pages/admin/ManageHolidays'
+import ManagePaymentAccounts from './pages/admin/ManagePaymentAccounts'
+import ManageInventory from './pages/admin/ManageInventory'
+import SalesMonitoring from './pages/admin/SalesMonitoring'
 import StylistAppointments from './pages/stylist/StylistAppointments'
 import StylistSchedule from './pages/stylist/StylistSchedule'
 
@@ -76,6 +81,46 @@ const App = () => {
           element={
             <ProtectedRoute allowedTypes={['admin']}>
               <AdminCustomers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/ratings"
+          element={
+            <ProtectedRoute allowedTypes={['admin']}>
+              <AdminRatings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/holidays"
+          element={
+            <ProtectedRoute allowedTypes={['admin']}>
+              <ManageHolidays />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/payment-accounts"
+          element={
+            <ProtectedRoute allowedTypes={['admin']}>
+              <ManagePaymentAccounts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/inventory"
+          element={
+            <ProtectedRoute allowedTypes={['admin']}>
+              <ManageInventory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/sales"
+          element={
+            <ProtectedRoute allowedTypes={['admin']}>
+              <SalesMonitoring />
             </ProtectedRoute>
           }
         />
