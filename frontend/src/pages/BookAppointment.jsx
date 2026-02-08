@@ -31,7 +31,7 @@ const validatePhone = (phone) => {
 const resolveQrUrl = (url) => {
   if (!url) return null
   if (url.startsWith('http')) return url
-  return `${window.location.origin}/${url.replace(/^\\/+/, '')}`
+  return `${window.location.origin}/${url.replace(/^\/+/, '')}`
 }
 
 // Helper function to convert ISO string to HH:MM format in Asia/Manila timezone
@@ -1645,9 +1645,9 @@ const BookAppointment = () => {
                             <div className="text-xs text-gray-500 mt-1">{account.instructions}</div>
                           )}
                         </div>
-                        {resolveQrUrl(account.qr_code_url) && (
+                        {resolveQrUrl(account.qr_code_full_url || account.qr_code_url) && (
                           <img
-                            src={resolveQrUrl(account.qr_code_url)}
+                            src={resolveQrUrl(account.qr_code_full_url || account.qr_code_url)}
                             alt="QR Code"
                             className="w-20 h-20 object-contain"
                           />

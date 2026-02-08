@@ -162,8 +162,13 @@ const AdminAppointments = () => {
 
     if (normalizedSearch) {
       const customerName = (apt.customer_name || '').toLowerCase()
+      const customerPhone = (apt.customer_phone || '').toLowerCase()
       const serviceNames = appointmentServices.map(s => s.name || '').join(' ').toLowerCase()
-      if (!customerName.includes(normalizedSearch) && !serviceNames.includes(normalizedSearch)) return false
+      if (
+        !customerName.includes(normalizedSearch) &&
+        !customerPhone.includes(normalizedSearch) &&
+        !serviceNames.includes(normalizedSearch)
+      ) return false
     }
 
     return true

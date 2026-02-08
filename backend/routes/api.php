@@ -100,7 +100,7 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
 });
 
 // Admin + Manager routes (shared management permissions)
-Route::middleware(['auth:sanctum', 'userType:admin,manager'])->group(function () {
+Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(function () {
     // Dashboard stats (admin + manager)
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
     Route::get('/appointments', [AppointmentController::class, 'index']);

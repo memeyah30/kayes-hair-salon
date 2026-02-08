@@ -23,5 +23,21 @@ class PaymentAccount extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
-}
 
+    protected $appends = [
+        'qr_code_full_url',
+    ];
+
+    public function getQrCodeFullUrlAttribute(): ?string
+    {
+        if ($this->qr_code_path) {
+            return \Illuminate\Support\Facades\Storage::url($this->qr_code_path);
+        }
+
+        if ($this->qr_code_url) {
+            return $this->qr_code_url;
+        }
+
+        return null;
+    }
+}

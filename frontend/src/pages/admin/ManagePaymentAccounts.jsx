@@ -93,12 +93,12 @@ const ManagePaymentAccounts = () => {
       account_number: account.account_number,
       account_type: account.account_type,
       bank_name: account.bank_name || '',
-      qr_code_url: account.qr_code_url || '',
+      qr_code_url: account.qr_code_full_url || account.qr_code_url || '',
       qr_code_file: null,
       instructions: account.instructions || '',
       is_active: account.is_active,
     })
-    setQrPreview(account.qr_code_url || '')
+    setQrPreview(account.qr_code_full_url || account.qr_code_url || '')
     setShowModal(true)
   }
 
@@ -235,7 +235,7 @@ const ManagePaymentAccounts = () => {
                       <span className="text-xs text-gray-500">QR Code:</span>
                       <div className="mt-1">
                         <img
-                          src={account.qr_code_url}
+                          src={account.qr_code_full_url || account.qr_code_url}
                           alt="QR Code"
                           className="w-24 h-24 object-contain border rounded"
                         />

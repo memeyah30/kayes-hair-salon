@@ -109,27 +109,29 @@ class SaleController extends Controller
         $startDate = $request->start_date ?? Carbon::now()->startOfMonth()->toDateString();
         $endDate = $request->end_date ?? Carbon::now()->endOfMonth()->toDateString();
 
-        $query = Sale::whereBetween('created_at', [$startDate, $endDate]);
+        // Use date-based filtering (same as /sales listing) to avoid timezone drift
+        $baseQuery = Sale::whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
 
         // Total sales
-        $totalSales = $query->sum('total_amount_cents');
+        $totalSales = (clone $baseQuery)->sum('total_amount_cents');
 
         // Sales by type
-        $salesByType = Sale::whereBetween('created_at', [$startDate, $endDate])
+        $salesByType = (clone $baseQuery)
             ->select('transaction_type', DB::raw('SUM(total_amount_cents) as total'))
             ->groupBy('transaction_type')
             ->get()
             ->pluck('total', 'transaction_type');
 
         // Sales by payment method
-        $salesByPayment = Sale::whereBetween('created_at', [$startDate, $endDate])
+        $salesByPayment = (clone $baseQuery)
             ->select('payment_method', DB::raw('SUM(total_amount_cents) as total'))
             ->groupBy('payment_method')
             ->get()
             ->pluck('total', 'payment_method');
 
         // Top selling items
-        $topItems = Sale::whereBetween('created_at', [$startDate, $endDate])
+        $topItems = (clone $baseQuery)
             ->select('item_name', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(total_amount_cents) as total_revenue'))
             ->groupBy('item_name')
             ->orderBy('total_revenue', 'desc')
@@ -137,7 +139,7 @@ class SaleController extends Controller
             ->get();
 
         // Daily sales
-        $dailySales = Sale::whereBetween('created_at', [$startDate, $endDate])
+        $dailySales = (clone $baseQuery)
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total_amount_cents) as total'))
             ->groupBy('date')
             ->orderBy('date')

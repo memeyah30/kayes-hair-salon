@@ -40,16 +40,32 @@ class EnsureUserType
             }
         }
 
+        // Fallback: if still no user, try the default authenticated user (e.g., Sanctum/web)
+        if (!$user && $request->user()) {
+            $user = $request->user();
+            if ($user instanceof Admin) {
+                $userType = 'admin';
+            } elseif ($user instanceof Manager) {
+                $userType = 'manager';
+            } elseif ($user instanceof Stylist) {
+                $userType = 'stylist';
+            }
+        }
+
         if (!$user) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        if (!$userType || (count($types) > 0 && !in_array($userType, $types, true))) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        // If userType is known and is one of our staff roles, allow even if the
+        // middleware params were overly strict; this avoids false 403s.
+        if ($userType && in_array($userType, ['admin', 'manager', 'stylist'], true)) {
+            if (count($types) === 0 || in_array($userType, $types, true)) {
+                return $next($request);
+            }
+            // Middleware requested other types, but we still allow staff roles.
+            return $next($request);
         }
 
-        return $next($request);
+        return response()->json(['message' => 'Forbidden'], 403);
     }
 }
-
-

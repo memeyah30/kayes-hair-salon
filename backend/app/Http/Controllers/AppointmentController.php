@@ -590,10 +590,8 @@ class AppointmentController extends Controller
         $salePaymentMethod = $paymentMethodMap[$appointment->payment_method] ?? 'cash';
 
         // For on-hand payments, mark as paid upon completion
-        $newPaymentStatus = $appointment->payment_status;
-        if ($appointment->payment_method === 'on_hand' && $appointment->payment_status !== 'paid') {
-            $newPaymentStatus = 'paid';
-        }
+        // Admin/manager completing an appointment means service is done and payment is settled.
+        $newPaymentStatus = 'paid';
 
         // Update appointment status
         $appointment->update([
