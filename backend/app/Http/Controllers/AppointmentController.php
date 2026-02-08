@@ -10,6 +10,8 @@ use App\Services\Scheduler;
 use App\Jobs\SendConfirmationJob;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class AppointmentController extends Controller
 {
@@ -97,7 +99,7 @@ class AppointmentController extends Controller
             'date' => 'required|date',
             'preferred_time' => 'nullable|date_format:H:i',
             'payment_method' => 'nullable|in:on_hand,online',
-            'payment_status' => 'nullable|in:pending,downpayment,paid',
+            'payment_status' => 'nullable|in:unpaid,pending,paid,rejected,downpayment,refunded',
             'downpayment_amount_cents' => 'nullable|integer|min:0',
             'payment_proof_url' => 'nullable|url',
             'payment_proof' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
@@ -200,24 +202,35 @@ class AppointmentController extends Controller
         // Handle payment proof file upload
         $paymentProofUrl = $data['payment_proof_url'] ?? null;
         if ($request->hasFile('payment_proof')) {
-            $file = $request->file('payment_proof');
-            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            // Create directory if it doesn't exist
-            $uploadPath = public_path('uploads/payment-proofs');
-            if (!file_exists($uploadPath)) {
-                mkdir($uploadPath, 0755, true);
-            }
-            $file->move($uploadPath, $fileName);
-            $paymentProofUrl = 'uploads/payment-proofs/' . $fileName;
+            $path = $request->file('payment_proof')->store('payment-proofs', 'public');
+            $paymentProofUrl = Storage::url($path); // e.g. /storage/payment-proofs/filename.jpg
         }
 
+        $paymentMethod = $data['payment_method'] ?? 'on_hand';
+        $downpaymentAmountCents = $data['downpayment_amount_cents'] ?? null;
+        $minDownpaymentCents = (int) round($totalAmountCents * 0.5);
+
         // Validate payment for online payments
-        if ($data['payment_method'] === 'online') {
-            if (empty($data['downpayment_amount_cents']) || $data['downpayment_amount_cents'] <= 0) {
+        if ($paymentMethod === 'online') {
+            if (empty($downpaymentAmountCents) || $downpaymentAmountCents <= 0) {
                 return response()->json(['message' => 'Payment amount is required for online payments'], 422);
             }
             if (empty($paymentProofUrl)) {
                 return response()->json(['message' => 'Payment proof is required for online payments'], 422);
+            }
+        }
+
+        // Validate deposit for pay-on-hand payments
+        if ($paymentMethod === 'on_hand') {
+            if (empty($downpaymentAmountCents) || $downpaymentAmountCents < $minDownpaymentCents) {
+                return response()->json([
+                    'message' => 'A cash deposit is required to confirm this appointment.',
+                    'errors' => [
+                        'downpayment_amount_cents' => [
+                            'Minimum deposit is 50% of the total amount.'
+                        ]
+                    ]
+                ], 422);
             }
         }
 
@@ -418,6 +431,13 @@ class AppointmentController extends Controller
         // #endregion
         
         // Create appointment with first service_id for backward compatibility
+        $paymentStatus = 'unpaid';
+        if ($paymentMethod === 'online') {
+            $paymentStatus = 'pending';
+        } elseif (!empty($downpaymentAmountCents)) {
+            $paymentStatus = $downpaymentAmountCents >= $totalAmountCents ? 'paid' : 'downpayment';
+        }
+
         $appointment = Appointment::create([
             'stylist_id' => $stylist->id,
             'service_id' => $services->first()->id, // Keep for backward compatibility
@@ -425,9 +445,9 @@ class AppointmentController extends Controller
             'customer_email' => $data['customer_email'] ?? null,
             'customer_phone' => $data['customer_phone'] ?? null,
             'customer_address' => $data['customer_address'] ?? null,
-            'payment_method' => $data['payment_method'] ?? 'on_hand',
-            'payment_status' => $data['payment_status'] ?? ($data['payment_method'] === 'online' ? ($data['downpayment_amount_cents'] >= $totalAmountCents ? 'paid' : 'downpayment') : 'pending'),
-            'downpayment_amount_cents' => $data['downpayment_amount_cents'] ?? null,
+            'payment_method' => $paymentMethod,
+            'payment_status' => $paymentStatus,
+            'downpayment_amount_cents' => $downpaymentAmountCents ?? null,
             'total_amount_cents' => $totalAmountCents,
             'payment_proof_url' => $paymentProofUrl,
             'start_datetime' => $startDateTimeForStorage,
@@ -486,7 +506,7 @@ class AppointmentController extends Controller
             'customer_email' => 'nullable|email',
             'customer_phone' => 'nullable|string',
             'customer_address' => 'nullable|string',
-            'payment_status' => 'sometimes|in:pending,downpayment,paid,refunded',
+            'payment_status' => 'sometimes|in:unpaid,pending,paid,rejected,downpayment,refunded',
             'reschedule_reason' => 'nullable|string',
         ]);
 
@@ -560,10 +580,25 @@ class AppointmentController extends Controller
             return $this->formatAppointmentForResponse($appointment);
         }
 
-        // Update appointment status and mark payment as paid (service is done, payment is complete)
+        // Determine sale payment method mapping
+        $paymentMethodMap = [
+            'on_hand' => 'cash',
+            'online' => 'gcash',
+            'gcash' => 'gcash',
+            'cash' => 'cash',
+        ];
+        $salePaymentMethod = $paymentMethodMap[$appointment->payment_method] ?? 'cash';
+
+        // For on-hand payments, mark as paid upon completion
+        $newPaymentStatus = $appointment->payment_status;
+        if ($appointment->payment_method === 'on_hand' && $appointment->payment_status !== 'paid') {
+            $newPaymentStatus = 'paid';
+        }
+
+        // Update appointment status
         $appointment->update([
             'status' => 'completed',
-            'payment_status' => 'paid' // Mark payment as paid when service is completed
+            'payment_status' => $newPaymentStatus,
         ]);
         
         // Refresh appointment to get updated status
@@ -580,9 +615,11 @@ class AppointmentController extends Controller
             ? $appointment->services 
             : ($appointment->service ? collect([$appointment->service]) : collect());
 
+        $salePaymentStatus = $appointment->payment_status === 'paid' ? 'paid' : 'pending';
+
         foreach ($appointmentServices as $service) {
             // Get the variant if one was selected
-            $variantId = $service->pivot->service_variant_id ?? null;
+            $variantId = $service->pivot?->service_variant_id;
             $variant = null;
             $serviceName = $service->name;
             $servicePrice = $service->price_cents;
@@ -601,30 +638,50 @@ class AppointmentController extends Controller
                 ->first();
 
             if (!$existingSale) {
-                // Create sale record
-                \App\Models\Sale::create([
-                    'appointment_id' => $appointment->id,
-                    'inventory_id' => null, // Services don't have inventory
-                    'transaction_type' => 'service',
-                    'item_name' => $serviceName,
-                    'quantity' => 1,
-                    'unit_price_cents' => $servicePrice,
-                    'total_amount_cents' => $servicePrice,
-                    'payment_method' => $appointment->payment_method ?? 'cash',
-                    'payment_status' => 'paid', // Payment is complete when service is done
-                    'customer_name' => $appointment->customer_name,
-                    'customer_phone' => $appointment->customer_phone,
-                    'stylist_id' => $appointment->stylist_id,
-                    'notes' => 'Completed appointment service',
-                ]);
+                try {
+                    // Create sale record
+                    \App\Models\Sale::create([
+                        'appointment_id' => $appointment->id,
+                        'inventory_id' => null, // Services don't have inventory
+                        'transaction_type' => 'service',
+                        'item_name' => $serviceName,
+                        'quantity' => 1,
+                        'unit_price_cents' => $servicePrice,
+                        'total_amount_cents' => $servicePrice,
+                        'payment_method' => $salePaymentMethod,
+                        'payment_status' => $salePaymentStatus,
+                        'customer_name' => $appointment->customer_name,
+                        'customer_phone' => $appointment->customer_phone,
+                        'stylist_id' => $appointment->stylist_id,
+                        'notes' => 'Completed appointment service',
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('Failed to create sale record on appointment completion', [
+                        'appointment_id' => $appointment->id,
+                        'service_name' => $serviceName,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
         }
 
-        return $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
+        return $this->formatAppointmentForResponse(
+            $appointment->fresh()->load(['stylist', 'service', 'services.variants'])
+        );
     }
 
     public function confirm(Appointment $appointment)
     {
+        if ($appointment->payment_method === 'on_hand') {
+            $total = (int) ($appointment->total_amount_cents ?? 0);
+            $minDeposit = (int) round($total * 0.5);
+            $deposit = (int) ($appointment->downpayment_amount_cents ?? 0);
+            if ($deposit < $minDeposit) {
+                return response()->json([
+                    'message' => 'Deposit required before confirming this appointment.'
+                ], 422);
+            }
+        }
         $appointment->update(['status' => 'confirmed']);
         dispatch(new SendConfirmationJob($appointment->id));
         return $appointment->fresh()->load(['stylist', 'service', 'services.variants']);

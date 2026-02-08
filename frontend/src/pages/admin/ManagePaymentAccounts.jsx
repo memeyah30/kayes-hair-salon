@@ -16,9 +16,11 @@ const ManagePaymentAccounts = () => {
     account_type: 'gcash',
     bank_name: '',
     qr_code_url: '',
+    qr_code_file: null,
     instructions: '',
     is_active: true,
   })
+  const [qrPreview, setQrPreview] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -40,11 +42,29 @@ const ManagePaymentAccounts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      const payload = new FormData()
+      payload.append('account_name', formData.account_name)
+      payload.append('account_number', formData.account_number)
+      payload.append('account_type', formData.account_type)
+      payload.append('bank_name', formData.bank_name)
+      payload.append('instructions', formData.instructions)
+      payload.append('is_active', formData.is_active ? '1' : '0')
+      if (formData.qr_code_file) {
+        payload.append('qr_code_file', formData.qr_code_file)
+      } else {
+        payload.append('qr_code_url', formData.qr_code_url)
+      }
+
       if (editing) {
-        await api.patch(`/payment-accounts/${editing.id}`, formData)
+        payload.append('_method', 'PATCH')
+        await api.post(`/payment-accounts/${editing.id}`, payload, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
         toast.success('Payment account updated successfully')
       } else {
-        await api.post('/payment-accounts', formData)
+        await api.post('/payment-accounts', payload, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
         toast.success('Payment account created successfully')
       }
       setShowModal(false)
@@ -55,9 +75,11 @@ const ManagePaymentAccounts = () => {
         account_type: 'gcash',
         bank_name: '',
         qr_code_url: '',
+        qr_code_file: null,
         instructions: '',
         is_active: true,
       })
+      setQrPreview('')
       loadAccounts()
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to save payment account')
@@ -72,9 +94,11 @@ const ManagePaymentAccounts = () => {
       account_type: account.account_type,
       bank_name: account.bank_name || '',
       qr_code_url: account.qr_code_url || '',
+      qr_code_file: null,
       instructions: account.instructions || '',
       is_active: account.is_active,
     })
+    setQrPreview(account.qr_code_url || '')
     setShowModal(true)
   }
 
@@ -151,9 +175,11 @@ const ManagePaymentAccounts = () => {
                     account_type: 'gcash',
                     bank_name: '',
                     qr_code_url: '',
+                    qr_code_file: null,
                     instructions: '',
                     is_active: true,
                   })
+                  setQrPreview('')
                   setShowModal(true)
                 }}
                 className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
@@ -306,10 +332,35 @@ const ManagePaymentAccounts = () => {
                       type="url"
                       className="w-full border rounded px-3 py-2"
                       value={formData.qr_code_url}
-                      onChange={(e) => setFormData({ ...formData, qr_code_url: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({ ...formData, qr_code_url: value, qr_code_file: null })
+                        setQrPreview(value)
+                      }}
                       placeholder="https://example.com/qr-code.png"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Upload QR code image to a hosting service and paste the URL here</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Paste an existing QR URL, or upload an image below. If you upload a file, it overrides this URL.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Upload QR Code Image (Optional)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="w-full border rounded px-3 py-2"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        setFormData({ ...formData, qr_code_file: file, qr_code_url: file ? '' : formData.qr_code_url })
+                        setQrPreview(file ? URL.createObjectURL(file) : formData.qr_code_url)
+                      }}
+                    />
+                    {qrPreview && (
+                      <div className="mt-2">
+                        <span className="text-xs text-gray-500 block mb-1">Preview</span>
+                        <img src={qrPreview} alt="QR preview" className="w-24 h-24 object-contain border rounded" />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Payment Instructions (Optional)</label>
@@ -341,23 +392,25 @@ const ManagePaymentAccounts = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowModal(false)
-                        setEditing(null)
-                        setFormData({
-                          account_name: '',
-                          account_number: '',
-                          account_type: 'gcash',
-                          bank_name: '',
-                          qr_code_url: '',
-                          instructions: '',
-                          is_active: true,
-                        })
-                      }}
-                      className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
+                    onClick={() => {
+                      setShowModal(false)
+                      setEditing(null)
+                      setFormData({
+                        account_name: '',
+                        account_number: '',
+                        account_type: 'gcash',
+                        bank_name: '',
+                        qr_code_url: '',
+                        qr_code_file: null,
+                        instructions: '',
+                        is_active: true,
+                      })
+                      setQrPreview('')
+                    }}
+                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
                   </div>
                 </form>
               </div>

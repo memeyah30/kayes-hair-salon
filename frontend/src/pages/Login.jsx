@@ -146,10 +146,10 @@ const Login = ({ userType: propUserType }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700">
-              {selectedType === 'admin' ? 'Username or Email' : selectedType === 'manager' ? 'Username' : 'Email'}
+              {selectedType === 'admin' ? 'Username or Email' : selectedType === 'manager' ? 'Username' : 'Email or Phone'}
             </label>
             <input
-              type={selectedType === 'stylist' ? 'email' : 'text'}
+              type="text"
               required
               className="w-full border rounded px-3 py-2 text-gray-900"
               value={email}
@@ -157,7 +157,7 @@ const Login = ({ userType: propUserType }) => {
               placeholder={
                 selectedType === 'admin' ? 'admin' : 
                 selectedType === 'manager' ? 'username' : 
-                'your@email.com'
+                'email or phone'
               }
             />
           </div>

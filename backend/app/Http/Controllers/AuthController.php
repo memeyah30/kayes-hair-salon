@@ -15,7 +15,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|string', // Changed from 'email' to 'string' to allow 'admin' as username
+            'email' => 'required|string', // Keep as string to allow non-email identifiers
             'password' => 'required',
             'type' => 'required|in:admin,manager,stylist',
         ]);
@@ -43,8 +43,14 @@ class AuthController extends Controller
             // Managers login with username (stored in the "email" field of the request for UI compatibility)
             $user = Manager::where('username', $request->email)->where('active', true)->first();
         } else {
-            $request->validate(['email' => 'required|email']); // Stylists still need email format
-            $user = Stylist::where('email', $request->email)->where('active', true)->first();
+            // Stylists can login using email or phone (email is optional in the model)
+            $identifier = $request->email;
+            $user = Stylist::where('active', true)
+                ->where(function ($query) use ($identifier) {
+                    $query->where('email', $identifier)
+                        ->orWhere('phone', $identifier);
+                })
+                ->first();
         }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -179,8 +185,12 @@ class AuthController extends Controller
         $type = $user instanceof \App\Models\Admin
             ? 'admin'
             : ($user instanceof \App\Models\Manager ? 'manager' : 'stylist');
+        $userPayload = $user instanceof \Illuminate\Database\Eloquent\Model
+            ? $user->toArray()
+            : (array) $user;
+
         return response()->json([
-            ...$user->toArray(),
+            ...$userPayload,
             'type' => $type,
         ]);
     }

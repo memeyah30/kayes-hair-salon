@@ -7,6 +7,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceVariantController;
 use App\Http\Controllers\StylistController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\CustomerRatingController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
@@ -41,6 +42,12 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
     Route::delete('/stylists/{stylist}', [StylistController::class, 'destroy']);
     Route::post('/stylists/{stylist}/time-offs', [StylistController::class, 'addTimeOff']);
     Route::delete('/stylists/{stylist}/time-offs/{timeOff}', [StylistController::class, 'removeTimeOff']);
+
+    // Managers management
+    Route::get('/managers', [ManagerController::class, 'index']);
+    Route::post('/managers', [ManagerController::class, 'store']);
+    Route::match(['patch', 'post'], '/managers/{manager}', [ManagerController::class, 'update'])->where('manager', '[0-9]+');
+    Route::delete('/managers/{manager}', [ManagerController::class, 'destroy']);
 
     // Services management
     Route::post('/services', [ServiceController::class, 'store']);
@@ -90,13 +97,12 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
     Route::get('/sales/{sale}', [SaleController::class, 'show']);
     Route::patch('/sales/{sale}', [SaleController::class, 'update']);
     Route::delete('/sales/{sale}', [SaleController::class, 'destroy']);
-
-    // Dashboard stats
-    Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
 });
 
 // Admin + Manager routes (shared management permissions)
 Route::middleware(['auth:sanctum', 'userType:admin,manager'])->group(function () {
+    // Dashboard stats (admin + manager)
+    Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
     Route::get('/appointments', [AppointmentController::class, 'index']);
     Route::get('/appointments/history', [AppointmentController::class, 'history']);
     Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update']);

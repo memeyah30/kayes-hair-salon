@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PaymentAccount;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentAccountController extends Controller
 {
@@ -25,9 +26,12 @@ class PaymentAccountController extends Controller
             'account_type' => 'required|in:gcash,paymaya,bank,other',
             'bank_name' => 'nullable|string|max:255',
             'qr_code_url' => 'nullable|url',
+            'qr_code_file' => 'nullable|image|max:2048',
             'is_active' => 'boolean',
             'instructions' => 'nullable|string',
         ]);
+
+        $this->handleQrUpload($request, $data);
 
         $account = PaymentAccount::create($data);
         return response()->json($account, 201);
@@ -41,9 +45,12 @@ class PaymentAccountController extends Controller
             'account_type' => 'sometimes|in:gcash,paymaya,bank,other',
             'bank_name' => 'nullable|string|max:255',
             'qr_code_url' => 'nullable|url',
+            'qr_code_file' => 'nullable|image|max:2048',
             'is_active' => 'boolean',
             'instructions' => 'nullable|string',
         ]);
+
+        $this->handleQrUpload($request, $data, $paymentAccount);
 
         $paymentAccount->update($data);
         return response()->json($paymentAccount);
@@ -51,8 +58,52 @@ class PaymentAccountController extends Controller
 
     public function destroy(PaymentAccount $paymentAccount)
     {
+        if ($paymentAccount->qr_code_path) {
+            Storage::disk('public')->delete($paymentAccount->qr_code_path);
+        }
         $paymentAccount->delete();
         return response()->json(['message' => 'Payment account deleted successfully']);
     }
-}
 
+    /**
+     * Handles optional QR code file upload and normalizes URLs.
+     *
+     * If a file is uploaded, it becomes the source of truth (stored in public disk),
+     * and any previous stored file is removed. If a URL is provided, it clears
+     * any stored file reference.
+     */
+    private function handleQrUpload(Request $request, array &$data, ?PaymentAccount $existing = null): void
+    {
+        // If a new QR file is uploaded, store it and delete the old one
+        if ($request->hasFile('qr_code_file')) {
+            $path = $request->file('qr_code_file')->store('payment-accounts', 'public');
+            $data['qr_code_path'] = $path;
+            $data['qr_code_url'] = Storage::url($path);
+
+            if ($existing && $existing->qr_code_path) {
+                Storage::disk('public')->delete($existing->qr_code_path);
+            }
+            return;
+        }
+
+        // If URL explicitly provided (including empty), sync path accordingly
+        if ($request->has('qr_code_url')) {
+            $url = $request->input('qr_code_url');
+            if ($url) {
+                // User-supplied URL replaces stored file
+                if ($existing && $existing->qr_code_path) {
+                    Storage::disk('public')->delete($existing->qr_code_path);
+                }
+                $data['qr_code_path'] = null;
+                $data['qr_code_url'] = $url;
+            } else {
+                // Clear QR entirely
+                if ($existing && $existing->qr_code_path) {
+                    Storage::disk('public')->delete($existing->qr_code_path);
+                }
+                $data['qr_code_path'] = null;
+                $data['qr_code_url'] = null;
+            }
+        }
+    }
+}

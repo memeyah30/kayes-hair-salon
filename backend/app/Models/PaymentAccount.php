@@ -15,6 +15,7 @@ class PaymentAccount extends Model
         'account_type',
         'bank_name',
         'qr_code_url',
+        'qr_code_path',
         'is_active',
         'instructions',
     ];

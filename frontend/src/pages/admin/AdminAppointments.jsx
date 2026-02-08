@@ -19,10 +19,31 @@ const AdminAppointments = () => {
   })
   const [stylists, setStylists] = useState([])
   const [services, setServices] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchDate, setSearchDate] = useState('')
+  const [searchServiceId, setSearchServiceId] = useState('')
   const navigate = useNavigate()
+  const storedUserType = localStorage.getItem('userType') || 'admin'
+  const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
+  const getAppointmentServices = (appointment) =>
+    appointment.services && appointment.services.length > 0
+      ? appointment.services
+      : (appointment.service ? [appointment.service] : [])
+  const toManilaDate = (value) => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(value))
+    } catch {
+      return ''
+    }
+  }
 
   useEffect(() => {
     loadData()
@@ -63,7 +84,17 @@ const AdminAppointments = () => {
       }
       loadData()
     } catch (e) {
-      toast.error('Failed to update appointment')
+      toast.error(e.response?.data?.message || 'Failed to update appointment')
+    }
+  }
+
+  const handlePaymentStatus = async (id, status) => {
+    try {
+      await api.patch(`/appointments/${id}`, { payment_status: status })
+      toast.success(`Payment marked as ${status.toUpperCase()}`)
+      loadData()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to update payment status')
     }
   }
 
@@ -110,13 +141,65 @@ const AdminAppointments = () => {
     }
   }
 
+  const normalizedSearch = searchTerm.trim().toLowerCase()
   const filteredAppointments = appointments.filter(apt => {
-    if (filter === 'all') return true
-    if (filter === 'confirmed') return apt.status === 'confirmed'
-    return apt.status === filter
+    if (filter !== 'all') {
+      if (filter === 'confirmed' && apt.status !== 'confirmed') return false
+      if (filter !== 'confirmed' && apt.status !== filter) return false
+    }
+
+    const appointmentServices = getAppointmentServices(apt)
+
+    if (searchServiceId) {
+      const serviceIdNum = parseInt(searchServiceId, 10)
+      if (!appointmentServices.some(s => s.id === serviceIdNum)) return false
+    }
+
+    if (searchDate) {
+      const aptDate = toManilaDate(getStart(apt))
+      if (aptDate !== searchDate) return false
+    }
+
+    if (normalizedSearch) {
+      const customerName = (apt.customer_name || '').toLowerCase()
+      const serviceNames = appointmentServices.map(s => s.name || '').join(' ').toLowerCase()
+      if (!customerName.includes(normalizedSearch) && !serviceNames.includes(normalizedSearch)) return false
+    }
+
+    return true
   })
 
   const currency = cents => `₱${(cents / 100).toFixed(2)}`
+
+  const paymentStatusLabel = (status) => {
+    if (!status) return 'UNPAID'
+    const map = {
+      unpaid: 'UNPAID',
+      pending: 'PENDING',
+      paid: 'PAID',
+      rejected: 'REJECTED',
+      downpayment: 'DOWNPAYMENT',
+      refunded: 'REFUNDED',
+    }
+    return map[status] || status.toUpperCase()
+  }
+  const paymentStatusClass = (status) => {
+    const s = status || 'unpaid'
+    if (s === 'paid') return 'bg-green-100 text-green-800'
+    if (s === 'pending' || s === 'downpayment') return 'bg-yellow-100 text-yellow-800'
+    if (s === 'rejected' || s === 'refunded') return 'bg-red-100 text-red-800'
+    return 'bg-gray-100 text-gray-800'
+  }
+  const paymentMethodLabel = (method) => {
+    if (method === 'online') return 'GCash (Manual)'
+    if (method === 'on_hand') return 'Cash'
+    return method || 'Cash'
+  }
+  const resolveProofUrl = (url) => {
+    if (!url) return null
+    if (url.startsWith('http')) return url
+    return `/${url.replace(/^\/+/, '')}`
+  }
 
   if (loading) {
     return <div className="p-6 text-center">Loading...</div>
@@ -125,30 +208,32 @@ const AdminAppointments = () => {
   const handleLogout = () => {
     api.post('/logout').finally(() => {
       localStorage.clear()
-      navigate('/login/admin')
+      navigate(loginPath)
     })
   }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
-      <Sidebar userType="admin" onLogout={handleLogout} />
+      <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">Appointment Management</h1>
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/admin/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              aria-label="Return to Dashboard"
+              title="Return to Dashboard"
             >
-              ← Return to Dashboard
+              &larr;
             </button>
+            <h1 className="text-2xl font-bold">Appointment Management</h1>
           </div>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2">
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="w-full sm:w-auto border rounded px-3 py-2"
+            className="w-full lg:w-auto border rounded px-3 py-2"
           >
             <option value="all">All Appointments</option>
             <option value="booked">Booked</option>
@@ -156,9 +241,42 @@ const AdminAppointments = () => {
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
+          <input
+            type="text"
+            placeholder="Search name or service"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full lg:w-56 border rounded px-3 py-2"
+          />
+          <input
+            type="date"
+            value={searchDate}
+            onChange={(e) => setSearchDate(e.target.value)}
+            className="w-full lg:w-auto border rounded px-3 py-2"
+          />
+          <select
+            value={searchServiceId}
+            onChange={(e) => setSearchServiceId(e.target.value)}
+            className="w-full lg:w-56 border rounded px-3 py-2"
+          >
+            <option value="">All Services</option>
+            {services.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => {
+              setSearchTerm('')
+              setSearchDate('')
+              setSearchServiceId('')
+            }}
+            className="w-full lg:w-auto border rounded px-3 py-2 text-gray-700 hover:bg-gray-50"
+          >
+            Clear
+          </button>
           <button
             onClick={() => navigate('/book')}
-            className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="w-full lg:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             + Create Appointment
           </button>
@@ -174,6 +292,7 @@ const AdminAppointments = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stylist</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
@@ -181,10 +300,9 @@ const AdminAppointments = () => {
             <tbody className="divide-y">
               {filteredAppointments.map(apt => {
                 // Get all services for this appointment
-                const appointmentServices = apt.services && apt.services.length > 0 
-                  ? apt.services 
-                  : (apt.service ? [apt.service] : [])
+                const appointmentServices = getAppointmentServices(apt)
                 const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
+                const proofUrl = resolveProofUrl(apt.payment_proof_url)
                 
                 return (
                 <tr key={apt.id} className="hover:bg-gray-50">
@@ -228,6 +346,24 @@ const AdminAppointments = () => {
                     </span>
                   </td>
                   <td className="px-4 py-3">
+                    <div className="space-y-1">
+                      <span className={`px-2 py-1 rounded text-xs ${paymentStatusClass(apt.payment_status)}`}>
+                        {paymentStatusLabel(apt.payment_status)}
+                      </span>
+                      <div className="text-xs text-gray-500">{paymentMethodLabel(apt.payment_method)}</div>
+                      {proofUrl && (
+                        <button
+                          type="button"
+                          onClick={() => window.open(proofUrl, '_blank')}
+                          className="text-xs text-blue-600 hover:text-blue-800"
+                          title="View payment proof"
+                        >
+                          View Proof
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
                     {appointmentServices.length > 1 ? (
                       <div>
                         <div className="font-semibold text-green-600">{currency(totalPrice)}</div>
@@ -257,6 +393,24 @@ const AdminAppointments = () => {
                           >
                             Reschedule
                           </button>
+                          {apt.payment_method === 'online' && apt.payment_status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handlePaymentStatus(apt.id, 'paid')}
+                                className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200"
+                                title="Mark payment as paid"
+                              >
+                                Mark Paid
+                              </button>
+                              <button
+                                onClick={() => handlePaymentStatus(apt.id, 'rejected')}
+                                className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                title="Reject payment proof"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
                           <button
                             onClick={() => handleAction(apt.id, 'cancel')}
                             className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
@@ -375,3 +529,5 @@ const AdminAppointments = () => {
 }
 
 export default AdminAppointments
+
+

@@ -13,6 +13,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import StylistDashboard from './pages/StylistDashboard'
 import CustomerDashboard from './pages/CustomerDashboard'
 import ManageStylists from './pages/ManageStylists'
+import ManageManagers from './pages/ManageManagers'
 import ManageServices from './pages/ManageServices'
 import AdminAppointments from './pages/admin/AdminAppointments'
 import AdminCustomers from './pages/admin/AdminCustomers'
@@ -47,7 +48,7 @@ const App = () => {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute allowedTypes={['admin']}>
+            <ProtectedRoute allowedTypes={['admin', 'manager']}>
               <AdminDashboard />
             </ProtectedRoute>
           }
@@ -69,9 +70,17 @@ const App = () => {
           }
         />
         <Route
-          path="/admin/appointments"
+          path="/admin/manage/managers"
           element={
             <ProtectedRoute allowedTypes={['admin']}>
+              <ManageManagers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/appointments"
+          element={
+            <ProtectedRoute allowedTypes={['admin', 'manager']}>
               <AdminAppointments />
             </ProtectedRoute>
           }
@@ -79,7 +88,7 @@ const App = () => {
         <Route
           path="/admin/customers"
           element={
-            <ProtectedRoute allowedTypes={['admin']}>
+            <ProtectedRoute allowedTypes={['admin', 'manager']}>
               <AdminCustomers />
             </ProtectedRoute>
           }
@@ -87,7 +96,7 @@ const App = () => {
         <Route
           path="/admin/ratings"
           element={
-            <ProtectedRoute allowedTypes={['admin']}>
+            <ProtectedRoute allowedTypes={['admin', 'manager']}>
               <AdminRatings />
             </ProtectedRoute>
           }
@@ -95,7 +104,7 @@ const App = () => {
         <Route
           path="/admin/holidays"
           element={
-            <ProtectedRoute allowedTypes={['admin']}>
+            <ProtectedRoute allowedTypes={['admin', 'manager']}>
               <ManageHolidays />
             </ProtectedRoute>
           }

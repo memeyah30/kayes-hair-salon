@@ -19,6 +19,8 @@ const ManageHolidays = () => {
     recurring_yearly: false,
   })
   const navigate = useNavigate()
+  const storedUserType = localStorage.getItem('userType') || 'admin'
+  const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
 
   useEffect(() => {
     loadHolidays()
@@ -92,7 +94,7 @@ const ManageHolidays = () => {
   const handleLogout = () => {
     api.post('/logout').finally(() => {
       localStorage.clear()
-      navigate('/login/admin')
+      navigate(loginPath)
     })
   }
 
@@ -119,7 +121,7 @@ const ManageHolidays = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
-      <Sidebar userType="admin" onLogout={handleLogout} />
+      <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">

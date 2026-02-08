@@ -7,6 +7,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
   const adminLinks = [
     { to: '/admin/dashboard', label: 'Dashboard' },
     { to: '/admin/manage/stylists', label: 'Manage Stylists' },
+    { to: '/admin/manage/managers', label: 'Manage Managers' },
     { to: '/admin/manage/services', label: 'Manage Services' },
     { to: '/admin/appointments', label: 'All Appointments' },
     { to: '/admin/ratings', label: 'Customer Ratings' },
@@ -14,6 +15,14 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/admin/payment-accounts', label: 'Payment Accounts' },
     { to: '/admin/inventory', label: 'Inventory' },
     { to: '/admin/sales', label: 'Sales Monitoring' },
+  ]
+
+  const managerLinks = [
+    { to: '/admin/dashboard', label: 'Dashboard' },
+    { to: '/admin/appointments', label: 'All Appointments' },
+    { to: '/admin/customers', label: 'Customers' },
+    { to: '/admin/ratings', label: 'Customer Ratings' },
+    { to: '/admin/holidays', label: 'Manage Holidays' },
   ]
 
   const stylistLinks = [
@@ -29,7 +38,13 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/services', label: 'Services' },
   ]
 
-  const links = userType === 'admin' ? adminLinks : userType === 'stylist' ? stylistLinks : customerLinks
+  const links = userType === 'admin'
+    ? adminLinks
+    : userType === 'manager'
+      ? managerLinks
+      : userType === 'stylist'
+        ? stylistLinks
+        : customerLinks
 
   const NavLinks = (
     <nav className="flex-1 px-3 py-4 space-y-2 text-sm">
@@ -50,7 +65,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
   const Footer = (
     <>
-      {(userType === 'admin' || userType === 'stylist') && onLogout && (
+      {(userType === 'admin' || userType === 'manager' || userType === 'stylist') && onLogout && (
         <div className="px-5 py-4 border-t border-slate-800">
           <button
             onClick={() => {
@@ -65,6 +80,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       )}
       <div className="px-5 py-4 border-t border-slate-800 text-xs text-slate-300">
         {userType === 'admin' && 'Admin Panel'}
+        {userType === 'manager' && 'Manager Panel'}
         {userType === 'stylist' && 'Stylist Portal'}
         {userType === 'customer' && 'Customer Portal'}
       </div>

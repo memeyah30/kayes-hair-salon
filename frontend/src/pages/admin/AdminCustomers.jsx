@@ -10,6 +10,9 @@ const AdminCustomers = () => {
   const [loading, setLoading] = useState(true)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const navigate = useNavigate()
+  const storedUserType = localStorage.getItem('userType') || 'admin'
+  const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
 
   useEffect(() => {
     loadData()
@@ -71,21 +74,19 @@ const AdminCustomers = () => {
 
   const currency = cents => `₱${(cents / 100).toFixed(2)}`
 
-  const navigate = useNavigate()
-
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
 
   const handleLogout = () => {
     api.post('/logout').finally(() => {
       localStorage.clear()
-      navigate('/login/admin')
+      navigate(loginPath)
     })
   }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
-      <Sidebar userType="admin" onLogout={handleLogout} />
+      <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">

@@ -108,12 +108,17 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     Route::patch('/sales/{sale}', [SaleController::class, 'update']);
     Route::delete('/sales/{sale}', [SaleController::class, 'destroy']);
 
-    // Dashboard stats
-    Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
+    // Managers management
+    Route::get('/managers', [\App\Http\Controllers\ManagerController::class, 'index']);
+    Route::post('/managers', [\App\Http\Controllers\ManagerController::class, 'store']);
+    Route::match(['patch', 'post'], '/managers/{manager}', [\App\Http\Controllers\ManagerController::class, 'update'])->where('manager', '[0-9]+');
+    Route::delete('/managers/{manager}', [\App\Http\Controllers\ManagerController::class, 'destroy']);
 });
 
 // Admin + Manager routes (shared management permissions)
 Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
+    // Dashboard stats (admin + manager)
+    Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
     Route::get('/appointments', [AppointmentController::class, 'index']);
     Route::get('/appointments/history', [AppointmentController::class, 'history']);
     Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update']);

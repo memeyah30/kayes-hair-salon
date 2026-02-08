@@ -28,6 +28,12 @@ const validatePhone = (phone) => {
   return { valid: true, message: '' }
 }
 
+const resolveQrUrl = (url) => {
+  if (!url) return null
+  if (url.startsWith('http')) return url
+  return `${window.location.origin}/${url.replace(/^\\/+/, '')}`
+}
+
 // Helper function to convert ISO string to HH:MM format in Asia/Manila timezone
 const toManilaHHmm = (isoString) => {
   const d = new Date(isoString)
@@ -878,17 +884,29 @@ const BookAppointment = () => {
       
       // Calculate payment amount
       let paymentAmountCents = 0
-      let paymentStatus = 'pending'
-      
+      let paymentStatus = payment.method === 'online' ? 'pending' : 'unpaid'
+
       if (payment.method === 'online') {
         if (payment.paymentType === 'full') {
           paymentAmountCents = totalAmountCents
-          paymentStatus = 'paid'
         } else {
           // Downpayment - use entered amount or default to 50%
           paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.5)
-          paymentStatus = 'downpayment'
         }
+      } else if (payment.method === 'on_hand') {
+        if (!payment.amount) {
+          toast.warn('Cash deposit is required to confirm your appointment')
+          setLoading(false)
+          return
+        }
+        paymentAmountCents = Math.round(parseFloat(payment.amount) * 100)
+        const minDepositCents = Math.round(totalAmountCents * 0.5)
+        if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
+          toast.warn(`Minimum cash deposit is ${currency(minDepositCents)}`)
+          setLoading(false)
+          return
+        }
+        paymentStatus = paymentAmountCents >= totalAmountCents ? 'paid' : 'downpayment'
       }
 
       // Create FormData for file upload
@@ -921,6 +939,8 @@ const BookAppointment = () => {
         if (payment.proofFile) {
           formData.append('payment_proof', payment.proofFile)
         }
+      } else if (payment.method === 'on_hand') {
+        formData.append('downpayment_amount_cents', paymentAmountCents)
       }
 
       // Don't set Content-Type header manually - let axios handle it for FormData
@@ -1142,12 +1162,12 @@ const BookAppointment = () => {
                   name="payment_method"
                   value="on_hand"
                   checked={payment.method === 'on_hand'}
-                  onChange={(e) => setPayment({ ...payment, method: e.target.value })}
+                  onChange={(e) => setPayment({ ...payment, method: e.target.value, amount: '', proofFile: null, proofPreview: null })}
                   className="sr-only"
                 />
                 <div className="text-center">
-                  <div className="font-semibold text-gray-900">Pay on Hand</div>
-                  <div className="text-sm text-gray-600 mt-1">Pay at the salon</div>
+                  <div className="font-semibold text-gray-900">Pay at Salon (Cash)</div>
+                  <div className="text-sm text-gray-600 mt-1">Pay in person after the service</div>
                 </div>
               </label>
               <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
@@ -1158,12 +1178,12 @@ const BookAppointment = () => {
                   name="payment_method"
                   value="online"
                   checked={payment.method === 'online'}
-                  onChange={(e) => setPayment({ ...payment, method: e.target.value })}
+                  onChange={(e) => setPayment({ ...payment, method: e.target.value, amount: '', proofFile: null, proofPreview: null })}
                   className="sr-only"
                 />
                 <div className="text-center">
-                  <div className="font-semibold text-gray-900">Pay Online (GCash)</div>
-                  <div className="text-sm text-gray-600 mt-1">Pay via GCash or other online methods</div>
+                  <div className="font-semibold text-gray-900">GCash (Manual)</div>
+                  <div className="text-sm text-gray-600 mt-1">Scan QR, pay via GCash, then upload your receipt</div>
                 </div>
               </label>
             </div>
@@ -1419,6 +1439,39 @@ const BookAppointment = () => {
             )
           })()}
 
+          {payment.method === 'on_hand' && (() => {
+            const serviceIdsForCalc = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
+            const selectedServicesData = services.filter(s => serviceIdsForCalc.includes(s.id.toString()))
+            const totalAmountCents = selectedServicesData.reduce((sum, s) => {
+              if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+                const variant = s.variants.find(v => v.id === selectedVariants[s.id])
+                return sum + (variant ? variant.price_cents : s.price_cents || 0)
+              }
+              return sum + (s.price_cents || 0)
+            }, 0)
+            const minDepositCents = Math.round(totalAmountCents * 0.5)
+            const minDeposit = (minDepositCents / 100).toFixed(2)
+            return (
+              <div className="bg-white rounded-xl shadow p-4 mb-4">
+                <h3 className="font-semibold mb-2 text-gray-900">Cash Deposit</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  A 50% deposit is required to confirm your appointment. The admin will confirm once deposit is received.
+                </p>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Deposit Amount (₱) *</label>
+                <input
+                  type="number"
+                  min={minDeposit}
+                  step="0.01"
+                  className="w-full border rounded px-3 py-2 text-gray-900"
+                  value={payment.amount}
+                  onChange={(e) => setPayment({ ...payment, amount: e.target.value })}
+                  placeholder={`Minimum ₱${minDeposit}`}
+                />
+                <p className="text-xs text-gray-500 mt-1">Minimum: {currency(minDepositCents)}</p>
+              </div>
+            )
+          })()}
+
           <div className="flex gap-3">
             <button
               onClick={() => setStep(1)}
@@ -1480,6 +1533,9 @@ const BookAppointment = () => {
         return (
           <div className="bg-white rounded-xl shadow p-6 max-w-3xl mx-auto">
             <h2 className="text-xl font-bold mb-4 text-gray-900">Payment Details</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Payments are verified manually. Your booking will be marked as <strong>PENDING</strong> until the salon confirms the receipt.
+            </p>
             
             {/* Booking Summary */}
             <div className="bg-blue-50 rounded-lg p-4 mb-6">
@@ -1589,8 +1645,12 @@ const BookAppointment = () => {
                             <div className="text-xs text-gray-500 mt-1">{account.instructions}</div>
                           )}
                         </div>
-                        {account.qr_code_url && (
-                          <img src={`http://localhost:8000/${account.qr_code_url}`} alt="QR Code" className="w-20 h-20 object-contain" />
+                        {resolveQrUrl(account.qr_code_url) && (
+                          <img
+                            src={resolveQrUrl(account.qr_code_url)}
+                            alt="QR Code"
+                            className="w-20 h-20 object-contain"
+                          />
                         )}
                       </div>
                     </label>

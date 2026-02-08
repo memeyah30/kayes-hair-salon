@@ -9,11 +9,15 @@ const api = axios.create({
 const currency = cents => `₱${(cents / 100).toFixed(2)}`
 
 const formatDuration = (minutes) => {
-  if (minutes < 60) {
-    return `${minutes}m`
+  const minutesValue = Number(minutes)
+  if (!Number.isFinite(minutesValue)) {
+    return 'Price'
   }
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
+  if (minutesValue < 60) {
+    return `${minutesValue}m`
+  }
+  const hours = Math.floor(minutesValue / 60)
+  const mins = minutesValue % 60
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
 }
 
