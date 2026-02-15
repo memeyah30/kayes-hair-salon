@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -62,7 +62,7 @@ const TimePicker = ({ value, onChange, disabled = false, label = '' }) => {
           </option>
         ))}
       </select>
-      <span className="text-gray-500">:</span>
+      <span className="text-[#9b857a]">:</span>
       <select
         value={minute}
         onChange={handleMinuteChange}
@@ -79,7 +79,7 @@ const TimePicker = ({ value, onChange, disabled = false, label = '' }) => {
           </option>
         ))}
       </select>
-      {label && <span className="text-xs text-gray-500 ml-1">{label}</span>}
+      {label && <span className="text-xs text-[#9b857a] ml-1">{label}</span>}
     </div>
   )
 }
@@ -367,22 +367,26 @@ const ManageStylists = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">Manage Stylists</h1>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              ← Return to Dashboard
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
+              >
+                ←
+              </button>
+              <h1 className="text-2xl font-bold">Manage Stylists</h1>
+            </div>
           </div>
 
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
         <h2 className="text-xl font-semibold mb-4">{editing ? 'Edit' : 'Add'} Stylist</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
@@ -437,7 +441,7 @@ const ManageStylists = () => {
                 placeholder={editing ? '••••••••' : 'Enter password (min 6 characters)'}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               />
-              {!editing && <p className="text-gray-500 text-xs mt-1">Default: stylist123 if left blank</p>}
+              {!editing && <p className="text-[#9b857a] text-xs mt-1">Default: stylist123 if left blank</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Image</label>
@@ -470,7 +474,7 @@ const ManageStylists = () => {
               
               {/* Quick Actions */}
               <div className="flex flex-wrap gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600 self-center mr-2">Quick Actions:</span>
+                <span className="text-sm text-[#8f7a6f] self-center mr-2">Quick Actions:</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -517,7 +521,7 @@ const ManageStylists = () => {
                     setFormData({ ...formData, working_hours: updated })
                     toast.info('Disabled all days')
                   }}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+                  className="px-3 py-1 bg-[#f7f1ec] text-gray-700 rounded text-sm hover:bg-gray-200"
                 >
                   Clear All
                 </button>
@@ -544,7 +548,7 @@ const ManageStylists = () => {
                       }}
                       label="Start"
                     />
-                    <span className="text-gray-600">to</span>
+                    <span className="text-[#8f7a6f]">to</span>
                     <TimePicker
                       value={formData.working_hours.find(wh => wh.enabled)?.end_time || '20:00'}
                       onChange={(end) => {
@@ -561,12 +565,12 @@ const ManageStylists = () => {
                       }}
                       label="End"
                 />
-                    <span className="text-xs text-gray-500">(Updates all enabled days)</span>
+                    <span className="text-xs text-[#9b857a]">(Updates all enabled days)</span>
                   </div>
                   
                   {/* Preset Time Buttons */}
                   <div className="flex flex-wrap gap-2 pt-2 border-t">
-                    <span className="text-xs text-gray-600 self-center">Presets:</span>
+                    <span className="text-xs text-[#8f7a6f] self-center">Presets:</span>
                     {[
                       { label: '8 AM - 5 PM', start: '08:00', end: '17:00' },
                       { label: '8 AM - 8 PM', start: '08:00', end: '20:00' },
@@ -605,7 +609,7 @@ const ManageStylists = () => {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse">
                 <thead>
-                  <tr className="bg-gray-100">
+                  <tr className="bg-[#f7f1ec]">
                     <th className="border p-2 text-left font-semibold">Day</th>
                     <th className="border p-2 text-center font-semibold">Available</th>
                     <th className="border p-2 text-center font-semibold">Start Time</th>
@@ -645,7 +649,7 @@ const ManageStylists = () => {
                           <span className={`px-3 py-1 rounded text-sm font-medium ${
                             isEnabled 
                               ? 'bg-green-100 text-green-700' 
-                              : 'bg-gray-200 text-gray-600'
+                              : 'bg-gray-200 text-[#8f7a6f]'
                           }`}>
                             {isEnabled ? '✓ Working' : 'Day Off'}
                           </span>
@@ -664,7 +668,7 @@ const ManageStylists = () => {
                             disabled={!isEnabled}
                         />
                         </td>
-                        <td className="border p-3 text-center text-sm text-gray-600">
+                        <td className="border p-3 text-center text-sm text-[#8f7a6f]">
                           {isEnabled ? `${hours} hrs` : '-'}
                         </td>
                       </tr>
@@ -674,7 +678,7 @@ const ManageStylists = () => {
               </table>
             </div>
             
-            <div className="mt-3 text-xs text-gray-500">
+            <div className="mt-3 text-xs text-[#9b857a]">
               💡 Tip: Check the day box to enable it, then set the times. Use Quick Actions for common schedules.
             </div>
           </div>
@@ -719,9 +723,9 @@ const ManageStylists = () => {
       </div>
 
       {editing && (
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
           <h2 className="text-xl font-semibold mb-4">Days Off / Time Off</h2>
-          <p className="text-sm text-gray-600 mb-4">Add specific dates when this stylist will be unavailable</p>
+          <p className="text-sm text-[#8f7a6f] mb-4">Add specific dates when this stylist will be unavailable</p>
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium mb-1">Start Date & Time</label>
@@ -750,7 +754,7 @@ const ManageStylists = () => {
           </button>
           <div className="space-y-2">
             {timeOffs.length === 0 ? (
-              <div className="text-center py-4 text-gray-500 text-sm">No days off scheduled</div>
+              <div className="text-center py-4 text-[#9b857a] text-sm">No days off scheduled</div>
             ) : (
               timeOffs.map((to, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
@@ -758,7 +762,7 @@ const ManageStylists = () => {
                     <span className="text-sm font-medium">
                       {new Date(to.start_datetime).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
                     </span>
-                    <span className="text-sm text-gray-600 ml-2">
+                    <span className="text-sm text-[#8f7a6f] ml-2">
                       {new Date(to.start_datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - {new Date(to.end_datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} PHT
                     </span>
                   </div>
@@ -783,7 +787,7 @@ const ManageStylists = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow p-4">
+      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
         <h2 className="text-xl font-semibold mb-4">All Stylists ({stylists.length})</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {stylists.length === 0 ? (
@@ -811,12 +815,12 @@ const ManageStylists = () => {
                 <div className="flex items-center gap-2">
               <div className="font-semibold">{s.name}</div>
                   {!s.active && (
-                    <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                    <span className="text-xs bg-gray-200 text-[#8f7a6f] px-2 py-0.5 rounded">
                       Inactive
                     </span>
                   )}
                 </div>
-              <div className="text-sm text-gray-600">{s.email}</div>
+              <div className="text-sm text-[#8f7a6f]">{s.email}</div>
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => handleEdit(s)}
@@ -941,3 +945,5 @@ const ManageStylists = () => {
 }
 
 export default ManageStylists
+
+

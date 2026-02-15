@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -132,45 +132,49 @@ const ManageInventory = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">Inventory Management</h1>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              ← Return to Dashboard
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
+              >
+                ←
+              </button>
+              <h1 className="text-2xl font-bold">Inventory Management</h1>
+            </div>
           </div>
 
           {/* Stats Cards */}
           {stats && (
             <div className="grid md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-sm text-gray-600">Total Items</div>
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <div className="text-sm text-[#8f7a6f]">Total Items</div>
                 <div className="text-2xl font-bold">{stats.total_items}</div>
               </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-sm text-gray-600">Active Items</div>
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <div className="text-sm text-[#8f7a6f]">Active Items</div>
                 <div className="text-2xl font-bold">{stats.active_items}</div>
               </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-sm text-gray-600">Low Stock Items</div>
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <div className="text-sm text-[#8f7a6f]">Low Stock Items</div>
                 <div className="text-2xl font-bold text-red-600">{stats.low_stock_items}</div>
               </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-sm text-gray-600">Total Inventory Value</div>
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <div className="text-sm text-[#8f7a6f]">Total Inventory Value</div>
                 <div className="text-2xl font-bold">{currency(stats.total_inventory_value_cents)}</div>
               </div>
             </div>
           )}
 
           {/* Add/Edit Form */}
-          <div className="bg-white rounded-xl shadow p-6">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
             <h2 className="text-xl font-semibold mb-4">{editing ? 'Edit' : 'Add'} Inventory Item</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
@@ -334,7 +338,7 @@ const ManageInventory = () => {
           </div>
 
           {/* Inventory List */}
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-xl font-semibold">Inventory Items</h2>
               <select
@@ -404,7 +408,7 @@ const ManageInventory = () => {
                 </tbody>
               </table>
               {filteredInventory.length === 0 && (
-                <div className="text-center py-8 text-gray-500">No inventory items found</div>
+                <div className="text-center py-8 text-[#9b857a]">No inventory items found</div>
               )}
             </div>
           </div>
@@ -415,3 +419,5 @@ const ManageInventory = () => {
 }
 
 export default ManageInventory
+
+

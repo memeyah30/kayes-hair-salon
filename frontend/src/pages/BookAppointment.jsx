@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { QRCodeSVG } from 'qrcode.react'
@@ -80,12 +80,12 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
   const canGoPrev = year > todayYear || (year === todayYear && month > todayMonth)
 
   return (
-    <div className="bg-white rounded-xl shadow p-4">
+    <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={handlePrevMonth}
           disabled={!canGoPrev}
-          className={`px-3 py-1 rounded ${canGoPrev ? 'hover:bg-gray-100 text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+          className={`px-3 py-1 rounded ${canGoPrev ? 'hover:bg-[#f7f1ec] text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
           title={canGoPrev ? 'Previous month' : 'Cannot go before current month'}
         >
           ←
@@ -93,13 +93,13 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
         <h3 className="font-semibold">{label}</h3>
         <button
           onClick={handleNextMonth}
-          className="px-3 py-1 rounded hover:bg-gray-100 text-gray-700"
+          className="px-3 py-1 rounded hover:bg-[#f7f1ec] text-gray-700"
           title="Next month"
         >
           →
         </button>
       </div>
-      <div className="grid grid-cols-7 text-xs text-gray-500 mb-2">
+      <div className="grid grid-cols-7 text-xs text-[#9b857a] mb-2">
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="text-center">{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1 text-sm">
@@ -124,7 +124,7 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
               disabled={isDisabled}
               className={`h-10 rounded flex items-center justify-center border ${
                 isDisabled 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  ? 'bg-[#f7f1ec] text-gray-400 cursor-not-allowed' 
                   : isSelected 
                     ? 'bg-blue-600 text-white border-blue-600' 
                     : 'hover:border-blue-300'
@@ -174,9 +174,9 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
   const hasSlots = slots.length > 0
   
   return (
-    <div className="bg-white rounded-xl shadow p-4 h-full">
+    <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 h-full">
       <div className="font-semibold mb-3">Time slots (8 AM - 8 PM)</div>
-      {!hasSlots && <div className="text-sm text-gray-500">Loading slots...</div>}
+      {!hasSlots && <div className="text-sm text-[#9b857a]">Loading slots...</div>}
       {hasSlots && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
@@ -234,7 +234,7 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
                   disabled={isDisabled}
                   className={`border rounded px-3 py-2 text-sm transition ${
                     isDisabled
-                      ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed line-through'
+                      ? 'bg-[#f7f1ec] text-gray-400 border-gray-300 cursor-not-allowed line-through'
                       : isSelected
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'hover:border-blue-300 hover:bg-blue-50'
@@ -252,7 +252,7 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
             </div>
           )}
           {availableSlots.length > 0 && (
-            <div className="text-xs text-gray-500 text-center">
+            <div className="text-xs text-[#9b857a] text-center">
               {availableSlots.length} of {slots.length} slots available
             </div>
           )}
@@ -309,7 +309,7 @@ const ReceiptModal = ({ appointment, onClose }) => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-6 max-w-md">
           <h3 className="font-bold text-lg mb-2">Receipt Data Incomplete</h3>
-          <p className="text-gray-600 mb-4">Some appointment details are missing. Your booking was successful, but we couldn't load the full receipt.</p>
+          <p className="text-[#8f7a6f] mb-4">Some appointment details are missing. Your booking was successful, but we couldn't load the full receipt.</p>
           <button onClick={onClose} className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
             Close
           </button>
@@ -395,23 +395,23 @@ Thank you for choosing Kaye's Hair Salon and Spa!
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold">Appointment Receipt</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+            <button onClick={onClose} className="text-[#9b857a] hover:text-gray-700">✕</button>
           </div>
           
           <div className="border-2 border-gray-300 p-6 space-y-4" id="receipt-content">
             <div className="text-center border-b pb-4">
               <h1 className="text-3xl font-bold">KAYE'S HAIR SALON AND SPA</h1>
-              <p className="text-gray-600">Appointment Receipt</p>
+              <p className="text-[#8f7a6f]">Appointment Receipt</p>
             </div>
             
             <div>
-              <div className="text-sm text-gray-500">Receipt #</div>
+              <div className="text-sm text-[#9b857a]">Receipt #</div>
               <div className="font-bold text-lg">{'APT-' + String(appointment.id).padStart(6, '0')}</div>
-              <div className="text-sm text-gray-500 mt-1">Booking Date: {new Date(appointment.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT</div>
+              <div className="text-sm text-[#9b857a] mt-1">Booking Date: {new Date(appointment.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT</div>
             </div>
 
             <div className="border-t pt-4">
@@ -493,14 +493,14 @@ Thank you for choosing Kaye's Hair Salon and Spa!
                 <span className={`px-3 py-1 rounded text-sm ${
                   appointment.status === 'booked' ? 'bg-blue-100 text-blue-800' :
                   appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  'bg-gray-100 text-gray-800'
+                  'bg-[#f7f1ec] text-[#3b2f2a]'
                 }`}>
                   Status: {appointment.status.toUpperCase()}
                 </span>
               </div>
             </div>
 
-            <div className="border-t pt-4 text-center text-sm text-gray-600">
+            <div className="border-t pt-4 text-center text-sm text-[#8f7a6f]">
               Thank you for choosing Kaye's Hair Salon and Spa!
             </div>
           </div>
@@ -518,10 +518,10 @@ Thank you for choosing Kaye's Hair Salon and Spa!
                   level="M"
                   includeMargin={true}
                 />
-                <p className="text-xs text-gray-500 mt-1">Scan to book an appointment</p>
+                <p className="text-xs text-[#9b857a] mt-1">Scan to book an appointment</p>
               </div>
               <div className="flex-1 space-y-2">
-                <p className="text-sm text-gray-600">Share this link to book an appointment:</p>
+                <p className="text-sm text-[#8f7a6f]">Share this link to book an appointment:</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -539,7 +539,7 @@ Thank you for choosing Kaye's Hair Salon and Spa!
                     Copy
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-[#9b857a]">
                   Your receipt number: {'APT-' + String(appointment.id).padStart(6, '0')}
                 </p>
               </div>
@@ -601,7 +601,7 @@ const BookAppointment = () => {
   })
   const [payment, setPayment] = useState({
     method: 'on_hand', // 'on_hand' or 'online'
-    paymentType: 'full', // 'full' or 'downpayment'
+    paymentType: 'downpayment', // downpayment only
     selectedAccount: '',
     amount: '',
     proofFile: null,
@@ -887,19 +887,15 @@ const BookAppointment = () => {
       let paymentStatus = payment.method === 'online' ? 'pending' : 'unpaid'
 
       if (payment.method === 'online') {
-        if (payment.paymentType === 'full') {
-          paymentAmountCents = totalAmountCents
-        } else {
-          // Downpayment - use entered amount or default to 50%
-          paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.5)
-        }
+        // Downpayment only - use entered amount or default to 50%
+        paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.5)
       } else if (payment.method === 'on_hand') {
         if (!payment.amount) {
-          toast.warn('Cash deposit is required to confirm your appointment')
-          setLoading(false)
-          return
+          // Downpayment only - default to 50%
+          paymentAmountCents = Math.round(totalAmountCents * 0.5)
+        } else {
+          paymentAmountCents = Math.round(parseFloat(payment.amount) * 100)
         }
-        paymentAmountCents = Math.round(parseFloat(payment.amount) * 100)
         const minDepositCents = Math.round(totalAmountCents * 0.5)
         if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
           toast.warn(`Minimum cash deposit is ${currency(minDepositCents)}`)
@@ -941,6 +937,9 @@ const BookAppointment = () => {
         }
       } else if (payment.method === 'on_hand') {
         formData.append('downpayment_amount_cents', paymentAmountCents)
+        if (payment.proofFile) {
+          formData.append('payment_proof', payment.proofFile)
+        }
       }
 
       // Don't set Content-Type header manually - let axios handle it for FormData
@@ -1042,7 +1041,7 @@ const BookAppointment = () => {
   const selectedStylistData = stylists.find(s => s.id === parseInt(selectedStylist))
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-[#f7f1ec]">
       {/* Header */}
       <div className="bg-slate-900 text-white py-4 px-4 md:px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1071,19 +1070,19 @@ const BookAppointment = () => {
       <div className="flex items-center justify-center mb-6">
         <div className="flex items-center">
           <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
-            step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
+            step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-[#8f7a6f]'
           }`}>
             1
           </div>
           <div className={`w-10 md:w-24 h-1 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
           <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
-            step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
+            step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-[#8f7a6f]'
           }`}>
             2
           </div>
           <div className={`w-10 md:w-24 h-1 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
           <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
-            step >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
+            step >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-[#8f7a6f]'
           }`}>
             3
           </div>
@@ -1092,7 +1091,7 @@ const BookAppointment = () => {
 
       {/* Step 1: Customer Information */}
       {step === 1 && (
-        <div className="bg-white rounded-xl shadow p-6 max-w-2xl mx-auto">
+        <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 max-w-2xl mx-auto">
           <h2 className="text-xl font-bold mb-4 text-gray-900">Customer Information</h2>
           <p className="text-gray-700 mb-6">Please provide your information to proceed with booking</p>
           
@@ -1151,7 +1150,7 @@ const BookAppointment = () => {
       {step === 2 && (
         <>
           {/* Payment Method Selection */}
-          <div className="bg-white rounded-xl shadow p-4 mb-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 mb-4">
             <h3 className="font-semibold mb-3 text-gray-900">Payment Method</h3>
             <div className="grid grid-cols-2 gap-4">
               <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
@@ -1162,12 +1161,19 @@ const BookAppointment = () => {
                   name="payment_method"
                   value="on_hand"
                   checked={payment.method === 'on_hand'}
-                  onChange={(e) => setPayment({ ...payment, method: e.target.value, amount: '', proofFile: null, proofPreview: null })}
+                  onChange={(e) => setPayment({ 
+                    ...payment, 
+                    method: e.target.value, 
+                    paymentType: 'downpayment',
+                    amount: '', 
+                    proofFile: null, 
+                    proofPreview: null 
+                  })}
                   className="sr-only"
                 />
                 <div className="text-center">
                   <div className="font-semibold text-gray-900">Pay at Salon (Cash)</div>
-                  <div className="text-sm text-gray-600 mt-1">Pay in person after the service</div>
+                  <div className="text-sm text-[#8f7a6f] mt-1">Pay in person after the service</div>
                 </div>
               </label>
               <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
@@ -1178,18 +1184,25 @@ const BookAppointment = () => {
                   name="payment_method"
                   value="online"
                   checked={payment.method === 'online'}
-                  onChange={(e) => setPayment({ ...payment, method: e.target.value, amount: '', proofFile: null, proofPreview: null })}
+                  onChange={(e) => setPayment({ 
+                    ...payment, 
+                    method: e.target.value, 
+                    paymentType: 'downpayment',
+                    amount: '', 
+                    proofFile: null, 
+                    proofPreview: null 
+                  })}
                   className="sr-only"
                 />
                 <div className="text-center">
                   <div className="font-semibold text-gray-900">GCash (Manual)</div>
-                  <div className="text-sm text-gray-600 mt-1">Scan QR, pay via GCash, then upload your receipt</div>
+                  <div className="text-sm text-[#8f7a6f] mt-1">Scan QR, pay via GCash, then upload your receipt</div>
                 </div>
               </label>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <label className="text-sm text-gray-900 font-medium">Stylist *</label>
@@ -1255,7 +1268,7 @@ const BookAppointment = () => {
                                   {s.variants.map(variant => (
                                     <label
                                       key={variant.id}
-                                      className="flex items-center gap-2 p-1 hover:bg-gray-100 rounded cursor-pointer"
+                                      className="flex items-center gap-2 p-1 hover:bg-[#f7f1ec] rounded cursor-pointer"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <input
@@ -1418,7 +1431,7 @@ const BookAppointment = () => {
                           }
                         }
                         return (
-                          <li key={s.id} className="text-gray-800">
+                          <li key={s.id} className="text-[#3b2f2a]">
                             <span className="font-medium text-gray-900">{serviceName}</span> - {currency(servicePrice)}
                           </li>
                         )
@@ -1435,39 +1448,6 @@ const BookAppointment = () => {
                     <div className="text-gray-900"><span className="font-medium">Time:</span> {new Date(selectedSlot.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - {new Date(selectedSlot.end).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}</div>
                   )}
                 </div>
-              </div>
-            )
-          })()}
-
-          {payment.method === 'on_hand' && (() => {
-            const serviceIdsForCalc = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
-            const selectedServicesData = services.filter(s => serviceIdsForCalc.includes(s.id.toString()))
-            const totalAmountCents = selectedServicesData.reduce((sum, s) => {
-              if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
-                const variant = s.variants.find(v => v.id === selectedVariants[s.id])
-                return sum + (variant ? variant.price_cents : s.price_cents || 0)
-              }
-              return sum + (s.price_cents || 0)
-            }, 0)
-            const minDepositCents = Math.round(totalAmountCents * 0.5)
-            const minDeposit = (minDepositCents / 100).toFixed(2)
-            return (
-              <div className="bg-white rounded-xl shadow p-4 mb-4">
-                <h3 className="font-semibold mb-2 text-gray-900">Cash Deposit</h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  A 50% deposit is required to confirm your appointment. The admin will confirm once deposit is received.
-                </p>
-                <label className="block text-sm font-medium mb-1 text-gray-900">Deposit Amount (₱) *</label>
-                <input
-                  type="number"
-                  min={minDeposit}
-                  step="0.01"
-                  className="w-full border rounded px-3 py-2 text-gray-900"
-                  value={payment.amount}
-                  onChange={(e) => setPayment({ ...payment, amount: e.target.value })}
-                  placeholder={`Minimum ₱${minDeposit}`}
-                />
-                <p className="text-xs text-gray-500 mt-1">Minimum: {currency(minDepositCents)}</p>
               </div>
             )
           })()}
@@ -1494,8 +1474,8 @@ const BookAppointment = () => {
                     toast.warn('Please complete all booking details')
                     return
                   }
-                  // If payment method is online, go to payment step, otherwise book directly
-                  if (payment.method === 'online') {
+                  // Go to payment step for both online and cash
+                  if (payment.method === 'online' || payment.method === 'on_hand') {
                     setStep(3)
                   } else {
                     handleBook()
@@ -1504,15 +1484,15 @@ const BookAppointment = () => {
                 disabled={!selectedSlot || (selectedServices.length === 0 && !selectedService) || !selectedStylist}
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                {payment.method === 'online' ? 'Continue to Payment' : 'Confirm Booking'}
+                {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment' : 'Confirm Booking'}
               </button>
             )}
           </div>
         </>
       )}
 
-      {/* Step 3: Payment (only for online payments) */}
-      {step === 3 && payment.method === 'online' && (() => {
+      {/* Step 3: Payment */}
+      {step === 3 && (payment.method === 'online' || payment.method === 'on_hand') && (() => {
         const serviceIdsForCalc = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
         const selectedServicesData = services.filter(s => serviceIdsForCalc.includes(s.id.toString()))
         // Calculate total: use variant price if selected, otherwise service price
@@ -1531,10 +1511,16 @@ const BookAppointment = () => {
           : (payment.amount ? parseFloat(payment.amount) : totalAmount * 0.5)
         
         return (
-          <div className="bg-white rounded-xl shadow p-6 max-w-3xl mx-auto">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 max-w-3xl mx-auto">
             <h2 className="text-xl font-bold mb-4 text-gray-900">Payment Details</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Payments are verified manually. Your booking will be marked as <strong>PENDING</strong> until the salon confirms the receipt.
+            <p className="text-sm text-[#8f7a6f] mb-4">
+              {payment.method === 'online'
+                ? (
+                  <>Payments are verified manually. Your booking will be marked as <strong>PENDING</strong> until the salon confirms the receipt.</>
+                )
+                : (
+                  <>Cash payments are verified manually. Your booking will be marked as <strong>PENDING</strong> until the salon confirms your deposit.</>
+                )}
             </p>
             
             {/* Booking Summary */}
@@ -1550,75 +1536,43 @@ const BookAppointment = () => {
               </div>
             </div>
 
-            {/* Payment Type Selection */}
+            {/* Payment Type (Downpayment only) */}
             <div className="mb-6">
               <label className="block text-sm font-medium mb-2 text-gray-900">Payment Type *</label>
-              <div className="grid grid-cols-2 gap-4">
-                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  payment.paymentType === 'full' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment_type"
-                    value="full"
-                    checked={payment.paymentType === 'full'}
-                    onChange={(e) => setPayment({ ...payment, paymentType: e.target.value, amount: '' })}
-                    className="sr-only"
-                  />
-                  <div className="text-center">
-                    <div className="font-semibold text-gray-900">Full Payment</div>
-                    <div className="text-sm text-gray-600 mt-1">{currency(totalAmountCents)}</div>
-                  </div>
-                </label>
-                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  payment.paymentType === 'downpayment' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment_type"
-                    value="downpayment"
-                    checked={payment.paymentType === 'downpayment'}
-                    onChange={(e) => setPayment({ ...payment, paymentType: e.target.value, amount: (totalAmount * 0.5).toFixed(2) })}
-                    className="sr-only"
-                  />
-                  <div className="text-center">
-                    <div className="font-semibold text-gray-900">Downpayment</div>
-                    <div className="text-sm text-gray-600 mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.5))}</div>
-                  </div>
-                </label>
+              <div className="border-2 border-blue-600 bg-blue-50 rounded-lg p-4">
+                <div className="font-semibold text-gray-900">Downpayment</div>
+                <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.5))}</div>
               </div>
             </div>
 
             {/* Payment Amount Input (for downpayment) */}
-            {payment.paymentType === 'downpayment' && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium mb-1 text-gray-900">Downpayment Amount (₱) *</label>
-                <input
-                  type="number"
-                  min={totalAmount * 0.5}
-                  max={totalAmount}
-                  step="0.01"
-                  required
-                  className="w-full border rounded px-3 py-2 text-gray-900"
-                  value={payment.amount}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0
-                    if (value >= totalAmount * 0.5 && value <= totalAmount) {
-                      setPayment({ ...payment, amount: e.target.value })
-                    } else if (value < totalAmount * 0.5) {
-                      toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.5))}`)
-                    }
-                  }}
-                  placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.5))}`}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Minimum: {currency(Math.round(totalAmountCents * 0.5))} • Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}
-                </p>
-              </div>
-            )}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-1 text-gray-900">Downpayment Amount (₱) *</label>
+              <input
+                type="number"
+                min={totalAmount * 0.5}
+                max={totalAmount}
+                step="0.01"
+                required
+                className="w-full border rounded px-3 py-2 text-gray-900"
+                value={payment.amount || (totalAmount * 0.5).toFixed(2)}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0
+                  if (value >= totalAmount * 0.5 && value <= totalAmount) {
+                    setPayment({ ...payment, amount: e.target.value })
+                  } else if (value < totalAmount * 0.5) {
+                    toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.5))}`)
+                  }
+                }}
+                placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.5))}`}
+              />
+              <p className="text-xs text-[#9b857a] mt-1">
+                Minimum: {currency(Math.round(totalAmountCents * 0.5))} • Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}
+              </p>
+            </div>
 
             {/* Payment Account Selection */}
-            {paymentAccounts.length > 0 && (
+            {payment.method === 'online' && paymentAccounts.length > 0 && (
               <div className="mb-6">
                 <label className="block text-sm font-medium mb-2 text-gray-900">Select Payment Account *</label>
                 <div className="space-y-3">
@@ -1640,9 +1594,9 @@ const BookAppointment = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="font-semibold text-gray-900">{account.account_name}</div>
-                          <div className="text-sm text-gray-600">{account.account_number}</div>
+                          <div className="text-sm text-[#8f7a6f]">{account.account_number}</div>
                           {account.instructions && (
-                            <div className="text-xs text-gray-500 mt-1">{account.instructions}</div>
+                            <div className="text-xs text-[#9b857a] mt-1">{account.instructions}</div>
                           )}
                         </div>
                         {resolveQrUrl(account.qr_code_full_url || account.qr_code_url) && (
@@ -1687,7 +1641,11 @@ const BookAppointment = () => {
                   <img src={payment.proofPreview} alt="Payment proof preview" className="max-w-xs border rounded" />
                 </div>
               )}
-              <p className="text-xs text-gray-500 mt-1">Upload a screenshot or photo of your payment transaction</p>
+              <p className="text-xs text-[#9b857a] mt-1">
+                {payment.method === 'online'
+                  ? 'Upload a screenshot or photo of your payment transaction'
+                  : 'Upload a photo or receipt of your cash deposit'}
+              </p>
             </div>
 
             {/* Payment Summary */}
@@ -1697,17 +1655,13 @@ const BookAppointment = () => {
                 <span className="font-bold text-lg text-gray-900">{currency(totalAmountCents)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-700">
-                  {payment.paymentType === 'full' ? 'Payment Amount:' : 'Downpayment Amount:'}
-                </span>
+                <span className="text-gray-700">Downpayment Amount:</span>
                 <span className="font-bold text-lg text-green-600">{currency(Math.round(paymentAmount * 100))}</span>
               </div>
-              {payment.paymentType === 'downpayment' && (
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
-                  <span className="text-gray-700">Remaining Balance:</span>
-                  <span className="font-semibold text-gray-900">{currency(Math.round((totalAmount - paymentAmount) * 100))}</span>
-                </div>
-              )}
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
+                <span className="text-gray-700">Remaining Balance:</span>
+                <span className="font-semibold text-gray-900">{currency(Math.round((totalAmount - paymentAmount) * 100))}</span>
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -1720,10 +1674,14 @@ const BookAppointment = () => {
               </button>
               <button
                 onClick={handleBook}
-                disabled={!payment.proofFile || !payment.selectedAccount || (payment.paymentType === 'downpayment' && (!payment.amount || parseFloat(payment.amount) < totalAmount * 0.5))}
+                disabled={(
+                  !payment.proofFile ||
+                  (payment.method === 'online' && !payment.selectedAccount) ||
+                  (payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
+                )}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                Confirm Booking & Pay
+                {payment.method === 'online' ? 'Confirm Booking & Pay' : 'Confirm Booking'}
               </button>
             </div>
           </div>
@@ -1751,3 +1709,4 @@ const BookAppointment = () => {
 }
 
 export default BookAppointment
+

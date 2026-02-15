@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -61,29 +61,33 @@ const StylistSchedule = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="stylist" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">My Schedule</h1>
-            <button
-              onClick={() => navigate('/stylist/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              ← Return to Dashboard
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/stylist/dashboard')}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
+              >
+                ←
+              </button>
+              <h1 className="text-2xl font-bold">My Schedule</h1>
+            </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <label className="block text-sm font-medium mb-2">Select Date</label>
             <input
               type="date"
@@ -93,7 +97,7 @@ const StylistSchedule = () => {
             />
           </div>
 
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <h2 className="font-semibold text-lg mb-4">
               Schedule for {new Date(selectedDate).toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -104,7 +108,7 @@ const StylistSchedule = () => {
             </h2>
             
             {selectedDateAppointments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No appointments scheduled for this date</div>
+              <div className="text-center py-8 text-[#9b857a]">No appointments scheduled for this date</div>
             ) : (
               <div className="space-y-3">
                 {selectedDateAppointments
@@ -119,10 +123,10 @@ const StylistSchedule = () => {
                             </div>
                             <div>
                               <div className="font-semibold text-lg">{apt.customer_name}</div>
-                              <div className="text-xs text-gray-600">Customer</div>
+                              <div className="text-xs text-[#8f7a6f]">Customer</div>
                             </div>
                           </div>
-                          <div className="text-sm text-gray-600 mt-1">
+                          <div className="text-sm text-[#8f7a6f] mt-1">
                             <span className="font-medium">Time:</span>{' '}
                             {new Date(getStart(apt)).toLocaleTimeString('en-US', {
                               hour: '2-digit',
@@ -135,9 +139,9 @@ const StylistSchedule = () => {
                             })} PHT
                           </div>
                           <div className="text-sm font-medium text-gray-700 mt-1">
-                            <span className="text-gray-500">Service:</span> {apt.service?.name}
+                            <span className="text-[#9b857a]">Service:</span> {apt.service?.name}
                           </div>
-                          <div className="text-xs text-gray-600 mt-2 space-y-1">
+                          <div className="text-xs text-[#8f7a6f] mt-2 space-y-1">
                             {apt.customer_phone && (
                               <div className="flex items-center gap-1">
                                 <span>📞</span>
@@ -169,11 +173,11 @@ const StylistSchedule = () => {
           </div>
 
           {/* Calendar View */}
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <h2 className="font-semibold text-lg mb-4">Monthly Overview</h2>
             <div className="grid grid-cols-7 gap-2 text-sm">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center font-medium text-gray-600 py-2">
+                <div key={day} className="text-center font-medium text-[#8f7a6f] py-2">
                   {day}
                 </div>
               ))}
@@ -194,7 +198,7 @@ const StylistSchedule = () => {
                       isSelected ? 'bg-blue-600 text-white' :
                       isToday ? 'bg-blue-100 text-blue-700' :
                       dayAppointments.length > 0 ? 'bg-green-100 text-green-700' :
-                      'hover:bg-gray-100'
+                      'hover:bg-[#f7f1ec]'
                     }`}
                   >
                     <div>{date.getDate()}</div>
@@ -213,3 +217,5 @@ const StylistSchedule = () => {
 }
 
 export default StylistSchedule
+
+

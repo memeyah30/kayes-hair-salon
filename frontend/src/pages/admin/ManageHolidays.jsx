@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -107,33 +107,37 @@ const ManageHolidays = () => {
       case 'closed':
         return 'bg-red-100 text-red-800'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-[#f7f1ec] text-[#3b2f2a]'
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">Manage Holidays & Special Occasions</h1>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="w-full sm:w-auto px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+                className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
               >
-                ← Return to Dashboard
+                ←
               </button>
+              <h1 className="text-2xl font-bold">Manage Holidays & Special Occasions</h1>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => {
                   setEditing(null)
@@ -163,18 +167,18 @@ const ManageHolidays = () => {
           </div>
 
           {/* Holidays List */}
-          <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recurring</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Recurring</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Description</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -208,7 +212,7 @@ const ManageHolidays = () => {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="max-w-md text-sm text-gray-600">
+                        <div className="max-w-md text-sm text-[#8f7a6f]">
                           {holiday.description || <span className="text-gray-400">No description</span>}
                         </div>
                       </td>
@@ -233,7 +237,7 @@ const ManageHolidays = () => {
                 </tbody>
               </table>
               {holidays.length === 0 && (
-                <div className="text-center py-8 text-gray-500">No holidays found. Click "Add Holiday" to create one.</div>
+                <div className="text-center py-8 text-[#9b857a]">No holidays found. Click "Add Holiday" to create one.</div>
               )}
             </div>
           </div>
@@ -241,7 +245,7 @@ const ManageHolidays = () => {
           {/* Modal */}
           {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                 <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Holiday</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -347,3 +351,5 @@ const ManageHolidays = () => {
 }
 
 export default ManageHolidays
+
+

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 
@@ -10,29 +10,29 @@ const getStart = (appointment) => appointment.start_datetime_pht || appointment.
 const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
 
 const StatCard = ({ title, value, accent }) => (
-  <div className="bg-white rounded-xl shadow p-4 border-l-4" style={{ borderColor: accent }}>
-    <div className="text-gray-500 text-sm font-semibold">{title}</div>
+  <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 border-l-4" style={{ borderColor: accent }}>
+    <div className="text-[#9b857a] text-sm font-semibold">{title}</div>
     <div className="text-3xl font-bold mt-2">{value}</div>
   </div>
 )
 
 const AppointmentList = ({ appointments, onCancel, onStartReschedule }) => (
-  <div className="bg-white rounded-xl shadow p-4">
+  <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
     <div className="flex items-center justify-between mb-3">
       <h3 className="font-semibold">Upcoming appointments</h3>
-      <span className="text-xs text-gray-500">{appointments.length} total</span>
+      <span className="text-xs text-[#9b857a]">{appointments.length} total</span>
     </div>
     <div className="divide-y">
       {appointments.map(appt => (
         <div key={appt.id} className="py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <div className="font-semibold">{appt.customer_name}</div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-[#8f7a6f]">
               {new Date(getStart(appt)).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' })} PHT
               {' • '}
               {appt.service?.name} with {appt.stylist?.name}
             </div>
-            <div className="text-xs uppercase tracking-wide text-gray-500">{appt.status}</div>
+            <div className="text-xs uppercase tracking-wide text-[#9b857a]">{appt.status}</div>
           </div>
           <div className="flex gap-2">
             <button onClick={() => onStartReschedule(appt)} className="px-3 py-1 border rounded text-sm hover:border-blue-400">Reschedule</button>
@@ -40,7 +40,7 @@ const AppointmentList = ({ appointments, onCancel, onStartReschedule }) => (
           </div>
         </div>
       ))}
-      {appointments.length === 0 && <div className="py-3 text-sm text-gray-500">No appointments yet.</div>}
+      {appointments.length === 0 && <div className="py-3 text-sm text-[#9b857a]">No appointments yet.</div>}
     </div>
   </div>
 )
@@ -113,6 +113,7 @@ const Dashboard = () => {
 }
 
 export default Dashboard
+
 
 
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
@@ -57,36 +57,11 @@ const Home = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <span className="text-2xl font-bold flex items-center gap-2">
-                <span className="text-yellow-400">✨</span>
-                Kaye's Hair Salon and Spa
+                <span className="text-yellow-400"></span>
+
               </span>
             </div>
-            <div className="hidden md:flex items-center space-x-6">
-              <button
-                onClick={() => navigate('/book')}
-                className="text-white hover:text-gray-200 text-sm font-medium transition"
-              >
-                Book Appointment
-              </button>
-              <button
-                onClick={() => navigate('/stylists')}
-                className="text-white hover:text-gray-200 text-sm font-medium transition"
-              >
-                Stylists
-              </button>
-              <button
-                onClick={() => navigate('/services')}
-                className="text-white hover:text-gray-200 text-sm font-medium transition"
-              >
-                Services
-              </button>
-              <button
-                onClick={() => navigate('/my-appointments')}
-                className="text-white hover:text-gray-200 text-sm font-medium transition"
-              >
-                My Appointments
-              </button>
-            </div>
+           
             <button
               onClick={() => setMobileMenuOpen(prev => !prev)}
               className="md:hidden px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-sm"
@@ -155,7 +130,7 @@ const Home = () => {
             </button>
             <button
               onClick={() => navigate('/services')}
-              className="w-full sm:w-auto px-8 py-3 bg-white text-gray-800 hover:bg-gray-100 font-semibold rounded border border-gray-300 transition"
+              className="w-full sm:w-auto px-8 py-3 bg-white text-[#3b2f2a] hover:bg-[#f7f1ec] font-semibold rounded border border-gray-300 transition"
             >
               View Services
             </button>
@@ -168,14 +143,14 @@ const Home = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Services</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-[#8f7a6f] max-w-2xl mx-auto">
               Discover our wide range of beauty and wellness services designed to make you look and feel your best.
             </p>
           </div>
 
           {loading ? (
             <div className="text-center py-12">
-              <div className="text-gray-500">Loading services...</div>
+              <div className="text-[#9b857a]">Loading services...</div>
             </div>
           ) : (
             <>
@@ -183,7 +158,7 @@ const Home = () => {
                 {services.slice(0, 6).map((service) => (
                   <div
                     key={service.id}
-                    className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition"
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:ring-2 hover:ring-blue-200"
                   >
                     {service.image ? (
                       <img
@@ -197,14 +172,14 @@ const Home = () => {
                       />
                     ) : null}
                     <div
-                      className={`w-full h-48 ${service.image ? 'hidden' : 'flex'} items-center justify-center bg-gray-100 text-gray-400`}
+                      className={`w-full h-48 ${service.image ? 'hidden' : 'flex'} items-center justify-center bg-[#f7f1ec] text-gray-400`}
                     >
                       No Image
                     </div>
                     <div className="p-4">
                       <h3 className="font-semibold text-lg mb-2">{service.name}</h3>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-[#8f7a6f]">
                           {formatDuration(service.duration_minutes)}
                         </span>
                         <span className="text-lg font-bold text-green-600">
@@ -241,14 +216,14 @@ const Home = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Expert Stylists</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-[#8f7a6f] max-w-2xl mx-auto">
               Meet our talented team of professional stylists dedicated to bringing out your best look.
             </p>
           </div>
 
           {loading ? (
             <div className="text-center py-12">
-              <div className="text-gray-500">Loading stylists...</div>
+              <div className="text-[#9b857a]">Loading stylists...</div>
             </div>
           ) : (
             <>
@@ -256,7 +231,7 @@ const Home = () => {
                 {stylists.slice(0, 4).map((stylist) => (
                   <div
                     key={stylist.id}
-                    className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition"
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:ring-2 hover:ring-blue-200"
                   >
                     {stylist.image ? (
                       <img
@@ -276,7 +251,7 @@ const Home = () => {
                     </div>
                     <div className="p-4 text-center">
                       <h3 className="font-semibold text-lg mb-2">{stylist.name}</h3>
-                      <p className="text-sm text-gray-600 mb-4 min-h-[2.5rem]">
+                      <p className="text-sm text-[#8f7a6f] mb-4 min-h-[2.5rem]">
                         Professional Stylist
                       </p>
                       <button
@@ -304,26 +279,14 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 px-4">
+            {/* Footer */}
+            <footer className="bg-gray-900 text-white py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-xl font-bold flex items-center gap-2">
-              <span className="text-yellow-400">✨</span>
-              Kaye's Hair Salon and Spa
+            <div className="text-gray-400 text-sm text-center md:text-left">
+              2nd Floor, Governor Perdices Street, Dumaguete City, Philippines, 6200
             </div>
-            <div className="flex gap-6">
-              <button onClick={() => navigate('/services')} className="text-gray-400 hover:text-white text-sm transition">
-                Services
-              </button>
-              <button onClick={() => navigate('/stylists')} className="text-gray-400 hover:text-white text-sm transition">
-                Stylists
-              </button>
-              <button onClick={() => navigate('/book')} className="text-gray-400 hover:text-white text-sm transition">
-                Book Now
-              </button>
-            </div>
-            <div className="text-gray-500 text-sm">© 2024 Kaye's Hair Salon and Spa. All rights reserved.</div>
+            <div className="text-[#9b857a] text-sm">� 2024 Kaye's Hair Salon and Spa. All rights reserved.</div>
           </div>
         </div>
       </footer>
@@ -373,3 +336,4 @@ const Home = () => {
 }
 
 export default Home
+

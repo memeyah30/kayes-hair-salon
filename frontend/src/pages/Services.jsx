@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import axios from 'axios'
@@ -41,12 +41,20 @@ const Services = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Services</h1>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => navigate('/')}
+          className="px-4 py-1 bg-transparent text-slate-700 hover:text-slate-900 text-4xl leading-none transition-all duration-300 ease-out hover:-translate-y-1 hover:drop-shadow"
+        >
+          {'<'}
+        </button>
+        <h1 className="text-2xl font-bold">Services</h1>
+      </div>
       
-      <div className="bg-white rounded-xl shadow p-4">
+      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {services.map(s => (
-            <div key={s.id} className="border rounded-lg overflow-hidden hover:shadow-md transition">
+            <div key={s.id} className="border rounded-lg overflow-hidden transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:ring-2 hover:ring-blue-200">
               {s.image ? (
                 <img
                   src={`http://localhost:8000/${s.image}`}
@@ -63,7 +71,7 @@ const Services = () => {
               )}
               <div className="p-4">
                 <div className="font-semibold text-lg mb-1">{s.name}</div>
-                <div className="text-sm text-gray-600 mb-2">
+                <div className="text-sm text-[#8f7a6f] mb-2">
                   Duration: {s.duration_minutes} minutes
                   {s.specialization_tag && ` • ${s.specialization_tag}`}
                 </div>
@@ -81,7 +89,7 @@ const Services = () => {
           ))}
         </div>
         {services.length === 0 && (
-          <div className="text-center py-8 text-gray-500">No services yet.</div>
+          <div className="text-center py-8 text-[#9b857a]">No services yet.</div>
         )}
       </div>
     </div>

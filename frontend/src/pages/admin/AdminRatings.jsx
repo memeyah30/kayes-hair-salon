@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -107,51 +107,55 @@ const AdminRatings = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">Customer Ratings</h1>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              ← Return to Dashboard
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
+              >
+                ←
+              </button>
+              <h1 className="text-2xl font-bold">Customer Ratings</h1>
+            </div>
           </div>
 
           {/* Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm font-semibold">Average Rating</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm font-semibold">Average Rating</div>
               <div className="text-3xl font-bold mt-2 text-yellow-500">{averageRating}</div>
-              <div className="text-xs text-gray-500 mt-1">Out of 5.0</div>
+              <div className="text-xs text-[#9b857a] mt-1">Out of 5.0</div>
             </div>
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm font-semibold">Total Ratings</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm font-semibold">Total Ratings</div>
               <div className="text-3xl font-bold mt-2">{ratings.length}</div>
             </div>
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm font-semibold">5-Star Ratings</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm font-semibold">5-Star Ratings</div>
               <div className="text-3xl font-bold mt-2 text-green-600">{ratingDistribution[5]}</div>
             </div>
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm font-semibold">1-Star Ratings</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm font-semibold">1-Star Ratings</div>
               <div className="text-3xl font-bold mt-2 text-red-600">{ratingDistribution[1]}</div>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <div className="flex gap-4 flex-wrap">
               <div>
                 <label className="block text-sm font-medium mb-1">Filter by Stylist</label>
@@ -185,17 +189,17 @@ const AdminRatings = () => {
           </div>
 
           {/* Ratings List */}
-          <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stylist</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Comment</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Appointment Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Stylist</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Rating</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Comment</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Appointment Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -204,7 +208,7 @@ const AdminRatings = () => {
                       <td className="px-4 py-3">
                         <div className="font-medium">{rating.customer_name || rating.appointment?.customer_name || 'N/A'}</div>
                         {rating.customer_email && (
-                          <div className="text-xs text-gray-500">{rating.customer_email}</div>
+                          <div className="text-xs text-[#9b857a]">{rating.customer_email}</div>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -229,7 +233,7 @@ const AdminRatings = () => {
                         {getStart(rating.appointment) ? (
                           <div className="text-sm">
                             {new Date(getStart(rating.appointment)).toLocaleDateString('en-US', { timeZone: 'Asia/Manila' })}
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-[#9b857a]">
                               {new Date(getStart(rating.appointment)).toLocaleTimeString('en-US', {
                                 timeZone: 'Asia/Manila',
                                 hour: '2-digit',
@@ -255,7 +259,7 @@ const AdminRatings = () => {
                 </tbody>
               </table>
               {filteredRatings.length === 0 && (
-                <div className="text-center py-8 text-gray-500">No ratings found</div>
+                <div className="text-center py-8 text-[#9b857a]">No ratings found</div>
               )}
             </div>
           </div>
@@ -266,3 +270,5 @@ const AdminRatings = () => {
 }
 
 export default AdminRatings
+
+

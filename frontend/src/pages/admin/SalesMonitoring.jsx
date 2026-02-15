@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -70,23 +70,27 @@ const SalesMonitoring = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">Sales Monitoring</h1>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              ← Return to Dashboard
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
+              >
+                ←
+              </button>
+              <h1 className="text-2xl font-bold">Sales Monitoring</h1>
+            </div>
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <div className="grid md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Start Date</label>
@@ -136,27 +140,27 @@ const SalesMonitoring = () => {
           {/* Stats Cards */}
           {stats && (
             <div className="grid md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-sm text-gray-600">Total Sales</div>
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <div className="text-sm text-[#8f7a6f]">Total Sales</div>
                 <div className="text-2xl font-bold text-green-600">{currency(stats.total_sales_cents)}</div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-[#9b857a] mt-1">
                   {stats.period.start_date} to {stats.period.end_date}
                 </div>
               </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-sm text-gray-600">Service Sales</div>
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <div className="text-sm text-[#8f7a6f]">Service Sales</div>
                 <div className="text-2xl font-bold">
                   {currency(stats.sales_by_type?.service || 0)}
                 </div>
               </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-sm text-gray-600">Product Sales</div>
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <div className="text-sm text-[#8f7a6f]">Product Sales</div>
                 <div className="text-2xl font-bold">
                   {currency(stats.sales_by_type?.product || 0)}
                 </div>
               </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-sm text-gray-600">Cash Payments</div>
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <div className="text-sm text-[#8f7a6f]">Cash Payments</div>
                 <div className="text-2xl font-bold">
                   {currency(stats.sales_by_payment_method?.cash || 0)}
                 </div>
@@ -166,7 +170,7 @@ const SalesMonitoring = () => {
 
           {/* Top Selling Items */}
           {stats?.top_selling_items && stats.top_selling_items.length > 0 && (
-            <div className="bg-white rounded-xl shadow p-4">
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <h2 className="text-xl font-semibold mb-4">Top Selling Items</h2>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px]">
@@ -192,7 +196,7 @@ const SalesMonitoring = () => {
           )}
 
           {/* Sales List */}
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <h2 className="text-xl font-semibold mb-4">Sales Transactions</h2>
             {loading ? (
               <div className="text-center py-8">Loading...</div>
@@ -231,7 +235,7 @@ const SalesMonitoring = () => {
                         <td className="p-2 text-right font-bold">{currency(sale.total_amount_cents)}</td>
                         <td className="p-2">
                           <span className={`px-2 py-1 rounded text-xs ${
-                            sale.payment_method === 'cash' ? 'bg-gray-100 text-gray-700' :
+                            sale.payment_method === 'cash' ? 'bg-[#f7f1ec] text-gray-700' :
                             sale.payment_method === 'gcash' ? 'bg-blue-100 text-blue-700' :
                             'bg-green-100 text-green-700'
                           }`}>
@@ -245,7 +249,7 @@ const SalesMonitoring = () => {
                   </tbody>
                 </table>
                 {sales.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">No sales found for the selected period</div>
+                  <div className="text-center py-8 text-[#9b857a]">No sales found for the selected period</div>
                 )}
               </div>
             )}
@@ -257,3 +261,5 @@ const SalesMonitoring = () => {
 }
 
 export default SalesMonitoring
+
+

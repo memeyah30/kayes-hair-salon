@@ -63,8 +63,12 @@ class DashboardController extends Controller
             return $apt->service->price_cents ?? 0;
         });
 
-        // Count unique customers
-        $customers = $appointments->pluck('customer_email', 'customer_phone')
+        // Count unique customers using email if present, otherwise phone
+        $customers = $appointments->map(function ($apt) {
+                $email = $apt->customer_email ? strtolower(trim($apt->customer_email)) : null;
+                $phone = $apt->customer_phone ? preg_replace('/[\\s\\-]/', '', trim($apt->customer_phone)) : null;
+                return $email ?: $phone;
+            })
             ->filter()
             ->unique()
             ->count();

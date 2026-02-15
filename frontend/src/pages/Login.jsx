@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -96,11 +96,11 @@ const Login = ({ userType: propUserType }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
+    <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center p-4">
+      <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-8 w-full max-w-md">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold mb-2">Staff Login</h1>
-          <p className="text-gray-600">Kaye's Hair Salon and Spa</p>
+          <p className="text-[#8f7a6f]">Kaye's Hair Salon and Spa</p>
         </div>
         
         {/* User Type Selector */}
@@ -113,7 +113,7 @@ const Login = ({ userType: propUserType }) => {
               className={`px-4 py-2 rounded text-sm font-medium transition ${
                 selectedType === 'admin'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-[#f7f1ec] text-gray-700 hover:bg-gray-200'
               }`}
             >
               Admin/Owner
@@ -124,7 +124,7 @@ const Login = ({ userType: propUserType }) => {
               className={`px-4 py-2 rounded text-sm font-medium transition ${
                 selectedType === 'manager'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-[#f7f1ec] text-gray-700 hover:bg-gray-200'
               }`}
             >
               Manager
@@ -135,7 +135,7 @@ const Login = ({ userType: propUserType }) => {
               className={`px-4 py-2 rounded text-sm font-medium transition ${
                 selectedType === 'stylist'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-[#f7f1ec] text-gray-700 hover:bg-gray-200'
               }`}
             >
               Staff
@@ -175,7 +175,7 @@ const Login = ({ userType: propUserType }) => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#9b857a] hover:text-gray-700"
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,7 +202,7 @@ const Login = ({ userType: propUserType }) => {
         <div className="mt-6 text-center">
           <button
             onClick={() => navigate('/')}
-            className="text-sm text-gray-600 hover:text-gray-800"
+            className="text-sm text-[#8f7a6f] hover:text-[#3b2f2a]"
           >
             ← Back to Home
           </button>
@@ -213,3 +213,4 @@ const Login = ({ userType: propUserType }) => {
 }
 
 export default Login
+

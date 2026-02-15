@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -138,34 +138,38 @@ const ManagePaymentAccounts = () => {
       gcash: 'bg-green-100 text-green-800',
       paymaya: 'bg-blue-100 text-blue-800',
       bank: 'bg-purple-100 text-purple-800',
-      other: 'bg-gray-100 text-gray-800',
+      other: 'bg-[#f7f1ec] text-[#3b2f2a]',
     }
     return colors[type] || colors.other
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="admin" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">Manage Payment Accounts</h1>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="w-full sm:w-auto px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+                className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
               >
-                ← Return to Dashboard
+                ←
               </button>
+              <h1 className="text-2xl font-bold">Manage Payment Accounts</h1>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => {
                   setEditing(null)
@@ -202,7 +206,7 @@ const ManagePaymentAccounts = () => {
             {accounts.map(account => (
               <div
                 key={account.id}
-                className={`bg-white rounded-xl shadow p-4 border-l-4 ${
+                className={`bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 border-l-4 ${
                   account.is_active ? 'border-green-500' : 'border-gray-300 opacity-60'
                 }`}
               >
@@ -216,23 +220,23 @@ const ManagePaymentAccounts = () => {
                   {account.is_active ? (
                     <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">Active</span>
                   ) : (
-                    <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">Inactive</span>
+                    <span className="px-2 py-1 rounded text-xs bg-[#f7f1ec] text-[#3b2f2a]">Inactive</span>
                   )}
                 </div>
                 <div className="space-y-2 mt-3">
                   <div>
-                    <span className="text-xs text-gray-500">Account Number:</span>
+                    <span className="text-xs text-[#9b857a]">Account Number:</span>
                     <p className="font-mono text-sm">{account.account_number}</p>
                   </div>
                   {account.bank_name && (
                     <div>
-                      <span className="text-xs text-gray-500">Bank:</span>
+                      <span className="text-xs text-[#9b857a]">Bank:</span>
                       <p className="text-sm">{account.bank_name}</p>
                     </div>
                   )}
                   {account.qr_code_url && (
                     <div>
-                      <span className="text-xs text-gray-500">QR Code:</span>
+                      <span className="text-xs text-[#9b857a]">QR Code:</span>
                       <div className="mt-1">
                         <img
                           src={account.qr_code_full_url || account.qr_code_url}
@@ -244,7 +248,7 @@ const ManagePaymentAccounts = () => {
                   )}
                   {account.instructions && (
                     <div>
-                      <span className="text-xs text-gray-500">Instructions:</span>
+                      <span className="text-xs text-[#9b857a]">Instructions:</span>
                       <p className="text-sm text-gray-700 mt-1">{account.instructions}</p>
                     </div>
                   )}
@@ -267,7 +271,7 @@ const ManagePaymentAccounts = () => {
             ))}
           </div>
           {accounts.length === 0 && (
-            <div className="text-center py-8 text-gray-500 bg-white rounded-xl shadow">
+            <div className="text-center py-8 text-[#9b857a] bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
               No payment accounts found. Click "Add Payment Account" to create one.
             </div>
           )}
@@ -275,7 +279,7 @@ const ManagePaymentAccounts = () => {
           {/* Modal */}
           {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                 <h2 className="text-xl font-bold mb-4">{editing ? 'Edit' : 'Add'} Payment Account</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -339,7 +343,7 @@ const ManagePaymentAccounts = () => {
                       }}
                       placeholder="https://example.com/qr-code.png"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-[#9b857a] mt-1">
                       Paste an existing QR URL, or upload an image below. If you upload a file, it overrides this URL.
                     </p>
                   </div>
@@ -357,7 +361,7 @@ const ManagePaymentAccounts = () => {
                     />
                     {qrPreview && (
                       <div className="mt-2">
-                        <span className="text-xs text-gray-500 block mb-1">Preview</span>
+                        <span className="text-xs text-[#9b857a] block mb-1">Preview</span>
                         <img src={qrPreview} alt="QR preview" className="w-24 h-24 object-contain border rounded" />
                       </div>
                     )}
@@ -423,3 +427,5 @@ const ManagePaymentAccounts = () => {
 }
 
 export default ManagePaymentAccounts
+
+

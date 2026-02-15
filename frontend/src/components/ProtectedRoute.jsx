@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+﻿import { Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import api from '../utils/api'
 
@@ -136,7 +136,7 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
         <div>Verifying authentication...</div>
       </div>
     )
@@ -150,4 +150,5 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
 }
 
 export default ProtectedRoute
+
 

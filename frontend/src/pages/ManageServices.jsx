@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -300,22 +300,26 @@ const ManageServices = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">Manage Services</h1>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              ← Return to Dashboard
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
+              >
+                ←
+              </button>
+              <h1 className="text-2xl font-bold">Manage Services</h1>
+            </div>
           </div>
 
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
         <h2 className="text-xl font-semibold mb-4">{editing ? 'Edit' : 'Add'} Service</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
@@ -349,7 +353,7 @@ const ManageServices = () => {
                 />
                 <div>
                   <div className="font-medium text-gray-900">This service has categories/variants</div>
-                  <div className="text-xs text-gray-600 mt-1">
+                  <div className="text-xs text-[#8f7a6f] mt-1">
                     Check this if the service has different options (e.g., Premium Rebonding with different brands, Hair Curl for Women/Men)
                   </div>
                 </div>
@@ -390,7 +394,7 @@ const ManageServices = () => {
           {hasCategories && (
             <div className="border-t pt-4 mt-4">
               <h3 className="text-lg font-semibold mb-3">Service Categories/Variants</h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-[#8f7a6f] mb-4">
                 Add different categories, brands, or types for this service with different prices.
                 <br />
                 <span className="font-medium">Examples:</span> Premium Rebonding - LOREAL (₱3,500), SCHWARZKOPF (₱2,500) | Hair Curl - For Women (₱1,000), For Men (₱600)
@@ -403,7 +407,7 @@ const ManageServices = () => {
                     <div key={variant.id || idx} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{variant.name}</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className="text-sm text-[#8f7a6f] mt-1">
                           <span className="font-semibold">Price:</span> ₱{
                             // All variants in local state are stored in pesos (converted when loading from DB)
                             (() => {
@@ -449,7 +453,7 @@ const ManageServices = () => {
                       onChange={(e) => setVariantForm({ ...variantForm, name: e.target.value })}
                       placeholder="e.g., LOREAL, For Women, SCHWARZKOPF, For Men"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-[#9b857a] mt-1">
                       Enter the category name (brand, type, gender, etc.)
                     </p>
                   </div>
@@ -464,7 +468,7 @@ const ManageServices = () => {
                       onChange={(e) => setVariantForm({ ...variantForm, price_cents: e.target.value })}
                       placeholder="e.g., 3500, 1000, 600"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-[#9b857a] mt-1">
                       Enter the price for this specific category/variant
                     </p>
                   </div>
@@ -519,7 +523,7 @@ const ManageServices = () => {
         </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-4">
+      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
         <h2 className="text-xl font-semibold mb-4">All Services</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {services.map(s => (
@@ -542,13 +546,13 @@ const ManageServices = () => {
               )}
               <div className="p-4">
                 <div className="font-semibold">{s.name}</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-[#8f7a6f]">
                   {s.variants && s.variants.length > 0 ? (
                     <div>
                       <span className="text-xs text-blue-600 font-medium">
                         {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
                       </span>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-[#9b857a] mt-1">
                         {s.variants.map(v => v.name).join(', ')}
                       </div>
                     </div>
@@ -601,3 +605,5 @@ const ManageServices = () => {
 }
 
 export default ManageServices
+
+

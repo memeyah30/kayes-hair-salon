@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { QRCodeSVG } from 'qrcode.react'
@@ -79,14 +79,14 @@ const CustomerDashboard = () => {
 
   if (showProfile) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+      <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
           <Navbar />
           <div className="p-4 md:p-6">
-            <div className="max-w-md mx-auto bg-white rounded-xl shadow p-6">
+            <div className="max-w-md mx-auto bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
               <h2 className="text-xl font-bold mb-4">Customer Profile</h2>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-[#8f7a6f] mb-4">
                 Enter the email or phone number you used when booking to view your appointments.
                 If you just booked, your information is already saved and appointments will appear automatically.
               </p>
@@ -127,7 +127,7 @@ const CustomerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+      <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
           <Navbar />
@@ -140,25 +140,29 @@ const CustomerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="customer" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">My Appointments</h1>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/')}
-                className="w-full sm:w-auto px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-sm"
+                className="px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-lg font-bold"
+                aria-label="Back to Home"
+                title="Back to Home"
               >
-                ← Back to Home
+                ←
               </button>
+              <h1 className="text-2xl font-bold">My Appointments</h1>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => navigate('/book')}
                 className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
               >
-                📅 Book New
+                🗓 Book New
               </button>
               <button
                 onClick={() => setShowProfile(true)}
@@ -171,19 +175,19 @@ const CustomerDashboard = () => {
 
           {/* Summary Cards */}
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm">Upcoming Appointments</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm">Upcoming Appointments</div>
               <div className="text-2xl font-bold text-blue-600">{appointments.upcoming.length}</div>
             </div>
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm">Total Appointments</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm">Total Appointments</div>
               <div className="text-2xl font-bold">{appointments.upcoming.length}</div>
             </div>
           </div>
 
           {/* Upcoming Appointments */}
           {appointments.upcoming.length > 0 ? (
-            <div className="bg-white rounded-xl shadow p-4">
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <h2 className="font-semibold text-lg mb-4">Upcoming Appointments</h2>
               <div className="space-y-3">
                 {appointments.upcoming
@@ -237,7 +241,7 @@ const CustomerDashboard = () => {
                             )}
                           </div>
                           {appointmentServices.length > 1 && (
-                            <div className="text-sm text-gray-600 mt-1">
+                            <div className="text-sm text-[#8f7a6f] mt-1">
                               <ul className="list-disc list-inside ml-2 space-y-0.5">
                                 {appointmentServices.map((s, idx) => (
                                   <li key={idx}>{getServiceName(s)} - {currency(getServicePrice(s))}</li>
@@ -245,7 +249,7 @@ const CustomerDashboard = () => {
                               </ul>
                             </div>
                           )}
-                          <div className="text-sm text-gray-600 mt-1">
+                          <div className="text-sm text-[#8f7a6f] mt-1">
                             {appointmentDate.toLocaleDateString('en-US', { 
                               weekday: 'long', 
                               year: 'numeric', 
@@ -259,7 +263,7 @@ const CustomerDashboard = () => {
                               timeZone: 'Asia/Manila'
                             })} PHT
                           </div>
-                          <div className="text-sm text-gray-500 mt-1">
+                          <div className="text-sm text-[#9b857a] mt-1">
                             with {appt.stylist?.name}
                           </div>
                           <div className="text-sm font-medium text-green-600 mt-2">
@@ -302,10 +306,10 @@ const CustomerDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow p-6 text-center">
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 text-center">
               <div className="text-4xl mb-4">📅</div>
               <h3 className="text-xl font-semibold mb-2">No Appointments Yet</h3>
-              <p className="text-gray-600 mb-4">Book your first appointment to get started!</p>
+              <p className="text-[#8f7a6f] mb-4">Book your first appointment to get started!</p>
               <button
                 onClick={() => navigate('/book')}
                 className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
@@ -316,7 +320,7 @@ const CustomerDashboard = () => {
           )}
 
           {/* Share Booking Link */}
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <h2 className="font-semibold text-lg mb-4">Share & Book</h2>
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="flex flex-col items-center">
@@ -328,7 +332,7 @@ const CustomerDashboard = () => {
                   level="M"
                   includeMargin={true}
                 />
-                <p className="text-sm text-gray-600 mt-2">Scan to book an appointment</p>
+                <p className="text-sm text-[#8f7a6f] mt-2">Scan to book an appointment</p>
               </div>
               <div className="flex-1 space-y-4">
                 <div>
@@ -363,7 +367,7 @@ const CustomerDashboard = () => {
 
           {/* Quick Actions */}
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl shadow p-6">
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
               <h3 className="font-semibold text-lg mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <button
@@ -388,7 +392,7 @@ const CustomerDashboard = () => {
             </div>
 
             {/* Share Booking Link */}
-            <div className="bg-white rounded-xl shadow p-6">
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
               <h3 className="font-semibold text-lg mb-4">Share & Book</h3>
               <div className="flex flex-col items-center gap-4">
                 <QRCodeSVG 
@@ -399,7 +403,7 @@ const CustomerDashboard = () => {
                   level="M"
                   includeMargin={true}
                 />
-                <p className="text-sm text-gray-600 text-center">Scan to book an appointment</p>
+                <p className="text-sm text-[#8f7a6f] text-center">Scan to book an appointment</p>
                 <div className="w-full">
                   <div className="flex gap-2">
                     <input
@@ -425,20 +429,20 @@ const CustomerDashboard = () => {
 
           {/* Info Cards */}
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl shadow p-4 text-center">
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
               <div className="text-3xl mb-2">✂️</div>
               <h4 className="font-semibold">Professional Stylists</h4>
-              <p className="text-sm text-gray-500">Expert care for your beauty needs</p>
+              <p className="text-sm text-[#9b857a]">Expert care for your beauty needs</p>
             </div>
-            <div className="bg-white rounded-xl shadow p-4 text-center">
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
               <div className="text-3xl mb-2">📅</div>
               <h4 className="font-semibold">Easy Booking</h4>
-              <p className="text-sm text-gray-500">Book appointments in seconds</p>
+              <p className="text-sm text-[#9b857a]">Book appointments in seconds</p>
             </div>
-            <div className="bg-white rounded-xl shadow p-4 text-center">
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
               <div className="text-3xl mb-2">💖</div>
               <h4 className="font-semibold">Quality Service</h4>
-              <p className="text-sm text-gray-500">Premium beauty experience</p>
+              <p className="text-sm text-[#9b857a]">Premium beauty experience</p>
             </div>
           </div>
         </div>
@@ -448,3 +452,6 @@ const CustomerDashboard = () => {
 }
 
 export default CustomerDashboard
+
+
+

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -78,26 +78,30 @@ const StylistAppointments = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="stylist" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold">My Appointments</h1>
-            <button
-              onClick={() => navigate('/stylist/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              ← Return to Dashboard
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/stylist/dashboard')}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
+              >
+                ←
+              </button>
+              <h1 className="text-2xl font-bold">My Appointments</h1>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
@@ -135,7 +139,7 @@ const StylistAppointments = () => {
             </button>
           </div>
 
-          <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] overflow-hidden">
             <div className="divide-y">
               {filteredAppointments.map(apt => (
                 <div key={apt.id} className="p-4 hover:bg-gray-50">
@@ -147,13 +151,13 @@ const StylistAppointments = () => {
                         </div>
                         <div>
                           <div className="font-semibold text-lg">{apt.customer_name}</div>
-                          <div className="text-xs text-gray-500">Customer Information</div>
+                          <div className="text-xs text-[#9b857a]">Customer Information</div>
                         </div>
                       </div>
                       
                       <div className="ml-0 space-y-2">
                         <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="text-xs text-gray-500 mb-1">Contact Details</div>
+                          <div className="text-xs text-[#9b857a] mb-1">Contact Details</div>
                           <div className="text-sm">
                             {apt.customer_email && (
                               <div className="flex items-center gap-2 mb-1">
@@ -173,11 +177,11 @@ const StylistAppointments = () => {
                           </div>
                         </div>
 
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-[#8f7a6f]">
                           <div className="font-medium mb-1">Appointment Details</div>
                           <div className="space-y-1">
                             <div>
-                              <span className="text-gray-500">Date & Time:</span>{' '}
+                              <span className="text-[#9b857a]">Date & Time:</span>{' '}
                               <span className="font-medium">
                                 {new Date(getStart(apt)).toLocaleString('en-US', {
                                   dateStyle: 'full',
@@ -187,11 +191,11 @@ const StylistAppointments = () => {
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500">Service:</span>{' '}
+                              <span className="text-[#9b857a]">Service:</span>{' '}
                               <span className="font-medium">{apt.service?.name}</span>
                             </div>
                             <div>
-                              <span className="text-gray-500">Duration:</span>{' '}
+                              <span className="text-[#9b857a]">Duration:</span>{' '}
                               <span className="font-medium">
                                 {apt.service?.duration_minutes ? 
                                   `${Math.floor(apt.service.duration_minutes / 60)}h ${apt.service.duration_minutes % 60}m` : 
@@ -199,7 +203,7 @@ const StylistAppointments = () => {
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500">Price:</span>{' '}
+                              <span className="text-[#9b857a]">Price:</span>{' '}
                               <span className="font-medium text-green-600">
                                 ₱{((apt.service?.price_cents || 0) / 100).toFixed(2)}
                               </span>
@@ -212,7 +216,7 @@ const StylistAppointments = () => {
                             apt.status === 'booked' ? 'bg-blue-100 text-blue-800' :
                             apt.status === 'completed' ? 'bg-green-100 text-green-800' :
                             apt.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
+                            'bg-[#f7f1ec] text-[#3b2f2a]'
                           }`}>
                             {apt.status}
                           </span>
@@ -241,7 +245,7 @@ const StylistAppointments = () => {
                 </div>
               ))}
               {filteredAppointments.length === 0 && (
-                <div className="text-center py-8 text-gray-500">No appointments found</div>
+                <div className="text-center py-8 text-[#9b857a]">No appointments found</div>
               )}
             </div>
           </div>
@@ -252,3 +256,5 @@ const StylistAppointments = () => {
 }
 
 export default StylistAppointments
+
+

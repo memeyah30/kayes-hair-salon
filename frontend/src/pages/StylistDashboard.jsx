@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -49,7 +49,7 @@ const StylistDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
@@ -79,7 +79,7 @@ const StylistDashboard = () => {
   )
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="stylist" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -88,18 +88,18 @@ const StylistDashboard = () => {
             <h1 className="text-2xl font-bold">Welcome, {user.name}!</h1>
             <div className="flex flex-wrap gap-3 text-sm">
               <div className="bg-white px-4 py-2 rounded shadow">
-                <div className="text-gray-500">Today's Appointments</div>
+                <div className="text-[#9b857a]">Today's Appointments</div>
                 <div className="font-bold text-lg">{todayAppointments.length}</div>
               </div>
               <div className="bg-white px-4 py-2 rounded shadow">
-                <div className="text-gray-500">Completed</div>
+                <div className="text-[#9b857a]">Completed</div>
                 <div className="font-bold text-lg">{stats.total_completed}</div>
               </div>
             </div>
           </div>
 
           {/* Today's Schedule */}
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <h2 className="font-semibold text-lg mb-4">Today's Schedule</h2>
             
             {upcomingAppointments.length > 0 && (
@@ -116,17 +116,17 @@ const StylistDashboard = () => {
                             </div>
                             <div>
                               <div className="font-semibold text-lg">{appt.customer_name}</div>
-                              <div className="text-xs text-gray-500">Customer</div>
+                              <div className="text-xs text-[#9b857a]">Customer</div>
                             </div>
                           </div>
-                          <div className="text-sm text-gray-600 mt-1">
+                          <div className="text-sm text-[#8f7a6f] mt-1">
                             <span className="font-medium">Time:</span>{' '}
                             {new Date(getStart(appt)).toLocaleTimeString('en-US', { timeStyle: 'short', timeZone: 'Asia/Manila' })} - {new Date(getEnd(appt)).toLocaleTimeString('en-US', { timeStyle: 'short', timeZone: 'Asia/Manila' })} PHT
                           </div>
                           <div className="text-sm font-medium text-gray-700 mt-1">
-                            <span className="text-gray-500">Service:</span> {appt.service?.name}
+                            <span className="text-[#9b857a]">Service:</span> {appt.service?.name}
                           </div>
-                          <div className="text-xs text-gray-600 mt-2 space-y-1">
+                          <div className="text-xs text-[#8f7a6f] mt-2 space-y-1">
                             {appt.customer_phone && (
                               <div className="flex items-center gap-1">
                                 <span>📞</span>
@@ -164,17 +164,17 @@ const StylistDashboard = () => {
 
             {pastAppointments.length > 0 && (
               <div>
-                <h3 className="font-medium text-gray-600 mb-3">Past Appointments Today</h3>
+                <h3 className="font-medium text-[#8f7a6f] mb-3">Past Appointments Today</h3>
                 <div className="space-y-2">
                   {pastAppointments.map(appt => (
                     <div key={appt.id} className="border rounded-lg p-3 bg-gray-50">
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="font-medium">{appt.customer_name}</div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-[#8f7a6f]">
                             {new Date(getStart(appt)).toLocaleTimeString('en-US', { timeStyle: 'short', timeZone: 'Asia/Manila' })} PHT • {appt.service?.name}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-[#9b857a] mt-1">
                             {appt.customer_phone && `📞 ${appt.customer_phone}`}
                             {appt.customer_email && ` • ✉️ ${appt.customer_email}`}
                           </div>
@@ -182,7 +182,7 @@ const StylistDashboard = () => {
                         <span className={`px-2 py-1 rounded text-xs ${
                           appt.status === 'completed' ? 'bg-green-100 text-green-800' :
                           appt.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
+                          'bg-[#f7f1ec] text-[#3b2f2a]'
                         }`}>
                           {appt.status}
                         </span>
@@ -194,22 +194,22 @@ const StylistDashboard = () => {
             )}
 
             {todayAppointments.length === 0 && (
-              <div className="text-center py-8 text-gray-500">No appointments scheduled for today</div>
+              <div className="text-center py-8 text-[#9b857a]">No appointments scheduled for today</div>
             )}
           </div>
 
           {/* Performance Summary */}
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm">Total Completed</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm">Total Completed</div>
               <div className="text-2xl font-bold text-green-600">{stats.total_completed}</div>
             </div>
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm">Upcoming</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm">Upcoming</div>
               <div className="text-2xl font-bold text-blue-600">{stats.upcoming}</div>
             </div>
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="text-gray-500 text-sm">Total Appointments</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm">Total Appointments</div>
               <div className="text-2xl font-bold">{stats.total}</div>
             </div>
           </div>
@@ -220,3 +220,4 @@ const StylistDashboard = () => {
 }
 
 export default StylistDashboard
+

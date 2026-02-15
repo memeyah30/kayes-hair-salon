@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -85,33 +85,37 @@ const AdminCustomers = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-gray-800">
+    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold">Customer Management</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                View all customers who have made appointments, their contact information, appointment history, and spending statistics.
-              </p>
+            <div className="flex items-start gap-3">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                aria-label="Return to Dashboard"
+                title="Return to Dashboard"
+              >
+                ←
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold">Customer Management</h1>
+                <p className="text-sm text-[#8f7a6f] mt-1">
+                  View all customers who have made appointments, their contact information, appointment history, and spending statistics.
+                </p>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              ← Return to Dashboard
-            </button>
           </div>
 
           {loading ? (
-            <div className="bg-white rounded-xl shadow p-8 text-center">
-              <div className="text-lg text-gray-600">Loading customer data...</div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-8 text-center">
+              <div className="text-lg text-[#8f7a6f]">Loading customer data...</div>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow">
+        <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
           <div className="p-4 border-b">
             <h2 className="font-semibold mb-3">All Customers ({customerList.length})</h2>
             <input
@@ -128,7 +132,7 @@ const AdminCustomers = () => {
                 {appointments.length === 0 ? (
                   <div className="space-y-3">
                     <div className="text-4xl mb-2">👥</div>
-                    <div className="text-gray-600 font-medium">No customers yet</div>
+                    <div className="text-[#8f7a6f] font-medium">No customers yet</div>
                     <div className="text-sm text-gray-400">
                       Customers will appear here automatically after they make their first appointment booking.
                     </div>
@@ -156,7 +160,7 @@ const AdminCustomers = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="font-semibold text-lg">{customer.name}</div>
-                      <div className="text-sm text-gray-600 mt-1 space-y-1">
+                      <div className="text-sm text-[#8f7a6f] mt-1 space-y-1">
                         {customer.email && (
                           <div className="flex items-center gap-1">
                             <span>📧</span>
@@ -173,15 +177,15 @@ const AdminCustomers = () => {
                     </div>
                     <div className="text-right ml-4">
                       <div className="text-sm font-semibold text-blue-600">{customer.totalAppointments}</div>
-                      <div className="text-xs text-gray-500">appointments</div>
+                      <div className="text-xs text-[#9b857a]">appointments</div>
                     </div>
                   </div>
                   <div className="mt-2 flex items-center gap-4 text-xs">
-                    <span className="text-gray-500">
+                    <span className="text-[#9b857a]">
                       💰 Total Spent: <span className="font-semibold text-green-600">{currency(customer.totalSpent)}</span>
                     </span>
                     <span className="text-gray-400">•</span>
-                    <span className="text-gray-500">
+                    <span className="text-[#9b857a]">
                       ✓ Completed: {customer.appointments.filter(a => a.status === 'completed').length}
                     </span>
                   </div>
@@ -192,7 +196,7 @@ const AdminCustomers = () => {
         </div>
 
         {selectedCustomer ? (
-          <div className="bg-white rounded-xl shadow">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
             <div className="p-4 border-b">
               <h2 className="font-semibold">Customer Information</h2>
             </div>
@@ -202,11 +206,11 @@ const AdminCustomers = () => {
                 <h3 className="font-semibold text-lg mb-3">Personal Information</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <div className="text-sm text-gray-500 mb-1">Full Name</div>
+                    <div className="text-sm text-[#9b857a] mb-1">Full Name</div>
                     <div className="font-medium text-lg">{selectedCustomer.name}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500 mb-1">Contact Information</div>
+                    <div className="text-sm text-[#9b857a] mb-1">Contact Information</div>
                     {selectedCustomer.email && (
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm">📧</span>
@@ -229,11 +233,11 @@ const AdminCustomers = () => {
               {/* Statistics Section */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="text-sm text-gray-600 mb-1">Total Appointments</div>
+                  <div className="text-sm text-[#8f7a6f] mb-1">Total Appointments</div>
                   <div className="text-2xl font-bold text-blue-600">{selectedCustomer.totalAppointments}</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
-                  <div className="text-sm text-gray-600 mb-1">Total Spent</div>
+                  <div className="text-sm text-[#8f7a6f] mb-1">Total Spent</div>
                   <div className="text-2xl font-bold text-green-600">{currency(selectedCustomer.totalSpent)}</div>
                 </div>
               </div>
@@ -246,19 +250,19 @@ const AdminCustomers = () => {
                     <div className="text-lg font-bold text-blue-600">
                       {selectedCustomer.appointments.filter(a => a.status === 'booked').length}
                     </div>
-                    <div className="text-xs text-gray-600">Booked</div>
+                    <div className="text-xs text-[#8f7a6f]">Booked</div>
                   </div>
                   <div className="text-center p-2 bg-green-50 rounded">
                     <div className="text-lg font-bold text-green-600">
                       {selectedCustomer.appointments.filter(a => a.status === 'completed').length}
                     </div>
-                    <div className="text-xs text-gray-600">Completed</div>
+                    <div className="text-xs text-[#8f7a6f]">Completed</div>
                   </div>
                   <div className="text-center p-2 bg-red-50 rounded">
                     <div className="text-lg font-bold text-red-600">
                       {selectedCustomer.appointments.filter(a => a.status === 'cancelled').length}
                     </div>
-                    <div className="text-xs text-gray-600">Cancelled</div>
+                    <div className="text-xs text-[#8f7a6f]">Cancelled</div>
                   </div>
                 </div>
               </div>
@@ -283,7 +287,7 @@ const AdminCustomers = () => {
                             {appointmentServices.length > 1 ? (
                               <div>
                                 <div className="font-semibold text-lg mb-1">{appointmentServices.length} Services</div>
-                                <ul className="list-disc list-inside ml-2 text-sm text-gray-600 mb-1">
+                                <ul className="list-disc list-inside ml-2 text-sm text-[#8f7a6f] mb-1">
                                   {appointmentServices.map((s, idx) => (
                                     <li key={idx}>{s.name} - {currency(s.price_cents || 0)}</li>
                                   ))}
@@ -292,7 +296,7 @@ const AdminCustomers = () => {
                             ) : (
                               <div className="font-semibold text-lg mb-1">{appointmentServices[0]?.name || 'Service'}</div>
                             )}
-                            <div className="text-sm text-gray-600 mb-1">
+                            <div className="text-sm text-[#8f7a6f] mb-1">
                               📅 {new Date(getStart(apt)).toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 year: 'numeric',
@@ -301,7 +305,7 @@ const AdminCustomers = () => {
                                 timeZone: 'Asia/Manila'
                               })}
                             </div>
-                            <div className="text-sm text-gray-600 mb-1">
+                            <div className="text-sm text-[#8f7a6f] mb-1">
                               🕐 {new Date(getStart(apt)).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
                                 minute: '2-digit',
@@ -312,7 +316,7 @@ const AdminCustomers = () => {
                                 timeZone: 'Asia/Manila'
                               })} PHT
                             </div>
-                            <div className="text-sm text-gray-500 mb-1">
+                            <div className="text-sm text-[#9b857a] mb-1">
                               💇 Stylist: {apt.stylist?.name}
                             </div>
                             <div className="text-sm font-medium text-green-600">
@@ -343,7 +347,7 @@ const AdminCustomers = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow">
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
             <div className="p-4 border-b">
               <h2 className="font-semibold">Customer Information</h2>
             </div>
@@ -365,3 +369,5 @@ const AdminCustomers = () => {
 }
 
 export default AdminCustomers
+
+

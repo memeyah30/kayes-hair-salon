@@ -7,7 +7,6 @@ use App\Models\Service;
 use App\Models\Stylist;
 use App\Models\Holiday;
 use App\Services\Scheduler;
-use App\Jobs\SendConfirmationJob;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -463,31 +462,6 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // Send confirmation email immediately (synchronously) so customer gets instant confirmation
-        if ($appointment->customer_email) {
-            try {
-                (new SendConfirmationJob($appointment->id))->handle();
-                \Illuminate\Support\Facades\Log::info('Confirmation email sent immediately after booking', [
-                    'appointment_id' => $appointment->id,
-                    'email' => $appointment->customer_email
-                ]);
-            } catch (\Exception $e) {
-                // Log error but don't fail the booking - email will be retried via queue if needed
-                \Illuminate\Support\Facades\Log::error('Failed to send immediate confirmation email', [
-                    'appointment_id' => $appointment->id,
-                    'email' => $appointment->customer_email,
-                    'error' => $e->getMessage()
-                ]);
-                // Also dispatch to queue as backup
-                dispatch(new SendConfirmationJob($appointment->id));
-            }
-        } else {
-            \Illuminate\Support\Facades\Log::warning('No email provided for appointment - confirmation not sent', [
-                'appointment_id' => $appointment->id,
-                'customer_name' => $appointment->customer_name
-            ]);
-        }
-
         // Load relationships
         $appointment->load(['stylist', 'service', 'services.variants']);
         
@@ -681,7 +655,6 @@ class AppointmentController extends Controller
             }
         }
         $appointment->update(['status' => 'confirmed']);
-        dispatch(new SendConfirmationJob($appointment->id));
         return $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
     }
 
