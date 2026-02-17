@@ -18,10 +18,14 @@ class EnsureUserType
         $user = null;
         $userType = null;
 
-        // Prefer guards that match the allowed types for this route to avoid
-        // accidentally picking an old admin session when a stylist is logged in.
+        // Prefer explicit active guard, then guards requested by route.
+        $activeGuard = $request->session()->get('active_guard');
         $preferred = $types ?: ['admin', 'manager', 'stylist'];
-        $allGuards = array_unique(array_merge($preferred, ['admin', 'manager', 'stylist']));
+        $allGuards = array_unique(array_merge(
+            array_filter([$activeGuard]),
+            $preferred,
+            ['admin', 'manager', 'stylist']
+        ));
 
         foreach ($allGuards as $guardName) {
             if (\Illuminate\Support\Facades\Auth::guard($guardName)->check()) {
@@ -56,16 +60,10 @@ class EnsureUserType
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        // If userType is known and is one of our staff roles, allow even if the
-        // middleware params were overly strict; this avoids false 403s.
-        if ($userType && in_array($userType, ['admin', 'manager', 'stylist'], true)) {
-            if (count($types) === 0 || in_array($userType, $types, true)) {
-                return $next($request);
-            }
-            // Middleware requested other types, but we still allow staff roles.
-            return $next($request);
+        if (count($types) > 0 && !in_array($userType, $types, true)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        return response()->json(['message' => 'Forbidden'], 403);
+        return $next($request);
     }
 }

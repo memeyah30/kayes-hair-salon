@@ -14,12 +14,23 @@ class AuthenticateAnyGuard
      */
     public function handle(Request $request, Closure $next)
     {
-        // Check all guards to see if any user is authenticated
-        $guards = ['admin', 'manager', 'stylist', 'web'];
+        // Prefer the active guard from session, then fall back.
+        $activeGuard = $request->session()->get('active_guard');
+        $guards = array_values(array_unique(array_filter([
+            $activeGuard,
+            'admin',
+            'manager',
+            'stylist',
+            'web',
+        ])));
         
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
-                // User is authenticated via this guard
+                // Bind the detected guard so $request->user() resolves correctly downstream.
+                Auth::shouldUse($guard);
+                $request->setUserResolver(function () use ($guard) {
+                    return Auth::guard($guard)->user();
+                });
                 return $next($request);
             }
         }

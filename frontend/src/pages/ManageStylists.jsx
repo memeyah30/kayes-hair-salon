@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -379,9 +379,7 @@ const ManageStylists = () => {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">Manage Stylists</h1>
             </div>
           </div>
@@ -438,7 +436,7 @@ const ManageStylists = () => {
                 type="password"
                 className="w-full border rounded px-3 py-2"
                 value={formData.password}
-                placeholder={editing ? '••••••••' : 'Enter password (min 6 characters)'}
+                placeholder={editing ? '********' : 'Enter password (min 6 characters)'}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               />
               {!editing && <p className="text-[#9b857a] text-xs mt-1">Default: stylist123 if left blank</p>}
@@ -651,7 +649,7 @@ const ManageStylists = () => {
                               ? 'bg-green-100 text-green-700' 
                               : 'bg-gray-200 text-[#8f7a6f]'
                           }`}>
-                            {isEnabled ? '✓ Working' : 'Day Off'}
+                            {isEnabled ? 'Working' : 'Day Off'}
                           </span>
                         </td>
                         <td className="border p-3">
@@ -679,7 +677,7 @@ const ManageStylists = () => {
             </div>
             
             <div className="mt-3 text-xs text-[#9b857a]">
-              💡 Tip: Check the day box to enable it, then set the times. Use Quick Actions for common schedules.
+              Tip: Check the day box to enable it, then set the times. Use Quick Actions for common schedules.
             </div>
           </div>
 
@@ -945,5 +943,7 @@ const ManageStylists = () => {
 }
 
 export default ManageStylists
+
+
 
 

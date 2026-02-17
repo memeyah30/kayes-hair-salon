@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -104,9 +104,7 @@ const ManageManagers = () => {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">Manage Managers</h1>
             </div>
           </div>
@@ -143,7 +141,7 @@ const ManageManagers = () => {
                     type="password"
                     className="w-full border rounded px-3 py-2"
                     value={formData.password}
-                    placeholder={editing ? '••••••••' : 'Enter password (min 6 characters)'}
+                    placeholder={editing ? '********' : 'Enter password (min 6 characters)'}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   />
                 </div>
@@ -272,6 +270,8 @@ const ManageManagers = () => {
 }
 
 export default ManageManagers
+
+
 
 
 

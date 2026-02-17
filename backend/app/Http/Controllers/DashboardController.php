@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\Sale;
 use App\Models\Service;
 use App\Models\Stylist;
 use Carbon\Carbon;
@@ -105,6 +106,9 @@ class DashboardController extends Controller
     public function stylistStats(Request $request)
     {
         $user = $request->user();
+        if (!($user instanceof \App\Models\Stylist)) {
+            $user = \Illuminate\Support\Facades\Auth::guard('stylist')->user();
+        }
         
         // The user should be a Stylist model instance when logged in as stylist
         if (!$user || !($user instanceof \App\Models\Stylist)) {
@@ -113,9 +117,14 @@ class DashboardController extends Controller
         
         $stylist = $user;
 
-        $today = Carbon::today();
+        $timezone = 'Asia/Manila';
+        $now = Carbon::now($timezone);
+        $today = $now->copy()->startOfDay();
+        $weekStart = $now->copy()->startOfWeek();
+        $monthStart = $now->copy()->startOfMonth();
+
         $appointments = Appointment::where('stylist_id', $stylist->id)
-            ->with(['service', 'stylist'])
+            ->with(['service', 'services', 'stylist'])
             ->get();
 
         $todayAppointments = $appointments->filter(function ($apt) use ($today) {
@@ -129,6 +138,20 @@ class DashboardController extends Controller
             })
             ->count();
 
+        $sumSalesForRange = function (Carbon $from, Carbon $to) use ($stylist, $timezone) {
+            return Sale::where('stylist_id', $stylist->id)
+                ->where('transaction_type', 'service')
+                ->whereBetween('created_at', [
+                    $from->copy()->setTimezone($timezone)->setTimezone('UTC'),
+                    $to->copy()->setTimezone($timezone)->setTimezone('UTC'),
+                ])
+                ->sum('total_amount_cents');
+        };
+
+        $salesDay = $sumSalesForRange($today->copy(), $today->copy()->endOfDay());
+        $salesWeek = $sumSalesForRange($weekStart->copy(), $now->copy()->endOfDay());
+        $salesMonth = $sumSalesForRange($monthStart->copy(), $now->copy()->endOfDay());
+
         return response()->json([
             'today_appointments' => $todayAppointments->values()->map(function ($apt) {
                 return $this->formatAppointmentForResponse($apt);
@@ -136,6 +159,11 @@ class DashboardController extends Controller
             'total_completed' => $completed,
             'upcoming' => $upcoming,
             'total' => $appointments->count(),
+            'sales' => [
+                'day' => (int) $salesDay,
+                'week' => (int) $salesWeek,
+                'month' => (int) $salesMonth,
+            ],
         ]);
     }
 

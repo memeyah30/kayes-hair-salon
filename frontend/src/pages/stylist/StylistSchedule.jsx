@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -14,6 +14,35 @@ const StylistSchedule = () => {
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
+  const getAppointmentServices = (appointment) =>
+    appointment.services && appointment.services.length > 0
+      ? appointment.services
+      : (appointment.service ? [appointment.service] : [])
+
+  const toManilaDate = (value) => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(value))
+    } catch {
+      return ''
+    }
+  }
+
+  const getDayServiceNames = (dayAppointments) => {
+    const uniqueNames = new Set()
+    dayAppointments.forEach((apt) => {
+      getAppointmentServices(apt).forEach((service) => {
+        if (service?.name) {
+          uniqueNames.add(service.name)
+        }
+      })
+    })
+    return Array.from(uniqueNames)
+  }
 
   useEffect(() => {
     loadAppointments()
@@ -49,7 +78,8 @@ const StylistSchedule = () => {
 
   // Group appointments by date
   const appointmentsByDate = appointments.reduce((acc, apt) => {
-    const date = new Date(getStart(apt)).toISOString().slice(0, 10)
+    const date = toManilaDate(getStart(apt))
+    if (!date) return acc
     if (!acc[date]) {
       acc[date] = []
     }
@@ -58,6 +88,10 @@ const StylistSchedule = () => {
   }, {})
 
   const selectedDateAppointments = appointmentsByDate[selectedDate] || []
+  const selectedBaseDate = new Date(`${selectedDate}T00:00:00`)
+  const selectedMonthStart = new Date(selectedBaseDate.getFullYear(), selectedBaseDate.getMonth(), 1)
+  const selectedGridStart = new Date(selectedMonthStart)
+  selectedGridStart.setDate(selectedMonthStart.getDate() - selectedMonthStart.getDay())
 
   if (loading) {
     return (
@@ -80,9 +114,7 @@ const StylistSchedule = () => {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">My Schedule</h1>
             </div>
           </div>
@@ -139,18 +171,19 @@ const StylistSchedule = () => {
                             })} PHT
                           </div>
                           <div className="text-sm font-medium text-gray-700 mt-1">
-                            <span className="text-[#9b857a]">Service:</span> {apt.service?.name}
+                            <span className="text-[#9b857a]">Service:</span>{' '}
+                            {getAppointmentServices(apt).map((service) => service.name).join(', ') || 'N/A'}
                           </div>
                           <div className="text-xs text-[#8f7a6f] mt-2 space-y-1">
                             {apt.customer_phone && (
                               <div className="flex items-center gap-1">
-                                <span>📞</span>
+                                <span>Phone:</span>
                                 <span>{apt.customer_phone}</span>
                               </div>
                             )}
                             {apt.customer_email && (
                               <div className="flex items-center gap-1">
-                                <span>✉️</span>
+                                <span>Email:</span>
                                 <span>{apt.customer_email}</span>
                               </div>
                             )}
@@ -181,29 +214,41 @@ const StylistSchedule = () => {
                   {day}
                 </div>
               ))}
-              {Array.from({ length: 35 }, (_, i) => {
-                const date = new Date()
-                date.setDate(1)
-                date.setDate(date.getDate() + i - date.getDay())
-                const dateStr = date.toISOString().slice(0, 10)
+              {Array.from({ length: 42 }, (_, i) => {
+                const date = new Date(selectedGridStart)
+                date.setDate(selectedGridStart.getDate() + i)
+                const dateStr = toManilaDate(date)
                 const dayAppointments = appointmentsByDate[dateStr] || []
+                const dayServiceNames = getDayServiceNames(dayAppointments)
                 const isSelected = dateStr === selectedDate
-                const isToday = dateStr === new Date().toISOString().slice(0, 10)
+                const isToday = dateStr === toManilaDate(new Date())
+                const isCurrentMonth = date.getMonth() === selectedBaseDate.getMonth()
                 
                 return (
                   <button
                     key={i}
                     onClick={() => setSelectedDate(dateStr)}
-                    className={`p-2 rounded text-center ${
+                    className={`p-2 rounded text-left min-h-[84px] transition ${
                       isSelected ? 'bg-blue-600 text-white' :
                       isToday ? 'bg-blue-100 text-blue-700' :
                       dayAppointments.length > 0 ? 'bg-green-100 text-green-700' :
                       'hover:bg-[#f7f1ec]'
                     }`}
                   >
-                    <div>{date.getDate()}</div>
-                    {dayAppointments.length > 0 && (
-                      <div className="text-xs mt-1">{dayAppointments.length}</div>
+                    <div className={`font-medium ${isCurrentMonth ? '' : 'opacity-45'}`}>{date.getDate()}</div>
+                    {dayServiceNames.length > 0 && (
+                      <div className={`mt-1 space-y-0.5 ${isSelected ? 'text-white/90' : ''}`}>
+                        {dayServiceNames.slice(0, 2).map((serviceName) => (
+                          <div key={serviceName} className="text-[10px] leading-4 truncate">
+                            {serviceName}
+                          </div>
+                        ))}
+                        {dayServiceNames.length > 2 && (
+                          <div className="text-[10px] leading-4 opacity-80">
+                            +{dayServiceNames.length - 2} more
+                          </div>
+                        )}
+                      </div>
                     )}
                   </button>
                 )
@@ -217,5 +262,7 @@ const StylistSchedule = () => {
 }
 
 export default StylistSchedule
+
+
 
 

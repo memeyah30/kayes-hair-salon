@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -312,9 +312,7 @@ const ManageServices = () => {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">Manage Services</h1>
             </div>
           </div>
@@ -363,7 +361,7 @@ const ManageServices = () => {
             {/* Base Price - only show if no categories */}
             {!hasCategories && (
               <div>
-                <label className="block text-sm font-medium mb-1">Price (₱) *</label>
+                <label className="block text-sm font-medium mb-1">Price (PHP) *</label>
                 <input
                   type="number"
                   required
@@ -397,7 +395,7 @@ const ManageServices = () => {
               <p className="text-sm text-[#8f7a6f] mb-4">
                 Add different categories, brands, or types for this service with different prices.
                 <br />
-                <span className="font-medium">Examples:</span> Premium Rebonding - LOREAL (₱3,500), SCHWARZKOPF (₱2,500) | Hair Curl - For Women (₱1,000), For Men (₱600)
+                <span className="font-medium">Examples:</span> Premium Rebonding - LOREAL (PHP 3,500), SCHWARZKOPF (PHP 2,500) | Hair Curl - For Women (PHP 1,000), For Men (PHP 600)
               </p>
               
               {/* Variants List */}
@@ -408,7 +406,7 @@ const ManageServices = () => {
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{variant.name}</div>
                         <div className="text-sm text-[#8f7a6f] mt-1">
-                          <span className="font-semibold">Price:</span> ₱{
+                          <span className="font-semibold">Price:</span> PHP {
                             // All variants in local state are stored in pesos (converted when loading from DB)
                             (() => {
                               const price = typeof variant.price_cents === 'number' 
@@ -458,7 +456,7 @@ const ManageServices = () => {
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Price (₱) *</label>
+                    <label className="block text-sm font-medium mb-1">Price (PHP) *</label>
                     <input
                       type="number"
                       min="0"
@@ -557,7 +555,7 @@ const ManageServices = () => {
                       </div>
                     </div>
                   ) : (
-                    <span>₱{(s.price_cents / 100).toFixed(2)}</span>
+                    <span>PHP {(s.price_cents / 100).toFixed(2)}</span>
                   )}
                 </div>
                 <div className="flex gap-2 mt-2">
@@ -605,5 +603,7 @@ const ManageServices = () => {
 }
 
 export default ManageServices
+
+
 
 

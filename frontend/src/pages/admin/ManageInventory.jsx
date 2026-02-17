@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -121,7 +121,7 @@ const ManageInventory = () => {
     }
   }
 
-  const currency = (cents) => `₱${(cents / 100).toFixed(2)}`
+  const currency = (cents) => `PHP ${(cents / 100).toFixed(2)}`
 
   const filteredInventory = inventory.filter(item => {
     if (filter === 'active') return item.is_active
@@ -144,9 +144,7 @@ const ManageInventory = () => {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">Inventory Management</h1>
             </div>
           </div>
@@ -243,7 +241,7 @@ const ManageInventory = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Unit Price (₱) *</label>
+                  <label className="block text-sm font-medium mb-1">Unit Price (PHP) *</label>
                   <input
                     type="number"
                     required
@@ -255,7 +253,7 @@ const ManageInventory = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Selling Price (₱) *</label>
+                  <label className="block text-sm font-medium mb-1">Selling Price (PHP) *</label>
                   <input
                     type="number"
                     required
@@ -419,5 +417,7 @@ const ManageInventory = () => {
 }
 
 export default ManageInventory
+
+
 
 

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -164,9 +164,7 @@ const ManagePaymentAccounts = () => {
                 className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">Manage Payment Accounts</h1>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
@@ -427,5 +425,7 @@ const ManagePaymentAccounts = () => {
 }
 
 export default ManagePaymentAccounts
+
+
 
 

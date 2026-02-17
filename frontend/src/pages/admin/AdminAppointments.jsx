@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -292,7 +292,7 @@ const AdminAppointments = () => {
     })
   }, [filteredAppointments])
 
-  const currency = cents => `₱${(cents / 100).toFixed(2)}`
+  const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
 
   const paymentStatusLabel = (status) => {
     if (!status) return 'UNPAID'
@@ -313,10 +313,23 @@ const AdminAppointments = () => {
     if (s === 'rejected' || s === 'refunded') return 'bg-red-100 text-red-800'
     return 'bg-[#f7f1ec] text-[#3b2f2a]'
   }
-  const paymentMethodLabel = (method) => {
-    if (method === 'online') return 'GCash (Manual)'
-    if (method === 'on_hand') return 'Cash'
-    return method || 'Cash'
+  const paymentChoiceLabel = (method, status) => {
+    const normalizedMethod = (method || '').toLowerCase()
+    const normalizedStatus = (status || '').toLowerCase()
+    if (normalizedMethod === 'online') return 'Online Payment (GCash)'
+    if (normalizedMethod === 'on_hand' && normalizedStatus === 'downpayment') return 'Paid at Salon (Downpayment)'
+    if (normalizedMethod === 'on_hand') return 'Paid at Salon'
+    if (normalizedStatus === 'downpayment') return 'Downpayment'
+    return 'Not Set'
+  }
+  const paymentChoiceClass = (method, status) => {
+    const normalizedMethod = (method || '').toLowerCase()
+    const normalizedStatus = (status || '').toLowerCase()
+    if (normalizedMethod === 'online') return 'bg-blue-100 text-blue-700'
+    if (normalizedMethod === 'on_hand' && normalizedStatus === 'downpayment') return 'bg-amber-100 text-amber-700'
+    if (normalizedMethod === 'on_hand') return 'bg-[#e9edf3] text-[#566173]'
+    if (normalizedStatus === 'downpayment') return 'bg-yellow-100 text-yellow-800'
+    return 'bg-[#f4ebe4] text-[#6f5b50]'
   }
   const resolveProofUrl = (url) => {
     if (!url) return null
@@ -485,6 +498,7 @@ const AdminAppointments = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Service</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Date & Time</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Payment Choice</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Price</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Actions</th>
                   </tr>
@@ -515,7 +529,7 @@ const AdminAppointments = () => {
                     const canModify = normalizedStatus === 'booked' || normalizedStatus === 'confirmed'
                     const canConfirm = normalizedStatus === 'booked'
                     const paymentLabel = paymentStatusLabel(apt.payment_status)
-                    const showPaymentBadge = apt.payment_status && apt.payment_status !== 'unpaid'
+                    const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status)
 
                     return (
                     <tr key={apt.id} className="hover:bg-[#f9f4ef]">
@@ -552,11 +566,16 @@ const AdminAppointments = () => {
                           }`}>
                             {normalizedStatus === 'confirmed' ? 'Confirmed' : displayStatus}
                           </span>
-                          {showPaymentBadge && (
-                            <span className={`px-3 py-1 rounded-full text-[11px] w-fit ${paymentStatusClass(apt.payment_status)}`}>
-                              {paymentLabel}
-                            </span>
-                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium w-fit ${paymentChoiceClass(apt.payment_method, apt.payment_status)}`}>
+                            {paymentChoice}
+                          </span>
+                          <span className={`px-3 py-1 rounded-full text-[11px] w-fit ${paymentStatusClass(apt.payment_status)}`}>
+                            {paymentLabel}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-4">
@@ -768,6 +787,8 @@ const AdminAppointments = () => {
 }
 
 export default AdminAppointments
+
+
 
 
 

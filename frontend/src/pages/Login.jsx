@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -170,7 +170,7 @@ const Login = ({ userType: propUserType }) => {
                 className="w-full border rounded px-3 py-2 pr-10 text-gray-900"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="********"
               />
               <button
                 type="button"
@@ -204,7 +204,7 @@ const Login = ({ userType: propUserType }) => {
             onClick={() => navigate('/')}
             className="text-sm text-[#8f7a6f] hover:text-[#3b2f2a]"
           >
-            ← Back to Home
+            Back to Home
           </button>
         </div>
       </div>
@@ -213,4 +213,6 @@ const Login = ({ userType: propUserType }) => {
 }
 
 export default Login
+
+
 

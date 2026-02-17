@@ -286,7 +286,7 @@ const Home = () => {
             <div className="text-gray-400 text-sm text-center md:text-left">
               2nd Floor, Governor Perdices Street, Dumaguete City, Philippines, 6200
             </div>
-            <div className="text-[#9b857a] text-sm">� 2024 Kaye's Hair Salon and Spa. All rights reserved.</div>
+            <div className="text-[#9b857a] text-sm">(c) 2024 Kaye's Hair Salon and Spa. All rights reserved.</div>
           </div>
         </div>
       </footer>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { QRCodeSVG } from 'qrcode.react'
@@ -75,7 +75,7 @@ const CustomerDashboard = () => {
     }
   }
 
-  const currency = cents => `₱${(cents / 100).toFixed(2)}`
+  const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
 
   if (showProfile) {
     return (
@@ -152,9 +152,7 @@ const CustomerDashboard = () => {
                 className="px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-lg font-bold"
                 aria-label="Back to Home"
                 title="Back to Home"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">My Appointments</h1>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
@@ -162,7 +160,7 @@ const CustomerDashboard = () => {
                 onClick={() => navigate('/book')}
                 className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
               >
-                🗓 Book New
+                Book New
               </button>
               <button
                 onClick={() => setShowProfile(true)}
@@ -307,7 +305,7 @@ const CustomerDashboard = () => {
             </div>
           ) : (
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 text-center">
-              <div className="text-4xl mb-4">📅</div>
+              <div className="text-sm font-semibold text-[#8f7a6f] mb-4">No bookings yet</div>
               <h3 className="text-xl font-semibold mb-2">No Appointments Yet</h3>
               <p className="text-[#8f7a6f] mb-4">Book your first appointment to get started!</p>
               <button
@@ -359,7 +357,7 @@ const CustomerDashboard = () => {
                   onClick={() => navigate('/book')}
                   className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 font-medium"
                 >
-                  📅 Book New Appointment
+                  Book New Appointment
                 </button>
               </div>
             </div>
@@ -374,19 +372,19 @@ const CustomerDashboard = () => {
                   onClick={() => navigate('/book')}
                   className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
                 >
-                  📅 Book New Appointment
+                  Book New Appointment
                 </button>
                 <button
                   onClick={() => navigate('/services')}
                   className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
                 >
-                  💅 View Services
+                  View Services
                 </button>
                 <button
                   onClick={() => navigate('/stylists')}
                   className="w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
                 >
-                  💇 View Stylists
+                  View Stylists
                 </button>
               </div>
             </div>
@@ -430,17 +428,17 @@ const CustomerDashboard = () => {
           {/* Info Cards */}
           <div className="grid md:grid-cols-3 gap-4">
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
-              <div className="text-3xl mb-2">✂️</div>
+              <div className="text-sm font-semibold mb-2 text-[#8f7a6f]">Stylist</div>
               <h4 className="font-semibold">Professional Stylists</h4>
               <p className="text-sm text-[#9b857a]">Expert care for your beauty needs</p>
             </div>
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
-              <div className="text-3xl mb-2">📅</div>
+              <div className="text-sm font-semibold mb-2 text-[#8f7a6f]">Booking</div>
               <h4 className="font-semibold">Easy Booking</h4>
               <p className="text-sm text-[#9b857a]">Book appointments in seconds</p>
             </div>
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
-              <div className="text-3xl mb-2">💖</div>
+              <div className="text-sm font-semibold mb-2 text-[#8f7a6f]">Service</div>
               <h4 className="font-semibold">Quality Service</h4>
               <p className="text-sm text-[#9b857a]">Premium beauty experience</p>
             </div>
@@ -452,6 +450,8 @@ const CustomerDashboard = () => {
 }
 
 export default CustomerDashboard
+
+
 
 
 

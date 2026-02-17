@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -55,7 +55,7 @@ const SalesMonitoring = () => {
     }
   }
 
-  const currency = (cents) => `₱${(cents / 100).toFixed(2)}`
+  const currency = (cents) => `PHP ${(cents / 100).toFixed(2)}`
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -82,9 +82,7 @@ const SalesMonitoring = () => {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">Sales Monitoring</h1>
             </div>
           </div>
@@ -261,5 +259,7 @@ const SalesMonitoring = () => {
 }
 
 export default SalesMonitoring
+
+
 
 

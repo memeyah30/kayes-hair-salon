@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -102,7 +102,7 @@ const AdminRatings = () => {
   }
 
   const renderStars = (rating) => {
-    return '⭐'.repeat(rating) + '☆'.repeat(5 - rating)
+    return '\u2605'.repeat(rating) + '\u2606'.repeat(5 - rating)
   }
 
   if (loading) {
@@ -126,9 +126,7 @@ const AdminRatings = () => {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <h1 className="text-2xl font-bold">Customer Ratings</h1>
             </div>
           </div>
@@ -270,5 +268,7 @@ const AdminRatings = () => {
 }
 
 export default AdminRatings
+
+
 
 

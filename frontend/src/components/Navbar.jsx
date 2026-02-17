@@ -1,8 +1,62 @@
-﻿const Navbar = ({ title = 'Dashboard' }) => {
+import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '../utils/api'
+
+const ROLE_LABELS = {
+  admin: 'Admin',
+  manager: 'Manager',
+  stylist: 'Staff',
+  customer: 'Customer',
+}
+
+const LOGOUT_PATHS = {
+  admin: '/login/admin',
+  manager: '/login/manager',
+  stylist: '/login/stylist',
+}
+
+const getInitials = (name) => {
+  if (!name) return 'U'
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('')
+}
+
+const Navbar = ({ title = 'Dashboard', onLogout }) => {
+  const navigate = useNavigate()
   const isAdminTheme = true
+  const userType = localStorage.getItem('userType') || 'customer'
+  const parsedUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}')
+    } catch {
+      return {}
+    }
+  }, [])
+
+  const roleLabel = ROLE_LABELS[userType] || 'User'
+  const displayName = parsedUser?.name || roleLabel
+  const initials = getInitials(displayName)
+  const canLogout = userType === 'admin' || userType === 'manager' || userType === 'stylist'
 
   const handleToggleSidebar = () => {
     window.dispatchEvent(new CustomEvent('sidebar:toggle'))
+  }
+
+  const handleLogout = () => {
+    if (!canLogout) return
+    if (onLogout) {
+      onLogout()
+      return
+    }
+    const loginPath = LOGOUT_PATHS[userType] || '/login/admin'
+    api.post('/logout').finally(() => {
+      localStorage.clear()
+      navigate(loginPath)
+    })
   }
 
   return (
@@ -34,7 +88,7 @@
           <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-[#9b857a]' : 'text-[#9b857a]'}`}>{title}</div>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3">
         <div
           className={`hidden md:flex items-center gap-2 rounded-full px-3 py-2 text-sm border ${
             isAdminTheme ? 'bg-white/80 border-[#e5d6cc] text-[#7b675b]' : 'bg-white border-gray-200'
@@ -49,6 +103,15 @@
             className={`bg-transparent outline-none w-32 ${isAdminTheme ? 'placeholder:text-[#b09a8f]' : 'placeholder:text-gray-400'}`}
           />
         </div>
+        {canLogout && (
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="px-3 py-2 rounded-full text-xs md:text-sm font-medium bg-[#c97c5d] hover:bg-[#b86f54] text-white"
+          >
+            Logout
+          </button>
+        )}
         <button
           type="button"
           className={`h-10 w-10 rounded-full flex items-center justify-center ${
@@ -65,9 +128,9 @@
           <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold ${
             isAdminTheme ? 'bg-[#eadfd5] text-[#7b675b]' : 'bg-blue-100 text-blue-700'
           }`}>
-            TS
+            {initials}
           </div>
-          <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-[#6b574c]' : 'text-gray-700'}`}>Admin</div>
+          <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-[#6b574c]' : 'text-gray-700'}`}>{roleLabel}</div>
         </div>
       </div>
     </header>
@@ -75,4 +138,3 @@
 }
 
 export default Navbar
-

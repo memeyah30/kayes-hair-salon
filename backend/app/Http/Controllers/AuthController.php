@@ -68,8 +68,18 @@ class AuthController extends Controller
             default => 'web',
         };
 
-        // Login the user using the appropriate guard
+        // Clear any previously authenticated guard in this browser session.
+        // This prevents mixed-role sessions (e.g., admin + stylist at once).
+        foreach (['admin', 'manager', 'stylist', 'web'] as $existingGuard) {
+            Auth::guard($existingGuard)->logout();
+        }
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        // Login the user using the requested guard
         Auth::guard($guard)->login($user);
+        $request->session()->put('active_guard', $guard);
+        $request->session()->put('active_user_type', $request->type);
         
         // Regenerate session ID for security
         $request->session()->regenerate();
@@ -108,15 +118,8 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        // Try to get user from any guard
-        $user = Auth::guard('admin')->user() 
-            ?? Auth::guard('manager')->user() 
-            ?? Auth::guard('stylist')->user();
-        
-        if ($user) {
-            $guard = $user instanceof Admin ? 'admin' 
-                : ($user instanceof Manager ? 'manager' : 'stylist');
-            
+        // Logout all guards to ensure clean session state.
+        foreach (['admin', 'manager', 'stylist', 'web'] as $guard) {
             Auth::guard($guard)->logout();
         }
         
@@ -144,10 +147,20 @@ class AuthController extends Controller
         file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
         // #endregion
         
-        // Try to get user from any guard
-        $user = Auth::guard('admin')->user() 
-            ?? Auth::guard('manager')->user() 
-            ?? Auth::guard('stylist')->user();
+        $activeGuard = $request->session()->get('active_guard');
+        $user = null;
+
+        // Prefer the explicitly active guard in session.
+        if ($activeGuard && Auth::guard($activeGuard)->check()) {
+            $user = Auth::guard($activeGuard)->user();
+        }
+
+        // Fallback to any guard if active guard is unavailable.
+        if (!$user) {
+            $user = Auth::guard('admin')->user()
+                ?? Auth::guard('manager')->user()
+                ?? Auth::guard('stylist')->user();
+        }
         
         // #region agent log
         $logData = json_encode([

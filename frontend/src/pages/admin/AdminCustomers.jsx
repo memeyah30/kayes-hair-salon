@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -72,7 +72,7 @@ const AdminCustomers = () => {
     )
   }
 
-  const currency = cents => `₱${(cents / 100).toFixed(2)}`
+  const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
@@ -97,9 +97,7 @@ const AdminCustomers = () => {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
-              >
-                ←
-              </button>
+              >&larr;</button>
               <div>
                 <h1 className="text-2xl font-bold">Customer Management</h1>
                 <p className="text-sm text-[#8f7a6f] mt-1">
@@ -131,7 +129,7 @@ const AdminCustomers = () => {
               <div className="p-8 text-center">
                 {appointments.length === 0 ? (
                   <div className="space-y-3">
-                    <div className="text-4xl mb-2">👥</div>
+                    <div className="text-base font-semibold mb-2">No customer records</div>
                     <div className="text-[#8f7a6f] font-medium">No customers yet</div>
                     <div className="text-sm text-gray-400">
                       Customers will appear here automatically after they make their first appointment booking.
@@ -163,13 +161,13 @@ const AdminCustomers = () => {
                       <div className="text-sm text-[#8f7a6f] mt-1 space-y-1">
                         {customer.email && (
                           <div className="flex items-center gap-1">
-                            <span>📧</span>
+                            <span>Email:</span>
                             <span>{customer.email}</span>
                           </div>
                         )}
                         {customer.phone && (
                           <div className="flex items-center gap-1">
-                            <span>📱</span>
+                            <span>Phone:</span>
                             <span>{customer.phone}</span>
                           </div>
                         )}
@@ -182,11 +180,11 @@ const AdminCustomers = () => {
                   </div>
                   <div className="mt-2 flex items-center gap-4 text-xs">
                     <span className="text-[#9b857a]">
-                      💰 Total Spent: <span className="font-semibold text-green-600">{currency(customer.totalSpent)}</span>
+                      Total Spent: <span className="font-semibold text-green-600">{currency(customer.totalSpent)}</span>
                     </span>
-                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-400">|</span>
                     <span className="text-[#9b857a]">
-                      ✓ Completed: {customer.appointments.filter(a => a.status === 'completed').length}
+                      Completed: {customer.appointments.filter(a => a.status === 'completed').length}
                     </span>
                   </div>
                 </div>
@@ -213,13 +211,13 @@ const AdminCustomers = () => {
                     <div className="text-sm text-[#9b857a] mb-1">Contact Information</div>
                     {selectedCustomer.email && (
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm">📧</span>
+                        <span className="text-sm">Email:</span>
                         <span>{selectedCustomer.email}</span>
                       </div>
                     )}
                     {selectedCustomer.phone && (
                       <div className="flex items-center gap-2">
-                        <span className="text-sm">📱</span>
+                        <span className="text-sm">Phone:</span>
                         <span>{selectedCustomer.phone}</span>
                       </div>
                     )}
@@ -297,7 +295,7 @@ const AdminCustomers = () => {
                               <div className="font-semibold text-lg mb-1">{appointmentServices[0]?.name || 'Service'}</div>
                             )}
                             <div className="text-sm text-[#8f7a6f] mb-1">
-                              📅 {new Date(getStart(apt)).toLocaleDateString('en-US', {
+                              Date: {new Date(getStart(apt)).toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 year: 'numeric',
                                 month: 'long',
@@ -306,7 +304,7 @@ const AdminCustomers = () => {
                               })}
                             </div>
                             <div className="text-sm text-[#8f7a6f] mb-1">
-                              🕐 {new Date(getStart(apt)).toLocaleTimeString('en-US', {
+                              Time: {new Date(getStart(apt)).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
                                 minute: '2-digit',
                                 timeZone: 'Asia/Manila'
@@ -317,10 +315,10 @@ const AdminCustomers = () => {
                               })} PHT
                             </div>
                             <div className="text-sm text-[#9b857a] mb-1">
-                              💇 Stylist: {apt.stylist?.name}
+                              Stylist: {apt.stylist?.name}
                             </div>
                             <div className="text-sm font-medium text-green-600">
-                              💰 {appointmentServices.length > 1 ? 'Total Price: ' : 'Price: '}{currency(totalPrice)}
+                              {appointmentServices.length > 1 ? 'Total Price: ' : 'Price: '}{currency(totalPrice)}
                             </div>
                             <div className="text-xs text-gray-400 mt-1">
                               Booking ID: APT-{String(apt.id).padStart(6, '0')}
@@ -352,7 +350,7 @@ const AdminCustomers = () => {
               <h2 className="font-semibold">Customer Information</h2>
             </div>
             <div className="p-8 text-center text-gray-400">
-              <div className="text-4xl mb-3">👤</div>
+              <div className="text-base font-semibold mb-3">No customer selected</div>
               <div className="text-lg font-medium mb-2">Select a customer</div>
               <div className="text-sm">
                 Click on a customer from the list to view their details and appointment history.
@@ -369,5 +367,7 @@ const AdminCustomers = () => {
 }
 
 export default AdminCustomers
+
+
 
 

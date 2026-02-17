@@ -73,8 +73,23 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      localStorage.clear()
-      window.location.href = '/login/admin'
+      const requestUrl = error.config?.url || ''
+      const isSessionProbe = requestUrl.includes('/me')
+      const isAuthRequest = requestUrl.includes('/login') || requestUrl.includes('/csrf-token')
+
+      // Allow auth/session probes to be handled by caller logic (e.g., ProtectedRoute).
+      if (!isSessionProbe && !isAuthRequest) {
+        const currentUserType = localStorage.getItem('userType') || 'admin'
+        const loginPath =
+          currentUserType === 'stylist'
+            ? '/login/stylist'
+            : currentUserType === 'manager'
+              ? '/login/manager'
+              : '/login/admin'
+
+        localStorage.clear()
+        window.location.href = loginPath
+      }
     }
     // Handle CSRF token mismatch - refresh token and retry
     if (error.response?.status === 419) {
@@ -100,4 +115,3 @@ api.interceptors.response.use(
 )
 
 export default api
-

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { QRCodeSVG } from 'qrcode.react'
@@ -87,16 +87,14 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
           disabled={!canGoPrev}
           className={`px-3 py-1 rounded ${canGoPrev ? 'hover:bg-[#f7f1ec] text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
           title={canGoPrev ? 'Previous month' : 'Cannot go before current month'}
-        >
-          ←
-        </button>
+        >&larr;</button>
         <h3 className="font-semibold">{label}</h3>
         <button
           onClick={handleNextMonth}
           className="px-3 py-1 rounded hover:bg-[#f7f1ec] text-gray-700"
           title="Next month"
         >
-          →
+          &rarr;
         </button>
       </div>
       <div className="grid grid-cols-7 text-xs text-[#9b857a] mb-2">
@@ -263,7 +261,7 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
 }
 
 const ReceiptModal = ({ appointment, onClose }) => {
-  const currency = cents => `₱${(cents / 100).toFixed(2)}`
+  const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
   
   // Helper function to get service name (with variant if applicable)
   const getServiceName = (service) => {
@@ -399,7 +397,7 @@ Thank you for choosing Kaye's Hair Salon and Spa!
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold">Appointment Receipt</h2>
-            <button onClick={onClose} className="text-[#9b857a] hover:text-gray-700">✕</button>
+            <button onClick={onClose} className="text-[#9b857a] hover:text-gray-700">&times;</button>
           </div>
           
           <div className="border-2 border-gray-300 p-6 space-y-4" id="receipt-content">
@@ -1036,7 +1034,7 @@ const BookAppointment = () => {
     }
   }
 
-  const currency = cents => `₱${(cents / 100).toFixed(2)}`
+  const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
   const selectedServiceData = services.find(s => s.id === parseInt(selectedService)) // For backward compatibility
   const selectedStylistData = stylists.find(s => s.id === parseInt(selectedStylist))
 
@@ -1050,9 +1048,9 @@ const BookAppointment = () => {
               onClick={() => navigate('/')}
               className="text-gray-300 hover:text-white transition"
             >
-              ← Home
+              Home
             </button>
-            <h1 className="text-xl font-bold">✨ Kaye's Hair Salon and Spa</h1>
+            <h1 className="text-xl font-bold">Kaye's Hair Salon and Spa</h1>
           </div>
           <button
             onClick={() => navigate('/my-appointments')}
@@ -1314,7 +1312,7 @@ const BookAppointment = () => {
                   }, 0)
                   return (
                     <div className="text-sm font-semibold text-blue-600 mt-2">
-                      {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected • 
+                      {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected |
                       Total: {currency(totalPrice)}
                     </div>
                   )
@@ -1547,7 +1545,7 @@ const BookAppointment = () => {
 
             {/* Payment Amount Input (for downpayment) */}
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-1 text-gray-900">Downpayment Amount (₱) *</label>
+              <label className="block text-sm font-medium mb-1 text-gray-900">Downpayment Amount (PHP) *</label>
               <input
                 type="number"
                 min={totalAmount * 0.5}
@@ -1567,7 +1565,7 @@ const BookAppointment = () => {
                 placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.5))}`}
               />
               <p className="text-xs text-[#9b857a] mt-1">
-                Minimum: {currency(Math.round(totalAmountCents * 0.5))} • Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}
+                Minimum: {currency(Math.round(totalAmountCents * 0.5))} | Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}
               </p>
             </div>
 
@@ -1709,4 +1707,6 @@ const BookAppointment = () => {
 }
 
 export default BookAppointment
+
+
 
