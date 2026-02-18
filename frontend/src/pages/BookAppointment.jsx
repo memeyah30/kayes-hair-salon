@@ -7,12 +7,9 @@ import api from '../utils/api'
 // Validation helpers
 const validateEmail = (email) => {
   if (!email) return { valid: true, message: '' } // Optional
-  if (!email.endsWith('@gmail.com')) {
-    return { valid: false, message: 'Email must end with @gmail.com' }
-  }
-  const emailRegex = /^[^\s@]+@gmail\.com$/
-  if (!emailRegex.test(email)) {
-    return { valid: false, message: 'Please enter a valid Gmail address' }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email.trim())) {
+    return { valid: false, message: 'Please enter a valid email address' }
   }
   return { valid: true, message: '' }
 }
@@ -362,6 +359,7 @@ Date: ${new Date(appointment.created_at).toLocaleString('en-US', { timeZone: 'As
 CUSTOMER INFORMATION:
 --------------------
 Name: ${appointment.customer_name}
+Email: ${appointment.customer_email || 'N/A'}
 Phone: ${appointment.customer_phone || 'N/A'}
 Address: ${appointment.customer_address || 'N/A'}
 
@@ -416,6 +414,7 @@ Thank you for choosing Kaye's Hair Salon and Spa!
               <h3 className="font-semibold mb-2">Customer Information</h3>
               <div className="space-y-1 text-sm">
                 <div><span className="font-medium">Name:</span> {appointment.customer_name}</div>
+                <div><span className="font-medium">Email:</span> {appointment.customer_email || 'N/A'}</div>
                 <div><span className="font-medium">Phone:</span> {appointment.customer_phone || 'N/A'}</div>
                 <div><span className="font-medium">Address:</span> {appointment.customer_address || 'N/A'}</div>
               </div>
@@ -594,18 +593,19 @@ const BookAppointment = () => {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [booking, setBooking] = useState({ 
     name: '', 
+    email: localStorage.getItem('customer_email') || '',
     phone: '',
     address: ''
   })
   const [payment, setPayment] = useState({
     method: 'on_hand', // 'on_hand' or 'online'
-    paymentType: 'downpayment', // downpayment only
+    paymentType: 'downpayment', // on_hand: downpayment only, online: downpayment or full
     selectedAccount: '',
     amount: '',
     proofFile: null,
     proofPreview: null,
   })
-  const [formErrors, setFormErrors] = useState({ phone: '', payment: '' })
+  const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '' })
   const [rescheduling, setRescheduling] = useState(null)
   const [receipt, setReceipt] = useState(null)
   const [prefillServiceIds, setPrefillServiceIds] = useState([])
@@ -728,6 +728,7 @@ const BookAppointment = () => {
       setSelectedService(appt.service_id)
       setBooking({
         name: appt.customer_name,
+        email: appt.customer_email || localStorage.getItem('customer_email') || '',
         phone: appt.customer_phone || '',
         address: appt.customer_address || '',
       })
@@ -769,20 +770,29 @@ const BookAppointment = () => {
       toast.warn('Please enter your name')
       return
     }
+    if (!booking.email.trim()) {
+      toast.warn('Please enter your email')
+      setFormErrors(prev => ({ ...prev, email: 'Email is required' }))
+      return
+    }
     if (!booking.phone.trim()) {
       toast.warn('Please enter your contact number')
       return
     }
     
+    // Validate email
+    const emailValidation = validateEmail(booking.email)
+
     // Validate phone
     const phoneValidation = validatePhone(booking.phone)
     
     setFormErrors({
+      email: emailValidation.message,
       phone: phoneValidation.message
     })
     
-    if (!phoneValidation.valid) {
-      toast.error('Please enter a valid phone number')
+    if (!emailValidation.valid || !phoneValidation.valid) {
+      toast.error('Please enter valid customer information')
       return
     }
     
@@ -883,10 +893,23 @@ const BookAppointment = () => {
       // Calculate payment amount
       let paymentAmountCents = 0
       let paymentStatus = payment.method === 'online' ? 'pending' : 'unpaid'
+      const normalizedPaymentType = payment.method === 'online'
+        ? (payment.paymentType === 'full' ? 'full' : 'downpayment')
+        : 'downpayment'
 
       if (payment.method === 'online') {
-        // Downpayment only - use entered amount or default to 50%
-        paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.5)
+        if (normalizedPaymentType === 'full') {
+          paymentAmountCents = totalAmountCents
+        } else {
+          // Downpayment - use entered amount or default to 50%
+          paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.5)
+          const minDepositCents = Math.round(totalAmountCents * 0.5)
+          if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
+            toast.warn(`Minimum GCash downpayment is ${currency(minDepositCents)}`)
+            setLoading(false)
+            return
+          }
+        }
       } else if (payment.method === 'on_hand') {
         if (!payment.amount) {
           // Downpayment only - default to 50%
@@ -906,6 +929,7 @@ const BookAppointment = () => {
       // Create FormData for file upload
       const formData = new FormData()
       formData.append('customer_name', booking.name)
+      formData.append('customer_email', booking.email ? booking.email.trim().toLowerCase() : '')
       formData.append('customer_phone', booking.phone ? booking.phone.replace(/[\s-]/g, '') : '')
       formData.append('customer_address', booking.address || '')
       formData.append('service_id', serviceIds[0])
@@ -972,6 +996,7 @@ const BookAppointment = () => {
       }
       
       // Save customer info to localStorage
+      if (booking.email) localStorage.setItem('customer_email', booking.email.trim().toLowerCase())
       if (booking.phone) localStorage.setItem('customer_phone', booking.phone)
       
     } catch (e) {
@@ -1053,10 +1078,10 @@ const BookAppointment = () => {
             <h1 className="text-xl font-bold">Kaye's Hair Salon and Spa</h1>
           </div>
           <button
-            onClick={() => navigate('/my-appointments')}
+            onClick={() => navigate('/manage-booking/start')}
             className="w-full sm:w-auto px-4 py-2 bg-white/10 rounded hover:bg-white/20 text-sm transition"
           >
-            My Appointments
+            Manage My Booking
           </button>
         </div>
       </div>
@@ -1104,6 +1129,23 @@ const BookAppointment = () => {
                 value={booking.name}
                 onChange={e => setBooking({ ...booking, name: e.target.value })}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-900">Email *</label>
+              <input
+                type="email"
+                required
+                className={`w-full border rounded px-3 py-2 text-gray-900 placeholder-gray-500 ${formErrors.email ? 'border-red-500' : ''}`}
+                placeholder="your@email.com"
+                value={booking.email}
+                onChange={e => {
+                  setBooking({ ...booking, email: e.target.value })
+                  const validation = validateEmail(e.target.value)
+                  setFormErrors(prev => ({ ...prev, email: validation.message }))
+                }}
+              />
+              {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
             </div>
             
             <div>
@@ -1322,6 +1364,7 @@ const BookAppointment = () => {
                 <label className="text-sm text-gray-900 font-medium">Customer</label>
                 <div className="mt-1 p-2 bg-gray-50 rounded text-sm">
                   <div className="font-medium text-gray-900">{booking.name}</div>
+                  {booking.email && <div className="text-xs text-gray-700">{booking.email}</div>}
                   {booking.phone && <div className="text-xs text-gray-700">{booking.phone}</div>}
                   {booking.address && <div className="text-xs text-gray-700">{booking.address}</div>}
                 </div>
@@ -1503,10 +1546,16 @@ const BookAppointment = () => {
         }, 0)
         const totalAmount = totalAmountCents / 100
         
+        const minDownpayment = totalAmount * 0.5
+        const parsedPaymentAmount = parseFloat(payment.amount)
+        const selectedPaymentType = payment.method === 'online'
+          ? (payment.paymentType === 'full' ? 'full' : 'downpayment')
+          : 'downpayment'
+
         // Calculate payment amount based on type
-        const paymentAmount = payment.paymentType === 'full' 
-          ? totalAmount 
-          : (payment.amount ? parseFloat(payment.amount) : totalAmount * 0.5)
+        const paymentAmount = selectedPaymentType === 'full'
+          ? totalAmount
+          : (Number.isFinite(parsedPaymentAmount) ? parsedPaymentAmount : minDownpayment)
         
         return (
           <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 max-w-3xl mx-auto">
@@ -1534,38 +1583,83 @@ const BookAppointment = () => {
               </div>
             </div>
 
-            {/* Payment Type (Downpayment only) */}
+            {/* Payment Type */}
             <div className="mb-6">
               <label className="block text-sm font-medium mb-2 text-gray-900">Payment Type *</label>
-              <div className="border-2 border-blue-600 bg-blue-50 rounded-lg p-4">
-                <div className="font-semibold text-gray-900">Downpayment</div>
-                <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.5))}</div>
+              <div className={`grid gap-3 ${payment.method === 'online' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                  selectedPaymentType === 'downpayment' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                }`}>
+                  <input
+                    type="radio"
+                    name="payment_type"
+                    value="downpayment"
+                    checked={selectedPaymentType === 'downpayment'}
+                    onChange={() => setPayment({
+                      ...payment,
+                      paymentType: 'downpayment',
+                      amount: '',
+                    })}
+                    className="sr-only"
+                  />
+                  <div className="font-semibold text-gray-900">Downpayment</div>
+                  <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.5))}</div>
+                </label>
+
+                {payment.method === 'online' && (
+                  <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                    selectedPaymentType === 'full' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="payment_type"
+                      value="full"
+                      checked={selectedPaymentType === 'full'}
+                      onChange={() => setPayment({
+                        ...payment,
+                        paymentType: 'full',
+                        amount: totalAmount.toFixed(2),
+                      })}
+                      className="sr-only"
+                    />
+                    <div className="font-semibold text-gray-900">Full Payment</div>
+                    <div className="text-sm text-[#8f7a6f] mt-1">Pay the full amount now via GCash</div>
+                  </label>
+                )}
               </div>
             </div>
 
-            {/* Payment Amount Input (for downpayment) */}
+            {/* Payment Amount Input */}
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-1 text-gray-900">Downpayment Amount (PHP) *</label>
+              <label className="block text-sm font-medium mb-1 text-gray-900">
+                {selectedPaymentType === 'full' ? 'Full Payment Amount (PHP) *' : 'Downpayment Amount (PHP) *'}
+              </label>
               <input
                 type="number"
-                min={totalAmount * 0.5}
+                min={selectedPaymentType === 'full' ? totalAmount : minDownpayment}
                 max={totalAmount}
                 step="0.01"
                 required
                 className="w-full border rounded px-3 py-2 text-gray-900"
-                value={payment.amount || (totalAmount * 0.5).toFixed(2)}
+                value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || minDownpayment.toFixed(2))}
+                readOnly={selectedPaymentType === 'full'}
                 onChange={(e) => {
+                  if (selectedPaymentType === 'full') {
+                    return
+                  }
                   const value = parseFloat(e.target.value) || 0
-                  if (value >= totalAmount * 0.5 && value <= totalAmount) {
+                  if (value >= minDownpayment && value <= totalAmount) {
                     setPayment({ ...payment, amount: e.target.value })
-                  } else if (value < totalAmount * 0.5) {
+                  } else if (value < minDownpayment) {
                     toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.5))}`)
                   }
                 }}
-                placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.5))}`}
+                placeholder={selectedPaymentType === 'full' ? currency(totalAmountCents) : `Minimum: ${currency(Math.round(totalAmountCents * 0.5))}`}
               />
               <p className="text-xs text-[#9b857a] mt-1">
-                Minimum: {currency(Math.round(totalAmountCents * 0.5))} | Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}
+                {selectedPaymentType === 'full'
+                  ? <>Full payment selected | Remaining: {currency(0)}</>
+                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.5))} | Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}</>}
               </p>
             </div>
 
@@ -1653,7 +1747,7 @@ const BookAppointment = () => {
                 <span className="font-bold text-lg text-gray-900">{currency(totalAmountCents)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-700">Downpayment Amount:</span>
+                <span className="text-gray-700">{selectedPaymentType === 'full' ? 'Full Payment Amount:' : 'Downpayment Amount:'}</span>
                 <span className="font-bold text-lg text-green-600">{currency(Math.round(paymentAmount * 100))}</span>
               </div>
               <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
@@ -1675,7 +1769,7 @@ const BookAppointment = () => {
                 disabled={(
                   !payment.proofFile ||
                   (payment.method === 'online' && !payment.selectedAccount) ||
-                  (payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
+                  (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
                 )}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
               >
@@ -1694,10 +1788,9 @@ const BookAppointment = () => {
             setStep(1)
             setSelectedSlot(null)
             // Keep email/phone in form for easy re-booking, but clear other fields
-            setBooking({ name: '', phone: booking.phone, address: '' })
-            setFormErrors({ phone: '' })
-            // Navigate to customer dashboard to see the new appointment
-            navigate('/my-appointments')
+            setBooking({ name: '', email: booking.email, phone: booking.phone, address: '' })
+            setFormErrors({ email: '', phone: '', payment: '' })
+            navigate('/customer', { replace: true })
           }} 
         />
       )}

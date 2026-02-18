@@ -13,6 +13,7 @@ use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\ManageBookingController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -28,10 +29,23 @@ Route::get('/locations', [LocationController::class, 'index']); // Public locati
 
 Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public - customers can rate
 
+// Customer manage-booking OTP routes
+Route::post('/manage-booking/send-otp', [ManageBookingController::class, 'sendOtp']);
+Route::post('/manage-booking/verify-otp', [ManageBookingController::class, 'verifyOtp']);
+
+Route::middleware('customer.otp')->group(function () {
+    Route::get('/manage-booking/appointments', [ManageBookingController::class, 'appointments']);
+    Route::post('/manage-booking/appointments/{id}/reschedule', [ManageBookingController::class, 'reschedule']);
+    Route::post('/manage-booking/appointments/{id}/cancel', [ManageBookingController::class, 'cancel']);
+    Route::post('/manage-booking/appointments/{id}/rate', [ManageBookingController::class, 'rate']);
+});
+
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+Route::post('/me/profile-photo', [AuthController::class, 'updateProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
+Route::delete('/me/profile-photo', [AuthController::class, 'removeProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
 
 // Admin-only routes
 Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
@@ -78,8 +92,7 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
     Route::patch('/locations/{location}', [LocationController::class, 'update']);
     Route::delete('/locations/{location}', [LocationController::class, 'destroy']);
 
-    // Ratings management
-    Route::get('/ratings', [CustomerRatingController::class, 'index']);
+    // Ratings management (delete remains admin-only)
     Route::delete('/ratings/{customerRating}', [CustomerRatingController::class, 'destroy']);
 
     // Inventory management
@@ -129,7 +142,6 @@ Route::middleware(['auth:sanctum', 'userType:stylist'])->group(function () {
     Route::get('/appointments/assigned', [AppointmentController::class, 'index']); // Only assigned appointments
     Route::get('/appointments/history', [AppointmentController::class, 'history']); // Appointment history
     Route::get('/appointments/rescheduled', [AppointmentController::class, 'index']); // Rescheduled appointments
-    Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'complete']);
     Route::get('/ratings', [CustomerRatingController::class, 'index']); // View own ratings
 });
 

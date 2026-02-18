@@ -15,6 +15,7 @@ class Manager extends Authenticatable
         'username',
         'password',
         'active',
+        'image',
     ];
 
     protected $hidden = [
@@ -35,6 +36,5 @@ class Manager extends Authenticatable
         }
     }
 }
-
 
 

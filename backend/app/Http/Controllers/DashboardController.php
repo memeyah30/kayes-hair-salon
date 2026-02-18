@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\CustomerRating;
 use App\Models\Sale;
 use App\Models\Service;
 use App\Models\Stylist;
@@ -175,41 +176,62 @@ class DashboardController extends Controller
         $email = $email ? strtolower(trim($email)) : null;
         $phone = $phone ? preg_replace('/[\s\-]/', '', trim($phone)) : null;
 
-        if (!$email && !$phone) {
-            return response()->json(['message' => 'Email or phone required'], 400);
+        // Require both fields and match both values to avoid cross-customer leakage.
+        if (!$email || !$phone) {
+            return response()->json(['message' => 'Email and phone are required'], 400);
         }
 
-        $query = Appointment::with(['stylist', 'service', 'services.variants']);
-        
-        // Filter appointments that belong ONLY to this specific customer
-        // Use strict matching - email takes priority, then phone
-        if ($email && $phone) {
-            // Strict match when both are provided
-            $query->where('customer_email', $email)
-                  ->where('customer_phone', $phone);
-        } elseif ($email) {
-            // Only email provided - match ONLY by exact email
-            $query->where('customer_email', $email);
-        } else {
-            // Only phone provided - match ONLY by exact phone
-            $query->where('customer_phone', $phone);
-        }
+        $query = Appointment::with(['stylist', 'service', 'services.variants'])
+            ->whereRaw('LOWER(TRIM(customer_email)) = ?', [$email])
+            ->whereRaw("REPLACE(REPLACE(TRIM(COALESCE(customer_phone, '')), ' ', ''), '-', '') = ?", [$phone]);
 
         $appointments = $query->orderBy('start_datetime', 'asc')->get();
 
-        // Only return upcoming appointments (future appointments with booked status)
-        $upcoming = $appointments->filter(function ($apt) {
-            $appointmentDate = Carbon::parse($apt->start_datetime);
-            return $appointmentDate->isFuture() && $apt->status === 'booked';
+        $ratedAppointmentIds = CustomerRating::whereIn('appointment_id', $appointments->pluck('id'))
+            ->pluck('appointment_id')
+            ->flip();
+
+        $now = Carbon::now('Asia/Manila');
+
+        // Upcoming: future appointments that are still active
+        $upcoming = $appointments->filter(function ($apt) use ($now) {
+            $appointmentDate = Carbon::parse($apt->start_datetime)->setTimezone('Asia/Manila');
+            return $appointmentDate->isFuture() && in_array($apt->status, ['booked', 'confirmed'], true);
         });
+
+        // History: completed/cancelled/missed and past appointments
+        $history = $appointments->filter(function ($apt) use ($now) {
+            $appointmentDate = Carbon::parse($apt->start_datetime)->setTimezone('Asia/Manila');
+            return !$appointmentDate->isFuture() || in_array($apt->status, ['completed', 'cancelled', 'missed'], true);
+        });
+
+        $totalSpent = $appointments
+            ->where('status', 'completed')
+            ->sum(function ($apt) {
+                if (!empty($apt->total_amount_cents)) {
+                    return (int) $apt->total_amount_cents;
+                }
+
+                if ($apt->relationLoaded('services') && $apt->services && $apt->services->count() > 0) {
+                    return (int) $apt->services->sum('price_cents');
+                }
+
+                return (int) ($apt->service->price_cents ?? 0);
+            });
 
         return response()->json([
             'upcoming' => $upcoming->values()->map(function ($apt) {
                 return $this->formatAppointmentForResponse($apt);
             }),
-            'history' => [], // No history - only upcoming appointments
-            'total_spent' => 0,
-            'total_appointments' => $upcoming->count(),
+            'history' => $history->values()->map(function ($apt) use ($ratedAppointmentIds) {
+                $formatted = $this->formatAppointmentForResponse($apt);
+                $hasRating = $ratedAppointmentIds->has($apt->id);
+                $formatted->has_rating = $hasRating;
+                $formatted->can_rate = $apt->status === 'completed' && !$hasRating;
+                return $formatted;
+            }),
+            'total_spent' => (int) $totalSpent,
+            'total_appointments' => $appointments->count(),
         ]);
     }
 }

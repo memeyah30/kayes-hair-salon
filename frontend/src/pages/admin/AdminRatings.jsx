@@ -52,7 +52,7 @@ const AdminRatings = () => {
       setRatings(ratingsWithData)
       setStylists(stylistsRes.data)
     } catch (e) {
-      toast.error('Failed to load ratings')
+      toast.error(e.response?.data?.message || 'Failed to load ratings')
     } finally {
       setLoading(false)
     }

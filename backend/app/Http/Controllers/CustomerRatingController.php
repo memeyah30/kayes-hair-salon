@@ -33,6 +33,19 @@ class CustomerRatingController extends Controller
 
         $appointment = Appointment::findOrFail($data['appointment_id']);
 
+        if ($appointment->status !== 'completed') {
+            return response()->json([
+                'message' => 'Only completed appointments can be rated.',
+            ], 422);
+        }
+
+        $existingRating = CustomerRating::where('appointment_id', $appointment->id)->exists();
+        if ($existingRating) {
+            return response()->json([
+                'message' => 'This appointment has already been rated.',
+            ], 422);
+        }
+
         $rating = CustomerRating::create([
             'appointment_id' => $data['appointment_id'],
             'stylist_id' => $appointment->stylist_id,

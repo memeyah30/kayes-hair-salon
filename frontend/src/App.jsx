@@ -24,6 +24,9 @@ import ManageInventory from './pages/admin/ManageInventory'
 import SalesMonitoring from './pages/admin/SalesMonitoring'
 import StylistAppointments from './pages/stylist/StylistAppointments'
 import StylistSchedule from './pages/stylist/StylistSchedule'
+import ManageBookingEmail from './pages/ManageBookingEmail'
+import VerifyOtp from './pages/VerifyOtp'
+import ManageBookingDashboard from './pages/ManageBookingDashboard'
 
 const App = () => {
   return (
@@ -31,6 +34,7 @@ const App = () => {
       <Routes>
         {/* Public landing page */}
         <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Navigate to="/" replace />} />
         
         {/* Public login routes */}
         <Route path="/login" element={<Login />} />
@@ -38,8 +42,15 @@ const App = () => {
         <Route path="/login/manager" element={<Login userType="manager" />} />
         <Route path="/login/stylist" element={<Login userType="stylist" />} />
         
+        {/* Customer manage-booking routes (public OTP flow) */}
+        <Route path="/my-appointments" element={<Navigate to="/" replace />} />
+        <Route path="/manage-booking" element={<Navigate to="/" replace />} />
+        <Route path="/manage-booking/start" element={<ManageBookingEmail />} />
+        <Route path="/manage-booking/verify" element={<VerifyOtp />} />
+        <Route path="/manage-booking/dashboard" element={<ManageBookingDashboard />} />
+
         {/* Customer routes (public) */}
-        <Route path="/my-appointments" element={<CustomerDashboard />} />
+        <Route path="/customer" element={<CustomerDashboard />} />
         <Route path="/book" element={<BookAppointment />} />
         <Route path="/stylists" element={<Stylists />} />
         <Route path="/services" element={<Services />} />

@@ -10,22 +10,52 @@ const CustomerDashboard = () => {
   const navigate = useNavigate()
   const [customerEmail, setCustomerEmail] = useState(localStorage.getItem('customer_email') || '')
   const [customerPhone, setCustomerPhone] = useState(localStorage.getItem('customer_phone') || '')
-  const [showProfile, setShowProfile] = useState(!customerEmail && !customerPhone)
+  const [showProfile, setShowProfile] = useState(!customerEmail || !customerPhone)
   const [appointments, setAppointments] = useState({ upcoming: [], history: [] })
   const [loading, setLoading] = useState(false)
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
+  const getServiceName = (service) => {
+    const variantId = service.pivot?.service_variant_id
+    if (variantId && service.variants) {
+      const variant = service.variants.find(v => v.id === variantId)
+      if (variant) {
+        return `${service.name} - ${variant.name}`
+      }
+    }
+    return service.name
+  }
+  const getServicePrice = (service) => {
+    const variantId = service.pivot?.service_variant_id
+    if (variantId && service.variants) {
+      const variant = service.variants.find(v => v.id === variantId)
+      if (variant) {
+        return variant.price_cents
+      }
+    }
+    return service.price_cents || 0
+  }
+  const getAppointmentServices = (appointment) => (
+    appointment.services && appointment.services.length > 0
+      ? appointment.services
+      : (appointment.service ? [appointment.service] : [])
+  )
+  const getAppointmentTotal = (appointment) => (
+    getAppointmentServices(appointment).reduce((sum, service) => sum + getServicePrice(service), 0)
+  )
 
   useEffect(() => {
-    // Load appointments if email/phone is available
-    if (customerEmail || customerPhone) {
+    // Load appointments only when both email and phone are available.
+    if (customerEmail && customerPhone) {
       loadAppointments()
+    } else {
+      setAppointments({ upcoming: [], history: [] })
     }
   }, [customerEmail, customerPhone])
 
   const loadAppointments = async () => {
-    if (!customerEmail && !customerPhone) {
+    if (!customerEmail || !customerPhone) {
       setAppointments({ upcoming: [], history: [] })
       return
     }
@@ -42,7 +72,7 @@ const CustomerDashboard = () => {
       })
     } catch (e) {
       console.error('Failed to load appointments:', e)
-      toast.error('Failed to load appointments')
+      toast.error(e.response?.data?.message || 'Failed to load appointments')
       setAppointments({ upcoming: [], history: [] })
     } finally {
       setLoading(false)
@@ -50,8 +80,12 @@ const CustomerDashboard = () => {
   }
 
   const handleSaveProfile = () => {
-    if (!customerEmail && !customerPhone) {
-      toast.warn('Please enter at least email or phone')
+    if (!customerEmail) {
+      toast.warn('Please enter your email and phone number')
+      return
+    }
+    if (!customerPhone) {
+      toast.warn('Please enter your email and phone number')
       return
     }
     const normalizedEmail = customerEmail ? customerEmail.trim().toLowerCase() : ''
@@ -75,6 +109,34 @@ const CustomerDashboard = () => {
     }
   }
 
+  const handleRate = async (appointment) => {
+    if (!appointment?.id) return
+
+    const ratingInput = window.prompt('Rate your experience from 1 to 5 stars:', '5')
+    if (ratingInput === null) return
+
+    const rating = Number(ratingInput)
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      toast.warn('Please enter a whole number from 1 to 5.')
+      return
+    }
+
+    const commentInput = window.prompt('Leave a comment (optional):', '')
+    const comment = commentInput === null ? '' : commentInput.trim()
+
+    try {
+      await api.post('/ratings', {
+        appointment_id: appointment.id,
+        rating,
+        comment,
+      })
+      toast.success('Thank you! Your rating was submitted.')
+      loadAppointments()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to submit rating')
+    }
+  }
+
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
 
   if (showProfile) {
@@ -82,12 +144,13 @@ const CustomerDashboard = () => {
       <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
-          <Navbar />
+          <Navbar hideUserBadge />
           <div className="p-4 md:p-6">
             <div className="max-w-md mx-auto bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
               <h2 className="text-xl font-bold mb-4">Customer Profile</h2>
               <p className="text-sm text-[#8f7a6f] mb-4">
-                Enter the email or phone number you used when booking to view your appointments.
+                Enter the email you used when booking to view your appointments.
+                Phone is required for account verification.
                 If you just booked, your information is already saved and appointments will appear automatically.
               </p>
               <div className="space-y-4">
@@ -95,16 +158,18 @@ const CustomerDashboard = () => {
                   <label className="block text-sm font-medium mb-1">Email</label>
                   <input
                     type="email"
+                    required
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     className="w-full border rounded px-3 py-2"
-                    placeholder="your@gmail.com"
+                    placeholder="your@email.com"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Phone</label>
                   <input
                     type="tel"
+                    required
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     className="w-full border rounded px-3 py-2"
@@ -130,7 +195,7 @@ const CustomerDashboard = () => {
       <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
-          <Navbar />
+          <Navbar hideUserBadge />
           <div className="flex items-center justify-center min-h-screen">
             <div>Loading your appointments...</div>
           </div>
@@ -143,12 +208,12 @@ const CustomerDashboard = () => {
     <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="customer" />
       <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
+        <Navbar hideUserBadge />
         <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/home')}
                 className="px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-lg font-bold"
                 aria-label="Back to Home"
                 title="Back to Home"
@@ -161,6 +226,12 @@ const CustomerDashboard = () => {
                 className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
               >
                 Book New
+              </button>
+              <button
+                onClick={() => navigate('/manage-booking/start')}
+                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              >
+                Manage Booking
               </button>
               <button
                 onClick={() => setShowProfile(true)}
@@ -179,7 +250,7 @@ const CustomerDashboard = () => {
             </div>
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <div className="text-[#9b857a] text-sm">Total Appointments</div>
-              <div className="text-2xl font-bold">{appointments.upcoming.length}</div>
+              <div className="text-2xl font-bold">{appointments.upcoming.length + appointments.history.length}</div>
             </div>
           </div>
 
@@ -196,36 +267,9 @@ const CustomerDashboard = () => {
                   })
                   .map(appt => {
                   const appointmentDate = new Date(getStart(appt))
-                  
-                  // Helper function to get service name (with variant if applicable)
-                  const getServiceName = (service) => {
-                    const variantId = service.pivot?.service_variant_id
-                    if (variantId && service.variants) {
-                      const variant = service.variants.find(v => v.id === variantId)
-                      if (variant) {
-                        return `${service.name} - ${variant.name}`
-                      }
-                    }
-                    return service.name
-                  }
-                  
-                  // Helper function to get service price (variant price if applicable)
-                  const getServicePrice = (service) => {
-                    const variantId = service.pivot?.service_variant_id
-                    if (variantId && service.variants) {
-                      const variant = service.variants.find(v => v.id === variantId)
-                      if (variant) {
-                        return variant.price_cents
-                      }
-                    }
-                    return service.price_cents || 0
-                  }
-                  
-                  // Get all services for this appointment
-                  const appointmentServices = appt.services && appt.services.length > 0 
-                    ? appt.services 
-                    : (appt.service ? [appt.service] : [])
-                  const totalPrice = appointmentServices.reduce((sum, s) => sum + getServicePrice(s), 0)
+
+                  const appointmentServices = getAppointmentServices(appt)
+                  const totalPrice = getAppointmentTotal(appt)
                   
                   return (
                     <div key={appt.id} className="border rounded-lg p-4">
@@ -305,15 +349,105 @@ const CustomerDashboard = () => {
             </div>
           ) : (
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 text-center">
-              <div className="text-sm font-semibold text-[#8f7a6f] mb-4">No bookings yet</div>
-              <h3 className="text-xl font-semibold mb-2">No Appointments Yet</h3>
-              <p className="text-[#8f7a6f] mb-4">Book your first appointment to get started!</p>
+              <div className="text-sm font-semibold text-[#8f7a6f] mb-4">No upcoming appointments</div>
+              <h3 className="text-xl font-semibold mb-2">No Upcoming Appointment</h3>
+              <p className="text-[#8f7a6f] mb-4">Book a new appointment to get started.</p>
               <button
                 onClick={() => navigate('/book')}
                 className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
               >
                 Book Appointment Now
               </button>
+            </div>
+          )}
+
+          {/* Appointment History */}
+          {appointments.history.length > 0 && (
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <h2 className="font-semibold text-lg mb-4">Appointment History</h2>
+              <div className="space-y-3">
+                {[...appointments.history]
+                  .sort((a, b) => new Date(getStart(b)) - new Date(getStart(a)))
+                  .map(appt => {
+                    const appointmentDate = new Date(getStart(appt))
+                    const appointmentServices = getAppointmentServices(appt)
+                    const totalPrice = getAppointmentTotal(appt)
+                    const hasRating = appt.has_rating === true || appt.has_rating === 1 || appt.has_rating === '1'
+                    const canRate = Boolean(appt.can_rate) || (appt.status === 'completed' && !hasRating)
+
+                    return (
+                      <div key={appt.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="font-semibold text-lg">
+                              {appointmentServices.length > 1 ? (
+                                <span>{appointmentServices.length} Services</span>
+                              ) : (
+                                <span>{appointmentServices[0]?.name || 'Service'}</span>
+                              )}
+                            </div>
+                            {appointmentServices.length > 1 && (
+                              <div className="text-sm text-[#8f7a6f] mt-1">
+                                <ul className="list-disc list-inside ml-2 space-y-0.5">
+                                  {appointmentServices.map((s, idx) => (
+                                    <li key={idx}>{getServiceName(s)} - {currency(getServicePrice(s))}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            <div className="text-sm text-[#8f7a6f] mt-1">
+                              {appointmentDate.toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                timeZone: 'Asia/Manila'
+                              })} at {appointmentDate.toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                                timeZone: 'Asia/Manila'
+                              })} PHT
+                            </div>
+                            <div className="text-sm text-[#9b857a] mt-1">
+                              with {appt.stylist?.name}
+                            </div>
+                            <div className="text-sm font-medium text-green-600 mt-2">
+                              {appointmentServices.length > 1 ? (
+                                <span>Total: {currency(totalPrice)}</span>
+                              ) : (
+                                <span>{currency(totalPrice)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            {canRate && (
+                              <button
+                                onClick={() => handleRate(appt)}
+                                className="px-3 py-1 bg-amber-100 text-amber-700 rounded hover:bg-amber-200 text-sm"
+                              >
+                                Rate
+                              </button>
+                            )}
+                            {!canRate && appt.status === 'completed' && hasRating && (
+                              <span className="px-3 py-1 rounded text-xs bg-emerald-100 text-emerald-700 self-center">
+                                Rated
+                              </span>
+                            )}
+                            <span className={`px-2 py-1 rounded text-xs self-center ${
+                              appt.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              appt.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              appt.status === 'missed' ? 'bg-gray-100 text-gray-700' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {appt.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
             </div>
           )}
 

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Carbon\Carbon;
 use DateTimeInterface;
 
@@ -97,8 +98,12 @@ class Appointment extends Model
     {
         return $this->hasMany(CustomerRating::class);
     }
-}
 
+    public function appointmentRating(): HasOne
+    {
+        return $this->hasOne(AppointmentRating::class);
+    }
+}
 
 
 

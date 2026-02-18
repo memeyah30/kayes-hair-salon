@@ -61,6 +61,21 @@ const Home = () => {
 
               </span>
             </div>
+
+            <div className="hidden md:flex items-center gap-3">
+              <button
+                onClick={() => navigate('/book')}
+                className="px-4 py-2 rounded bg-white/10 hover:bg-white/20 text-sm font-medium transition"
+              >
+                Book Appointment
+              </button>
+              <button
+                onClick={() => navigate('/manage-booking/start')}
+                className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-sm font-medium transition"
+              >
+                Manage My Booking
+              </button>
+            </div>
            
             <button
               onClick={() => setMobileMenuOpen(prev => !prev)}
@@ -101,11 +116,11 @@ const Home = () => {
               <button
                 onClick={() => {
                   setMobileMenuOpen(false)
-                  navigate('/my-appointments')
+                  navigate('/manage-booking/start')
                 }}
                 className="w-full text-left text-white hover:text-gray-200 text-sm font-medium transition"
               >
-                My Appointments
+                Manage My Booking
               </button>
             </div>
           )}
@@ -127,6 +142,12 @@ const Home = () => {
               className="w-full sm:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition"
             >
               Book Appointment
+            </button>
+            <button
+              onClick={() => navigate('/manage-booking/start')}
+              className="w-full sm:w-auto px-8 py-3 bg-white/15 hover:bg-white/25 text-white font-semibold rounded border border-white/40 transition"
+            >
+              Manage My Booking
             </button>
             <button
               onClick={() => navigate('/services')}
@@ -309,11 +330,11 @@ const Home = () => {
             <span className="text-xs mt-1">Book</span>
           </button>
           <button
-            onClick={() => navigate('/my-appointments')}
+            onClick={() => navigate('/manage-booking/start')}
             className="flex flex-col items-center text-gray-300 hover:text-white transition"
           >
             <span className="text-xl">📋</span>
-            <span className="text-xs mt-1">Appointments</span>
+            <span className="text-xs mt-1">Manage</span>
           </button>
           <button
             onClick={() => navigate('/services')}

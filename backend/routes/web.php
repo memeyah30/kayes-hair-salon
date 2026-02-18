@@ -48,6 +48,8 @@ Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public -
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth.any');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth.any');
+Route::post('/me/profile-photo', [AuthController::class, 'updateProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
+Route::delete('/me/profile-photo', [AuthController::class, 'removeProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
 
 // Admin-only routes
 Route::middleware(['auth.any', 'userType:admin'])->group(function () {
@@ -88,8 +90,7 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     Route::patch('/locations/{location}', [LocationController::class, 'update']);
     Route::delete('/locations/{location}', [LocationController::class, 'destroy']);
 
-    // Ratings management
-    Route::get('/ratings', [CustomerRatingController::class, 'index']);
+    // Ratings management (delete remains admin-only)
     Route::delete('/ratings/{customerRating}', [CustomerRatingController::class, 'destroy']);
 
     // Inventory management
@@ -145,7 +146,6 @@ Route::middleware(['auth.any', 'userType:stylist'])->group(function () {
     Route::get('/appointments/assigned', [AppointmentController::class, 'index']); // Only assigned appointments
     Route::get('/appointments/history', [AppointmentController::class, 'history']); // Appointment history
     Route::get('/appointments/rescheduled', [AppointmentController::class, 'index']); // Rescheduled appointments
-    Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'complete']);
     Route::get('/ratings', [CustomerRatingController::class, 'index']); // View own ratings
 });
 

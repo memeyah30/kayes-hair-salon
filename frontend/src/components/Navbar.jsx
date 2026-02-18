@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'react-toastify'
 import api from '../utils/api'
 
 const ROLE_LABELS = {
@@ -9,10 +9,12 @@ const ROLE_LABELS = {
   customer: 'Customer',
 }
 
-const LOGOUT_PATHS = {
-  admin: '/login/admin',
-  manager: '/login/manager',
-  stylist: '/login/stylist',
+const parseStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}')
+  } catch {
+    return {}
+  }
 }
 
 const getInitials = (name) => {
@@ -25,38 +27,124 @@ const getInitials = (name) => {
     .join('')
 }
 
-const Navbar = ({ title = 'Dashboard', onLogout }) => {
-  const navigate = useNavigate()
+const resolveImageUrl = (imagePath) => {
+  if (!imagePath) return null
+  if (/^https?:\/\//i.test(imagePath)) return imagePath
+
+  const normalized = String(imagePath).replace(/^\/+/, '')
+  const currentOrigin = window.location.origin
+
+  if (currentOrigin.includes(':5173')) {
+    const backendHost = currentOrigin.includes('127.0.0.1')
+      ? 'http://127.0.0.1:8000'
+      : 'http://localhost:8000'
+    return `${backendHost}/${normalized}`
+  }
+
+  return `/${normalized}`
+}
+
+const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
   const isAdminTheme = true
-  const userType = localStorage.getItem('userType') || 'customer'
-  const parsedUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('user') || '{}')
-    } catch {
-      return {}
+  const [userType, setUserType] = useState(localStorage.getItem('userType') || 'customer')
+  const [user, setUser] = useState(parseStoredUser)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef(null)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    const syncUserState = () => {
+      setUserType(localStorage.getItem('userType') || 'customer')
+      setUser(parseStoredUser())
+    }
+
+    window.addEventListener('storage', syncUserState)
+    window.addEventListener('user:updated', syncUserState)
+
+    return () => {
+      window.removeEventListener('storage', syncUserState)
+      window.removeEventListener('user:updated', syncUserState)
     }
   }, [])
 
+  useEffect(() => {
+    if (!menuOpen) return
+
+    const handleOutsideClick = (event) => {
+      if (!menuRef.current || menuRef.current.contains(event.target)) return
+      setMenuOpen(false)
+    }
+
+    window.addEventListener('mousedown', handleOutsideClick)
+    return () => window.removeEventListener('mousedown', handleOutsideClick)
+  }, [menuOpen])
+
   const roleLabel = ROLE_LABELS[userType] || 'User'
-  const displayName = parsedUser?.name || roleLabel
+  const displayName = user?.name || roleLabel
   const initials = getInitials(displayName)
-  const canLogout = userType === 'admin' || userType === 'manager' || userType === 'stylist'
+  const profileImageUrl = resolveImageUrl(user?.image)
+  const canManagePhoto = userType === 'manager' || userType === 'stylist'
 
   const handleToggleSidebar = () => {
     window.dispatchEvent(new CustomEvent('sidebar:toggle'))
   }
 
-  const handleLogout = () => {
-    if (!canLogout) return
-    if (onLogout) {
-      onLogout()
+  const syncStoredUser = (nextUser, nextType) => {
+    if (nextUser) {
+      localStorage.setItem('user', JSON.stringify(nextUser))
+      setUser(nextUser)
+    }
+    if (nextType) {
+      localStorage.setItem('userType', nextType)
+      setUserType(nextType)
+    }
+    window.dispatchEvent(new Event('user:updated'))
+  }
+
+  const handlePhotoSelected = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file.')
       return
     }
-    const loginPath = LOGOUT_PATHS[userType] || '/login/admin'
-    api.post('/logout').finally(() => {
-      localStorage.clear()
-      navigate(loginPath)
-    })
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size must be 2MB or less.')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('image', file)
+
+    try {
+      setUploading(true)
+      const res = await api.post('/me/profile-photo', formData)
+      syncStoredUser(res.data?.user, res.data?.type)
+      toast.success('Profile photo updated.')
+      setMenuOpen(false)
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update profile photo.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleRemovePhoto = async () => {
+    try {
+      setUploading(true)
+      const res = await api.delete('/me/profile-photo')
+      syncStoredUser(res.data?.user, res.data?.type)
+      toast.success('Profile photo removed.')
+      setMenuOpen(false)
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to remove profile photo.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -71,7 +159,7 @@ const Navbar = ({ title = 'Dashboard', onLogout }) => {
         <button
           type="button"
           onClick={handleToggleSidebar}
-          className={`p-2 rounded ${
+          className={`p-2 rounded md:hidden ${
             isAdminTheme ? 'hover:bg-white/70 text-[#6b574c]' : 'hover:bg-[#f7f1ec] text-gray-700'
           }`}
           aria-label="Toggle side panel"
@@ -103,15 +191,6 @@ const Navbar = ({ title = 'Dashboard', onLogout }) => {
             className={`bg-transparent outline-none w-32 ${isAdminTheme ? 'placeholder:text-[#b09a8f]' : 'placeholder:text-gray-400'}`}
           />
         </div>
-        {canLogout && (
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="px-3 py-2 rounded-full text-xs md:text-sm font-medium bg-[#c97c5d] hover:bg-[#b86f54] text-white"
-          >
-            Logout
-          </button>
-        )}
         <button
           type="button"
           className={`h-10 w-10 rounded-full flex items-center justify-center ${
@@ -124,17 +203,84 @@ const Navbar = ({ title = 'Dashboard', onLogout }) => {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 18a3 3 0 0 0 6 0" />
           </svg>
         </button>
-        <div className={`flex items-center gap-2 rounded-full px-2 py-1 ${isAdminTheme ? 'bg-white/80 border border-[#e5d6cc]' : ''}`}>
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold ${
-            isAdminTheme ? 'bg-[#eadfd5] text-[#7b675b]' : 'bg-blue-100 text-blue-700'
-          }`}>
-            {initials}
+        {!hideUserBadge && (
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!canManagePhoto || uploading) return
+                setMenuOpen((prev) => !prev)
+              }}
+              className={`flex items-center gap-2 rounded-full px-2 py-1 ${
+                isAdminTheme ? 'bg-white/80 border border-[#e5d6cc]' : ''
+              } ${canManagePhoto ? 'hover:bg-white' : ''}`}
+              title={canManagePhoto ? 'Edit profile photo' : undefined}
+            >
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold overflow-hidden ${
+                isAdminTheme ? 'bg-[#eadfd5] text-[#7b675b]' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {profileImageUrl ? (
+                  <img src={profileImageUrl} alt={`${displayName} profile`} className="h-full w-full object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-[#6b574c]' : 'text-gray-700'}`}>{roleLabel}</div>
+            </button>
+
+            {canManagePhoto && menuOpen && (
+              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#e5d6cc] bg-white p-3 shadow-[0_12px_28px_rgba(92,64,51,0.16)] z-50">
+                <div className="flex items-center gap-3 pb-3 border-b border-[#f1e6dc]">
+                  <div className="h-12 w-12 rounded-full overflow-hidden bg-[#eadfd5] flex items-center justify-center text-[#7b675b] font-semibold">
+                    {profileImageUrl ? (
+                      <img src={profileImageUrl} alt={`${displayName} profile`} className="h-full w-full object-cover" />
+                    ) : (
+                      initials
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-[#4a3a2f] truncate">{displayName}</div>
+                    <div className="text-xs text-[#9b857a]">{roleLabel}</div>
+                  </div>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoSelected}
+                />
+
+                <div className="mt-3 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full rounded-lg bg-[#6d84db] px-3 py-2 text-sm font-medium text-white hover:bg-[#5f75cb] disabled:opacity-60"
+                  >
+                    {uploading ? 'Uploading...' : (profileImageUrl ? 'Change Photo' : 'Upload Photo')}
+                  </button>
+                  {profileImageUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      disabled={uploading}
+                      className="w-full rounded-lg border border-[#eadfd5] px-3 py-2 text-sm text-[#6b574c] hover:bg-[#f7f1ec] disabled:opacity-60"
+                    >
+                      Remove Photo
+                    </button>
+                  )}
+                </div>
+                <div className="mt-2 text-[11px] text-[#9b857a]">JPG, PNG, GIF up to 2MB.</div>
+              </div>
+            )}
           </div>
-          <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-[#6b574c]' : 'text-gray-700'}`}>{roleLabel}</div>
-        </div>
+        )}
       </div>
     </header>
   )
 }
 
 export default Navbar
+

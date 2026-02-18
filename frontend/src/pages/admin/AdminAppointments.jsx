@@ -249,8 +249,13 @@ const AdminAppointments = () => {
   const normalizedSearch = searchTerm.trim().toLowerCase()
   const filteredAppointments = appointments.filter(apt => {
     if (filter !== 'all') {
-      if (filter === 'confirmed' && apt.status !== 'confirmed') return false
-      if (filter !== 'confirmed' && apt.status !== filter) return false
+      if (filter === 'booked') {
+        if (apt.status !== 'booked' && apt.status !== 'confirmed') return false
+      } else if (filter === 'confirmed') {
+        if (apt.status !== 'confirmed') return false
+      } else if (apt.status !== filter) {
+        return false
+      }
     }
 
     const appointmentServices = getAppointmentServices(apt)
@@ -438,7 +443,7 @@ const AdminAppointments = () => {
                   className="w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
                 >
                   <option value="all">All Status</option>
-                  <option value="booked">Booked</option>
+                  <option value="booked">Booked / Confirmed</option>
                   <option value="confirmed">Confirmed</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>

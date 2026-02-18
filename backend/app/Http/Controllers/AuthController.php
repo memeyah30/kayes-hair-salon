@@ -12,6 +12,38 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    private function resolveActiveUser(Request $request)
+    {
+        $activeGuard = $request->session()->get('active_guard');
+        $user = null;
+
+        if ($activeGuard && Auth::guard($activeGuard)->check()) {
+            $user = Auth::guard($activeGuard)->user();
+        }
+
+        if (!$user) {
+            $user = Auth::guard('admin')->user()
+                ?? Auth::guard('manager')->user()
+                ?? Auth::guard('stylist')->user();
+        }
+
+        return $user;
+    }
+
+    private function resolveUserType($user): ?string
+    {
+        if ($user instanceof \App\Models\Admin) {
+            return 'admin';
+        }
+        if ($user instanceof \App\Models\Manager) {
+            return 'manager';
+        }
+        if ($user instanceof \App\Models\Stylist) {
+            return 'stylist';
+        }
+        return null;
+    }
+
     public function login(Request $request)
     {
         $request->validate([
@@ -147,20 +179,7 @@ class AuthController extends Controller
         file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
         // #endregion
         
-        $activeGuard = $request->session()->get('active_guard');
-        $user = null;
-
-        // Prefer the explicitly active guard in session.
-        if ($activeGuard && Auth::guard($activeGuard)->check()) {
-            $user = Auth::guard($activeGuard)->user();
-        }
-
-        // Fallback to any guard if active guard is unavailable.
-        if (!$user) {
-            $user = Auth::guard('admin')->user()
-                ?? Auth::guard('manager')->user()
-                ?? Auth::guard('stylist')->user();
-        }
+        $user = $this->resolveActiveUser($request);
         
         // #region agent log
         $logData = json_encode([
@@ -194,10 +213,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Not authenticated'], 401);
         }
         
-        // Determine user type
-        $type = $user instanceof \App\Models\Admin
-            ? 'admin'
-            : ($user instanceof \App\Models\Manager ? 'manager' : 'stylist');
+        $type = $this->resolveUserType($user);
         $userPayload = $user instanceof \Illuminate\Database\Eloquent\Model
             ? $user->toArray()
             : (array) $user;
@@ -205,6 +221,72 @@ class AuthController extends Controller
         return response()->json([
             ...$userPayload,
             'type' => $type,
+        ]);
+    }
+
+    public function updateProfilePhoto(Request $request)
+    {
+        $user = $this->resolveActiveUser($request);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if (!($user instanceof Manager || $user instanceof Stylist)) {
+            return response()->json(['message' => 'Profile photo editing is only available for manager and staff accounts'], 403);
+        }
+
+        $data = $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        $folder = $user instanceof Manager ? 'uploads/managers' : 'uploads/stylists';
+        $targetDirectory = public_path($folder);
+        if (!is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0755, true);
+        }
+
+        $oldPath = $user->image;
+        $image = $data['image'];
+        $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+        $image->move($targetDirectory, $imageName);
+
+        $user->image = $folder . '/' . $imageName;
+        $user->save();
+
+        if ($oldPath && $oldPath !== $user->image && file_exists(public_path($oldPath))) {
+            @unlink(public_path($oldPath));
+        }
+
+        return response()->json([
+            'message' => 'Profile photo updated successfully',
+            'user' => $user->fresh(),
+            'type' => $this->resolveUserType($user),
+        ]);
+    }
+
+    public function removeProfilePhoto(Request $request)
+    {
+        $user = $this->resolveActiveUser($request);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if (!($user instanceof Manager || $user instanceof Stylist)) {
+            return response()->json(['message' => 'Profile photo editing is only available for manager and staff accounts'], 403);
+        }
+
+        $oldPath = $user->image;
+        $user->image = null;
+        $user->save();
+
+        if ($oldPath && file_exists(public_path($oldPath))) {
+            @unlink(public_path($oldPath));
+        }
+
+        return response()->json([
+            'message' => 'Profile photo removed successfully',
+            'user' => $user->fresh(),
+            'type' => $this->resolveUserType($user),
         ]);
     }
 }
