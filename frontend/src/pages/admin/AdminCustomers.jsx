@@ -11,7 +11,7 @@ const AdminCustomers = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const navigate = useNavigate()
-  const storedUserType = localStorage.getItem('userType') || 'admin'
+  const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
 
   useEffect(() => {
@@ -79,13 +79,13 @@ const AdminCustomers = () => {
 
   const handleLogout = () => {
     api.post('/logout').finally(() => {
-      localStorage.clear()
+      localStorage.clear(); sessionStorage.clear()
       navigate(loginPath)
     })
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />

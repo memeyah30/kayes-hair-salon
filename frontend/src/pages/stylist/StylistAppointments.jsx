@@ -17,7 +17,7 @@ const StylistAppointments = () => {
   const [openActionId, setOpenActionId] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const user = JSON.parse((sessionStorage.getItem('user') || localStorage.getItem('user')) || '{}')
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
@@ -100,7 +100,7 @@ const StylistAppointments = () => {
     } catch (e) {
       console.error(e)
       if (e.response?.status === 401) {
-        localStorage.clear()
+        localStorage.clear(); sessionStorage.clear()
         navigate('/login/stylist')
       }
       toast.error('Failed to load appointments')
@@ -126,7 +126,7 @@ const StylistAppointments = () => {
 
   const handleLogout = () => {
     api.post('/logout').finally(() => {
-      localStorage.clear()
+      localStorage.clear(); sessionStorage.clear()
       navigate('/login/stylist')
     })
   }
@@ -186,14 +186,14 @@ const StylistAppointments = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f4edff] flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="stylist" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />

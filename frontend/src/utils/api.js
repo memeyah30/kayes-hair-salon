@@ -16,6 +16,13 @@ const api = axios.create({
 let csrfToken = null
 let csrfTokenPromise = null
 
+const clearAuthStorage = () => {
+  sessionStorage.removeItem('user')
+  sessionStorage.removeItem('userType')
+  localStorage.removeItem('user')
+  localStorage.removeItem('userType')
+}
+
 const getCsrfToken = async () => {
   // If we already have a token, return it
   if (csrfToken) {
@@ -49,6 +56,11 @@ const getCsrfToken = async () => {
 
 // Add CSRF token to all requests
 api.interceptors.request.use(async (config) => {
+  const currentUserType = sessionStorage.getItem('userType')
+  if (currentUserType && !config.headers['X-User-Type']) {
+    config.headers['X-User-Type'] = currentUserType
+  }
+
   // Only add CSRF token for state-changing methods
   if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
     try {
@@ -79,7 +91,10 @@ api.interceptors.response.use(
 
       // Allow auth/session probes to be handled by caller logic (e.g., ProtectedRoute).
       if (!isSessionProbe && !isAuthRequest) {
-        const currentUserType = localStorage.getItem('userType') || 'admin'
+        const currentUserType =
+          sessionStorage.getItem('userType')
+          || localStorage.getItem('userType')
+          || 'admin'
         const loginPath =
           currentUserType === 'stylist'
             ? '/login/stylist'
@@ -87,7 +102,7 @@ api.interceptors.response.use(
               ? '/login/manager'
               : '/login/admin'
 
-        localStorage.clear()
+        clearAuthStorage()
         window.location.href = loginPath
       }
     }

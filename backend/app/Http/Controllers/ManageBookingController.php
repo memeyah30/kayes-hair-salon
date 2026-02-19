@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Mail\CustomerOtpMail;
 use App\Models\Appointment;
+use App\Models\AppointmentLink;
 use App\Models\AppointmentRating;
+use App\Models\CustomerRating;
 use App\Models\CustomerOtp;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -157,14 +159,7 @@ class ManageBookingController extends Controller
             'used_at' => now(),
         ]);
 
-        $token = Str::random(64);
-        $expiresAt = now()->addMinutes(self::TOKEN_EXPIRY_MINUTES);
-
-        Cache::put(
-            $this->tokenCacheKey($token),
-            ['email' => $email],
-            $expiresAt
-        );
+        [$token, $expiresAt] = $this->issueManageBookingToken($email);
 
         return response()->json([
             'message' => 'OTP verified successfully.',
@@ -172,6 +167,43 @@ class ManageBookingController extends Controller
             'email' => $email,
             'expires_at' => $expiresAt->toIso8601String(),
         ]);
+    }
+
+    public function magicLink(Request $request, string $token)
+    {
+        $tokenHash = hash('sha256', (string) $token);
+
+        $link = AppointmentLink::query()
+            ->with('appointment:id,customer_email')
+            ->where('token_hash', $tokenHash)
+            ->where('purpose', 'manage')
+            ->first();
+
+        if (
+            !$link
+            || Carbon::now()->greaterThan($link->expires_at)
+            || !$link->appointment
+            || empty($link->appointment->customer_email)
+        ) {
+            return redirect('/manage-booking/start?expired=1');
+        }
+
+        if ($link->used_at === null) {
+            $link->update(['used_at' => now()]);
+        }
+
+        $email = $this->normalizeEmail((string) $link->appointment->customer_email);
+        [$sessionToken] = $this->issueManageBookingToken($email);
+
+        $request->session()->put('customer_appointment_id', $link->appointment_id);
+        $request->session()->put('customer_manage_booking_email', $email);
+
+        $query = http_build_query([
+            'token' => $sessionToken,
+            'email' => $email,
+        ]);
+
+        return redirect('/customer?' . $query);
     }
 
     public function appointments(Request $request)
@@ -184,9 +216,16 @@ class ManageBookingController extends Controller
             ->orderByDesc('start_datetime')
             ->get();
 
+        $appointmentIds = $appointments->pluck('id');
         $ratedIds = AppointmentRating::query()
-            ->whereIn('appointment_id', $appointments->pluck('id'))
+            ->whereIn('appointment_id', $appointmentIds)
             ->pluck('appointment_id')
+            ->merge(
+                CustomerRating::query()
+                    ->whereIn('appointment_id', $appointmentIds)
+                    ->pluck('appointment_id')
+            )
+            ->unique()
             ->flip();
 
         $response = $appointments->map(function (Appointment $appointment) use ($ratedIds) {
@@ -351,7 +390,10 @@ class ManageBookingController extends Controller
 
         $alreadyRated = AppointmentRating::query()
             ->where('appointment_id', $appointment->id)
-            ->exists();
+            ->exists()
+            || CustomerRating::query()
+                ->where('appointment_id', $appointment->id)
+                ->exists();
 
         if ($alreadyRated) {
             return response()->json([
@@ -367,6 +409,19 @@ class ManageBookingController extends Controller
             'comment' => $data['comment'] ?? null,
         ]);
 
+        $overallRating = (int) round((((int) $data['service_rating']) + ((int) $data['stylist_rating'])) / 2);
+
+        CustomerRating::query()->updateOrCreate(
+            ['appointment_id' => $appointment->id],
+            [
+                'stylist_id' => $appointment->stylist_id,
+                'customer_name' => $appointment->customer_name,
+                'customer_email' => $email,
+                'rating' => max(1, min(5, $overallRating)),
+                'comment' => $data['comment'] ?? null,
+            ]
+        );
+
         return response()->json([
             'message' => 'Rating submitted successfully.',
             'rating' => $rating,
@@ -381,6 +436,20 @@ class ManageBookingController extends Controller
     private function tokenCacheKey(string $token): string
     {
         return 'manage_booking_token:' . hash('sha256', $token);
+    }
+
+    private function issueManageBookingToken(string $email): array
+    {
+        $token = Str::random(64);
+        $expiresAt = now()->addMinutes(self::TOKEN_EXPIRY_MINUTES);
+
+        Cache::put(
+            $this->tokenCacheKey($token),
+            ['email' => $email],
+            $expiresAt
+        );
+
+        return [$token, $expiresAt];
     }
 
     private function findOwnedAppointment(int $id, string $email): ?Appointment

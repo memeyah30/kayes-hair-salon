@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppointmentRating;
 use App\Models\CustomerRating;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ class CustomerRatingController extends Controller
 {
     public function index(Request $request)
     {
+        $this->syncAppointmentRatingsToCustomerRatings();
+
         $query = CustomerRating::with(['appointment', 'stylist']);
 
         if ($request->has('stylist_id')) {
@@ -67,6 +70,42 @@ class CustomerRatingController extends Controller
     {
         $customerRating->delete();
         return response()->json(['message' => 'Rating deleted successfully']);
+    }
+
+    private function syncAppointmentRatingsToCustomerRatings(): void
+    {
+        $existingAppointmentIds = CustomerRating::query()
+            ->pluck('appointment_id')
+            ->all();
+
+        $appointmentRatings = AppointmentRating::query()
+            ->with('appointment')
+            ->when(!empty($existingAppointmentIds), function ($query) use ($existingAppointmentIds) {
+                $query->whereNotIn('appointment_id', $existingAppointmentIds);
+            })
+            ->get();
+
+        foreach ($appointmentRatings as $appointmentRating) {
+            $appointment = $appointmentRating->appointment;
+            if (!$appointment) {
+                continue;
+            }
+
+            $overallRating = (int) round(
+                (((int) $appointmentRating->service_rating) + ((int) $appointmentRating->stylist_rating)) / 2
+            );
+
+            CustomerRating::query()->updateOrCreate(
+                ['appointment_id' => $appointment->id],
+                [
+                    'stylist_id' => $appointment->stylist_id,
+                    'customer_name' => $appointment->customer_name,
+                    'customer_email' => $appointment->customer_email ?: $appointmentRating->customer_email,
+                    'rating' => max(1, min(5, $overallRating)),
+                    'comment' => $appointmentRating->comment,
+                ]
+            );
+        }
     }
 }
 

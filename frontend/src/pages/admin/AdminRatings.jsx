@@ -12,7 +12,7 @@ const AdminRatings = () => {
   const [filterStylist, setFilterStylist] = useState('all')
   const [filterRating, setFilterRating] = useState('all')
   const navigate = useNavigate()
-  const storedUserType = localStorage.getItem('userType') || 'admin'
+  const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
 
   const getStart = (appointment) => appointment?.start_datetime_pht || appointment?.start_datetime
@@ -24,16 +24,21 @@ const AdminRatings = () => {
   const loadData = async () => {
     try {
       setLoading(true)
+      const requestUserType = sessionStorage.getItem('userType') || storedUserType || 'admin'
+      const roleRequestConfig = {
+        params: { type: requestUserType },
+        headers: { 'X-User-Type': requestUserType },
+      }
       const [ratingsRes, stylistsRes] = await Promise.all([
-        api.get('/ratings'),
-        api.get('/stylists'),
+        api.get('/ratings', roleRequestConfig),
+        api.get('/stylists', roleRequestConfig),
       ])
       
       // Load appointment and stylist data for each rating
       const ratingsWithData = await Promise.all(
         ratingsRes.data.map(async (rating) => {
           try {
-            const appointmentRes = await api.get(`/appointments/${rating.appointment_id}`)
+            const appointmentRes = await api.get(`/appointments/${rating.appointment_id}`, roleRequestConfig)
             return {
               ...rating,
               appointment: appointmentRes.data,
@@ -96,7 +101,7 @@ const AdminRatings = () => {
 
   const handleLogout = () => {
     api.post('/logout').finally(() => {
-      localStorage.clear()
+      localStorage.clear(); sessionStorage.clear()
       navigate(loginPath)
     })
   }
@@ -107,14 +112,14 @@ const AdminRatings = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f4edff] flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />

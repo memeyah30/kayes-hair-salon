@@ -7,6 +7,7 @@ use App\Models\Manager;
 use App\Models\Stylist;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class EnsureUserType
 {
@@ -17,6 +18,30 @@ class EnsureUserType
     {
         $user = null;
         $userType = null;
+        $hint = strtolower((string) ($request->header('X-User-Type') ?: $request->query('type', '')));
+        $hintGuard = in_array($hint, ['admin', 'manager', 'stylist'], true) ? $hint : null;
+
+        // If a tab explicitly requests a user type, enforce it first.
+        if ($hintGuard) {
+            if (!Auth::guard($hintGuard)->check()) {
+                return response()->json(['message' => 'Unauthorized'], 401);
+            }
+
+            $user = Auth::guard($hintGuard)->user();
+            $userType = $this->resolveUserType($user);
+            Auth::shouldUse($hintGuard);
+            $request->setUserResolver(function () use ($hintGuard) {
+                return Auth::guard($hintGuard)->user();
+            });
+            $request->attributes->set('resolved_user_type', $userType);
+            $request->attributes->set('resolved_guard', $hintGuard);
+
+            if (count($types) > 0 && !in_array($userType, $types, true)) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+
+            return $next($request);
+        }
 
         // Prefer explicit active guard, then guards requested by route.
         $activeGuard = $request->session()->get('active_guard');
@@ -28,17 +53,17 @@ class EnsureUserType
         ));
 
         foreach ($allGuards as $guardName) {
-            if (\Illuminate\Support\Facades\Auth::guard($guardName)->check()) {
-                $user = \Illuminate\Support\Facades\Auth::guard($guardName)->user();
-                if ($user instanceof Admin) {
-                    $userType = 'admin';
-                } elseif ($user instanceof Manager) {
-                    $userType = 'manager';
-                } elseif ($user instanceof Stylist) {
-                    $userType = 'stylist';
-                }
+            if (Auth::guard($guardName)->check()) {
+                $user = Auth::guard($guardName)->user();
+                $userType = $this->resolveUserType($user);
                 // If this guard is one of the allowed types, stop early
                 if (empty($types) || in_array($userType, $types, true)) {
+                    Auth::shouldUse($guardName);
+                    $request->setUserResolver(function () use ($guardName) {
+                        return Auth::guard($guardName)->user();
+                    });
+                    $request->attributes->set('resolved_user_type', $userType);
+                    $request->attributes->set('resolved_guard', $guardName);
                     break;
                 }
             }
@@ -47,13 +72,9 @@ class EnsureUserType
         // Fallback: if still no user, try the default authenticated user (e.g., Sanctum/web)
         if (!$user && $request->user()) {
             $user = $request->user();
-            if ($user instanceof Admin) {
-                $userType = 'admin';
-            } elseif ($user instanceof Manager) {
-                $userType = 'manager';
-            } elseif ($user instanceof Stylist) {
-                $userType = 'stylist';
-            }
+            $userType = $this->resolveUserType($user);
+            $request->attributes->set('resolved_user_type', $userType);
+            $request->attributes->set('resolved_guard', null);
         }
 
         if (!$user) {
@@ -65,5 +86,13 @@ class EnsureUserType
         }
 
         return $next($request);
+    }
+
+    private function resolveUserType($user): ?string
+    {
+        if ($user instanceof Admin) return 'admin';
+        if ($user instanceof Manager) return 'manager';
+        if ($user instanceof Stylist) return 'stylist';
+        return null;
     }
 }

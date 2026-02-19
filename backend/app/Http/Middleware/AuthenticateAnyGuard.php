@@ -14,6 +14,22 @@ class AuthenticateAnyGuard
      */
     public function handle(Request $request, Closure $next)
     {
+        $hint = strtolower((string) ($request->header('X-User-Type') ?: $request->query('type', '')));
+        $hintGuard = in_array($hint, ['admin', 'manager', 'stylist'], true) ? $hint : null;
+
+        // If a tab explicitly asks for a guard, resolve only that guard.
+        if ($hintGuard) {
+            if (Auth::guard($hintGuard)->check()) {
+                Auth::shouldUse($hintGuard);
+                $request->setUserResolver(function () use ($hintGuard) {
+                    return Auth::guard($hintGuard)->user();
+                });
+                return $next($request);
+            }
+
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
         // Prefer the active guard from session, then fall back.
         $activeGuard = $request->session()->get('active_guard');
         $guards = array_values(array_unique(array_filter([

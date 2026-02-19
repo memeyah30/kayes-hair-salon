@@ -13,7 +13,6 @@ import AdminDashboard from './pages/AdminDashboard'
 import StylistDashboard from './pages/StylistDashboard'
 import CustomerDashboard from './pages/CustomerDashboard'
 import ManageStylists from './pages/ManageStylists'
-import ManageManagers from './pages/ManageManagers'
 import ManageServices from './pages/ManageServices'
 import AdminAppointments from './pages/admin/AdminAppointments'
 import AdminCustomers from './pages/admin/AdminCustomers'
@@ -47,10 +46,13 @@ const App = () => {
         <Route path="/manage-booking" element={<Navigate to="/" replace />} />
         <Route path="/manage-booking/start" element={<ManageBookingEmail />} />
         <Route path="/manage-booking/verify" element={<VerifyOtp />} />
-        <Route path="/manage-booking/dashboard" element={<ManageBookingDashboard />} />
+        <Route path="/manage-booking/dashboard" element={<Navigate to="/customer/manage" replace />} />
+        <Route path="/customer/dashboard" element={<Navigate to="/customer" replace />} />
 
         {/* Customer routes (public) */}
         <Route path="/customer" element={<CustomerDashboard />} />
+        <Route path="/customer/profile" element={<Navigate to="/customer" replace />} />
+        <Route path="/customer/manage" element={<ManageBookingDashboard />} />
         <Route path="/book" element={<BookAppointment />} />
         <Route path="/stylists" element={<Stylists />} />
         <Route path="/services" element={<Services />} />
@@ -80,14 +82,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/admin/manage/managers"
-          element={
-            <ProtectedRoute allowedTypes={['admin']}>
-              <ManageManagers />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/admin/manage/managers" element={<Navigate to="/admin/manage/stylists" replace />} />
         <Route
           path="/admin/appointments"
           element={

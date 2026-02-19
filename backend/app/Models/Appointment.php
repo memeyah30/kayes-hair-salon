@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Carbon\Carbon;
 use DateTimeInterface;
@@ -103,7 +104,11 @@ class Appointment extends Model
     {
         return $this->hasOne(AppointmentRating::class);
     }
-}
 
+    public function appointmentLinks(): HasMany
+    {
+        return $this->hasMany(AppointmentLink::class);
+    }
+}
 
 

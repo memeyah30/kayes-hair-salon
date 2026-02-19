@@ -9,9 +9,13 @@ const ROLE_LABELS = {
   customer: 'Customer',
 }
 
+const getStoredUserType = () => (
+  sessionStorage.getItem('userType') || 'customer'
+)
+
 const parseStoredUser = () => {
   try {
-    return JSON.parse(localStorage.getItem('user') || '{}')
+    return JSON.parse(sessionStorage.getItem('user') || '{}')
   } catch {
     return {}
   }
@@ -46,7 +50,7 @@ const resolveImageUrl = (imagePath) => {
 
 const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
   const isAdminTheme = true
-  const [userType, setUserType] = useState(localStorage.getItem('userType') || 'customer')
+  const [userType, setUserType] = useState(getStoredUserType)
   const [user, setUser] = useState(parseStoredUser)
   const [menuOpen, setMenuOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -55,15 +59,13 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
 
   useEffect(() => {
     const syncUserState = () => {
-      setUserType(localStorage.getItem('userType') || 'customer')
+      setUserType(getStoredUserType())
       setUser(parseStoredUser())
     }
 
-    window.addEventListener('storage', syncUserState)
     window.addEventListener('user:updated', syncUserState)
 
     return () => {
-      window.removeEventListener('storage', syncUserState)
       window.removeEventListener('user:updated', syncUserState)
     }
   }, [])
@@ -92,11 +94,14 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
 
   const syncStoredUser = (nextUser, nextType) => {
     if (nextUser) {
-      localStorage.setItem('user', JSON.stringify(nextUser))
+      const serializedUser = JSON.stringify(nextUser)
+      sessionStorage.setItem('user', serializedUser)
+      localStorage.removeItem('user')
       setUser(nextUser)
     }
     if (nextType) {
-      localStorage.setItem('userType', nextType)
+      sessionStorage.setItem('userType', nextType)
+      localStorage.removeItem('userType')
       setUserType(nextType)
     }
     window.dispatchEvent(new Event('user:updated'))
@@ -151,7 +156,7 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
     <header
       className={`px-3 md:px-6 py-3 flex items-center justify-between border-b ${
         isAdminTheme
-          ? 'bg-[#f6eee8] border-[#eadfd5] shadow-[0_4px_16px_rgba(92,64,51,0.06)]'
+          ? 'bg-[#ece4ff] border-[#d9cbff] shadow-[0_4px_16px_rgba(79,57,145,0.08)]'
           : 'bg-white shadow'
       }`}
     >
@@ -160,7 +165,7 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
           type="button"
           onClick={handleToggleSidebar}
           className={`p-2 rounded md:hidden ${
-            isAdminTheme ? 'hover:bg-white/70 text-[#6b574c]' : 'hover:bg-[#f7f1ec] text-gray-700'
+            isAdminTheme ? 'hover:bg-white/70 text-[#5f4f8f]' : 'hover:bg-[#f4edff] text-gray-700'
           }`}
           aria-label="Toggle side panel"
           title="Toggle side panel"
@@ -170,16 +175,16 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
           </svg>
         </button>
         <div className="flex flex-col leading-tight min-w-0">
-          <div className={`font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-[#4a3a2f]' : 'text-gray-900'}`}>
+          <div className={`font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-[#453676]' : 'text-gray-900'}`}>
             Kaye&apos;s Hair Salon and Spa
           </div>
-          <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-[#9b857a]' : 'text-[#9b857a]'}`}>{title}</div>
+          <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-[#7f6aa8]' : 'text-[#7f6aa8]'}`}>{title}</div>
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-3">
         <div
           className={`hidden md:flex items-center gap-2 rounded-full px-3 py-2 text-sm border ${
-            isAdminTheme ? 'bg-white/80 border-[#e5d6cc] text-[#7b675b]' : 'bg-white border-gray-200'
+            isAdminTheme ? 'bg-white/85 border-[#d9cbff] text-[#5f4f8f]' : 'bg-white border-gray-200'
           }`}
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -188,13 +193,13 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
           <input
             type="text"
             placeholder="Search"
-            className={`bg-transparent outline-none w-32 ${isAdminTheme ? 'placeholder:text-[#b09a8f]' : 'placeholder:text-gray-400'}`}
+            className={`bg-transparent outline-none w-32 ${isAdminTheme ? 'placeholder:text-[#9a89c7]' : 'placeholder:text-gray-400'}`}
           />
         </div>
         <button
           type="button"
           className={`h-10 w-10 rounded-full flex items-center justify-center ${
-            isAdminTheme ? 'bg-white/80 text-[#7b675b] border border-[#e5d6cc]' : 'bg-blue-100 text-blue-700'
+            isAdminTheme ? 'bg-white/85 text-[#5f4f8f] border border-[#d9cbff]' : 'bg-blue-100 text-blue-700'
           }`}
           aria-label="Notifications"
         >
@@ -212,12 +217,12 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                 setMenuOpen((prev) => !prev)
               }}
               className={`flex items-center gap-2 rounded-full px-2 py-1 ${
-                isAdminTheme ? 'bg-white/80 border border-[#e5d6cc]' : ''
+                isAdminTheme ? 'bg-white/80 border border-[#d9cbff]' : ''
               } ${canManagePhoto ? 'hover:bg-white' : ''}`}
               title={canManagePhoto ? 'Edit profile photo' : undefined}
             >
               <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold overflow-hidden ${
-                isAdminTheme ? 'bg-[#eadfd5] text-[#7b675b]' : 'bg-blue-100 text-blue-700'
+                isAdminTheme ? 'bg-[#e5dbff] text-[#5f4f8f]' : 'bg-blue-100 text-blue-700'
               }`}>
                 {profileImageUrl ? (
                   <img src={profileImageUrl} alt={`${displayName} profile`} className="h-full w-full object-cover" />
@@ -225,13 +230,13 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                   initials
                 )}
               </div>
-              <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-[#6b574c]' : 'text-gray-700'}`}>{roleLabel}</div>
+              <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-[#5f4f8f]' : 'text-gray-700'}`}>{roleLabel}</div>
             </button>
 
             {canManagePhoto && menuOpen && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#e5d6cc] bg-white p-3 shadow-[0_12px_28px_rgba(92,64,51,0.16)] z-50">
-                <div className="flex items-center gap-3 pb-3 border-b border-[#f1e6dc]">
-                  <div className="h-12 w-12 rounded-full overflow-hidden bg-[#eadfd5] flex items-center justify-center text-[#7b675b] font-semibold">
+              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#d9cbff] bg-white p-3 shadow-[0_12px_28px_rgba(92,64,51,0.16)] z-50">
+                <div className="flex items-center gap-3 pb-3 border-b border-[#e8dcff]">
+                  <div className="h-12 w-12 rounded-full overflow-hidden bg-[#e5dbff] flex items-center justify-center text-[#5f4f8f] font-semibold">
                     {profileImageUrl ? (
                       <img src={profileImageUrl} alt={`${displayName} profile`} className="h-full w-full object-cover" />
                     ) : (
@@ -239,8 +244,8 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-[#4a3a2f] truncate">{displayName}</div>
-                    <div className="text-xs text-[#9b857a]">{roleLabel}</div>
+                    <div className="text-sm font-semibold text-[#453676] truncate">{displayName}</div>
+                    <div className="text-xs text-[#7f6aa8]">{roleLabel}</div>
                   </div>
                 </div>
 
@@ -266,13 +271,13 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                       type="button"
                       onClick={handleRemovePhoto}
                       disabled={uploading}
-                      className="w-full rounded-lg border border-[#eadfd5] px-3 py-2 text-sm text-[#6b574c] hover:bg-[#f7f1ec] disabled:opacity-60"
+                      className="w-full rounded-lg border border-[#d9cbff] px-3 py-2 text-sm text-[#5f4f8f] hover:bg-[#f4edff] disabled:opacity-60"
                     >
                       Remove Photo
                     </button>
                   )}
                 </div>
-                <div className="mt-2 text-[11px] text-[#9b857a]">JPG, PNG, GIF up to 2MB.</div>
+                <div className="mt-2 text-[11px] text-[#7f6aa8]">JPG, PNG, GIF up to 2MB.</div>
               </div>
             )}
           </div>
@@ -283,4 +288,3 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
 }
 
 export default Navbar
-

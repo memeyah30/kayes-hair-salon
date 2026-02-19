@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\AppointmentMagicLinkMail;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\Stylist;
@@ -10,7 +11,9 @@ use App\Services\Scheduler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
@@ -43,26 +46,6 @@ class AppointmentController extends Controller
             $appointment->end_datetime = $endCarbon->format('Y-m-d\TH:i:sP');
             $appointment->end_datetime_pht = $endCarbon->format('Y-m-d\TH:i:sP');
         }
-
-        // #region agent log
-        $logData = json_encode([
-            'location' => 'AppointmentController.php:41',
-            'message' => 'Formatted appointment for response',
-            'data' => [
-                'rawStart' => $rawStart ?? null,
-                'rawEnd' => $rawEnd ?? null,
-                'start_datetime' => $appointment->start_datetime ?? null,
-                'end_datetime' => $appointment->end_datetime ?? null,
-                'start_datetime_pht' => $appointment->start_datetime_pht ?? null,
-                'end_datetime_pht' => $appointment->end_datetime_pht ?? null,
-            ],
-            'timestamp' => time() * 1000,
-            'sessionId' => 'debug-session',
-            'runId' => 'post-fix',
-            'hypothesisId' => 'T3'
-        ]);
-        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
-        // #endregion
     
         return $appointment;
     }
@@ -578,9 +561,6 @@ class AppointmentController extends Controller
 
         // Load appointment with all relationships
         $appointment->load(['stylist', 'service', 'services.variants']);
-        
-        // Format datetime fields to Asia/Manila timezone for JSON response
-        $appointment = $this->formatAppointmentForResponse($appointment);
 
         // Create sales records for each service in the appointment
         $appointmentServices = $appointment->services->count() > 0 
@@ -634,6 +614,45 @@ class AppointmentController extends Controller
                         'error' => $e->getMessage(),
                     ]);
                 }
+            }
+        }
+
+        $customerEmail = strtolower(trim((string) ($appointment->customer_email ?? '')));
+        if ($customerEmail !== '') {
+            $alreadyHasManageLink = $appointment->appointmentLinks()
+                ->where('purpose', 'manage')
+                ->exists();
+
+            if (!$alreadyHasManageLink) {
+                $rawToken = Str::random(64);
+
+                $appointment->appointmentLinks()->create([
+                    'token_hash' => hash('sha256', $rawToken),
+                    'expires_at' => now()->addDays(7),
+                    'used_at' => null,
+                    'purpose' => 'manage',
+                ]);
+                $appointmentId = $appointment->id;
+                $magicLinkUrl = route('customer.magic', ['token' => $rawToken]);
+
+                app()->terminating(function () use ($appointmentId, $customerEmail, $magicLinkUrl) {
+                    try {
+                        $appointmentForMail = Appointment::with(['service', 'services'])->find($appointmentId);
+                        if (!$appointmentForMail) {
+                            return;
+                        }
+
+                        Mail::to($customerEmail)->send(
+                            new AppointmentMagicLinkMail($appointmentForMail, $magicLinkUrl)
+                        );
+                    } catch (\Throwable $e) {
+                        Log::error('Failed to send appointment magic link email', [
+                            'appointment_id' => $appointmentId,
+                            'customer_email' => $customerEmail,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                });
             }
         }
 

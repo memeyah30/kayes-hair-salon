@@ -42,9 +42,10 @@ const VerifyOtp = () => {
 
       localStorage.setItem(CUSTOMER_BOOKING_TOKEN_KEY, data.token)
       localStorage.setItem(CUSTOMER_BOOKING_EMAIL_KEY, data.email)
+      localStorage.setItem('customer_email', data.email)
       localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
       toast.success('Verified successfully.')
-      navigate('/manage-booking/dashboard')
+      window.location.assign('/customer')
     } catch (error) {
       const message = error.response?.data?.message || 'OTP verification failed.'
       toast.error(message)
@@ -73,7 +74,7 @@ const VerifyOtp = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] px-4 py-10">
+    <div className="min-h-screen bg-[#f4edff] px-4 py-10">
       <div className="mx-auto w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white/90 p-6 shadow-[0_12px_28px_rgba(92,64,51,0.12)]">
         <h1 className="mb-2 text-2xl font-bold text-[#3b2f2a]">Verify OTP</h1>
         <p className="mb-4 text-sm text-[#8f7a6f]">

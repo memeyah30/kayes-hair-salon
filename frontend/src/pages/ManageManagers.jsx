@@ -86,13 +86,13 @@ const ManageManagers = () => {
 
   const handleLogout = () => {
     api.post('/logout').finally(() => {
-      localStorage.clear()
+      localStorage.clear(); sessionStorage.clear()
       navigate('/login/admin')
     })
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="admin" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />

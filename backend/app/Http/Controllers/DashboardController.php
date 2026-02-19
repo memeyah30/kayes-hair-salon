@@ -32,38 +32,65 @@ class DashboardController extends Controller
 
         return $appointment;
     }
-    public function adminStats()
+    public function adminStats(Request $request)
     {
-        $today = Carbon::today();
-        $weekStart = $today->copy()->startOfWeek();
-        $monthStart = $today->copy()->startOfMonth();
+        $user = $request->user();
+        $requestedType = strtolower((string) ($request->header('X-User-Type') ?: $request->query('type', '')));
+        $resolvedUserType = strtolower((string) $request->attributes->get('resolved_user_type', ''));
+        $effectiveUserType = in_array($resolvedUserType, ['admin', 'manager', 'stylist'], true)
+            ? $resolvedUserType
+            : $requestedType;
+
+        // Keep sales visibility strictly admin-only, based on resolved request role.
+        $canViewSales = $effectiveUserType === 'admin'
+            || $user instanceof \App\Models\Admin;
+        $timezone = 'Asia/Manila';
+        $now = Carbon::now($timezone);
+        $todayStart = $now->copy()->startOfDay();
+        $todayEnd = $now->copy()->endOfDay();
+        $weekStart = $now->copy()->startOfWeek();
+        $monthStart = $now->copy()->startOfMonth();
+        $periodEnd = $todayEnd->copy();
+        $toManila = function ($value) use ($timezone) {
+            if ($value instanceof Carbon) {
+                return $value->copy()->setTimezone($timezone);
+            }
+            return Carbon::parse($value, 'UTC')->setTimezone($timezone);
+        };
 
         $appointments = Appointment::with(['stylist', 'service'])->get();
         
-        $todayAppointments = $appointments->filter(function ($apt) use ($today) {
-            return Carbon::parse($apt->start_datetime)->isSameDay($today);
+        $todayAppointments = $appointments->filter(function ($apt) use ($toManila, $todayStart) {
+            return $toManila($apt->start_datetime)->isSameDay($todayStart);
         });
 
-        $weekAppointments = $appointments->filter(function ($apt) use ($weekStart) {
-            return Carbon::parse($apt->start_datetime)->gte($weekStart);
+        $weekAppointments = $appointments->filter(function ($apt) use ($toManila, $weekStart, $periodEnd) {
+            $start = $toManila($apt->start_datetime);
+            return $start->betweenIncluded($weekStart, $periodEnd);
         });
 
-        $monthAppointments = $appointments->filter(function ($apt) use ($monthStart) {
-            return Carbon::parse($apt->start_datetime)->gte($monthStart);
+        $monthAppointments = $appointments->filter(function ($apt) use ($toManila, $monthStart, $periodEnd) {
+            $start = $toManila($apt->start_datetime);
+            return $start->betweenIncluded($monthStart, $periodEnd);
         });
 
-        // Calculate revenue
-        $todayRevenue = $todayAppointments->where('status', 'completed')->sum(function ($apt) {
-            return $apt->service->price_cents ?? 0;
-        });
+        $todayRevenue = 0;
+        $weekRevenue = 0;
+        $monthRevenue = 0;
+        if ($canViewSales) {
+            $sumSalesForRange = function (Carbon $fromManila, Carbon $toManila) {
+                return Sale::query()
+                    ->whereBetween('created_at', [
+                        $fromManila->copy()->setTimezone('UTC'),
+                        $toManila->copy()->setTimezone('UTC'),
+                    ])
+                    ->sum('total_amount_cents');
+            };
 
-        $weekRevenue = $weekAppointments->where('status', 'completed')->sum(function ($apt) {
-            return $apt->service->price_cents ?? 0;
-        });
-
-        $monthRevenue = $monthAppointments->where('status', 'completed')->sum(function ($apt) {
-            return $apt->service->price_cents ?? 0;
-        });
+            $todayRevenue = $sumSalesForRange($todayStart, $todayEnd);
+            $weekRevenue = $sumSalesForRange($weekStart, $periodEnd);
+            $monthRevenue = $sumSalesForRange($monthStart, $periodEnd);
+        }
 
         // Count unique customers using email if present, otherwise phone
         $customers = $appointments->map(function ($apt) {
@@ -89,11 +116,17 @@ class DashboardController extends Controller
                 'month' => $monthAppointments->count(),
                 'total' => $appointments->count(),
             ],
-            'revenue' => [
-                'today' => $todayRevenue,
-                'week' => $weekRevenue,
-                'month' => $monthRevenue,
-            ],
+            'revenue' => $canViewSales
+                ? [
+                    'today' => $todayRevenue,
+                    'week' => $weekRevenue,
+                    'month' => $monthRevenue,
+                ]
+                : [
+                    'today' => 0,
+                    'week' => 0,
+                    'month' => 0,
+                ],
             'stylists' => [
                 'active' => Stylist::where('active', true)->count(),
                 'total' => Stylist::count(),

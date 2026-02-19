@@ -9,13 +9,42 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
   useEffect(() => {
     let mounted = true
 
+    const clearAuthStorage = () => {
+      sessionStorage.removeItem('user')
+      sessionStorage.removeItem('userType')
+      localStorage.removeItem('user')
+      localStorage.removeItem('userType')
+    }
+
     const validateAuth = async () => {
       try {
-        const res = await api.get('/me')
+        const sessionType = sessionStorage.getItem('userType') || ''
+        const storedType = localStorage.getItem('userType') || ''
+        const routeCompatibleStoredType = storedType && (
+          allowedTypes.length === 0 || allowedTypes.includes(storedType)
+        )
+          ? storedType
+          : ''
+        const preferredType =
+          sessionType
+          || routeCompatibleStoredType
+          || allowedTypes[0]
+          || ''
+
+        const requestConfig = preferredType
+          ? {
+              params: { type: preferredType },
+              headers: { 'X-User-Type': preferredType },
+            }
+          : {}
+        const res = await api.get('/me', requestConfig)
         const currentUserType = res.data.type
 
-        localStorage.setItem('user', JSON.stringify(res.data))
-        localStorage.setItem('userType', currentUserType)
+        sessionStorage.setItem('user', JSON.stringify(res.data))
+        sessionStorage.setItem('userType', currentUserType)
+        localStorage.removeItem('user')
+        localStorage.removeItem('userType')
+        window.dispatchEvent(new Event('user:updated'))
 
         if (!mounted) return
         if (allowedTypes.length > 0 && !allowedTypes.includes(currentUserType)) {
@@ -24,7 +53,7 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
           setIsAuthorized(true)
         }
       } catch {
-        localStorage.clear()
+        clearAuthStorage()
         if (!mounted) return
         setIsAuthorized(false)
       } finally {
@@ -41,7 +70,7 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f4edff] flex items-center justify-center">
         <div>Verifying authentication...</div>
       </div>
     )

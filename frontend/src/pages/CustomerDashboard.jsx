@@ -1,28 +1,58 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { QRCodeSVG } from 'qrcode.react'
-import api from '../utils/api'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
+import RatingModal from '../components/RatingModal'
+import api from '../utils/api'
+import manageBookingApi, {
+  CUSTOMER_BOOKING_EMAIL_KEY,
+  CUSTOMER_BOOKING_PENDING_EMAIL_KEY,
+  CUSTOMER_BOOKING_TOKEN_KEY,
+} from '../utils/manageBookingApi'
+
+const statusClasses = {
+  pending: 'bg-amber-100 text-amber-800',
+  confirmed: 'bg-blue-100 text-blue-800',
+  completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
+  missed: 'bg-gray-200 text-gray-700',
+  booked: 'bg-blue-100 text-blue-800',
+}
 
 const CustomerDashboard = () => {
   const navigate = useNavigate()
-  const [customerEmail, setCustomerEmail] = useState(localStorage.getItem('customer_email') || '')
-  const [customerPhone, setCustomerPhone] = useState(localStorage.getItem('customer_phone') || '')
-  const [showProfile, setShowProfile] = useState(!customerEmail || !customerPhone)
+
+  const initialOtpEmail = (localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) || '').trim().toLowerCase()
+  const initialOtpToken = (localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || '').trim()
+  const initialCustomerEmail = (localStorage.getItem('customer_email') || '').trim().toLowerCase()
+  const initialCustomerPhone = (localStorage.getItem('customer_phone') || '').trim()
+
+  const [otpEmail, setOtpEmail] = useState(initialOtpEmail)
+  const [otpToken, setOtpToken] = useState(initialOtpToken)
+  const [customerEmail, setCustomerEmail] = useState(initialCustomerEmail || initialOtpEmail)
+  const [customerPhone, setCustomerPhone] = useState(initialCustomerPhone)
+  const [showProfile, setShowProfile] = useState(() => !initialOtpToken && (!initialCustomerEmail || !initialCustomerPhone))
   const [appointments, setAppointments] = useState({ upcoming: [], history: [] })
+  const [otpAppointments, setOtpAppointments] = useState([])
   const [loading, setLoading] = useState(false)
 
+  const [rescheduleForId, setRescheduleForId] = useState(null)
+  const [rescheduleDate, setRescheduleDate] = useState('')
+  const [rescheduleTime, setRescheduleTime] = useState('')
+  const [submittingReschedule, setSubmittingReschedule] = useState(false)
+  const [submittingCancelId, setSubmittingCancelId] = useState(null)
+  const [ratingAppointment, setRatingAppointment] = useState(null)
+  const [submittingRating, setSubmittingRating] = useState(false)
+
+  const isOtpSession = Boolean(otpEmail && otpToken)
+
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
-  const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
   const getServiceName = (service) => {
     const variantId = service.pivot?.service_variant_id
     if (variantId && service.variants) {
       const variant = service.variants.find(v => v.id === variantId)
-      if (variant) {
-        return `${service.name} - ${variant.name}`
-      }
+      if (variant) return `${service.name} - ${variant.name}`
     }
     return service.name
   }
@@ -30,9 +60,7 @@ const CustomerDashboard = () => {
     const variantId = service.pivot?.service_variant_id
     if (variantId && service.variants) {
       const variant = service.variants.find(v => v.id === variantId)
-      if (variant) {
-        return variant.price_cents
-      }
+      if (variant) return variant.price_cents
     }
     return service.price_cents || 0
   }
@@ -44,34 +72,55 @@ const CustomerDashboard = () => {
   const getAppointmentTotal = (appointment) => (
     getAppointmentServices(appointment).reduce((sum, service) => sum + getServicePrice(service), 0)
   )
+  const currencyFromCents = (cents) => `PHP ${(Number(cents || 0) / 100).toFixed(2)}`
+  const currency = (amount) => `PHP ${Number(amount || 0).toFixed(2)}`
 
-  useEffect(() => {
-    // Load appointments only when both email and phone are available.
-    if (customerEmail && customerPhone) {
-      loadAppointments()
-    } else {
-      setAppointments({ upcoming: [], history: [] })
+  const clearOtpSession = () => {
+    localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
+    localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
+    localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+    setOtpEmail('')
+    setOtpToken('')
+    setOtpAppointments([])
+  }
+
+  const loadOtpAppointments = async () => {
+    try {
+      setLoading(true)
+      const { data } = await manageBookingApi.get('/manage-booking/appointments')
+      setOtpAppointments(data.appointments || [])
+    } catch (e) {
+      if (e.response?.status === 401) {
+        clearOtpSession()
+        toast.error('Session expired. Please verify OTP again.')
+        navigate('/manage-booking/start')
+        return
+      }
+      toast.error(e.response?.data?.message || 'Failed to load appointments')
+      setOtpAppointments([])
+    } finally {
+      setLoading(false)
     }
-  }, [customerEmail, customerPhone])
+  }
 
-  const loadAppointments = async () => {
+  const loadLegacyAppointments = async () => {
     if (!customerEmail || !customerPhone) {
       setAppointments({ upcoming: [], history: [] })
       return
     }
+
     try {
       setLoading(true)
-      const normalizedEmail = customerEmail ? customerEmail.trim().toLowerCase() : ''
-      const normalizedPhone = customerPhone ? customerPhone.replace(/[\s-]/g, '') : ''
+      const normalizedEmail = customerEmail.trim().toLowerCase()
+      const normalizedPhone = customerPhone.replace(/[\s-]/g, '')
       const res = await api.get('/dashboard/customer/stats', {
-        params: { email: normalizedEmail, phone: normalizedPhone }
+        params: { email: normalizedEmail, phone: normalizedPhone },
       })
       setAppointments({
         upcoming: res.data.upcoming || [],
-        history: res.data.history || []
+        history: res.data.history || [],
       })
     } catch (e) {
-      console.error('Failed to load appointments:', e)
       toast.error(e.response?.data?.message || 'Failed to load appointments')
       setAppointments({ upcoming: [], history: [] })
     } finally {
@@ -79,69 +128,142 @@ const CustomerDashboard = () => {
     }
   }
 
+  useEffect(() => {
+    if (isOtpSession) {
+      setShowProfile(false)
+      loadOtpAppointments()
+      return
+    }
+
+    if (customerEmail && customerPhone) {
+      loadLegacyAppointments()
+    } else {
+      setAppointments({ upcoming: [], history: [] })
+    }
+  }, [isOtpSession, customerEmail, customerPhone]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSaveProfile = () => {
-    if (!customerEmail) {
+    if (!customerEmail || !customerPhone) {
       toast.warn('Please enter your email and phone number')
       return
     }
-    if (!customerPhone) {
-      toast.warn('Please enter your email and phone number')
-      return
-    }
-    const normalizedEmail = customerEmail ? customerEmail.trim().toLowerCase() : ''
-    const normalizedPhone = customerPhone ? customerPhone.replace(/[\s-]/g, '') : ''
+
+    const normalizedEmail = customerEmail.trim().toLowerCase()
+    const normalizedPhone = customerPhone.replace(/[\s-]/g, '')
     localStorage.setItem('customer_email', normalizedEmail)
     localStorage.setItem('customer_phone', normalizedPhone)
     setCustomerEmail(normalizedEmail)
     setCustomerPhone(normalizedPhone)
     setShowProfile(false)
-    loadAppointments()
+    loadLegacyAppointments()
     toast.success('Profile saved! Loading your appointments...')
   }
 
-  const handleCancel = async (id) => {
-    try {
-      await api.post(`/appointments/${id}/cancel`)
-      toast.success('Appointment cancelled')
-      loadAppointments()
-    } catch (e) {
-      toast.error('Failed to cancel appointment')
-    }
+  const openReschedule = (appointment) => {
+    setRescheduleForId(appointment.id)
+    setRescheduleDate(appointment.appointment_date || '')
+    setRescheduleTime(appointment.appointment_time || '')
   }
 
-  const handleRate = async (appointment) => {
-    if (!appointment?.id) return
-
-    const ratingInput = window.prompt('Rate your experience from 1 to 5 stars:', '5')
-    if (ratingInput === null) return
-
-    const rating = Number(ratingInput)
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-      toast.warn('Please enter a whole number from 1 to 5.')
+  const handleReschedule = async (appointmentId) => {
+    if (!rescheduleDate || !rescheduleTime) {
+      toast.warn('Please provide new date and time.')
       return
     }
 
-    const commentInput = window.prompt('Leave a comment (optional):', '')
-    const comment = commentInput === null ? '' : commentInput.trim()
+    if (!isOtpSession) {
+      toast.warn('Please verify with OTP first.')
+      navigate('/manage-booking/start')
+      return
+    }
 
     try {
-      await api.post('/ratings', {
-        appointment_id: appointment.id,
-        rating,
-        comment,
+      setSubmittingReschedule(true)
+      await manageBookingApi.post(`/manage-booking/appointments/${appointmentId}/reschedule`, {
+        appointment_date: rescheduleDate,
+        appointment_time: rescheduleTime,
       })
-      toast.success('Thank you! Your rating was submitted.')
-      loadAppointments()
+      toast.success('Appointment rescheduled.')
+      setRescheduleForId(null)
+      await loadOtpAppointments()
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Failed to submit rating')
+      if (e.response?.status === 401) {
+        clearOtpSession()
+        toast.error('Session expired. Please verify OTP again.')
+        navigate('/manage-booking/start')
+        return
+      }
+      toast.error(e.response?.data?.message || 'Failed to reschedule appointment.')
+    } finally {
+      setSubmittingReschedule(false)
     }
   }
 
-  const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
+  const handleCancel = async (appointmentId) => {
+    if (!window.confirm('Cancel this appointment?')) return
 
-  if (showProfile) {
+    if (!isOtpSession) {
+      try {
+        await api.post(`/appointments/${appointmentId}/cancel`)
+        toast.success('Appointment cancelled')
+        loadLegacyAppointments()
+      } catch (e) {
+        toast.error('Failed to cancel appointment')
+      }
+      return
+    }
+
+    try {
+      setSubmittingCancelId(appointmentId)
+      await manageBookingApi.post(`/manage-booking/appointments/${appointmentId}/cancel`)
+      toast.success('Appointment cancelled.')
+      await loadOtpAppointments()
+    } catch (e) {
+      if (e.response?.status === 401) {
+        clearOtpSession()
+        toast.error('Session expired. Please verify OTP again.')
+        navigate('/manage-booking/start')
+        return
+      }
+      toast.error(e.response?.data?.message || 'Failed to cancel appointment.')
+    } finally {
+      setSubmittingCancelId(null)
+    }
+  }
+
+  const submitRating = async (payload) => {
+    if (!ratingAppointment) return
+
+    if (!isOtpSession) {
+      toast.warn('Please verify with OTP first.')
+      navigate('/manage-booking/start')
+      return
+    }
+
+    try {
+      setSubmittingRating(true)
+      await manageBookingApi.post(`/manage-booking/appointments/${ratingAppointment.id}/rate`, payload)
+      toast.success('Thank you for your rating.')
+      setRatingAppointment(null)
+      await loadOtpAppointments()
+    } catch (e) {
+      if (e.response?.status === 401) {
+        clearOtpSession()
+        toast.error('Session expired. Please verify OTP again.')
+        navigate('/manage-booking/start')
+        return
+      }
+      toast.error(e.response?.data?.message || 'Failed to submit rating.')
+    } finally {
+      setSubmittingRating(false)
+    }
+  }
+
+  const otpUpcomingCount = otpAppointments.filter((a) => ['pending', 'confirmed', 'booked'].includes(a.status)).length
+
+  if (showProfile && !isOtpSession) {
     return (
-      <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+      <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
           <Navbar hideUserBadge />
@@ -149,9 +271,7 @@ const CustomerDashboard = () => {
             <div className="max-w-md mx-auto bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
               <h2 className="text-xl font-bold mb-4">Customer Profile</h2>
               <p className="text-sm text-[#8f7a6f] mb-4">
-                Enter the email you used when booking to view your appointments.
-                Phone is required for account verification.
-                If you just booked, your information is already saved and appointments will appear automatically.
+                Enter the email and phone you used when booking to view your appointments.
               </p>
               <div className="space-y-4">
                 <div>
@@ -192,7 +312,7 @@ const CustomerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+      <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
           <Navbar hideUserBadge />
@@ -205,7 +325,7 @@ const CustomerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="customer" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar hideUserBadge />
@@ -217,7 +337,9 @@ const CustomerDashboard = () => {
                 className="px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-lg font-bold"
                 aria-label="Back to Home"
                 title="Back to Home"
-              >&larr;</button>
+              >
+                &larr;
+              </button>
               <h1 className="text-2xl font-bold">My Appointments</h1>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
@@ -227,50 +349,148 @@ const CustomerDashboard = () => {
               >
                 Book New
               </button>
-              <button
-                onClick={() => navigate('/manage-booking/start')}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-              >
-                Manage Booking
-              </button>
-              <button
-                onClick={() => setShowProfile(true)}
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
-              >
-                Edit Profile
-              </button>
+              {!isOtpSession && (
+                <button
+                  onClick={() => setShowProfile(true)}
+                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+                >
+                  Edit Profile
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Summary Cards */}
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-1 gap-4">
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <div className="text-[#9b857a] text-sm">Upcoming Appointments</div>
-              <div className="text-2xl font-bold text-blue-600">{appointments.upcoming.length}</div>
-            </div>
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-              <div className="text-[#9b857a] text-sm">Total Appointments</div>
-              <div className="text-2xl font-bold">{appointments.upcoming.length + appointments.history.length}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {isOtpSession ? otpUpcomingCount : appointments.upcoming.length}
+              </div>
             </div>
           </div>
 
-          {/* Upcoming Appointments */}
-          {appointments.upcoming.length > 0 ? (
+          {isOtpSession ? (
+            otpAppointments.length > 0 ? (
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+                <h2 className="font-semibold text-lg mb-4">My Appointments</h2>
+                <div className="space-y-3">
+                  {otpAppointments.map((appt) => {
+                    const canRate = Object.prototype.hasOwnProperty.call(appt, 'can_rate')
+                      ? Boolean(appt.can_rate)
+                      : String(appt.raw_status || appt.status || '').toLowerCase() === 'completed'
+                    const statusLabel = appt.status === 'pending' ? 'booked' : appt.status
+
+                    return (
+                      <div key={appt.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="font-semibold text-lg">{appt.service_name}</div>
+                            <div className="text-sm text-[#8f7a6f] mt-1">
+                              {appt.appointment_date} at {appt.appointment_time}
+                            </div>
+                            <div className="text-sm text-[#9b857a] mt-1">with {appt.stylist_name}</div>
+                            <div className="text-sm font-medium text-green-600 mt-2">
+                              {currency(appt.total_amount)}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap justify-end gap-2 ml-4">
+                            {appt.can_reschedule && (
+                              <button
+                                onClick={() => openReschedule(appt)}
+                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                              >
+                                Reschedule
+                              </button>
+                            )}
+                            {appt.can_cancel && (
+                              <button
+                                onClick={() => handleCancel(appt.id)}
+                                disabled={submittingCancelId === appt.id}
+                                className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm disabled:opacity-60"
+                              >
+                                {submittingCancelId === appt.id ? 'Cancelling...' : 'Cancel'}
+                              </button>
+                            )}
+                            {canRate && (
+                              <button
+                                onClick={() => setRatingAppointment(appt)}
+                                className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm"
+                              >
+                                Rate
+                              </button>
+                            )}
+                            <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appt.status] || 'bg-gray-100 text-gray-700'}`}>
+                              {statusLabel}
+                            </span>
+                          </div>
+                        </div>
+
+                        {rescheduleForId === appt.id && (
+                          <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">New Date</label>
+                                <input
+                                  type="date"
+                                  value={rescheduleDate}
+                                  onChange={(e) => setRescheduleDate(e.target.value)}
+                                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">New Time</label>
+                                <input
+                                  type="time"
+                                  value={rescheduleTime}
+                                  onChange={(e) => setRescheduleTime(e.target.value)}
+                                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-3 flex items-center gap-2">
+                              <button
+                                onClick={() => handleReschedule(appt.id)}
+                                disabled={submittingReschedule}
+                                className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                              >
+                                {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
+                              </button>
+                              <button
+                                onClick={() => setRescheduleForId(null)}
+                                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 text-center">
+                <div className="text-sm font-semibold text-[#8f7a6f] mb-4">No appointments found</div>
+                <h3 className="text-xl font-semibold mb-2">No Appointment Yet</h3>
+                <p className="text-[#8f7a6f] mb-4">Book a new appointment to get started.</p>
+                <button
+                  onClick={() => navigate('/book')}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                >
+                  Book Appointment Now
+                </button>
+              </div>
+            )
+          ) : appointments.upcoming.length > 0 ? (
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <h2 className="font-semibold text-lg mb-4">Upcoming Appointments</h2>
               <div className="space-y-3">
-                {appointments.upcoming
-                  .filter(appt => {
-                    const appointmentDate = new Date(getStart(appt))
-                    const now = new Date()
-                    return appointmentDate > now
-                  })
-                  .map(appt => {
+                {appointments.upcoming.map((appt) => {
                   const appointmentDate = new Date(getStart(appt))
-
                   const appointmentServices = getAppointmentServices(appt)
                   const totalPrice = getAppointmentTotal(appt)
-                  
+
                   return (
                     <div key={appt.id} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between">
@@ -286,33 +506,34 @@ const CustomerDashboard = () => {
                             <div className="text-sm text-[#8f7a6f] mt-1">
                               <ul className="list-disc list-inside ml-2 space-y-0.5">
                                 {appointmentServices.map((s, idx) => (
-                                  <li key={idx}>{getServiceName(s)} - {currency(getServicePrice(s))}</li>
+                                  <li key={idx}>{getServiceName(s)} - {currencyFromCents(getServicePrice(s))}</li>
                                 ))}
                               </ul>
                             </div>
                           )}
                           <div className="text-sm text-[#8f7a6f] mt-1">
-                            {appointmentDate.toLocaleDateString('en-US', { 
-                              weekday: 'long', 
-                              year: 'numeric', 
-                              month: 'long', 
+                            {appointmentDate.toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
                               day: 'numeric',
-                              timeZone: 'Asia/Manila'
-                            })} at {appointmentDate.toLocaleTimeString('en-US', { 
-                              hour: 'numeric', 
+                              timeZone: 'Asia/Manila',
+                            })}{' '}
+                            at{' '}
+                            {appointmentDate.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
                               minute: '2-digit',
                               hour12: true,
-                              timeZone: 'Asia/Manila'
-                            })} PHT
+                              timeZone: 'Asia/Manila',
+                            })}{' '}
+                            PHT
                           </div>
-                          <div className="text-sm text-[#9b857a] mt-1">
-                            with {appt.stylist?.name}
-                          </div>
+                          <div className="text-sm text-[#9b857a] mt-1">with {appt.stylist?.name}</div>
                           <div className="text-sm font-medium text-green-600 mt-2">
                             {appointmentServices.length > 1 ? (
-                              <span>Total: {currency(totalPrice)}</span>
+                              <span>Total: {currencyFromCents(totalPrice)}</span>
                             ) : (
-                              <span>{currency(totalPrice)}</span>
+                              <span>{currencyFromCents(totalPrice)}</span>
                             )}
                           </div>
                         </div>
@@ -320,7 +541,7 @@ const CustomerDashboard = () => {
                           {appt.status === 'booked' && (
                             <>
                               <button
-                                onClick={() => window.location.href = `/book?reschedule=${appt.id}`}
+                                onClick={() => { window.location.href = `/book?reschedule=${appt.id}` }}
                                 className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
                               >
                                 Reschedule
@@ -333,11 +554,7 @@ const CustomerDashboard = () => {
                               </button>
                             </>
                           )}
-                          <span className={`px-2 py-1 rounded text-xs self-center ${
-                            appt.status === 'booked' ? 'bg-blue-100 text-blue-800' :
-                            appt.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appt.status] || 'bg-gray-100 text-gray-700'}`}>
                             {appt.status}
                           </span>
                         </div>
@@ -361,205 +578,6 @@ const CustomerDashboard = () => {
             </div>
           )}
 
-          {/* Appointment History */}
-          {appointments.history.length > 0 && (
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-              <h2 className="font-semibold text-lg mb-4">Appointment History</h2>
-              <div className="space-y-3">
-                {[...appointments.history]
-                  .sort((a, b) => new Date(getStart(b)) - new Date(getStart(a)))
-                  .map(appt => {
-                    const appointmentDate = new Date(getStart(appt))
-                    const appointmentServices = getAppointmentServices(appt)
-                    const totalPrice = getAppointmentTotal(appt)
-                    const hasRating = appt.has_rating === true || appt.has_rating === 1 || appt.has_rating === '1'
-                    const canRate = Boolean(appt.can_rate) || (appt.status === 'completed' && !hasRating)
-
-                    return (
-                      <div key={appt.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="font-semibold text-lg">
-                              {appointmentServices.length > 1 ? (
-                                <span>{appointmentServices.length} Services</span>
-                              ) : (
-                                <span>{appointmentServices[0]?.name || 'Service'}</span>
-                              )}
-                            </div>
-                            {appointmentServices.length > 1 && (
-                              <div className="text-sm text-[#8f7a6f] mt-1">
-                                <ul className="list-disc list-inside ml-2 space-y-0.5">
-                                  {appointmentServices.map((s, idx) => (
-                                    <li key={idx}>{getServiceName(s)} - {currency(getServicePrice(s))}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            <div className="text-sm text-[#8f7a6f] mt-1">
-                              {appointmentDate.toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                timeZone: 'Asia/Manila'
-                              })} at {appointmentDate.toLocaleTimeString('en-US', {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true,
-                                timeZone: 'Asia/Manila'
-                              })} PHT
-                            </div>
-                            <div className="text-sm text-[#9b857a] mt-1">
-                              with {appt.stylist?.name}
-                            </div>
-                            <div className="text-sm font-medium text-green-600 mt-2">
-                              {appointmentServices.length > 1 ? (
-                                <span>Total: {currency(totalPrice)}</span>
-                              ) : (
-                                <span>{currency(totalPrice)}</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            {canRate && (
-                              <button
-                                onClick={() => handleRate(appt)}
-                                className="px-3 py-1 bg-amber-100 text-amber-700 rounded hover:bg-amber-200 text-sm"
-                              >
-                                Rate
-                              </button>
-                            )}
-                            {!canRate && appt.status === 'completed' && hasRating && (
-                              <span className="px-3 py-1 rounded text-xs bg-emerald-100 text-emerald-700 self-center">
-                                Rated
-                              </span>
-                            )}
-                            <span className={`px-2 py-1 rounded text-xs self-center ${
-                              appt.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              appt.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                              appt.status === 'missed' ? 'bg-gray-100 text-gray-700' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {appt.status}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-              </div>
-            </div>
-          )}
-
-          {/* Share Booking Link */}
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-            <h2 className="font-semibold text-lg mb-4">Share & Book</h2>
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="flex flex-col items-center">
-                <QRCodeSVG 
-                  value={`${window.location.origin}/book`}
-                  size={150}
-                  bgColor="#ffffff"
-                  fgColor="#1e40af"
-                  level="M"
-                  includeMargin={true}
-                />
-                <p className="text-sm text-[#8f7a6f] mt-2">Scan to book an appointment</p>
-              </div>
-              <div className="flex-1 space-y-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Share this booking link with friends & family:</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={`${window.location.origin}/book`}
-                      className="flex-1 border rounded px-3 py-2 text-sm bg-gray-50"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/book`)
-                        toast.success('Booking link copied!')
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                    >
-                      Copy Link
-                    </button>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/book')}
-                  className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 font-medium"
-                >
-                  Book New Appointment
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
-              <h3 className="font-semibold text-lg mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => navigate('/book')}
-                  className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
-                >
-                  Book New Appointment
-                </button>
-                <button
-                  onClick={() => navigate('/services')}
-                  className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-                >
-                  View Services
-                </button>
-                <button
-                  onClick={() => navigate('/stylists')}
-                  className="w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
-                >
-                  View Stylists
-                </button>
-              </div>
-            </div>
-
-            {/* Share Booking Link */}
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
-              <h3 className="font-semibold text-lg mb-4">Share & Book</h3>
-              <div className="flex flex-col items-center gap-4">
-                <QRCodeSVG 
-                  value={`${window.location.origin}/book`}
-                  size={120}
-                  bgColor="#ffffff"
-                  fgColor="#1e40af"
-                  level="M"
-                  includeMargin={true}
-                />
-                <p className="text-sm text-[#8f7a6f] text-center">Scan to book an appointment</p>
-                <div className="w-full">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={`${window.location.origin}/book`}
-                      className="flex-1 border rounded px-3 py-2 text-sm bg-gray-50"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/book`)
-                        toast.success('Booking link copied!')
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Info Cards */}
           <div className="grid md:grid-cols-3 gap-4">
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
               <div className="text-sm font-semibold mb-2 text-[#8f7a6f]">Stylist</div>
@@ -579,13 +597,18 @@ const CustomerDashboard = () => {
           </div>
         </div>
       </main>
+
+      {ratingAppointment && (
+        <RatingModal
+          open={Boolean(ratingAppointment)}
+          appointment={ratingAppointment}
+          onClose={() => setRatingAppointment(null)}
+          onSubmit={submitRating}
+          submitting={submittingRating}
+        />
+      )}
     </div>
   )
 }
 
 export default CustomerDashboard
-
-
-
-
-

@@ -15,7 +15,6 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/admin/payment-accounts', label: 'Payments', icon: 'payments' },
     { to: '/admin/inventory', label: 'Inventory', icon: 'inventory' },
     { to: '/admin/sales', label: 'Reports', icon: 'reports' },
-    { to: '/admin/manage/managers', label: 'Managers', icon: 'managers' },
   ]
 
   const managerLinks = [
@@ -157,15 +156,15 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     <>
       <aside
         className={`hidden md:flex w-20 shrink-0 flex-col border-r ${
-          isAdminTheme ? 'bg-[#f1e7de] border-[#eadfd5]' : 'bg-slate-900 border-slate-800'
+          isAdminTheme ? 'bg-[#ece4ff] border-[#d9cbff]' : 'bg-slate-900 border-slate-800'
         }`}
       >
-        <div className={`h-[74px] flex items-center justify-center border-b ${isAdminTheme ? 'border-[#eadfd5]' : 'border-slate-800'}`}>
+        <div className={`h-[74px] flex items-center justify-center border-b ${isAdminTheme ? 'border-[#d9cbff]' : 'border-slate-800'}`}>
           <button
             type="button"
             onClick={() => setIsOpen(true)}
             className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-              isAdminTheme ? 'bg-white/80 text-[#6b574c] hover:bg-white' : 'bg-slate-800 text-white'
+              isAdminTheme ? 'bg-white/85 text-[#5f4f8f] hover:bg-white' : 'bg-slate-800 text-white'
             }`}
             aria-label="Open full side panel"
             title="Open full side panel"
@@ -185,8 +184,8 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
               className={({ isActive }) => (
                 `h-12 w-12 mx-auto rounded-xl flex items-center justify-center transition ${
                   isActive
-                    ? 'bg-white text-[#4a3a2f] shadow-sm'
-                    : 'text-[#6b574c] hover:bg-white/70'
+                    ? 'bg-white text-[#453676] shadow-sm'
+                    : 'text-[#5f4f8f] hover:bg-white/70'
                 }`
               )}
             >
@@ -196,7 +195,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         </nav>
 
         {(userType === 'admin' || userType === 'manager' || userType === 'stylist') && onLogout && (
-          <div className={`px-2 pb-3 border-t ${isAdminTheme ? 'border-[#eadfd5]' : 'border-slate-800'}`}>
+          <div className={`px-2 pb-3 border-t ${isAdminTheme ? 'border-[#d9cbff]' : 'border-slate-800'}`}>
             <button
               type="button"
               onClick={onLogout}
@@ -228,32 +227,32 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         <aside
           className={`absolute left-0 top-0 h-full w-72 flex flex-col transform transition-transform ${
             isOpen ? 'translate-x-0' : '-translate-x-full'
-          } ${isAdminTheme ? 'bg-[#f1e7de] text-[#4a3a2f] border-r border-[#eadfd5]' : 'bg-slate-900 text-white'}`}
+          } ${isAdminTheme ? 'bg-[#ece4ff] text-[#453676] border-r border-[#d9cbff]' : 'bg-slate-900 text-white'}`}
           role="dialog"
           aria-modal="true"
         >
           <div
             className={`px-5 py-4 text-base font-semibold flex items-center justify-between ${
-              isAdminTheme ? 'border-b border-[#eadfd5]' : 'border-b border-slate-800'
+              isAdminTheme ? 'border-b border-[#d9cbff]' : 'border-b border-slate-800'
             }`}
           >
             <div className="flex items-center gap-3">
-              <span className="h-10 w-10 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden">
+              <span className="h-12 w-12 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden">
                 <img
-                  src="/favicon.png"
+                  src="/logo.png"
                   alt="Kaye's Hair Salon logo"
-                  className="h-8 w-8 object-contain"
+                  className="h-10 w-10 object-contain"
                 />
               </span>
               <div className="leading-tight">
                 <div className="text-sm font-semibold">Kaye&apos;s Hair Salon</div>
-                <div className={`text-xs ${isAdminTheme ? 'text-[#9b857a]' : 'text-slate-300'}`}>and Spa</div>
+                <div className={`text-xs ${isAdminTheme ? 'text-[#7f6aa8]' : 'text-slate-300'}`}>and Spa</div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className={`text-sm ${isAdminTheme ? 'text-[#9b857a] hover:text-[#6b574c]' : 'text-slate-300 hover:text-white'}`}
+              className={`text-sm ${isAdminTheme ? 'text-[#7f6aa8] hover:text-[#5f4f8f]' : 'text-slate-300 hover:text-white'}`}
               aria-label="Close menu"
             >
               Close
@@ -268,13 +267,13 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
                 className={({ isActive }) => (
                   `flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
                     isActive
-                      ? 'bg-white/80 text-[#3b2f2a] shadow-sm'
-                      : 'text-[#6b574c] hover:bg-white/70'
+                      ? 'bg-white/85 text-[#453676] shadow-sm'
+                      : 'text-[#5f4f8f] hover:bg-white/70'
                   }`
                 )}
                 onClick={() => setIsOpen(false)}
               >
-                <span className="h-9 w-9 rounded-xl bg-white/70 text-[#6b574c] flex items-center justify-center shadow-sm">
+                <span className="h-9 w-9 rounded-xl bg-white/80 text-[#5f4f8f] flex items-center justify-center shadow-sm">
                   {renderIcon(link.icon)}
                 </span>
                 <span className="font-medium">{link.label}</span>
@@ -283,7 +282,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
           </nav>
 
           {(userType === 'admin' || userType === 'manager' || userType === 'stylist') && onLogout && (
-            <div className={`px-5 py-4 border-t ${isAdminTheme ? 'border-[#eadfd5]' : 'border-slate-800'}`}>
+            <div className={`px-5 py-4 border-t ${isAdminTheme ? 'border-[#d9cbff]' : 'border-slate-800'}`}>
               <button
                 onClick={() => {
                   setIsOpen(false)

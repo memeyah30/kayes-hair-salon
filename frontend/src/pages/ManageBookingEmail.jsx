@@ -32,7 +32,7 @@ const ManageBookingEmail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] px-4 py-10">
+    <div className="min-h-screen bg-[#f4edff] px-4 py-10">
       <div className="mx-auto w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white/90 p-6 shadow-[0_12px_28px_rgba(92,64,51,0.12)]">
         <h1 className="mb-2 text-2xl font-bold text-[#3b2f2a]">Manage My Booking</h1>
         <p className="mb-6 text-sm text-[#8f7a6f]">

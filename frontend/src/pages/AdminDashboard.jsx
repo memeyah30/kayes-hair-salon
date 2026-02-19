@@ -5,6 +5,19 @@ import api from '../utils/api'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
 
+const getManilaDateInput = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  return `${year}-${month}-${day}`
+}
+
 const toRgba = (hex, alpha) => {
   if (!hex) return `rgba(0,0,0,${alpha})`
   const normalized = hex.replace('#', '')
@@ -193,7 +206,12 @@ const LineChart = ({ data, stroke = '#b88a65', fill = '#f3e6db', yTickFormatter 
   )
 }
 
-const BarChart = ({ data, fill = '#b7a08f', yTickFormatter = (value) => value }) => {
+const BarChart = ({
+  data,
+  fill = '#b7a08f',
+  yTickFormatter = (value) => value,
+  barValueFormatter = (value) => (value > 0 ? formatCompactNumber(value / 100) : ''),
+}) => {
   const width = 380
   const height = 170
   const left = 48
@@ -255,7 +273,7 @@ const BarChart = ({ data, fill = '#b7a08f', yTickFormatter = (value) => value })
               className="fill-[#7a6458]"
               style={{ fontSize: '10px' }}
             >
-              {bar.value > 0 ? formatCompactNumber(bar.value / 100) : ''}
+              {barValueFormatter(bar.value)}
             </text>
             <text
               x={x + barWidth / 2}
@@ -286,7 +304,7 @@ const AdminDashboard = () => {
   const [recentAppointments, setRecentAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
-  const storedUserType = localStorage.getItem('userType') || 'admin'
+  const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
   const canAccessSales = storedUserType === 'admin'
   const canAccessServiceManagement = storedUserType === 'admin'
@@ -298,11 +316,36 @@ const AdminDashboard = () => {
   const loadStats = async () => {
     try {
       setLoading(true)
-      const [statsRes, appointmentsRes] = await Promise.all([
-        api.get('/dashboard/admin/stats'),
-        api.get('/appointments'),
-      ])
-      setStats(statsRes.data)
+      const requestUserType = sessionStorage.getItem('userType') || storedUserType || 'admin'
+      const roleRequestConfig = {
+        params: { type: requestUserType },
+        headers: { 'X-User-Type': requestUserType },
+      }
+      let manilaToday = null
+      const requests = [
+        api.get('/dashboard/admin/stats', roleRequestConfig),
+        api.get('/appointments', roleRequestConfig),
+      ]
+      if (requestUserType === 'admin') {
+        manilaToday = getManilaDateInput()
+        const manilaMonthStart = `${manilaToday.slice(0, 7)}-01`
+        requests.push(
+          api.get(`/sales/stats?start_date=${manilaMonthStart}&end_date=${manilaToday}`, roleRequestConfig)
+        )
+      }
+
+      const [statsRes, appointmentsRes, salesStatsRes] = await Promise.all(requests)
+      const nextStats = { ...statsRes.data }
+      if (requestUserType === 'admin' && salesStatsRes?.data) {
+        const dailySales = Array.isArray(salesStatsRes.data.daily_sales) ? salesStatsRes.data.daily_sales : []
+        const todaySales = dailySales.find((item) => item?.date === manilaToday)?.total ?? 0
+        nextStats.revenue = {
+          ...(nextStats.revenue || {}),
+          month: Number(salesStatsRes.data.total_sales_cents) || 0,
+          today: Number(todaySales) || 0,
+        }
+      }
+      setStats(nextStats)
       const allAppointments = appointmentsRes.data || []
       setAppointments(allAppointments)
       const sorted = [...allAppointments].sort((a, b) => {
@@ -313,7 +356,7 @@ const AdminDashboard = () => {
       setRecentAppointments(sorted.slice(0, 6))
     } catch (error) {
       if (error.response?.status === 401) {
-        localStorage.clear()
+        localStorage.clear(); sessionStorage.clear()
         navigate(loginPath)
         toast.error('Session expired. Please log in again.')
       } else {
@@ -326,7 +369,7 @@ const AdminDashboard = () => {
 
   const handleLogout = () => {
     api.post('/logout').finally(() => {
-      localStorage.clear()
+      localStorage.clear(); sessionStorage.clear()
       navigate(loginPath)
     })
   }
@@ -377,6 +420,24 @@ const AdminDashboard = () => {
     return labels.map((label, idx) => ({ label, value: values[idx] }))
   }, [appointments])
 
+  const appointmentsThisWeek = useMemo(() => {
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const values = Array(7).fill(0)
+    const now = new Date()
+    const weekStart = new Date(now)
+    weekStart.setHours(0, 0, 0, 0)
+    weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+
+    appointments.forEach((appointment) => {
+      const appointmentDate = new Date(appointment.start_datetime_pht || appointment.start_datetime)
+      if (appointmentDate < weekStart || appointmentDate > now) return
+      const dayIndex = (appointmentDate.getDay() + 6) % 7
+      values[dayIndex] += 1
+    })
+
+    return labels.map((label, idx) => ({ label, value: values[idx] }))
+  }, [appointments])
+
   const stylistPerformance = useMemo(() => {
     const now = new Date()
     const month = now.getMonth()
@@ -408,43 +469,92 @@ const AdminDashboard = () => {
   const peakRevenueDay = useMemo(() => (
     revenueThisWeek.reduce((best, day) => (day.value > best.value ? day : best), { label: '-', value: 0 })
   ), [revenueThisWeek])
+  const peakAppointmentsDay = useMemo(() => (
+    appointmentsThisWeek.reduce((best, day) => (day.value > best.value ? day : best), { label: '-', value: 0 })
+  ), [appointmentsThisWeek])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f7f1ec] flex items-center justify-center text-[#4a3a2f]">
+      <div className="min-h-screen bg-[#f4edff] flex items-center justify-center text-[#4a3a2f]">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar title="Dashboard" />
         <div className="p-5 md:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-semibold">Admin Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl font-semibold">{canAccessSales ? 'Admin Dashboard' : 'Manager Dashboard'}</h1>
             <p className="mt-1 text-sm text-[#9b857a]">
               Monitor performance here. Use the side panel for all management pages.
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <GradientMetricCard
-              title="Total Revenue"
-              value={formatCurrency(stats.revenue.month)}
-              note="This month"
-              start="#b38a6d"
-              end="#cca88e"
-              onClick={canAccessSales ? () => navigate('/admin/sales') : undefined}
-              icon={
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-                  <rect x="3" y="6" width="18" height="12" rx="2" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 12h10" />
-                </svg>
-              }
-            />
+          <div className={`grid gap-4 md:grid-cols-2 ${canAccessSales ? 'xl:grid-cols-7' : 'xl:grid-cols-5'}`}>
+            {canAccessSales ? (
+              <>
+                <GradientMetricCard
+                  title="Total Revenue"
+                  value={formatCurrency(stats.revenue.month)}
+                  note="This month"
+                  start="#b38a6d"
+                  end="#cca88e"
+                  onClick={() => navigate('/admin/sales')}
+                  icon={
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                      <rect x="3" y="6" width="18" height="12" rx="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 12h10" />
+                    </svg>
+                  }
+                />
+                <GradientMetricCard
+                  title="Daily Revenue"
+                  value={formatCurrency(stats.revenue.today)}
+                  note="Today"
+                  start="#8574bb"
+                  end="#9f93d1"
+                  onClick={() => navigate('/admin/sales')}
+                  icon={
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                      <circle cx="12" cy="12" r="8" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 9.5c0-1.1 1.1-2 2.5-2s2.5.9 2.5 2-1.1 2-2.5 2-2.5.9-2.5 2 1.1 2 2.5 2 2.5-.9 2.5-2M12 7v10" />
+                    </svg>
+                  }
+                />
+                <GradientMetricCard
+                  title="Today's Bookings"
+                  value={stats.appointments.today}
+                  note="Today"
+                  start="#4f9db2"
+                  end="#74b8c8"
+                  onClick={() => navigate('/admin/appointments?range=today')}
+                  icon={
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v4M17 3v4M4 9h16M6 7h12a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 1-1Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6M9 17h4" />
+                    </svg>
+                  }
+                />
+              </>
+            ) : (
+              <GradientMetricCard
+                title="Total Appointments"
+                value={stats.appointments.month}
+                note="This month"
+                start="#b38a6d"
+                end="#cca88e"
+                onClick={() => navigate('/admin/appointments?range=month')}
+                icon={
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v4M17 3v4M4 9h16M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7Z" />
+                  </svg>
+                }
+              />
+            )}
             <GradientMetricCard
               title="Pending Appointments"
               value={stats.status_summary.booked}
@@ -547,11 +657,23 @@ const AdminDashboard = () => {
           <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 shadow-[0_8px_20px_rgba(92,64,51,0.08)]">
-                  <div className="text-sm text-[#8f7a6f]">Daily Revenue</div>
-                  <div className="mt-1 text-3xl font-semibold">{formatCurrency(stats.revenue.today)}</div>
-                  <div className="mt-3 text-sm text-[#8f7a6f]">Today&apos;s bookings: {stats.appointments.today}</div>
-                </div>
+                {canAccessSales ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/sales')}
+                    className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 text-left shadow-[0_8px_20px_rgba(92,64,51,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_26px_rgba(92,64,51,0.12)]"
+                  >
+                    <div className="text-sm text-[#8f7a6f]">Daily Revenue</div>
+                    <div className="mt-1 text-3xl font-semibold">{formatCurrency(stats.revenue.today)}</div>
+                    <div className="mt-3 text-sm text-[#8f7a6f]">Today&apos;s bookings: {stats.appointments.today}</div>
+                  </button>
+                ) : (
+                  <div className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 shadow-[0_8px_20px_rgba(92,64,51,0.08)]">
+                    <div className="text-sm text-[#8f7a6f]">Today Appointments</div>
+                    <div className="mt-1 text-3xl font-semibold">{stats.appointments.today}</div>
+                    <div className="mt-3 text-sm text-[#8f7a6f]">Week total: {stats.appointments.week}</div>
+                  </div>
+                )}
                 <div className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 shadow-[0_8px_20px_rgba(92,64,51,0.08)]">
                   <div className="text-sm text-[#8f7a6f]">Week Appointments</div>
                   <div className="mt-1 text-3xl font-semibold">{stats.appointments.week}</div>
@@ -602,7 +724,9 @@ const AdminDashboard = () => {
                         <div className="font-semibold text-[#4a3a2f]">{stylist.name}</div>
                         <div className="text-xs text-[#9b857a]">{stylist.completed} completed appointments</div>
                       </div>
-                      <div className="text-sm font-semibold text-[#6f5b50]">{formatCurrency(stylist.revenue)}</div>
+                      <div className="text-sm font-semibold text-[#6f5b50]">
+                        {canAccessSales ? formatCurrency(stylist.revenue) : `${stylist.completed} completed`}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -610,21 +734,41 @@ const AdminDashboard = () => {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 shadow-[0_10px_24px_rgba(92,64,51,0.08)]">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-[#4a3a2f]">Revenue This Week</h3>
-                  <span className="text-xs text-[#9b857a]">Mon-Sun</span>
+              {canAccessSales ? (
+                <div className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 shadow-[0_10px_24px_rgba(92,64,51,0.08)]">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold text-[#4a3a2f]">Revenue This Week</h3>
+                    <span className="text-xs text-[#9b857a]">Mon-Sun</span>
+                  </div>
+                  <div className="mt-4 h-44 rounded-xl border border-[#efe2d8] bg-gradient-to-br from-[#fbf5ef] to-[#f2e8df] p-2">
+                    <BarChart
+                      data={revenueThisWeek}
+                      yTickFormatter={(value) => formatCurrencyCompact(value)}
+                      barValueFormatter={(value) => (value > 0 ? formatCompactNumber(value / 100) : '')}
+                    />
+                  </div>
+                  <div className="mt-3 rounded-lg bg-[#f8f1ea] px-3 py-2 text-sm text-[#6f5b50]">
+                    Highest day: <span className="font-semibold">{peakRevenueDay.label}</span> ({formatCurrency(peakRevenueDay.value)})
+                  </div>
                 </div>
-                <div className="mt-4 h-44 rounded-xl border border-[#efe2d8] bg-gradient-to-br from-[#fbf5ef] to-[#f2e8df] p-2">
-                  <BarChart
-                    data={revenueThisWeek}
-                    yTickFormatter={(value) => formatCurrencyCompact(value)}
-                  />
+              ) : (
+                <div className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 shadow-[0_10px_24px_rgba(92,64,51,0.08)]">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold text-[#4a3a2f]">Appointments This Week</h3>
+                    <span className="text-xs text-[#9b857a]">Mon-Sun</span>
+                  </div>
+                  <div className="mt-4 h-44 rounded-xl border border-[#efe2d8] bg-gradient-to-br from-[#fbf5ef] to-[#f2e8df] p-2">
+                    <BarChart
+                      data={appointmentsThisWeek}
+                      yTickFormatter={(value) => formatCompactNumber(value)}
+                      barValueFormatter={(value) => (value > 0 ? formatCompactNumber(value) : '')}
+                    />
+                  </div>
+                  <div className="mt-3 rounded-lg bg-[#f8f1ea] px-3 py-2 text-sm text-[#6f5b50]">
+                    Busiest day: <span className="font-semibold">{peakAppointmentsDay.label}</span> ({peakAppointmentsDay.value} appointments)
+                  </div>
                 </div>
-                <div className="mt-3 rounded-lg bg-[#f8f1ea] px-3 py-2 text-sm text-[#6f5b50]">
-                  Highest day: <span className="font-semibold">{peakRevenueDay.label}</span> ({formatCurrency(peakRevenueDay.value)})
-                </div>
-              </div>
+              )}
 
               <div className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 shadow-[0_10px_24px_rgba(92,64,51,0.08)]">
                 <h3 className="text-xl font-semibold text-[#4a3a2f]">Recent Appointments</h3>

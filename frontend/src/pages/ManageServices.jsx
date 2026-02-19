@@ -300,7 +300,7 @@ const ManageServices = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -383,7 +383,11 @@ const ManageServices = () => {
                 onChange={handleImageChange}
               />
               {imagePreview && (
-                <img src={imagePreview} alt="Preview" className="mt-2 h-32 object-cover rounded" />
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="mt-2 h-44 w-full rounded border border-[#eadfd5] bg-[#f7f1ec] p-2 object-contain"
+                />
               )}
             </div>
           </div>
@@ -531,14 +535,15 @@ const ManageServices = () => {
                   key={`${s.id}-${s.image}`}
                   src={`http://localhost:8000/${s.image}?v=${Date.now()}`}
                   alt={s.name}
-                  className="w-full h-32 object-cover"
+                  className="w-full h-52 bg-[#f7f1ec] p-2 object-contain"
+                  loading="lazy"
                   onError={(e) => {
                     // Hide broken images
                     e.target.style.display = 'none'
                   }}
                 />
               ) : (
-                <div className="w-full h-32 bg-gray-200 flex items-center justify-center text-gray-400 text-sm">
+                <div className="w-full h-52 bg-[#f7f1ec] flex items-center justify-center text-[#9b857a] text-sm">
                   No Image
                 </div>
               )}

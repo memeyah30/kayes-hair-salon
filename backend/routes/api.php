@@ -42,8 +42,8 @@ Route::middleware('customer.otp')->group(function () {
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
-Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth.any');
+Route::get('/me', [AuthController::class, 'me'])->middleware('auth.any');
 Route::post('/me/profile-photo', [AuthController::class, 'updateProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
 Route::delete('/me/profile-photo', [AuthController::class, 'removeProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
 
@@ -112,10 +112,14 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
     Route::delete('/sales/{sale}', [SaleController::class, 'destroy']);
 });
 
+// Admin + Manager dashboard stats
+Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
+    Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
+    Route::get('/ratings', [CustomerRatingController::class, 'index']);
+});
+
 // Admin + Manager routes (shared management permissions)
 Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(function () {
-    // Dashboard stats (admin + manager)
-    Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
     Route::get('/appointments', [AppointmentController::class, 'index']);
     Route::get('/appointments/history', [AppointmentController::class, 'history']);
     Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update']);
@@ -132,8 +136,6 @@ Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(functio
     Route::patch('/holidays/{holiday}', [HolidayController::class, 'update']);
     Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy']);
 
-    // Ratings view
-    Route::get('/ratings', [CustomerRatingController::class, 'index']);
 });
 
 // Stylist-only routes
@@ -142,7 +144,7 @@ Route::middleware(['auth:sanctum', 'userType:stylist'])->group(function () {
     Route::get('/appointments/assigned', [AppointmentController::class, 'index']); // Only assigned appointments
     Route::get('/appointments/history', [AppointmentController::class, 'history']); // Appointment history
     Route::get('/appointments/rescheduled', [AppointmentController::class, 'index']); // Rescheduled appointments
-    Route::get('/ratings', [CustomerRatingController::class, 'index']); // View own ratings
+    Route::get('/stylist/ratings', [CustomerRatingController::class, 'index']); // View own ratings
 });
 
 // Public customer stats (no auth required)

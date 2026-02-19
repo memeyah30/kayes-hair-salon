@@ -24,10 +24,13 @@ const AdminAppointments = () => {
   const [searchServiceId, setSearchServiceId] = useState('')
   const [rangeFilter, setRangeFilter] = useState('')
   const [openActionId, setOpenActionId] = useState(null)
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [processingAppointmentId, setProcessingAppointmentId] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
-  const storedUserType = localStorage.getItem('userType') || 'admin'
+  const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
+  const canAccessSales = storedUserType === 'admin'
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
@@ -66,17 +69,10 @@ const AdminAppointments = () => {
     setRangeFilter('')
 
     const params = new URLSearchParams(location.search)
-    const status = params.get('status')
     const dateParam = params.get('date')
     const range = params.get('range')
     const serviceId = params.get('serviceId')
     const query = params.get('q')
-
-    if (status) {
-      const normalized = status.toLowerCase()
-      const allowed = ['all', 'booked', 'confirmed', 'completed', 'cancelled']
-      setFilter(allowed.includes(normalized) ? normalized : 'all')
-    }
 
     if (serviceId) setSearchServiceId(serviceId)
     if (query !== null) setSearchTerm(query)
@@ -147,24 +143,55 @@ const AdminAppointments = () => {
     }
   }
 
+  const updateAppointmentInState = (appointmentId, updater) => {
+    setAppointments((prev) =>
+      prev.map((apt) => (apt.id === appointmentId ? updater(apt) : apt))
+    )
+    setSelectedAppointment((prev) =>
+      prev && prev.id === appointmentId ? updater(prev) : prev
+    )
+  }
+
   const handleAction = async (id, action) => {
+    if (processingAppointmentId === id) return
     try {
+      setProcessingAppointmentId(id)
       if (action === 'cancel') {
         await api.post(`/appointments/${id}/cancel`)
+        updateAppointmentInState(id, (apt) => ({ ...apt, status: 'cancelled' }))
         toast.success('Appointment cancelled')
       } else if (action === 'complete') {
-        await api.post(`/appointments/${id}/complete`)
-        toast.success('Appointment marked as completed and sales recorded')
+        const response = await api.post(`/appointments/${id}/complete`)
+        if (response?.data?.id) {
+          updateAppointmentInState(id, () => response.data)
+        } else {
+          updateAppointmentInState(id, (apt) => ({
+            ...apt,
+            status: 'completed',
+            payment_status: 'paid',
+          }))
+        }
+        toast.success(canAccessSales ? 'Appointment marked as completed and sales recorded' : 'Appointment marked as completed')
       } else if (action === 'confirm') {
-        await api.post(`/appointments/${id}/confirm`)
+        const response = await api.post(`/appointments/${id}/confirm`)
+        if (response?.data?.id) {
+          updateAppointmentInState(id, () => response.data)
+        } else {
+          updateAppointmentInState(id, (apt) => ({ ...apt, status: 'confirmed' }))
+        }
         toast.success('Appointment confirmed')
       } else if (action === 'delete') {
         await api.delete(`/appointments/${id}`)
+        setAppointments((prev) => prev.filter((apt) => apt.id !== id))
+        setSelectedAppointment((prev) => (prev && prev.id === id ? null : prev))
         toast.success('Appointment deleted successfully')
       }
-      loadData()
+      setOpenActionId(null)
+      void loadData()
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to update appointment')
+    } finally {
+      setProcessingAppointmentId(null)
     }
   }
 
@@ -342,19 +369,34 @@ const AdminAppointments = () => {
     return `/${url.replace(/^\/+/, '')}`
   }
 
+  const selectedAppointmentServices = selectedAppointment ? getAppointmentServices(selectedAppointment) : []
+  const selectedProofUrl = selectedAppointment ? resolveProofUrl(selectedAppointment.payment_proof_url) : null
+  const selectedStartDate = selectedAppointment ? new Date(getStart(selectedAppointment)) : null
+  const selectedStatus = (selectedAppointment?.status || '').toLowerCase().trim()
+  const selectedStatusLabel = selectedStatus
+    ? selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)
+    : 'Unknown'
+  const selectedDateLabel = selectedStartDate
+    ? selectedStartDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium' })
+    : 'N/A'
+  const selectedTimeLabel = selectedStartDate
+    ? selectedStartDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' })
+    : 'N/A'
+  const selectedTotalPrice = selectedAppointmentServices.reduce((sum, service) => sum + (service.price_cents || 0), 0)
+
   if (loading) {
     return <div className="p-6 text-center">Loading...</div>
   }
 
   const handleLogout = () => {
     api.post('/logout').finally(() => {
-      localStorage.clear()
+      localStorage.clear(); sessionStorage.clear()
       navigate(loginPath)
     })
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -383,7 +425,7 @@ const AdminAppointments = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${canAccessSales ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
               <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Total This Month</p>
@@ -420,19 +462,21 @@ const AdminAppointments = () => {
                   </svg>
                 </div>
               </div>
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Revenue</p>
-                  <p className="text-2xl font-semibold mt-2">{currency(monthlyStats.revenueCents)}</p>
-                  <p className="text-xs text-[#9b857a] mt-1">This month</p>
+              {canAccessSales && (
+                <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Revenue</p>
+                    <p className="text-2xl font-semibold mt-2">{currency(monthlyStats.revenueCents)}</p>
+                    <p className="text-xs text-[#9b857a] mt-1">This month</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-2xl bg-[#f4ebe4] flex items-center justify-center text-[#b48a6b]">
+                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                      <rect x="4" y="6" width="16" height="12" rx="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 10h16M9 14h2" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="h-12 w-12 rounded-2xl bg-[#f4ebe4] flex items-center justify-center text-[#b48a6b]">
-                  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                    <rect x="4" y="6" width="16" height="12" rx="2" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 10h16M9 14h2" />
-                  </svg>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-3 md:p-4">
@@ -533,11 +577,29 @@ const AdminAppointments = () => {
                       : 'Unknown'
                     const canModify = normalizedStatus === 'booked' || normalizedStatus === 'confirmed'
                     const canConfirm = normalizedStatus === 'booked'
+                    const isProcessingAction = processingAppointmentId === apt.id
                     const paymentLabel = paymentStatusLabel(apt.payment_status)
                     const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status)
 
                     return (
-                    <tr key={apt.id} className="hover:bg-[#f9f4ef]">
+                    <tr
+                      key={apt.id}
+                      className="hover:bg-[#f9f4ef] cursor-pointer focus-visible:outline-none focus-visible:bg-[#f9f4ef]"
+                      onClick={() => {
+                        setOpenActionId(null)
+                        setSelectedAppointment(apt)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setOpenActionId(null)
+                          setSelectedAppointment(apt)
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`View details for appointment of ${apt.customer_name || 'customer'}`}
+                    >
                       <td className="px-4 py-4">
                         <div className="font-semibold text-sm">{apt.customer_name}</div>
                         <div className="text-xs text-[#9b857a] mt-1">
@@ -588,18 +650,24 @@ const AdminAppointments = () => {
                         <div className="text-xs text-[#9b857a] mt-1">{appointmentServices.length > 1 ? 'Total' : 'Service price'}</div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="relative apt-actions">
+                        <div
+                          className="relative apt-actions"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
                           <button
                             type="button"
                             onClick={(event) => {
+                              if (isProcessingAction) return
                               event.stopPropagation()
                               setOpenActionId(openActionId === apt.id ? null : apt.id)
                             }}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#f4ebe4]"
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-[#eadfd5] text-sm ${isProcessingAction ? 'text-[#b7a59a] cursor-not-allowed' : 'text-[#6f5b50] hover:bg-[#f4ebe4]'}`}
                             aria-haspopup="menu"
                             aria-expanded={openActionId === apt.id}
+                            disabled={isProcessingAction}
                           >
-                            Actions
+                            {isProcessingAction ? 'Updating...' : 'Actions'}
                             <svg
                               className={`h-4 w-4 transition ${openActionId === apt.id ? 'rotate-180' : ''}`}
                               viewBox="0 0 20 20"
@@ -626,21 +694,21 @@ const AdminAppointments = () => {
                               )}
                               <button
                                 onClick={() => {
-                                  if (!canConfirm) return
+                                  if (!canConfirm || isProcessingAction) return
                                   setOpenActionId(null)
                                   handleAction(apt.id, 'confirm')
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canConfirm ? 'hover:bg-emerald-50 text-emerald-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
+                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canConfirm && !isProcessingAction ? 'hover:bg-emerald-50 text-emerald-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
                               >
                                 Confirm
                               </button>
                               <button
                                 onClick={() => {
-                                  if (!canModify) return
+                                  if (!canModify || isProcessingAction) return
                                   setOpenActionId(null)
                                   handleRescheduleClick(apt)
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify ? 'hover:bg-blue-50 text-blue-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
+                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify && !isProcessingAction ? 'hover:bg-blue-50 text-blue-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
                               >
                                 Reschedule
                               </button>
@@ -648,19 +716,21 @@ const AdminAppointments = () => {
                                 <>
                                   <button
                                     onClick={() => {
+                                      if (isProcessingAction) return
                                       setOpenActionId(null)
                                       handlePaymentStatus(apt.id, 'paid')
                                     }}
-                                    className="w-full text-left text-sm px-3 py-2 rounded-xl hover:bg-emerald-50 text-emerald-700"
+                                    className={`w-full text-left text-sm px-3 py-2 rounded-xl ${isProcessingAction ? 'text-[#b7a59a] cursor-not-allowed' : 'hover:bg-emerald-50 text-emerald-700'}`}
                                   >
                                     Mark Paid
                                   </button>
                                   <button
                                     onClick={() => {
+                                      if (isProcessingAction) return
                                       setOpenActionId(null)
                                       handlePaymentStatus(apt.id, 'rejected')
                                     }}
-                                    className="w-full text-left text-sm px-3 py-2 rounded-xl hover:bg-red-50 text-red-700"
+                                    className={`w-full text-left text-sm px-3 py-2 rounded-xl ${isProcessingAction ? 'text-[#b7a59a] cursor-not-allowed' : 'hover:bg-red-50 text-red-700'}`}
                                   >
                                     Reject
                                   </button>
@@ -668,31 +738,32 @@ const AdminAppointments = () => {
                               )}
                               <button
                                 onClick={() => {
-                                  if (!canModify) return
+                                  if (!canModify || isProcessingAction) return
                                   setOpenActionId(null)
                                   handleAction(apt.id, 'cancel')
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify ? 'hover:bg-amber-50 text-amber-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
+                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify && !isProcessingAction ? 'hover:bg-amber-50 text-amber-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
                               >
                                 Cancel
                               </button>
                               <button
                                 onClick={() => {
-                                  if (!canModify) return
+                                  if (!canModify || isProcessingAction) return
                                   setOpenActionId(null)
                                   handleAction(apt.id, 'complete')
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify ? 'hover:bg-purple-50 text-purple-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
+                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify && !isProcessingAction ? 'hover:bg-purple-50 text-purple-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
                               >
-                                Complete
+                                {isProcessingAction ? 'Completing...' : 'Complete'}
                               </button>
                               <div className="border-t border-[#f0e4dc] my-1" />
                               <button
                                 onClick={() => {
+                                  if (isProcessingAction) return
                                   setOpenActionId(null)
                                   handleDelete(apt)
                                 }}
-                                className="w-full text-left text-sm px-3 py-2 rounded-xl hover:bg-red-50 text-red-700"
+                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${isProcessingAction ? 'text-[#b7a59a] cursor-not-allowed' : 'hover:bg-red-50 text-red-700'}`}
                               >
                                 Delete
                               </button>
@@ -711,6 +782,104 @@ const AdminAppointments = () => {
             </div>
           </div>
         </div>
+        {selectedAppointment && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedAppointment(null)}
+          >
+            <div
+              className="bg-white rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.16)] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 md:p-6"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold">Appointment Details</h2>
+                  <p className="text-sm text-[#8f7a6f] mt-1">View booking information and payment proof.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAppointment(null)}
+                  className="h-9 w-9 rounded-full border border-[#eadfd5] hover:bg-[#f4ebe4] text-[#6f5b50]"
+                  aria-label="Close details"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                <div className="rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Customer</p>
+                  <p className="mt-2 font-semibold">{selectedAppointment.customer_name || 'N/A'}</p>
+                  <p className="text-sm text-[#6f5b50] mt-1">{selectedAppointment.customer_phone || 'No phone provided'}</p>
+                  <p className="text-sm text-[#6f5b50] mt-1">{selectedAppointment.customer_email || 'No email provided'}</p>
+                </div>
+                <div className="rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Schedule</p>
+                  <p className="mt-2 font-semibold">{selectedDateLabel}</p>
+                  <p className="text-sm text-[#6f5b50] mt-1">{selectedTimeLabel} PHT</p>
+                  <p className="text-sm text-[#6f5b50] mt-1">Stylist: {selectedAppointment.stylist?.name || 'Unassigned'}</p>
+                </div>
+                <div className="rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Status</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#f4ebe4] text-[#6f5b50]">
+                      {selectedStatusLabel}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(selectedAppointment.payment_method, selectedAppointment.payment_status)}`}>
+                      {paymentChoiceLabel(selectedAppointment.payment_method, selectedAppointment.payment_status)}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${paymentStatusClass(selectedAppointment.payment_status)}`}>
+                      {paymentStatusLabel(selectedAppointment.payment_status)}
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Total Price</p>
+                  <p className="mt-2 text-xl font-semibold">{currency(selectedTotalPrice)}</p>
+                  <p className="text-xs text-[#8f7a6f] mt-1">{selectedAppointmentServices.length} service{selectedAppointmentServices.length === 1 ? '' : 's'}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Services</p>
+                <div className="mt-2 space-y-2">
+                  {selectedAppointmentServices.length > 0 ? (
+                    selectedAppointmentServices.map((service, index) => (
+                      <div key={`${service.id || service.name || 'service'}-${index}`} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="font-medium">{service.name || 'Service'}</span>
+                        <span className="text-[#6f5b50]">{currency(service.price_cents || 0)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-[#8f7a6f]">No service information available.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Payment Proof</p>
+                {selectedProofUrl ? (
+                  <div className="mt-2 space-y-3">
+                    <img
+                      src={selectedProofUrl}
+                      alt="Payment proof"
+                      className="w-full max-h-72 object-contain rounded-lg border border-[#eadfd5] bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => window.open(selectedProofUrl, '_blank')}
+                      className="px-4 py-2 rounded-lg bg-[#f4ebe4] border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#eadfd5]"
+                    >
+                      Open Full Image
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[#8f7a6f] mt-2">No payment proof uploaded.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Reschedule Modal */}
         {showRescheduleModal && reschedulingAppointment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

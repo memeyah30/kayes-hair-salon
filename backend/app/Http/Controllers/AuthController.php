@@ -15,19 +15,24 @@ class AuthController extends Controller
     private function resolveActiveUser(Request $request)
     {
         $activeGuard = $request->session()->get('active_guard');
-        $user = null;
+        $typeHint = $request->header('X-User-Type') ?: $request->query('type');
+        $hintGuard = in_array($typeHint, ['admin', 'manager', 'stylist'], true) ? $typeHint : null;
 
-        if ($activeGuard && Auth::guard($activeGuard)->check()) {
-            $user = Auth::guard($activeGuard)->user();
+        $guards = array_values(array_unique(array_filter([
+            $hintGuard,
+            $activeGuard,
+            'admin',
+            'manager',
+            'stylist',
+        ])));
+
+        foreach ($guards as $guard) {
+            if (Auth::guard($guard)->check()) {
+                return Auth::guard($guard)->user();
+            }
         }
 
-        if (!$user) {
-            $user = Auth::guard('admin')->user()
-                ?? Auth::guard('manager')->user()
-                ?? Auth::guard('stylist')->user();
-        }
-
-        return $user;
+        return null;
     }
 
     private function resolveUserType($user): ?string
@@ -100,15 +105,8 @@ class AuthController extends Controller
             default => 'web',
         };
 
-        // Clear any previously authenticated guard in this browser session.
-        // This prevents mixed-role sessions (e.g., admin + stylist at once).
-        foreach (['admin', 'manager', 'stylist', 'web'] as $existingGuard) {
-            Auth::guard($existingGuard)->logout();
-        }
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        // Login the user using the requested guard
+        // Login the user using the requested guard. Do not force-logout other
+        // guards so admin/manager/staff sessions can coexist in separate tabs.
         Auth::guard($guard)->login($user);
         $request->session()->put('active_guard', $guard);
         $request->session()->put('active_user_type', $request->type);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import RatingModal from '../components/RatingModal'
 import manageBookingApi, {
@@ -20,8 +20,20 @@ const formatCurrency = (amount) => `PHP ${Number(amount || 0).toFixed(2)}`
 
 const ManageBookingDashboard = () => {
   const navigate = useNavigate()
-  const customerEmail = localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) || ''
-  const customerToken = localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || ''
+  const location = useLocation()
+  const pathname = location.pathname
+  const params = new URLSearchParams(location.search)
+  const queryToken = (params.get('token') || '').trim()
+  const queryEmail = (params.get('email') || '').trim().toLowerCase()
+
+  if (queryToken && queryEmail) {
+    localStorage.setItem(CUSTOMER_BOOKING_TOKEN_KEY, queryToken)
+    localStorage.setItem(CUSTOMER_BOOKING_EMAIL_KEY, queryEmail)
+    localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+  }
+
+  const customerEmail = queryEmail || localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) || ''
+  const customerToken = queryToken || localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || ''
 
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -70,6 +82,18 @@ const ManageBookingDashboard = () => {
     }
     loadAppointments()
   }, [hasSession]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (queryToken && queryEmail) {
+      navigate('/customer', { replace: true })
+    }
+  }, [navigate, queryEmail, queryToken])
+
+  useEffect(() => {
+    if (pathname === '/customer/dashboard') {
+      navigate('/customer', { replace: true })
+    }
+  }, [navigate, pathname])
 
   const openReschedule = (appointment) => {
     setRescheduleForId(appointment.id)
@@ -149,7 +173,7 @@ const ManageBookingDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec] px-4 py-6">
+    <div className="min-h-screen bg-[#f4edff] px-4 py-6">
       <div className="mx-auto w-full max-w-4xl">
         <div className="mb-5 rounded-2xl border border-[#eadfd5] bg-white/90 p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

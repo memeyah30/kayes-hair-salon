@@ -13,23 +13,37 @@ class SaleController extends Controller
 {
     public function index(Request $request)
     {
+        $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d'],
+            'transaction_type' => ['nullable', 'in:service,product,both'],
+            'stylist_id' => ['nullable', 'integer', 'exists:stylists,id'],
+        ]);
+
+        $timezone = 'Asia/Manila';
         $query = Sale::with(['appointment', 'inventory', 'stylist']);
 
         // Filter by date range
-        if ($request->has('start_date')) {
-            $query->whereDate('created_at', '>=', $request->start_date);
+        if ($request->filled('start_date')) {
+            $startUtc = Carbon::createFromFormat('Y-m-d', $request->start_date, $timezone)
+                ->startOfDay()
+                ->setTimezone('UTC');
+            $query->where('created_at', '>=', $startUtc);
         }
-        if ($request->has('end_date')) {
-            $query->whereDate('created_at', '<=', $request->end_date);
+        if ($request->filled('end_date')) {
+            $endUtc = Carbon::createFromFormat('Y-m-d', $request->end_date, $timezone)
+                ->endOfDay()
+                ->setTimezone('UTC');
+            $query->where('created_at', '<=', $endUtc);
         }
 
         // Filter by transaction type
-        if ($request->has('transaction_type')) {
+        if ($request->filled('transaction_type')) {
             $query->where('transaction_type', $request->transaction_type);
         }
 
         // Filter by stylist
-        if ($request->has('stylist_id')) {
+        if ($request->filled('stylist_id')) {
             $query->where('stylist_id', $request->stylist_id);
         }
 
@@ -106,12 +120,29 @@ class SaleController extends Controller
 
     public function stats(Request $request)
     {
-        $startDate = $request->start_date ?? Carbon::now()->startOfMonth()->toDateString();
-        $endDate = $request->end_date ?? Carbon::now()->endOfMonth()->toDateString();
+        $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
 
-        // Use date-based filtering (same as /sales listing) to avoid timezone drift
-        $baseQuery = Sale::whereDate('created_at', '>=', $startDate)
-            ->whereDate('created_at', '<=', $endDate);
+        $timezone = 'Asia/Manila';
+        $nowManila = Carbon::now($timezone);
+        $startManila = $request->filled('start_date')
+            ? Carbon::createFromFormat('Y-m-d', $request->start_date, $timezone)->startOfDay()
+            : $nowManila->copy()->startOfMonth()->startOfDay();
+        $endManila = $request->filled('end_date')
+            ? Carbon::createFromFormat('Y-m-d', $request->end_date, $timezone)->endOfDay()
+            : $nowManila->copy()->endOfMonth()->endOfDay();
+
+        if ($endManila->lt($startManila)) {
+            [$startManila, $endManila] = [$endManila->copy()->startOfDay(), $startManila->copy()->endOfDay()];
+        }
+
+        $startUtc = $startManila->copy()->setTimezone('UTC');
+        $endUtc = $endManila->copy()->setTimezone('UTC');
+
+        // Filter using Manila day boundaries converted to UTC to avoid date drift.
+        $baseQuery = Sale::whereBetween('created_at', [$startUtc, $endUtc]);
 
         // Total sales
         $totalSales = (clone $baseQuery)->sum('total_amount_cents');
@@ -138,17 +169,26 @@ class SaleController extends Controller
             ->limit(10)
             ->get();
 
-        // Daily sales
+        // Daily sales grouped in Manila timezone.
         $dailySales = (clone $baseQuery)
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total_amount_cents) as total'))
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+            ->select(['created_at', 'total_amount_cents'])
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy(function ($sale) use ($timezone) {
+                return Carbon::parse($sale->created_at)->setTimezone($timezone)->toDateString();
+            })
+            ->map(function ($items, $date) {
+                return [
+                    'date' => $date,
+                    'total' => (int) $items->sum('total_amount_cents'),
+                ];
+            })
+            ->values();
 
         return response()->json([
             'period' => [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
+                'start_date' => $startManila->toDateString(),
+                'end_date' => $endManila->toDateString(),
             ],
             'total_sales_cents' => $totalSales,
             'sales_by_type' => $salesByType,

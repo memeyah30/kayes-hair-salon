@@ -12,7 +12,9 @@ use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\ManageBookingController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 // Root route - serve frontend
 Route::get('/', function () {
@@ -116,10 +118,14 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     Route::delete('/managers/{manager}', [\App\Http\Controllers\ManagerController::class, 'destroy']);
 });
 
-// Admin + Manager routes (shared management permissions)
-Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(function () {
-    // Dashboard stats (admin + manager)
+// Admin + Manager dashboard stats
+Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
+    Route::get('/ratings', [CustomerRatingController::class, 'index']);
+});
+
+// Shared management routes
+Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(function () {
     Route::get('/appointments', [AppointmentController::class, 'index']);
     Route::get('/appointments/history', [AppointmentController::class, 'history']);
     Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update']);
@@ -136,8 +142,6 @@ Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(functio
     Route::patch('/holidays/{holiday}', [HolidayController::class, 'update']);
     Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy']);
 
-    // Ratings view
-    Route::get('/ratings', [CustomerRatingController::class, 'index']);
 });
 
 // Stylist-only routes
@@ -146,11 +150,24 @@ Route::middleware(['auth.any', 'userType:stylist'])->group(function () {
     Route::get('/appointments/assigned', [AppointmentController::class, 'index']); // Only assigned appointments
     Route::get('/appointments/history', [AppointmentController::class, 'history']); // Appointment history
     Route::get('/appointments/rescheduled', [AppointmentController::class, 'index']); // Rescheduled appointments
-    Route::get('/ratings', [CustomerRatingController::class, 'index']); // View own ratings
+    Route::get('/stylist/ratings', [CustomerRatingController::class, 'index']); // View own ratings
 });
 
 // Public customer stats (no auth required)
 Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerStats']);
+
+// Public magic-link entry to manage booking dashboard
+Route::get('/a/{token}', [ManageBookingController::class, 'magicLink'])->name('customer.magic');
+
+// Compatibility redirects for older frontend bundles / bookmarks
+Route::get('/customer/dashboard', function (Request $request) {
+    $query = $request->getQueryString();
+    return redirect('/customer' . ($query ? ('?' . $query) : ''));
+});
+Route::get('/manage-booking/dashboard', function (Request $request) {
+    $query = $request->getQueryString();
+    return redirect('/customer' . ($query ? ('?' . $query) : ''));
+});
 
 // Catch-all route for React Router - must be last
 Route::get('/{any}', function () {

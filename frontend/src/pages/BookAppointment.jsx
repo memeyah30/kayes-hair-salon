@@ -593,7 +593,7 @@ const BookAppointment = () => {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [booking, setBooking] = useState({ 
     name: '', 
-    email: localStorage.getItem('customer_email') || '',
+    email: '',
     phone: '',
     address: ''
   })
@@ -728,7 +728,7 @@ const BookAppointment = () => {
       setSelectedService(appt.service_id)
       setBooking({
         name: appt.customer_name,
-        email: appt.customer_email || localStorage.getItem('customer_email') || '',
+        email: appt.customer_email || '',
         phone: appt.customer_phone || '',
         address: appt.customer_address || '',
       })
@@ -975,6 +975,14 @@ const BookAppointment = () => {
       // #endregion
       
       toast.success('Appointment booked successfully!')
+
+      // Keep customer identity for dashboard lookup after booking confirmation.
+      if (booking.email) {
+        localStorage.setItem('customer_email', booking.email.trim().toLowerCase())
+      }
+      if (booking.phone) {
+        localStorage.setItem('customer_phone', booking.phone.replace(/[\s-]/g, ''))
+      }
       
       // The response should already have stylist and service loaded
       // But let's fetch it again to be sure
@@ -994,10 +1002,6 @@ const BookAppointment = () => {
         // Use response data as fallback
         setReceipt(res.data)
       }
-      
-      // Save customer info to localStorage
-      if (booking.email) localStorage.setItem('customer_email', booking.email.trim().toLowerCase())
-      if (booking.phone) localStorage.setItem('customer_phone', booking.phone)
       
     } catch (e) {
       // Handle validation errors
@@ -1062,9 +1066,28 @@ const BookAppointment = () => {
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
   const selectedServiceData = services.find(s => s.id === parseInt(selectedService)) // For backward compatibility
   const selectedStylistData = stylists.find(s => s.id === parseInt(selectedStylist))
+  const selectedDateLabel = selectedDate
+    ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+    : 'Not selected'
+  const selectedTimeLabel = selectedSlot
+    ? `${new Date(selectedSlot.start).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Manila',
+    })} - ${new Date(selectedSlot.end).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Manila',
+    })}`
+    : 'Select a time slot'
 
   return (
-    <div className="min-h-screen bg-[#f7f1ec]">
+    <div className="min-h-screen bg-[#f4edff]">
       {/* Header */}
       <div className="bg-slate-900 text-white py-4 px-4 md:px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1086,7 +1109,7 @@ const BookAppointment = () => {
         </div>
       </div>
       
-      <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+      <div className="p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto w-full">
       <h1 className="text-2xl font-bold text-gray-900">Book Appointment</h1>
       
       {/* Step Indicator */}
@@ -1114,17 +1137,17 @@ const BookAppointment = () => {
 
       {/* Step 1: Customer Information */}
       {step === 1 && (
-        <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 max-w-2xl mx-auto">
-          <h2 className="text-xl font-bold mb-4 text-gray-900">Customer Information</h2>
-          <p className="text-gray-700 mb-6">Please provide your information to proceed with booking</p>
+        <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-7 md:p-9 max-w-5xl mx-auto w-full">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Customer Information</h2>
+          <p className="text-base md:text-lg text-gray-700 mb-7">Please provide your information to proceed with booking</p>
           
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-900">Full Name *</label>
+              <label className="block text-base font-medium mb-2 text-gray-900">Full Name *</label>
               <input
                 type="text"
                 required
-                className="w-full border rounded px-3 py-2 text-gray-900 placeholder-gray-500"
+                className="w-full border rounded-lg px-4 py-3 text-base text-gray-900 placeholder-gray-500"
                 placeholder="Enter your full name"
                 value={booking.name}
                 onChange={e => setBooking({ ...booking, name: e.target.value })}
@@ -1132,11 +1155,11 @@ const BookAppointment = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-900">Email *</label>
+              <label className="block text-base font-medium mb-2 text-gray-900">Email *</label>
               <input
                 type="email"
                 required
-                className={`w-full border rounded px-3 py-2 text-gray-900 placeholder-gray-500 ${formErrors.email ? 'border-red-500' : ''}`}
+                className={`w-full border rounded-lg px-4 py-3 text-base text-gray-900 placeholder-gray-500 ${formErrors.email ? 'border-red-500' : ''}`}
                 placeholder="your@email.com"
                 value={booking.email}
                 onChange={e => {
@@ -1149,11 +1172,11 @@ const BookAppointment = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-900">Contact Number *</label>
+              <label className="block text-base font-medium mb-2 text-gray-900">Contact Number *</label>
               <input
                 type="tel"
                 required
-                className={`w-full border rounded px-3 py-2 text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
+                className={`w-full border rounded-lg px-4 py-3 text-base text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
                 placeholder="09171234567 or +639171234567"
                 value={booking.phone}
                 onChange={e => {
@@ -1166,10 +1189,10 @@ const BookAppointment = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-900">Address</label>
+              <label className="block text-base font-medium mb-2 text-gray-900">Address</label>
               <input
                 type="text"
-                className="w-full border rounded px-3 py-2 text-gray-900 placeholder-gray-500"
+                className="w-full border rounded-lg px-4 py-3 text-base text-gray-900 placeholder-gray-500"
                 placeholder="Your address"
                 value={booking.address}
                 onChange={e => setBooking({ ...booking, address: e.target.value })}
@@ -1178,7 +1201,7 @@ const BookAppointment = () => {
             
             <button
               onClick={handleNextStep}
-              className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mt-4"
+              className="w-full bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 mt-4 text-base font-semibold"
             >
               Continue to Booking
             </button>
@@ -1189,62 +1212,9 @@ const BookAppointment = () => {
       {/* Step 2: Booking Details */}
       {step === 2 && (
         <>
-          {/* Payment Method Selection */}
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 mb-4">
-            <h3 className="font-semibold mb-3 text-gray-900">Payment Method</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                payment.method === 'on_hand' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-              }`}>
-                <input
-                  type="radio"
-                  name="payment_method"
-                  value="on_hand"
-                  checked={payment.method === 'on_hand'}
-                  onChange={(e) => setPayment({ 
-                    ...payment, 
-                    method: e.target.value, 
-                    paymentType: 'downpayment',
-                    amount: '', 
-                    proofFile: null, 
-                    proofPreview: null 
-                  })}
-                  className="sr-only"
-                />
-                <div className="text-center">
-                  <div className="font-semibold text-gray-900">Pay at Salon (Cash)</div>
-                  <div className="text-sm text-[#8f7a6f] mt-1">Pay in person after the service</div>
-                </div>
-              </label>
-              <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                payment.method === 'online' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-              }`}>
-                <input
-                  type="radio"
-                  name="payment_method"
-                  value="online"
-                  checked={payment.method === 'online'}
-                  onChange={(e) => setPayment({ 
-                    ...payment, 
-                    method: e.target.value, 
-                    paymentType: 'downpayment',
-                    amount: '', 
-                    proofFile: null, 
-                    proofPreview: null 
-                  })}
-                  className="sr-only"
-                />
-                <div className="text-center">
-                  <div className="font-semibold text-gray-900">GCash (Manual)</div>
-                  <div className="text-sm text-[#8f7a6f] mt-1">Scan QR, pay via GCash, then upload your receipt</div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-5 md:p-6">
+            <div className="grid xl:grid-cols-12 gap-5">
+              <div className="xl:col-span-2">
                 <label className="text-sm text-gray-900 font-medium">Stylist *</label>
                 <select
                   className="w-full mt-1 border rounded px-3 py-2 text-gray-900"
@@ -1257,9 +1227,9 @@ const BookAppointment = () => {
                   ))}
                 </select>
               </div>
-              <div className="md:col-span-2">
+              <div className="xl:col-span-7">
                 <label className="text-sm text-gray-900 font-medium">Services * (Select one or more)</label>
-                <div className="mt-2 max-h-48 overflow-y-auto border rounded p-2 space-y-2">
+                <div className="mt-2 max-h-[380px] overflow-y-auto border rounded-xl p-3 space-y-3 bg-white">
                   {services.map(s => {
                     const serviceIdStr = s.id.toString()
                     const isSelected = selectedServices.includes(serviceIdStr) || selectedService === serviceIdStr
@@ -1267,7 +1237,7 @@ const BookAppointment = () => {
                     return (
                       <label
                         key={s.id}
-                        className={`flex items-center gap-3 p-2 rounded border cursor-pointer hover:bg-gray-50 transition ${
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition ${
                           isSelected ? 'bg-blue-50 border-blue-300' : 'border-gray-200'
                         }`}
                       >
@@ -1297,7 +1267,7 @@ const BookAppointment = () => {
                           className="w-4 h-4 text-blue-600 rounded"
                         />
                         <div className="flex-1">
-                          <div className="font-medium text-gray-900">{s.name}</div>
+                          <div className="font-semibold text-gray-900 text-base">{s.name}</div>
                           {s.variants && s.variants.length > 0 ? (
                             <div className="text-xs text-gray-700 mt-1">
                               <div className="font-medium text-blue-600 mb-1">
@@ -1360,7 +1330,7 @@ const BookAppointment = () => {
                   )
                 })()}
               </div>
-              <div>
+              <div className="xl:col-span-3">
                 <label className="text-sm text-gray-900 font-medium">Customer</label>
                 <div className="mt-1 p-2 bg-gray-50 rounded text-sm">
                   <div className="font-medium text-gray-900">{booking.name}</div>
@@ -1378,7 +1348,7 @@ const BookAppointment = () => {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid xl:grid-cols-2 gap-4">
             <Calendar
               month={calendarMonth}
               year={calendarYear}
@@ -1440,6 +1410,18 @@ const BookAppointment = () => {
             />
           </div>
 
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+            <h3 className="font-semibold mb-2 text-gray-900">Selected Schedule</h3>
+            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+              <div className="rounded-lg bg-[#f7f1ec] px-3 py-2 text-[#3b2f2a]">
+                <span className="font-medium">Date:</span> {selectedDateLabel}
+              </div>
+              <div className="rounded-lg bg-[#f7f1ec] px-3 py-2 text-[#3b2f2a]">
+                <span className="font-medium">Time:</span> {selectedTimeLabel}
+              </div>
+            </div>
+          </div>
+
           {/* Booking Summary - Show all selected services */}
           {((selectedServices.length > 0 || selectedService) && selectedStylistData) && (() => {
             const serviceIds = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
@@ -1484,14 +1466,65 @@ const BookAppointment = () => {
                     <div className="font-bold text-lg text-green-700">{currency(totalPrice)}</div>
                   </div>
                   <div className="text-gray-900"><span className="font-medium">Stylist:</span> {selectedStylistData.name}</div>
-                  <div className="text-gray-900"><span className="font-medium">Date:</span> {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                  {selectedSlot && (
-                    <div className="text-gray-900"><span className="font-medium">Time:</span> {new Date(selectedSlot.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - {new Date(selectedSlot.end).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}</div>
-                  )}
+                  <div className="text-gray-900"><span className="font-medium">Date:</span> {selectedDateLabel}</div>
+                  <div className="text-gray-900"><span className="font-medium">Time:</span> {selectedTimeLabel}</div>
                 </div>
               </div>
             )
           })()}
+
+          {/* Payment Method Selection */}
+          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+            <h3 className="font-semibold mb-3 text-gray-900">Payment Method</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                payment.method === 'on_hand' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              }`}>
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="on_hand"
+                  checked={payment.method === 'on_hand'}
+                  onChange={(e) => setPayment({
+                    ...payment,
+                    method: e.target.value,
+                    paymentType: 'downpayment',
+                    amount: '',
+                    proofFile: null,
+                    proofPreview: null,
+                  })}
+                  className="sr-only"
+                />
+                <div className="text-center">
+                  <div className="font-semibold text-gray-900">Pay at Salon (Cash)</div>
+                  <div className="text-sm text-[#8f7a6f] mt-1">Pay in person after the service</div>
+                </div>
+              </label>
+              <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                payment.method === 'online' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              }`}>
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="online"
+                  checked={payment.method === 'online'}
+                  onChange={(e) => setPayment({
+                    ...payment,
+                    method: e.target.value,
+                    paymentType: 'downpayment',
+                    amount: '',
+                    proofFile: null,
+                    proofPreview: null,
+                  })}
+                  className="sr-only"
+                />
+                <div className="text-center">
+                  <div className="font-semibold text-gray-900">GCash (Manual)</div>
+                  <div className="text-sm text-[#8f7a6f] mt-1">Scan QR, pay via GCash, then upload your receipt</div>
+                </div>
+              </label>
+            </div>
+          </div>
 
           <div className="flex gap-3">
             <button
