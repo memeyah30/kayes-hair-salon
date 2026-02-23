@@ -6,3 +6,60 @@
     @apply block
 }
 
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
+
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@layer utilities {
+  .app-mobile-shell {
+    @apply p-4 md:p-6;
+  }
+
+  .fluid-title-xl {
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
+    line-height: 1.1;
+  }
+
+  .fluid-title-lg {
+    font-size: clamp(1.25rem, 4.6vw, 2rem);
+    line-height: 1.15;
+  }
+
+  .tap-safe {
+    min-height: 44px;
+  }
+}
+

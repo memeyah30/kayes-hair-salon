@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Holiday;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class HolidayController extends Controller
 {
@@ -15,14 +16,8 @@ class HolidayController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'date' => 'required|date',
-            'type' => 'required|in:holiday,occasion,closed',
-            'is_closed' => 'boolean',
-            'description' => 'nullable|string',
-            'recurring_yearly' => 'boolean',
-        ]);
+        $data = $request->validate($this->holidayValidationRules(false));
+        $data = $this->filterMissingColumns($data);
 
         $holiday = Holiday::create($data);
         return response()->json($holiday, 201);
@@ -30,14 +25,8 @@ class HolidayController extends Controller
 
     public function update(Request $request, Holiday $holiday)
     {
-        $data = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'date' => 'sometimes|date',
-            'type' => 'sometimes|in:holiday,occasion,closed',
-            'is_closed' => 'boolean',
-            'description' => 'nullable|string',
-            'recurring_yearly' => 'boolean',
-        ]);
+        $data = $request->validate($this->holidayValidationRules(true));
+        $data = $this->filterMissingColumns($data);
 
         $holiday->update($data);
         return response()->json($holiday);
@@ -69,6 +58,39 @@ class HolidayController extends Controller
         return response()->json([
             'is_holiday' => false,
         ]);
+    }
+
+    private function holidayValidationRules(bool $isUpdate): array
+    {
+        $rules = [
+            'name' => ($isUpdate ? 'sometimes' : 'required') . '|string|max:255',
+            'date' => ($isUpdate ? 'sometimes' : 'required') . '|date',
+            'is_closed' => 'boolean',
+            'description' => 'nullable|string',
+        ];
+
+        if (Schema::hasColumn('holidays', 'type')) {
+            $rules['type'] = ($isUpdate ? 'sometimes' : 'required') . '|in:holiday,occasion,closed';
+        }
+
+        if (Schema::hasColumn('holidays', 'recurring_yearly')) {
+            $rules['recurring_yearly'] = 'boolean';
+        }
+
+        return $rules;
+    }
+
+    private function filterMissingColumns(array $data): array
+    {
+        if (!Schema::hasColumn('holidays', 'type')) {
+            unset($data['type']);
+        }
+
+        if (!Schema::hasColumn('holidays', 'recurring_yearly')) {
+            unset($data['recurring_yearly']);
+        }
+
+        return $data;
     }
 }
 

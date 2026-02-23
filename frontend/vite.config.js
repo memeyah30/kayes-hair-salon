@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       // Proxy API calls to Laravel backend
       // Only proxy requests that are clearly API calls (POST/PUT/PATCH/DELETE or have JSON accept header)
-      '^/(api|csrf-token|login|logout|me|services|stylists|appointments|dashboard|admin|inventory|sales|ratings|holidays|payment-accounts|locations|managers)': {
+      '^/(api|csrf-token|login|logout|me|services|stylists|appointments|dashboard|admin|manager|inventory|sales|ratings|holidays|payment-accounts|locations|managers)': {
         target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,

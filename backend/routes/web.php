@@ -13,6 +13,8 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ManageBookingController;
+use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
+use App\Http\Controllers\Admin\StaffApprovalController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -52,6 +54,19 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth.any'
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth.any');
 Route::post('/me/profile-photo', [AuthController::class, 'updateProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
 Route::delete('/me/profile-photo', [AuthController::class, 'removeProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
+
+// Manager staff request routes (web/session auth)
+Route::middleware(['auth.any', 'userType:manager'])->group(function () {
+    Route::get('/manager/staff', [ManagerStaffController::class, 'index']);
+    Route::post('/manager/staff', [ManagerStaffController::class, 'store']);
+});
+
+// Admin staff approval routes (web/session auth)
+Route::middleware(['auth.any', 'userType:admin'])->group(function () {
+    Route::get('/admin/staff/pending', [StaffApprovalController::class, 'pendingIndex']);
+    Route::patch('/admin/staff/{id}/approve', [StaffApprovalController::class, 'approve']);
+    Route::patch('/admin/staff/{id}/reject', [StaffApprovalController::class, 'reject']);
+});
 
 // Admin-only routes
 Route::middleware(['auth.any', 'userType:admin'])->group(function () {

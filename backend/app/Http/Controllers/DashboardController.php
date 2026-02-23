@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\AppointmentRating;
 use App\Models\CustomerRating;
 use App\Models\Sale;
 use App\Models\Service;
@@ -219,9 +220,21 @@ class DashboardController extends Controller
             ->whereRaw("REPLACE(REPLACE(TRIM(COALESCE(customer_phone, '')), ' ', ''), '-', '') = ?", [$phone]);
 
         $appointments = $query->orderBy('start_datetime', 'asc')->get();
+        $appointmentIds = $appointments->pluck('id');
 
-        $ratedAppointmentIds = CustomerRating::whereIn('appointment_id', $appointments->pluck('id'))
-            ->pluck('appointment_id')
+        $appointmentRatingsById = AppointmentRating::query()
+            ->whereIn('appointment_id', $appointmentIds)
+            ->get()
+            ->keyBy('appointment_id');
+        $customerRatingsById = CustomerRating::query()
+            ->whereIn('appointment_id', $appointmentIds)
+            ->get()
+            ->keyBy('appointment_id');
+
+        $ratedAppointmentIds = $appointmentRatingsById
+            ->keys()
+            ->merge($customerRatingsById->keys())
+            ->unique()
             ->flip();
 
         $now = Carbon::now('Asia/Manila');
@@ -252,19 +265,83 @@ class DashboardController extends Controller
                 return (int) ($apt->service->price_cents ?? 0);
             });
 
+        $ratings = $appointments
+            ->map(function ($apt) use ($appointmentRatingsById, $customerRatingsById) {
+                $ratingPayload = $this->buildRatingPayload(
+                    $appointmentRatingsById->get($apt->id),
+                    $customerRatingsById->get($apt->id)
+                );
+
+                if (!$ratingPayload) {
+                    return null;
+                }
+
+                $start = Carbon::parse($apt->getRawOriginal('start_datetime'), 'UTC')->setTimezone('Asia/Manila');
+                $serviceName = $apt->services && $apt->services->isNotEmpty()
+                    ? $apt->services->pluck('name')->implode(', ')
+                    : ($apt->service->name ?? 'Service');
+
+                return array_merge(
+                    [
+                        'appointment_id' => $apt->id,
+                        'service_name' => $serviceName,
+                        'stylist_name' => $apt->stylist?->name ?? 'Stylist',
+                        'appointment_date' => $start->format('Y-m-d'),
+                        'appointment_time' => $start->format('H:i'),
+                    ],
+                    $ratingPayload
+                );
+            })
+            ->filter()
+            ->sortByDesc('rated_at')
+            ->values();
+
         return response()->json([
             'upcoming' => $upcoming->values()->map(function ($apt) {
                 return $this->formatAppointmentForResponse($apt);
             }),
-            'history' => $history->values()->map(function ($apt) use ($ratedAppointmentIds) {
+            'history' => $history->values()->map(function ($apt) use ($ratedAppointmentIds, $appointmentRatingsById, $customerRatingsById) {
                 $formatted = $this->formatAppointmentForResponse($apt);
-                $hasRating = $ratedAppointmentIds->has($apt->id);
+                $ratingPayload = $this->buildRatingPayload(
+                    $appointmentRatingsById->get($apt->id),
+                    $customerRatingsById->get($apt->id)
+                );
+                $hasRating = $ratedAppointmentIds->has($apt->id) && !is_null($ratingPayload);
                 $formatted->has_rating = $hasRating;
                 $formatted->can_rate = $apt->status === 'completed' && !$hasRating;
+                $formatted->rating = $ratingPayload;
                 return $formatted;
             }),
+            'ratings' => $ratings,
             'total_spent' => (int) $totalSpent,
             'total_appointments' => $appointments->count(),
         ]);
+    }
+
+    private function buildRatingPayload(?AppointmentRating $appointmentRating, ?CustomerRating $customerRating): ?array
+    {
+        if (!$appointmentRating && !$customerRating) {
+            return null;
+        }
+
+        $serviceRating = $appointmentRating
+            ? (int) $appointmentRating->service_rating
+            : (int) ($customerRating?->rating ?? 0);
+        $stylistRating = $appointmentRating
+            ? (int) $appointmentRating->stylist_rating
+            : (int) ($customerRating?->rating ?? 0);
+        $overallRating = $customerRating
+            ? (int) $customerRating->rating
+            : (int) round(($serviceRating + $stylistRating) / 2);
+
+        $ratedAt = $appointmentRating?->created_at ?? $customerRating?->created_at;
+
+        return [
+            'service_rating' => max(1, min(5, $serviceRating)),
+            'stylist_rating' => max(1, min(5, $stylistRating)),
+            'overall_rating' => max(1, min(5, $overallRating)),
+            'comment' => $appointmentRating?->comment ?? $customerRating?->comment,
+            'rated_at' => $ratedAt?->toIso8601String(),
+        ];
     }
 }

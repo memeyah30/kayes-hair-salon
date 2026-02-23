@@ -471,8 +471,16 @@ class AppointmentController extends Controller
         $isReschedule = isset($data['date']) || isset($data['preferred_time']);
 
         if ($isReschedule) {
+            $timezone = 'Asia/Manila';
+            $currentStartManila = Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')->setTimezone($timezone);
+            $currentEndManila = Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC')->setTimezone($timezone);
+
+            $targetDate = isset($data['date'])
+                ? Carbon::parse($data['date'], $timezone)->format('Y-m-d')
+                : $currentStartManila->format('Y-m-d');
+
             // Check if date is a holiday
-            $date = Carbon::parse($data['date'])->format('Y-m-d');
+            $date = $targetDate;
             $holiday = Holiday::where('date', $date)->where('is_closed', true)->first();
             if ($holiday) {
                 return response()->json([
@@ -482,8 +490,12 @@ class AppointmentController extends Controller
             }
 
             // Validate time is between 8 AM and 7:59 PM (business hours: 8 AM - 8 PM)
-            if (isset($data['preferred_time'])) {
-                $time = Carbon::createFromFormat('H:i', $data['preferred_time']);
+            $targetTime = isset($data['preferred_time'])
+                ? $data['preferred_time']
+                : $currentStartManila->format('H:i');
+
+            if ($targetTime) {
+                $time = Carbon::createFromFormat('H:i', $targetTime, $timezone);
                 $hour = (int)$time->format('H');
                 if ($hour < 8 || $hour >= 20) {
                     return response()->json(['message' => 'Appointment time must be between 8:00 AM and 7:59 PM'], 422);
@@ -491,21 +503,66 @@ class AppointmentController extends Controller
             }
 
             $services = $appointment->services;
-            $stylist = $appointment->stylist;
-            $slot = $scheduler->findSlotForServices($stylist, $services->all(), $data['date'], $data['preferred_time'] ?? null);
-            if (!$slot) {
-                return response()->json(['message' => 'No slots available'], 409);
+            if ($services->isEmpty() && $appointment->service) {
+                $services = collect([$appointment->service]);
             }
+            $stylist = $appointment->stylist;
 
-            $updateData = [
-                'start_datetime' => $slot['start'],
-                'end_datetime' => $slot['end'],
-                'status' => 'booked',
-                'rescheduled_at' => now(),
-                'rescheduled_by_id' => $user ? $user->id : null,
-                'rescheduled_by_type' => $user ? get_class($user) : null,
-                'reschedule_reason' => $data['reschedule_reason'] ?? null,
-            ];
+            if (isset($data['date']) && isset($data['preferred_time'])) {
+                $durationMinutes = max(15, Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')
+                    ->diffInMinutes(Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC')));
+                if ($durationMinutes < 15) {
+                    $durationMinutes = max(30, $services->count() * 30);
+                }
+
+                $newStartManila = Carbon::createFromFormat('Y-m-d H:i', "{$targetDate} {$targetTime}", $timezone);
+                $newEndManila = $newStartManila->copy()->addMinutes($durationMinutes);
+
+                $newStartUtc = $newStartManila->copy()->setTimezone('UTC');
+                $newEndUtc = $newEndManila->copy()->setTimezone('UTC');
+
+                $hasConflict = Appointment::query()
+                    ->where('id', '!=', $appointment->id)
+                    ->where('stylist_id', $stylist->id)
+                    ->whereIn('status', ['booked', 'pending', 'confirmed'])
+                    ->where(function ($query) use ($newStartUtc, $newEndUtc) {
+                        $query->where('start_datetime', '<', $newEndUtc)
+                            ->where('end_datetime', '>', $newStartUtc);
+                    })
+                    ->exists();
+
+                if ($hasConflict) {
+                    return response()->json(['message' => 'Selected time is unavailable. Please choose another time.'], 409);
+                }
+
+                $updateData = [
+                    'start_datetime' => $newStartUtc,
+                    'end_datetime' => $newEndUtc,
+                    'status' => 'booked',
+                    'rescheduled_at' => now(),
+                    'rescheduled_by_id' => $user ? $user->id : null,
+                    'rescheduled_by_type' => $user ? get_class($user) : null,
+                    'reschedule_reason' => $data['reschedule_reason'] ?? null,
+                ];
+            } else {
+                $slot = $scheduler->findSlotForServices($stylist, $services->all(), $targetDate, $targetTime);
+                if (!$slot) {
+                    return response()->json(['message' => 'No slots available'], 409);
+                }
+
+                $slotStartUtc = Carbon::parse($slot['start'], $timezone)->setTimezone('UTC');
+                $slotEndUtc = Carbon::parse($slot['end'], $timezone)->setTimezone('UTC');
+
+                $updateData = [
+                    'start_datetime' => $slotStartUtc,
+                    'end_datetime' => $slotEndUtc,
+                    'status' => 'booked',
+                    'rescheduled_at' => now(),
+                    'rescheduled_by_id' => $user ? $user->id : null,
+                    'rescheduled_by_type' => $user ? get_class($user) : null,
+                    'reschedule_reason' => $data['reschedule_reason'] ?? null,
+                ];
+            }
         } else {
             $updateData = [];
         }
@@ -698,8 +755,10 @@ class AppointmentController extends Controller
             'reschedule_reason' => 'nullable|string',
         ]);
 
+        $timezone = 'Asia/Manila';
+
         // Check if date is a holiday
-        $date = Carbon::parse($data['date'])->format('Y-m-d');
+        $date = Carbon::parse($data['date'], $timezone)->format('Y-m-d');
         $holiday = Holiday::where('date', $date)->where('is_closed', true)->first();
         if ($holiday) {
             return response()->json([
@@ -710,7 +769,7 @@ class AppointmentController extends Controller
 
         // Validate time is between 8 AM and 7:59 PM
         if ($data['preferred_time']) {
-            $time = Carbon::createFromFormat('H:i', $data['preferred_time']);
+            $time = Carbon::createFromFormat('H:i', $data['preferred_time'], $timezone);
             $hour = (int)$time->format('H');
             if ($hour < 8 || $hour >= 20) {
                 return response()->json(['message' => 'Appointment time must be between 8:00 AM and 7:59 PM'], 422);
@@ -718,23 +777,65 @@ class AppointmentController extends Controller
         }
 
         $services = $appointment->services;
-        $stylist = $appointment->stylist;
-        $slot = $scheduler->findSlotForServices($stylist, $services->all(), $data['date'], $data['preferred_time'] ?? null);
-        if (!$slot) {
-            return response()->json(['message' => 'No slots available'], 409);
+        if ($services->isEmpty() && $appointment->service) {
+            $services = collect([$appointment->service]);
         }
-
+        $stylist = $appointment->stylist;
         $user = $request->user();
 
-        $appointment->update([
-            'start_datetime' => $slot['start'],
-            'end_datetime' => $slot['end'],
-            'status' => 'booked',
-            'rescheduled_at' => now(),
-            'rescheduled_by_id' => $user ? $user->id : null,
-            'rescheduled_by_type' => $user ? get_class($user) : null,
-            'reschedule_reason' => $data['reschedule_reason'] ?? null,
-        ]);
+        if (!empty($data['preferred_time'])) {
+            $durationMinutes = max(15, Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')
+                ->diffInMinutes(Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC')));
+            if ($durationMinutes < 15) {
+                $durationMinutes = max(30, $services->count() * 30);
+            }
+
+            $newStartManila = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$data['preferred_time']}", $timezone);
+            $newEndManila = $newStartManila->copy()->addMinutes($durationMinutes);
+            $newStartUtc = $newStartManila->copy()->setTimezone('UTC');
+            $newEndUtc = $newEndManila->copy()->setTimezone('UTC');
+
+            $hasConflict = Appointment::query()
+                ->where('id', '!=', $appointment->id)
+                ->where('stylist_id', $stylist->id)
+                ->whereIn('status', ['booked', 'pending', 'confirmed'])
+                ->where(function ($query) use ($newStartUtc, $newEndUtc) {
+                    $query->where('start_datetime', '<', $newEndUtc)
+                        ->where('end_datetime', '>', $newStartUtc);
+                })
+                ->exists();
+
+            if ($hasConflict) {
+                return response()->json(['message' => 'Selected time is unavailable. Please choose another time.'], 409);
+            }
+
+            $updatePayload = [
+                'start_datetime' => $newStartUtc,
+                'end_datetime' => $newEndUtc,
+                'status' => 'booked',
+                'rescheduled_at' => now(),
+                'rescheduled_by_id' => $user ? $user->id : null,
+                'rescheduled_by_type' => $user ? get_class($user) : null,
+                'reschedule_reason' => $data['reschedule_reason'] ?? null,
+            ];
+        } else {
+            $slot = $scheduler->findSlotForServices($stylist, $services->all(), $date, $data['preferred_time'] ?? null);
+            if (!$slot) {
+                return response()->json(['message' => 'No slots available'], 409);
+            }
+
+            $updatePayload = [
+                'start_datetime' => Carbon::parse($slot['start'], $timezone)->setTimezone('UTC'),
+                'end_datetime' => Carbon::parse($slot['end'], $timezone)->setTimezone('UTC'),
+                'status' => 'booked',
+                'rescheduled_at' => now(),
+                'rescheduled_by_id' => $user ? $user->id : null,
+                'rescheduled_by_type' => $user ? get_class($user) : null,
+                'reschedule_reason' => $data['reschedule_reason'] ?? null,
+            ];
+        }
+
+        $appointment->update($updatePayload);
 
         $appointment = $appointment->fresh()->load('stylist', 'service', 'services.variants');
         $appointment = $this->formatAppointmentForResponse($appointment);

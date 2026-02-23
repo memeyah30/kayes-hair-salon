@@ -400,13 +400,13 @@ const AdminAppointments = () => {
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
-        <div className="p-4 md:p-6 space-y-6">
+        <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate('/admin/dashboard')}
-                  className="h-11 w-11 rounded-full bg-white/80 border border-[#eadfd5] shadow-[0_8px_16px_rgba(92,64,51,0.08)] text-[#8f7a6f] hover:text-[#6f5b50] hover:bg-white transition text-xl font-bold flex items-center justify-center"
+                  className="tap-safe h-11 w-11 rounded-full bg-white/80 border border-[#eadfd5] shadow-[0_8px_16px_rgba(92,64,51,0.08)] text-[#8f7a6f] hover:text-[#6f5b50] hover:bg-white transition text-xl font-bold flex items-center justify-center"
                   aria-label="Return to Dashboard"
                   title="Return to Dashboard"
                 >
@@ -419,7 +419,7 @@ const AdminAppointments = () => {
               </div>
               <button
                 onClick={() => navigate('/book')}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#b48a6b] text-white shadow-[0_10px_20px_rgba(92,64,51,0.18)] hover:bg-[#a27758] transition"
+                className="tap-safe w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#b48a6b] text-white shadow-[0_10px_20px_rgba(92,64,51,0.18)] hover:bg-[#a27758] transition"
               >
                 + New Appointment
               </button>
@@ -484,7 +484,7 @@ const AdminAppointments = () => {
                 <select
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  className="w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                  className="tap-safe w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
                 >
                   <option value="all">All Status</option>
                   <option value="booked">Booked / Confirmed</option>
@@ -495,7 +495,7 @@ const AdminAppointments = () => {
                 <select
                   value={searchServiceId}
                   onChange={(e) => setSearchServiceId(e.target.value)}
-                  className="w-full lg:w-56 bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                  className="tap-safe w-full lg:w-56 bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
                 >
                   <option value="">All Services</option>
                   {services.map(s => (
@@ -506,7 +506,7 @@ const AdminAppointments = () => {
                   type="date"
                   value={searchDate}
                   onChange={(e) => setSearchDate(e.target.value)}
-                  className="w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                  className="tap-safe w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
                 />
                 <button
                   onClick={() => {
@@ -515,7 +515,7 @@ const AdminAppointments = () => {
                     setSearchServiceId('')
                     setRangeFilter('')
                   }}
-                  className="w-full lg:w-auto bg-[#f4ebe4] text-[#6f5b50] border border-[#eadfd5] rounded-xl px-4 py-2 text-sm hover:bg-[#eadfd5]"
+                  className="tap-safe w-full lg:w-auto bg-[#f4ebe4] text-[#6f5b50] border border-[#eadfd5] rounded-xl px-4 py-2 text-sm hover:bg-[#eadfd5]"
                 >
                   Reset
                 </button>
@@ -525,7 +525,7 @@ const AdminAppointments = () => {
                     placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white/90 border border-[#eadfd5] rounded-xl pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                    className="tap-safe w-full bg-white/90 border border-[#eadfd5] rounded-xl pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#b79b8f]">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -539,7 +539,160 @@ const AdminAppointments = () => {
           </div>
 
           <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="md:hidden space-y-3 p-3">
+              {sortedAppointments.map((apt) => {
+                const appointmentServices = getAppointmentServices(apt)
+                const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
+                const proofUrl = resolveProofUrl(apt.payment_proof_url)
+                const primaryService = appointmentServices[0]?.name || 'N/A'
+                const extraCount = Math.max(appointmentServices.length - 1, 0)
+                const startDate = new Date(getStart(apt))
+                const dateLabel = startDate.toLocaleDateString('en-US', {
+                  timeZone: 'Asia/Manila',
+                  month: 'short',
+                  day: '2-digit',
+                  year: 'numeric'
+                })
+                const timeLabel = startDate.toLocaleTimeString('en-US', {
+                  timeZone: 'Asia/Manila',
+                  hour: 'numeric',
+                  minute: '2-digit'
+                })
+                const normalizedStatus = (apt.status || '').toLowerCase().trim()
+                const displayStatus = normalizedStatus
+                  ? normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1)
+                  : 'Unknown'
+                const canModify = normalizedStatus === 'booked' || normalizedStatus === 'confirmed'
+                const canConfirm = normalizedStatus === 'booked'
+                const isProcessingAction = processingAppointmentId === apt.id
+                const paymentLabel = paymentStatusLabel(apt.payment_status)
+                const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status)
+                const statusBadgeClass =
+                  normalizedStatus === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
+                  normalizedStatus === 'booked' ? 'bg-blue-100 text-blue-700' :
+                  normalizedStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                  normalizedStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
+                  'bg-[#f4ebe4] text-[#6f5b50]'
+
+                return (
+                  <article
+                    key={apt.id}
+                    className="rounded-xl border border-[#eadfd5] bg-white p-3 shadow-[0_8px_20px_rgba(92,64,51,0.08)]"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAppointment(apt)}
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-[#3b2f2a] truncate">{apt.customer_name || 'Customer'}</div>
+                          <div className="text-xs text-[#9b857a] mt-1 truncate">{apt.customer_phone || apt.customer_email || '-'}</div>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusBadgeClass}`}>
+                          {normalizedStatus === 'confirmed' ? 'Confirmed' : displayStatus}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm text-[#4a3a2f]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
+                      <div className="mt-1 text-xs text-[#8f7a6f]">Stylist: {apt.stylist?.name || 'Unassigned'}</div>
+                      <div className="mt-1 text-xs text-[#8f7a6f]">{dateLabel} • {timeLabel}</div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(apt.payment_method, apt.payment_status)}`}>
+                          {paymentChoice}
+                        </span>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentStatusClass(apt.payment_status)}`}>
+                          {paymentLabel}
+                        </span>
+                        <span className="ml-auto text-sm font-semibold text-[#3b2f2a]">{currency(totalPrice)}</span>
+                      </div>
+                    </button>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {proofUrl && (
+                        <button
+                          type="button"
+                          onClick={() => window.open(proofUrl, '_blank')}
+                          className="tap-safe px-3 py-2 rounded-lg border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#f4ebe4]"
+                        >
+                          View Proof
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAppointment(apt)}
+                        className="tap-safe px-3 py-2 rounded-lg border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#f4ebe4]"
+                      >
+                        Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => canConfirm && !isProcessingAction && handleAction(apt.id, 'confirm')}
+                        disabled={!canConfirm || isProcessingAction}
+                        className={`tap-safe px-3 py-2 rounded-lg text-sm ${canConfirm && !isProcessingAction ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'}`}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => canModify && !isProcessingAction && handleRescheduleClick(apt)}
+                        disabled={!canModify || isProcessingAction}
+                        className={`tap-safe px-3 py-2 rounded-lg text-sm ${canModify && !isProcessingAction ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'}`}
+                      >
+                        Reschedule
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'cancel')}
+                        disabled={!canModify || isProcessingAction}
+                        className={`tap-safe px-3 py-2 rounded-lg text-sm ${canModify && !isProcessingAction ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'}`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'complete')}
+                        disabled={!canModify || isProcessingAction}
+                        className={`tap-safe px-3 py-2 rounded-lg text-sm ${canModify && !isProcessingAction ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'}`}
+                      >
+                        {isProcessingAction ? 'Completing...' : 'Complete'}
+                      </button>
+                      {apt.payment_method === 'online' && apt.payment_status === 'pending' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => !isProcessingAction && handlePaymentStatus(apt.id, 'paid')}
+                            disabled={isProcessingAction}
+                            className={`tap-safe px-3 py-2 rounded-lg text-sm ${isProcessingAction ? 'bg-gray-200 text-[#9b857a] cursor-not-allowed' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
+                          >
+                            Mark Paid
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => !isProcessingAction && handlePaymentStatus(apt.id, 'rejected')}
+                            disabled={isProcessingAction}
+                            className={`tap-safe px-3 py-2 rounded-lg text-sm ${isProcessingAction ? 'bg-gray-200 text-[#9b857a] cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => !isProcessingAction && handleDelete(apt)}
+                        disabled={isProcessingAction}
+                        className={`tap-safe col-span-2 px-3 py-2 rounded-lg text-sm ${isProcessingAction ? 'bg-gray-200 text-[#9b857a] cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                )
+              })}
+              {sortedAppointments.length === 0 && (
+                <div className="text-center py-8 text-[#9b857a]">No appointments found</div>
+              )}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[720px]">
                 <thead className="bg-[#f6efea]">
                   <tr>
@@ -788,7 +941,7 @@ const AdminAppointments = () => {
             onClick={() => setSelectedAppointment(null)}
           >
             <div
-              className="bg-white rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.16)] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 md:p-6"
+              className="bg-white rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.16)] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-5 md:p-6"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-4">
@@ -868,7 +1021,7 @@ const AdminAppointments = () => {
                     <button
                       type="button"
                       onClick={() => window.open(selectedProofUrl, '_blank')}
-                      className="px-4 py-2 rounded-lg bg-[#f4ebe4] border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#eadfd5]"
+                      className="tap-safe px-4 py-2 rounded-lg bg-[#f4ebe4] border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#eadfd5]"
                     >
                       Open Full Image
                     </button>
@@ -882,8 +1035,8 @@ const AdminAppointments = () => {
         )}
         {/* Reschedule Modal */}
         {showRescheduleModal && reschedulingAppointment && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-6 w-full max-w-md">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-4 sm:p-6 w-full max-w-md">
               <h2 className="text-xl font-bold mb-4">Reschedule Appointment</h2>
               <div className="mb-4 p-3 bg-gray-50 rounded">
                 <p className="text-sm text-[#8f7a6f]">
@@ -899,7 +1052,7 @@ const AdminAppointments = () => {
                   <input
                     type="date"
                     required
-                    className="w-full border rounded px-3 py-2"
+                    className="tap-safe w-full border rounded px-3 py-2"
                     value={rescheduleData.date}
                     onChange={(e) => setRescheduleData({ ...rescheduleData, date: e.target.value })}
                     min={new Date().toISOString().split('T')[0]}
@@ -910,7 +1063,7 @@ const AdminAppointments = () => {
                   <input
                     type="time"
                     required
-                    className="w-full border rounded px-3 py-2"
+                    className="tap-safe w-full border rounded px-3 py-2"
                     value={rescheduleData.preferred_time}
                     onChange={(e) => setRescheduleData({ ...rescheduleData, preferred_time: e.target.value })}
                     min="08:00"
@@ -928,10 +1081,10 @@ const AdminAppointments = () => {
                     placeholder="Reason for rescheduling..."
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    className="tap-safe flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                   >
                     Reschedule
                   </button>
@@ -946,7 +1099,7 @@ const AdminAppointments = () => {
                         reschedule_reason: '',
                       })
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+                    className="tap-safe flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
                   >
                     Cancel
                   </button>

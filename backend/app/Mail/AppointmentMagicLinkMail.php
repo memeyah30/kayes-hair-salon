@@ -44,7 +44,7 @@ class AppointmentMagicLinkMail extends Mailable
         }
 
         return new Content(
-            markdown: 'emails.appointment_magic_link',
+            view: 'emails.appointment_magic_link',
             with: [
                 'customerName' => $this->appointment->customer_name ?: null,
                 'serviceName' => $serviceName,

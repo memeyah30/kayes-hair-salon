@@ -304,12 +304,12 @@ const ManageServices = () => {
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
-        <div className="p-4 md:p-6 space-y-6">
+        <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                className="tap-safe px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >&larr;</button>
@@ -317,7 +317,7 @@ const ManageServices = () => {
             </div>
           </div>
 
-      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
+      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-4">{editing ? 'Edit' : 'Add'} Service</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">

@@ -217,22 +217,31 @@ class ManageBookingController extends Controller
             ->get();
 
         $appointmentIds = $appointments->pluck('id');
-        $ratedIds = AppointmentRating::query()
+        $appointmentRatingsById = AppointmentRating::query()
             ->whereIn('appointment_id', $appointmentIds)
-            ->pluck('appointment_id')
-            ->merge(
-                CustomerRating::query()
-                    ->whereIn('appointment_id', $appointmentIds)
-                    ->pluck('appointment_id')
-            )
+            ->get()
+            ->keyBy('appointment_id');
+
+        $customerRatingsById = CustomerRating::query()
+            ->whereIn('appointment_id', $appointmentIds)
+            ->get()
+            ->keyBy('appointment_id');
+
+        $ratedIds = $appointmentRatingsById
+            ->keys()
+            ->merge($customerRatingsById->keys())
             ->unique()
             ->flip();
 
-        $response = $appointments->map(function (Appointment $appointment) use ($ratedIds) {
+        $response = $appointments->map(function (Appointment $appointment) use ($ratedIds, $appointmentRatingsById, $customerRatingsById) {
             $start = Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')->setTimezone('Asia/Manila');
             $isOutsideLockWindow = $start->greaterThan(Carbon::now('Asia/Manila')->addHours(3));
             $isModifiableStatus = in_array($appointment->status, ['booked', 'pending', 'confirmed'], true);
             $hasRating = $ratedIds->has($appointment->id);
+            $ratingPayload = $this->buildRatingPayload(
+                $appointmentRatingsById->get($appointment->id),
+                $customerRatingsById->get($appointment->id)
+            );
 
             $totalAmountCents = (int) ($appointment->total_amount_cents ?? 0);
             if ($totalAmountCents <= 0) {
@@ -260,11 +269,30 @@ class ManageBookingController extends Controller
                 'can_reschedule' => $isModifiableStatus && $isOutsideLockWindow,
                 'can_cancel' => $isModifiableStatus && $isOutsideLockWindow,
                 'can_rate' => $appointment->status === 'completed' && !$hasRating,
+                'rating' => $ratingPayload,
             ];
         });
 
+        $ratings = $response
+            ->filter(fn (array $appointment) => !empty($appointment['rating']))
+            ->map(function (array $appointment) {
+                return array_merge(
+                    [
+                        'appointment_id' => $appointment['id'],
+                        'service_name' => $appointment['service_name'],
+                        'stylist_name' => $appointment['stylist_name'],
+                        'appointment_date' => $appointment['appointment_date'],
+                        'appointment_time' => $appointment['appointment_time'],
+                    ],
+                    $appointment['rating']
+                );
+            })
+            ->sortByDesc('rated_at')
+            ->values();
+
         return response()->json([
-            'appointments' => $response,
+            'appointments' => $response->values(),
+            'ratings' => $ratings,
         ]);
     }
 
@@ -431,6 +459,33 @@ class ManageBookingController extends Controller
     private function normalizeEmail(string $email): string
     {
         return strtolower(trim($email));
+    }
+
+    private function buildRatingPayload(?AppointmentRating $appointmentRating, ?CustomerRating $customerRating): ?array
+    {
+        if (!$appointmentRating && !$customerRating) {
+            return null;
+        }
+
+        $serviceRating = $appointmentRating
+            ? (int) $appointmentRating->service_rating
+            : (int) ($customerRating?->rating ?? 0);
+        $stylistRating = $appointmentRating
+            ? (int) $appointmentRating->stylist_rating
+            : (int) ($customerRating?->rating ?? 0);
+        $overallRating = $customerRating
+            ? (int) $customerRating->rating
+            : (int) round(($serviceRating + $stylistRating) / 2);
+
+        $ratedAt = $appointmentRating?->created_at ?? $customerRating?->created_at;
+
+        return [
+            'service_rating' => max(1, min(5, $serviceRating)),
+            'stylist_rating' => max(1, min(5, $stylistRating)),
+            'overall_rating' => max(1, min(5, $overallRating)),
+            'comment' => $appointmentRating?->comment ?? $customerRating?->comment,
+            'rated_at' => $ratedAt?->toIso8601String(),
+        ];
     }
 
     private function tokenCacheKey(string $token): string

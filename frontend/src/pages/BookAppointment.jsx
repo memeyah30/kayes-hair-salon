@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { QRCodeSVG } from 'qrcode.react'
 import api from '../utils/api'
+import {
+  CUSTOMER_BOOKING_EMAIL_KEY,
+  CUSTOMER_BOOKING_PENDING_EMAIL_KEY,
+  CUSTOMER_BOOKING_TOKEN_KEY,
+} from '../utils/manageBookingApi'
 
 // Validation helpers
 const validateEmail = (email) => {
@@ -543,22 +548,22 @@ Thank you for choosing Kaye's Hair Salon and Spa!
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
               onClick={handlePrint}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              className="tap-safe flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
             >
               Print Receipt
             </button>
             <button
               onClick={handleDownload}
-              className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              className="tap-safe flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             >
               Download Receipt
             </button>
             <button
               onClick={onClose}
-              className="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              className="tap-safe flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
             >
               Close
             </button>
@@ -723,9 +728,15 @@ const BookAppointment = () => {
       const appt = res.data
       setRescheduling(appt)
       const startSource = appt.start_datetime_pht || appt.start_datetime
+      const endSource = appt.end_datetime_pht || appt.end_datetime
       setSelectedDate(startSource.slice(0, 10))
       setSelectedStylist(appt.stylist_id)
       setSelectedService(appt.service_id)
+      setSelectedSlot({
+        start: startSource,
+        end: endSource,
+        available: true,
+      })
       setBooking({
         name: appt.customer_name,
         email: appt.customer_email || '',
@@ -754,8 +765,16 @@ const BookAppointment = () => {
           slot.available !== false
         )
         if (!slotStillAvailable) {
-          setSelectedSlot(null)
-          toast.warn('The selected time slot is no longer available. Please choose another time.')
+          const currentRescheduleStart = rescheduling
+            ? new Date(rescheduling.start_datetime_pht || rescheduling.start_datetime).getTime()
+            : null
+          const selectedStart = new Date(selectedSlot.start).getTime()
+          const isCurrentAppointmentSlot = Boolean(currentRescheduleStart) && selectedStart === currentRescheduleStart
+
+          if (!isCurrentAppointmentSlot) {
+            setSelectedSlot(null)
+            toast.warn('The selected time slot is no longer available. Please choose another time.')
+          }
         }
       }
     } catch (e) {
@@ -1052,12 +1071,15 @@ const BookAppointment = () => {
       const preferredTime = toManilaHHmm(selectedSlot.start)
 
       
-      await api.patch(`/appointments/${rescheduling.id}`, {
+      const res = await api.patch(`/appointments/${rescheduling.id}`, {
         date: selectedDate,
         preferred_time: preferredTime,
       })
+      const updatedAppointment = res?.data?.appointment || res?.data || null
+      if (updatedAppointment?.id) {
+        setReceipt(updatedAppointment)
+      }
       toast.success('Appointment rescheduled successfully!')
-      navigate('/customer')
     } catch (e) {
       toast.error(e.response?.data?.message || 'Reschedule failed')
     }
@@ -1102,15 +1124,15 @@ const BookAppointment = () => {
           </div>
           <button
             onClick={() => navigate('/manage-booking/start')}
-            className="w-full sm:w-auto px-4 py-2 bg-white/10 rounded hover:bg-white/20 text-sm transition"
+            className="tap-safe w-full sm:w-auto px-4 py-2 bg-white/10 rounded hover:bg-white/20 text-sm transition"
           >
             Manage My Booking
           </button>
         </div>
       </div>
       
-      <div className="p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto w-full">
-      <h1 className="text-2xl font-bold text-gray-900">Book Appointment</h1>
+      <div className="app-mobile-shell space-y-6 max-w-[1400px] mx-auto w-full">
+      <h1 className="fluid-title-lg font-bold text-gray-900">Book Appointment</h1>
       
       {/* Step Indicator */}
       <div className="flex items-center justify-center mb-6">
@@ -1137,7 +1159,7 @@ const BookAppointment = () => {
 
       {/* Step 1: Customer Information */}
       {step === 1 && (
-        <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-7 md:p-9 max-w-5xl mx-auto w-full">
+        <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 sm:p-7 md:p-9 max-w-5xl mx-auto w-full">
           <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Customer Information</h2>
           <p className="text-base md:text-lg text-gray-700 mb-7">Please provide your information to proceed with booking</p>
           
@@ -1526,10 +1548,10 @@ const BookAppointment = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => setStep(1)}
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              className="tap-safe bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
             >
               Back
             </button>
@@ -1537,7 +1559,7 @@ const BookAppointment = () => {
               <button
                 onClick={handleReschedule}
                 disabled={!selectedSlot}
-                className="bg-amber-500 text-white px-4 py-2 rounded hover:bg-amber-600 disabled:opacity-50"
+                className="tap-safe bg-amber-500 text-white px-4 py-2 rounded hover:bg-amber-600 disabled:opacity-50"
               >
                 Confirm Reschedule
               </button>
@@ -1556,7 +1578,7 @@ const BookAppointment = () => {
                   }
                 }}
                 disabled={!selectedSlot || (selectedServices.length === 0 && !selectedService) || !selectedStylist}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                className="tap-safe bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment' : 'Confirm Booking'}
               </button>
@@ -1673,7 +1695,7 @@ const BookAppointment = () => {
                 max={totalAmount}
                 step="0.01"
                 required
-                className="w-full border rounded px-3 py-2 text-gray-900"
+                className="tap-safe w-full border rounded px-3 py-2 text-gray-900"
                 value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || minDownpayment.toFixed(2))}
                 readOnly={selectedPaymentType === 'full'}
                 onChange={(e) => {
@@ -1745,7 +1767,7 @@ const BookAppointment = () => {
                 type="file"
                 accept="image/*"
                 required
-                className="w-full border rounded px-3 py-2 text-gray-900"
+                className="tap-safe w-full border rounded px-3 py-2 text-gray-900"
                 onChange={(e) => {
                   const file = e.target.files[0]
                   if (file) {
@@ -1775,25 +1797,25 @@ const BookAppointment = () => {
 
             {/* Payment Summary */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
                 <span className="text-gray-700">Total Amount:</span>
                 <span className="font-bold text-lg text-gray-900">{currency(totalAmountCents)}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-2">
                 <span className="text-gray-700">{selectedPaymentType === 'full' ? 'Full Payment Amount:' : 'Downpayment Amount:'}</span>
                 <span className="font-bold text-lg text-green-600">{currency(Math.round(paymentAmount * 100))}</span>
               </div>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
+              <div className="flex flex-wrap justify-between items-center gap-2 mt-2 pt-2 border-t border-gray-300">
                 <span className="text-gray-700">Remaining Balance:</span>
                 <span className="font-semibold text-gray-900">{currency(Math.round((totalAmount - paymentAmount) * 100))}</span>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                className="tap-safe bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
                 Back
               </button>
@@ -1804,7 +1826,7 @@ const BookAppointment = () => {
                   (payment.method === 'online' && !payment.selectedAccount) ||
                   (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
                 )}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                className="tap-safe flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 {payment.method === 'online' ? 'Confirm Booking & Pay' : 'Confirm Booking'}
               </button>
@@ -1817,6 +1839,9 @@ const BookAppointment = () => {
         <ReceiptModal 
           appointment={receipt} 
           onClose={() => {
+            localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
+            localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
+            localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
             setReceipt(null)
             setStep(1)
             setSelectedSlot(null)

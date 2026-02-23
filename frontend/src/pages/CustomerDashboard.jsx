@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
@@ -20,8 +20,14 @@ const statusClasses = {
   booked: 'bg-blue-100 text-blue-800',
 }
 
+const renderStars = (ratingValue) => {
+  const rating = Math.max(0, Math.min(5, Math.round(Number(ratingValue) || 0)))
+  return `${'\u2605'.repeat(rating)}${'\u2606'.repeat(5 - rating)}`
+}
+
 const CustomerDashboard = () => {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const initialOtpEmail = (localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) || '').trim().toLowerCase()
   const initialOtpToken = (localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || '').trim()
@@ -35,6 +41,7 @@ const CustomerDashboard = () => {
   const [showProfile, setShowProfile] = useState(() => !initialOtpToken && (!initialCustomerEmail || !initialCustomerPhone))
   const [appointments, setAppointments] = useState({ upcoming: [], history: [] })
   const [otpAppointments, setOtpAppointments] = useState([])
+  const [customerRatings, setCustomerRatings] = useState([])
   const [loading, setLoading] = useState(false)
 
   const [rescheduleForId, setRescheduleForId] = useState(null)
@@ -46,6 +53,25 @@ const CustomerDashboard = () => {
   const [submittingRating, setSubmittingRating] = useState(false)
 
   const isOtpSession = Boolean(otpEmail && otpToken)
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const queryToken = (params.get('token') || '').trim()
+    const queryEmail = (params.get('email') || '').trim().toLowerCase()
+
+    if (!queryToken || !queryEmail) return
+
+    localStorage.setItem(CUSTOMER_BOOKING_TOKEN_KEY, queryToken)
+    localStorage.setItem(CUSTOMER_BOOKING_EMAIL_KEY, queryEmail)
+    localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+
+    setOtpToken(queryToken)
+    setOtpEmail(queryEmail)
+    setCustomerEmail(queryEmail)
+    setShowProfile(false)
+
+    navigate('/customer', { replace: true })
+  }, [location.search, navigate])
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getServiceName = (service) => {
@@ -82,6 +108,7 @@ const CustomerDashboard = () => {
     setOtpEmail('')
     setOtpToken('')
     setOtpAppointments([])
+    setCustomerRatings([])
   }
 
   const loadOtpAppointments = async () => {
@@ -89,6 +116,7 @@ const CustomerDashboard = () => {
       setLoading(true)
       const { data } = await manageBookingApi.get('/manage-booking/appointments')
       setOtpAppointments(data.appointments || [])
+      setCustomerRatings(data.ratings || [])
     } catch (e) {
       if (e.response?.status === 401) {
         clearOtpSession()
@@ -98,6 +126,7 @@ const CustomerDashboard = () => {
       }
       toast.error(e.response?.data?.message || 'Failed to load appointments')
       setOtpAppointments([])
+      setCustomerRatings([])
     } finally {
       setLoading(false)
     }
@@ -106,6 +135,7 @@ const CustomerDashboard = () => {
   const loadLegacyAppointments = async () => {
     if (!customerEmail || !customerPhone) {
       setAppointments({ upcoming: [], history: [] })
+      setCustomerRatings([])
       return
     }
 
@@ -120,9 +150,11 @@ const CustomerDashboard = () => {
         upcoming: res.data.upcoming || [],
         history: res.data.history || [],
       })
+      setCustomerRatings(res.data.ratings || [])
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to load appointments')
       setAppointments({ upcoming: [], history: [] })
+      setCustomerRatings([])
     } finally {
       setLoading(false)
     }
@@ -139,6 +171,7 @@ const CustomerDashboard = () => {
       loadLegacyAppointments()
     } else {
       setAppointments({ upcoming: [], history: [] })
+      setCustomerRatings([])
     }
   }, [isOtpSession, customerEmail, customerPhone]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -260,6 +293,11 @@ const CustomerDashboard = () => {
   }
 
   const otpUpcomingCount = otpAppointments.filter((a) => ['pending', 'confirmed', 'booked'].includes(a.status)).length
+  const averageCustomerRating = customerRatings.length > 0
+    ? (
+      customerRatings.reduce((sum, rating) => sum + (Number(rating.overall_rating ?? rating.rating) || 0), 0) / customerRatings.length
+    ).toFixed(1)
+    : null
 
   if (showProfile && !isOtpSession) {
     return (
@@ -267,7 +305,7 @@ const CustomerDashboard = () => {
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
           <Navbar hideUserBadge />
-          <div className="p-4 md:p-6">
+          <div className="app-mobile-shell">
             <div className="max-w-md mx-auto bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
               <h2 className="text-xl font-bold mb-4">Customer Profile</h2>
               <p className="text-sm text-[#8f7a6f] mb-4">
@@ -281,7 +319,7 @@ const CustomerDashboard = () => {
                     required
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    className="tap-safe w-full border rounded px-3 py-2"
                     placeholder="your@email.com"
                   />
                 </div>
@@ -292,13 +330,13 @@ const CustomerDashboard = () => {
                     required
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    className="tap-safe w-full border rounded px-3 py-2"
                     placeholder="09171234567"
                   />
                 </div>
                 <button
                   onClick={handleSaveProfile}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  className="tap-safe w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 >
                   Save Profile
                 </button>
@@ -329,12 +367,12 @@ const CustomerDashboard = () => {
       <Sidebar userType="customer" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar hideUserBadge />
-        <div className="p-4 md:p-6 space-y-6">
+        <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/home')}
-                className="px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-lg font-bold"
+                className="tap-safe px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-lg font-bold"
                 aria-label="Back to Home"
                 title="Back to Home"
               >
@@ -345,14 +383,14 @@ const CustomerDashboard = () => {
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => navigate('/book')}
-                className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                className="tap-safe w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
               >
                 Book New
               </button>
               {!isOtpSession && (
                 <button
                   onClick={() => setShowProfile(true)}
-                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+                  className="tap-safe w-full sm:w-auto px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
                 >
                   Edit Profile
                 </button>
@@ -360,12 +398,25 @@ const CustomerDashboard = () => {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-1 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <div className="text-[#9b857a] text-sm">Upcoming Appointments</div>
               <div className="text-2xl font-bold text-blue-600">
                 {isOtpSession ? otpUpcomingCount : appointments.upcoming.length}
               </div>
+            </div>
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="text-[#9b857a] text-sm">My Ratings</div>
+              {averageCustomerRating ? (
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-emerald-700">{averageCustomerRating}/5</div>
+                  <div className="text-sm text-[#8f7a6f]">
+                    {renderStars(averageCustomerRating)} from {customerRatings.length} rating{customerRatings.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-[#8f7a6f] mt-2">No ratings yet</div>
+              )}
             </div>
           </div>
 
@@ -382,7 +433,7 @@ const CustomerDashboard = () => {
 
                     return (
                       <div key={appt.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                           <div className="flex-1">
                             <div className="font-semibold text-lg">{appt.service_name}</div>
                             <div className="text-sm text-[#8f7a6f] mt-1">
@@ -393,11 +444,11 @@ const CustomerDashboard = () => {
                               {currency(appt.total_amount)}
                             </div>
                           </div>
-                          <div className="flex flex-wrap justify-end gap-2 ml-4">
+                          <div className="flex flex-wrap sm:justify-end gap-2 sm:ml-4">
                             {appt.can_reschedule && (
                               <button
                                 onClick={() => openReschedule(appt)}
-                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                                className="tap-safe px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
                               >
                                 Reschedule
                               </button>
@@ -406,7 +457,7 @@ const CustomerDashboard = () => {
                               <button
                                 onClick={() => handleCancel(appt.id)}
                                 disabled={submittingCancelId === appt.id}
-                                className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm disabled:opacity-60"
+                                className="tap-safe px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm disabled:opacity-60"
                               >
                                 {submittingCancelId === appt.id ? 'Cancelling...' : 'Cancel'}
                               </button>
@@ -414,10 +465,15 @@ const CustomerDashboard = () => {
                             {canRate && (
                               <button
                                 onClick={() => setRatingAppointment(appt)}
-                                className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm"
+                                className="tap-safe px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm"
                               >
                                 Rate
                               </button>
+                            )}
+                            {!canRate && appt.rating && (
+                              <span className="px-2 py-1 rounded text-xs self-center bg-emerald-100 text-emerald-700">
+                                Rated {Number(appt.rating.overall_rating) || 0}/5
+                              </span>
                             )}
                             <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appt.status] || 'bg-gray-100 text-gray-700'}`}>
                               {statusLabel}
@@ -447,17 +503,17 @@ const CustomerDashboard = () => {
                                 />
                               </div>
                             </div>
-                            <div className="mt-3 flex items-center gap-2">
+                            <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                               <button
                                 onClick={() => handleReschedule(appt.id)}
                                 disabled={submittingReschedule}
-                                className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                                className="tap-safe rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                               >
                                 {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
                               </button>
                               <button
                                 onClick={() => setRescheduleForId(null)}
-                                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                                className="tap-safe rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                               >
                                 Cancel
                               </button>
@@ -474,12 +530,12 @@ const CustomerDashboard = () => {
                 <div className="text-sm font-semibold text-[#8f7a6f] mb-4">No appointments found</div>
                 <h3 className="text-xl font-semibold mb-2">No Appointment Yet</h3>
                 <p className="text-[#8f7a6f] mb-4">Book a new appointment to get started.</p>
-                <button
-                  onClick={() => navigate('/book')}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-                >
-                  Book Appointment Now
-                </button>
+                  <button
+                    onClick={() => navigate('/book')}
+                    className="tap-safe px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                  >
+                    Book Appointment Now
+                  </button>
               </div>
             )
           ) : appointments.upcoming.length > 0 ? (
@@ -493,7 +549,7 @@ const CustomerDashboard = () => {
 
                   return (
                     <div key={appt.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                         <div className="flex-1">
                           <div className="font-semibold text-lg">
                             {appointmentServices.length > 1 ? (
@@ -537,18 +593,18 @@ const CustomerDashboard = () => {
                             )}
                           </div>
                         </div>
-                        <div className="flex gap-2 ml-4">
+                        <div className="flex flex-wrap gap-2 sm:ml-4">
                           {appt.status === 'booked' && (
                             <>
                               <button
                                 onClick={() => { window.location.href = `/book?reschedule=${appt.id}` }}
-                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                                className="tap-safe px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
                               >
                                 Reschedule
                               </button>
                               <button
                                 onClick={() => handleCancel(appt.id)}
-                                className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+                                className="tap-safe px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
                               >
                                 Cancel
                               </button>
@@ -571,10 +627,64 @@ const CustomerDashboard = () => {
               <p className="text-[#8f7a6f] mb-4">Book a new appointment to get started.</p>
               <button
                 onClick={() => navigate('/book')}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                className="tap-safe px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
               >
                 Book Appointment Now
               </button>
+            </div>
+          )}
+
+          {customerRatings.length > 0 && (
+            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <h2 className="font-semibold text-lg mb-4">My Rating History</h2>
+              <div className="space-y-3">
+                {customerRatings.map((rating) => {
+                  const ratedAt = rating.rated_at ? new Date(rating.rated_at) : null
+                  const ratedAtLabel = ratedAt && !Number.isNaN(ratedAt.getTime())
+                    ? `${ratedAt.toLocaleDateString('en-US', { timeZone: 'Asia/Manila' })} ${ratedAt.toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true,
+                      timeZone: 'Asia/Manila',
+                    })}`
+                    : null
+
+                  return (
+                    <div key={`${rating.appointment_id}-${rating.rated_at || rating.appointment_date || 'rating'}`} className="border rounded-lg p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="font-semibold text-base">{rating.service_name || 'Service'}</div>
+                          <div className="text-sm text-[#8f7a6f] mt-1">with {rating.stylist_name || 'Stylist'}</div>
+                          {(rating.appointment_date && rating.appointment_time) && (
+                            <div className="text-xs text-[#9b857a] mt-1">
+                              Appointment: {rating.appointment_date} at {rating.appointment_time}
+                            </div>
+                          )}
+                          {ratedAtLabel && (
+                            <div className="text-xs text-[#9b857a] mt-1">
+                              Rated on: {ratedAtLabel}
+                            </div>
+                          )}
+                          {rating.comment && (
+                            <p className="text-sm text-[#6b5a51] mt-2">{rating.comment}</p>
+                          )}
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <div className="text-yellow-500 text-lg leading-none">
+                            {renderStars(rating.overall_rating ?? rating.rating)}
+                          </div>
+                          <div className="text-sm font-semibold text-emerald-700 mt-1">
+                            {Number(rating.overall_rating ?? rating.rating) || 0}/5
+                          </div>
+                          <div className="text-xs text-[#8f7a6f] mt-1">
+                            Service: {Number(rating.service_rating ?? rating.rating) || 0} | Stylist: {Number(rating.stylist_rating ?? rating.rating) || 0}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 

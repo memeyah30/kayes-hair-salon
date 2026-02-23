@@ -486,9 +486,9 @@ const AdminDashboard = () => {
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar title="Dashboard" />
-        <div className="p-5 md:p-8 space-y-6">
+        <div className="app-mobile-shell space-y-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-semibold">{canAccessSales ? 'Admin Dashboard' : 'Manager Dashboard'}</h1>
+            <h1 className="fluid-title-lg font-semibold">{canAccessSales ? 'Admin Dashboard' : 'Manager Dashboard'}</h1>
             <p className="mt-1 text-sm text-[#9b857a]">
               Monitor performance here. Use the side panel for all management pages.
             </p>
@@ -772,7 +772,45 @@ const AdminDashboard = () => {
 
               <div className="rounded-2xl border border-[#eadfd5] bg-white/82 p-4 shadow-[0_10px_24px_rgba(92,64,51,0.08)]">
                 <h3 className="text-xl font-semibold text-[#4a3a2f]">Recent Appointments</h3>
-                <div className="mt-4 overflow-x-auto">
+                <div className="mt-4 md:hidden space-y-3">
+                  {recentAppointments.length === 0 && (
+                    <div className="rounded-xl border border-dashed border-[#e4d5c9] bg-[#faf5f0] p-4 text-center text-sm text-[#9b857a]">
+                      No recent appointments yet.
+                    </div>
+                  )}
+                  {recentAppointments.map((appointment) => (
+                    <div key={appointment.id} className="rounded-xl border border-[#efe2d8] bg-[#fbf7f2] p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-semibold text-[#4a3a2f]">{appointment.customer_name}</div>
+                          <div className="text-sm text-[#6f5b50] mt-1">{getAppointmentServices(appointment)[0]?.name || '-'}</div>
+                          <div className="text-xs text-[#9b857a] mt-1">{appointment.stylist?.name || '-'}</div>
+                          <div className="text-xs text-[#9b857a] mt-1">{formatDateTime(appointment.start_datetime_pht || appointment.start_datetime)}</div>
+                        </div>
+                        <span
+                          className="rounded-full px-2.5 py-1 text-xs font-medium"
+                          style={{
+                            backgroundColor:
+                              appointment.status === 'completed'
+                                ? toRgba('#6c9c86', 0.2)
+                                : appointment.status === 'cancelled'
+                                  ? toRgba('#c06f5d', 0.2)
+                                  : toRgba('#b4846d', 0.2),
+                            color:
+                              appointment.status === 'completed'
+                                ? '#4f7b67'
+                                : appointment.status === 'cancelled'
+                                  ? '#9a5549'
+                                  : '#8e6552',
+                          }}
+                        >
+                          {appointment.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block mt-4 overflow-x-auto">
                   <table className="w-full min-w-[520px] text-sm">
                     <thead>
                       <tr className="text-left text-xs uppercase text-[#9b857a]">

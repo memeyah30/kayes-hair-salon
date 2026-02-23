@@ -80,7 +80,7 @@ const TimePicker = ({ value, onChange, disabled = false }) => {
         value={hour}
         onChange={handleHourChange}
         disabled={disabled}
-        className="border rounded px-2 py-1 text-sm w-16"
+        className="tap-safe border rounded px-2 py-2 text-sm w-20"
         style={{ 
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer'
@@ -97,7 +97,7 @@ const TimePicker = ({ value, onChange, disabled = false }) => {
         value={minute}
         onChange={handleMinuteChange}
         disabled={disabled}
-        className="border rounded px-2 py-1 text-sm w-16"
+        className="tap-safe border rounded px-2 py-2 text-sm w-20"
         style={{ 
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer'
@@ -677,12 +677,12 @@ const ManageStylists = () => {
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
-        <div className="p-4 md:p-6 space-y-6">
+        <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                className="tap-safe px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >&larr;</button>

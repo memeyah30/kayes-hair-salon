@@ -74,8 +74,8 @@ const VerifyOtp = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] px-4 py-10">
-      <div className="mx-auto w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white/90 p-6 shadow-[0_12px_28px_rgba(92,64,51,0.12)]">
+    <div className="min-h-screen bg-[#f4edff] px-4 py-6 sm:py-10">
+      <div className="mx-auto w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white/90 p-5 sm:p-6 shadow-[0_12px_28px_rgba(92,64,51,0.12)]">
         <h1 className="mb-2 text-2xl font-bold text-[#3b2f2a]">Verify OTP</h1>
         <p className="mb-4 text-sm text-[#8f7a6f]">
           Enter the 6-digit code sent to <span className="font-medium text-[#5a463c]">{email || 'your email'}</span>.
@@ -90,7 +90,7 @@ const VerifyOtp = () => {
               maxLength={6}
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-center text-lg tracking-[0.3em] outline-none focus:border-blue-500"
+              className="tap-safe w-full rounded border border-gray-300 px-3 py-2 text-center text-lg tracking-[0.3em] outline-none focus:border-blue-500"
               placeholder="000000"
               required
             />
@@ -99,7 +99,7 @@ const VerifyOtp = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="tap-safe w-full rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? 'Verifying...' : 'Verify OTP'}
           </button>
@@ -109,7 +109,7 @@ const VerifyOtp = () => {
           <button
             type="button"
             onClick={() => navigate('/manage-booking/start')}
-            className="text-[#8f7a6f] hover:underline"
+            className="tap-safe text-[#8f7a6f] hover:underline"
           >
             Change email
           </button>
@@ -117,7 +117,7 @@ const VerifyOtp = () => {
             type="button"
             onClick={handleResend}
             disabled={resending}
-            className="text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+            className="tap-safe text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
           >
             {resending ? 'Resending...' : 'Resend OTP'}
           </button>

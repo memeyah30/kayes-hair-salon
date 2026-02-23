@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../utils/api'
 import heroMainImage from '../assets/landing-hero-main.jpg'
 import heroSecondaryImage from '../assets/landing-hero-secondary.jpg'
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
-})
 
 const currency = (cents) => `P${(cents / 100).toFixed(2)}`
 
@@ -73,12 +69,12 @@ const Home = () => {
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate('/')}
-              className="inline-flex items-center gap-3 text-2xl md:text-[2rem] font-semibold tracking-tight hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 sm:gap-3 text-lg sm:text-2xl md:text-[2rem] font-semibold tracking-tight hover:opacity-90 transition min-w-0"
             >
               <span className="h-12 w-12 md:h-14 md:w-14 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center overflow-hidden">
                 <img src="/logo.png" alt="Kaye's Hair Salon logo" className="h-10 w-10 md:h-12 md:w-12 object-contain" />
               </span>
-              <span>Kaye&apos;s Hair Salon and Spa</span>
+              <span className="truncate">Kaye&apos;s Hair Salon and Spa</span>
             </button>
 
             <div className="hidden md:flex items-center gap-7 text-lg">
@@ -138,22 +134,22 @@ const Home = () => {
         <section className="relative z-20 max-w-7xl mx-auto px-4 md:px-8 pt-6 pb-24 md:pb-28">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div>
-              <h1 className="text-5xl md:text-7xl leading-[1.05] font-semibold tracking-tight mb-6">
+              <h1 className="text-[clamp(2rem,8vw,4.5rem)] leading-[1.05] font-semibold tracking-tight mb-6">
                 Welcome to Kaye&apos;s<br />Hair Salon and Spa
               </h1>
-              <p className="text-xl md:text-2xl text-[#eee8ff] mb-8 max-w-2xl">
+              <p className="text-base sm:text-xl md:text-2xl text-[#eee8ff] mb-8 max-w-2xl">
                 Your trusted beauty destination. Experience premium hair, nail, and beauty services with our expert stylists.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => navigate('/book')}
-                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#7d63ff] to-[#5f47e7] hover:from-[#8a73ff] hover:to-[#6d57ee] shadow-lg shadow-[#2d1f7a]/40 transition font-semibold text-lg"
+                  className="tap-safe px-8 py-3 rounded-xl bg-gradient-to-r from-[#7d63ff] to-[#5f47e7] hover:from-[#8a73ff] hover:to-[#6d57ee] shadow-lg shadow-[#2d1f7a]/40 transition font-semibold text-lg"
                 >
                   Book Appointment
                 </button>
                 <button
                   onClick={() => navigate('/manage-booking/start')}
-                  className="px-8 py-3 rounded-xl border border-white/50 bg-white/20 hover:bg-white/30 transition font-semibold text-lg"
+                  className="tap-safe px-8 py-3 rounded-xl border border-white/50 bg-white/20 hover:bg-white/30 transition font-semibold text-lg"
                 >
                   Manage My Booking
                 </button>
@@ -192,7 +188,7 @@ const Home = () => {
         <section id="services" className="px-4 md:px-8 py-14 md:py-20 bg-[radial-gradient(circle_at_20%_10%,#efe7ff_0%,#f6f1ff_55%,#f3ecff_100%)]">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-10 md:mb-12">
-              <h2 className="text-5xl md:text-6xl font-semibold mb-4 text-[#2f245a]">Our Services</h2>
+              <h2 className="text-[clamp(1.85rem,7vw,3.75rem)] font-semibold mb-4 text-[#2f245a]">Our Services</h2>
               <p className="max-w-3xl mx-auto text-lg md:text-xl text-[#6b5b95]">
                 Discover our wide range of beauty and wellness services designed to make you look and feel your best.
               </p>
@@ -260,7 +256,7 @@ const Home = () => {
         <section id="stylists" className="px-4 md:px-8 py-16 bg-[radial-gradient(circle_at_80%_10%,#ece3ff_0%,#f7f2ff_60%,#f4edff_100%)]">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-10 md:mb-12">
-              <h2 className="text-5xl md:text-6xl font-semibold mb-4 text-[#2f245a]">Our Expert Stylists</h2>
+              <h2 className="text-[clamp(1.85rem,7vw,3.75rem)] font-semibold mb-4 text-[#2f245a]">Our Expert Stylists</h2>
               <p className="max-w-3xl mx-auto text-lg md:text-xl text-[#6b5b95]">
                 Meet our talented and professional stylists dedicated to bringing out your best look.
               </p>
@@ -300,12 +296,12 @@ const Home = () => {
                       <p className="text-sm text-[#6b5b95] mb-4 min-h-[3.3rem]">
                         Professional and customer-focused service for your best style.
                       </p>
-                      <button
-                        onClick={() => navigate('/book')}
-                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#5f7dff] to-[#405ae1] text-white font-semibold hover:from-[#6b88ff] hover:to-[#4b66ea] transition"
-                      >
-                        Book with {stylist.name.split(' ')[0]}
-                      </button>
+                    <button
+                      onClick={() => navigate('/book')}
+                      className="tap-safe w-full py-2.5 rounded-xl bg-gradient-to-r from-[#5f7dff] to-[#405ae1] text-white font-semibold hover:from-[#6b88ff] hover:to-[#4b66ea] transition"
+                    >
+                      Book with {stylist.name.split(' ')[0]}
+                    </button>
                     </div>
                   ))}
                 </div>

@@ -32,8 +32,8 @@ const ManageBookingEmail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] px-4 py-10">
-      <div className="mx-auto w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white/90 p-6 shadow-[0_12px_28px_rgba(92,64,51,0.12)]">
+    <div className="min-h-screen bg-[#f4edff] px-4 py-6 sm:py-10">
+      <div className="mx-auto w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white/90 p-5 sm:p-6 shadow-[0_12px_28px_rgba(92,64,51,0.12)]">
         <h1 className="mb-2 text-2xl font-bold text-[#3b2f2a]">Manage My Booking</h1>
         <p className="mb-6 text-sm text-[#8f7a6f]">
           Enter the same email you used when booking. We&apos;ll send a 6-digit OTP.
@@ -46,7 +46,7 @@ const ManageBookingEmail = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 outline-none focus:border-blue-500"
+              className="tap-safe w-full rounded border border-gray-300 px-3 py-2 outline-none focus:border-blue-500"
               placeholder="your@email.com"
               required
             />
@@ -55,7 +55,7 @@ const ManageBookingEmail = () => {
           <button
             type="submit"
             disabled={sending}
-            className="w-full rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="tap-safe w-full rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {sending ? 'Sending OTP...' : 'Send OTP'}
           </button>
@@ -66,4 +66,3 @@ const ManageBookingEmail = () => {
 }
 
 export default ManageBookingEmail
-

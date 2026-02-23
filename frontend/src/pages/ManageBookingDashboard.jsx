@@ -173,7 +173,7 @@ const ManageBookingDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] px-4 py-6">
+    <div className="min-h-screen bg-[#f4edff] px-4 py-4 sm:py-6">
       <div className="mx-auto w-full max-w-4xl">
         <div className="mb-5 rounded-2xl border border-[#eadfd5] bg-white/90 p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -183,7 +183,7 @@ const ManageBookingDashboard = () => {
             </div>
             <button
               onClick={clearSessionAndGoToStart}
-              className="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="tap-safe rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               End Session
             </button>
@@ -235,7 +235,7 @@ const ManageBookingDashboard = () => {
                     {appointment.can_reschedule && (
                       <button
                         onClick={() => openReschedule(appointment)}
-                        className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                        className="tap-safe rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
                       >
                         Reschedule
                       </button>
@@ -245,7 +245,7 @@ const ManageBookingDashboard = () => {
                       <button
                         onClick={() => handleCancel(appointment.id)}
                         disabled={submittingCancelId === appointment.id}
-                        className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                        className="tap-safe rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
                       >
                         {submittingCancelId === appointment.id ? 'Cancelling...' : 'Cancel'}
                       </button>
@@ -254,7 +254,7 @@ const ManageBookingDashboard = () => {
                     {canRate && (
                       <button
                         onClick={() => setRatingAppointment(appointment)}
-                        className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                        className="tap-safe rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
                       >
                         Rate
                       </button>
@@ -284,17 +284,17 @@ const ManageBookingDashboard = () => {
                         />
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <button
                         onClick={() => handleReschedule(appointment.id)}
                         disabled={submittingReschedule}
-                        className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                        className="tap-safe rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                       >
                         {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
                       </button>
                       <button
                         onClick={() => setRescheduleForId(null)}
-                        className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        className="tap-safe rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                       >
                         Cancel
                       </button>

@@ -108,24 +108,24 @@ const Login = ({ userType: propUserType }) => {
       : 'email or phone'
 
   return (
-    <div className="min-h-screen bg-[#dfe4f3] p-4 md:p-8 flex items-center justify-center">
-      <div className="w-full max-w-6xl overflow-hidden rounded-[30px] border border-[#d3daee] bg-[#eef2fb] shadow-[0_22px_60px_rgba(58,79,133,0.2)]">
-        <div className="grid md:grid-cols-[1fr_1fr]">
-          <section className="bg-gradient-to-br from-[#8ea3f1] via-[#7d95e8] to-[#6c84dc] px-8 py-10 text-white md:min-h-[700px] md:rounded-r-[220px] md:px-12 md:py-14">
+    <div className="min-h-screen bg-[#dfe4f3] p-3 sm:p-4 md:p-8 flex items-center justify-center">
+      <div className="w-full max-w-6xl overflow-hidden rounded-2xl md:rounded-[30px] border border-[#d3daee] bg-[#eef2fb] shadow-[0_22px_60px_rgba(58,79,133,0.2)]">
+        <div className="grid lg:grid-cols-[1fr_1fr]">
+          <section className="bg-gradient-to-br from-[#8ea3f1] via-[#7d95e8] to-[#6c84dc] px-5 sm:px-8 py-8 sm:py-10 text-white lg:min-h-[700px] lg:rounded-r-[220px] lg:px-12 lg:py-14">
             <div className="flex h-full flex-col justify-between gap-12">
               <div>
                 <p className="text-xs uppercase tracking-[0.35em] text-white/75">Staff Portal</p>
-                <h1 className="mt-6 text-4xl md:text-5xl font-semibold leading-none">Welcome!</h1>
-                <p className="mt-6 max-w-xs text-sm md:text-xl text-white/90">
+                <h1 className="mt-6 text-[clamp(2rem,8vw,3.25rem)] font-semibold leading-none">Welcome!</h1>
+                <p className="mt-6 max-w-md text-sm sm:text-base md:text-lg text-white/90">
                   Manage appointments, services, and staff workflows from one secure dashboard.
                 </p>
               </div>
               <div>
-                <p className="mb-4 text-sm md:text-lg text-white/90">Need customer booking instead?</p>
+                <p className="mb-4 text-sm md:text-base text-white/90">Need customer booking instead?</p>
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="rounded-xl border border-white/70 px-6 py-3 text-sm font-semibold text-white hover:bg-white hover:text-[#5f74d0]"
+                  className="tap-safe rounded-xl border border-white/70 px-6 py-3 text-sm font-semibold text-white hover:bg-white hover:text-[#5f74d0]"
                 >
                   Back to Home
                 </button>
@@ -133,17 +133,17 @@ const Login = ({ userType: propUserType }) => {
             </div>
           </section>
 
-          <section className="px-6 py-8 md:px-12 md:py-14">
+          <section className="px-4 sm:px-6 py-7 sm:py-8 lg:px-12 lg:py-14">
             <div className="mx-auto w-full max-w-md">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-4xl md:text-5xl font-semibold text-[#394667]">Sign in</h2>
+                  <h2 className="text-[clamp(2rem,8vw,3rem)] font-semibold text-[#394667]">Sign in</h2>
                   <p className="mt-2 text-sm text-[#6f7ea5]">Kaye&apos;s Hair Salon and Spa</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => !loading && navigate('/')}
-                  className="rounded-xl border border-[#c7d2f0] px-4 py-2 text-xs font-semibold text-[#5e74cb] hover:bg-[#e8edfb]"
+                  className="tap-safe rounded-xl border border-[#c7d2f0] px-4 py-2 text-xs font-semibold text-[#5e74cb] hover:bg-[#e8edfb]"
                 >
                   Close
                 </button>
@@ -155,7 +155,7 @@ const Login = ({ userType: propUserType }) => {
                   <button
                     type="button"
                     onClick={() => setSelectedType('admin')}
-                    className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                    className={`tap-safe rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold ${
                       selectedType === 'admin'
                         ? 'bg-white text-[#5670ca]'
                         : 'text-[#6f7ca3] hover:bg-white/80'
@@ -166,7 +166,7 @@ const Login = ({ userType: propUserType }) => {
                   <button
                     type="button"
                     onClick={() => setSelectedType('manager')}
-                    className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                    className={`tap-safe rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold ${
                       selectedType === 'manager'
                         ? 'bg-white text-[#5670ca]'
                         : 'text-[#6f7ca3] hover:bg-white/80'
@@ -177,7 +177,7 @@ const Login = ({ userType: propUserType }) => {
                   <button
                     type="button"
                     onClick={() => setSelectedType('stylist')}
-                    className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                    className={`tap-safe rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold ${
                       selectedType === 'stylist'
                         ? 'bg-white text-[#5670ca]'
                         : 'text-[#6f7ca3] hover:bg-white/80'
@@ -201,7 +201,7 @@ const Login = ({ userType: propUserType }) => {
                     <input
                       type="text"
                       required
-                      className="w-full rounded-xl border border-[#c6d1ef] bg-[#f2f5fc] py-3 pl-10 pr-3 text-[#31405f] outline-none focus:border-[#7d94e9] focus:ring-2 focus:ring-[#8da3ef]/30"
+                      className="tap-safe w-full rounded-xl border border-[#c6d1ef] bg-[#f2f5fc] py-3 pl-10 pr-3 text-[#31405f] outline-none focus:border-[#7d94e9] focus:ring-2 focus:ring-[#8da3ef]/30"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={loginPlaceholder}
@@ -221,7 +221,7 @@ const Login = ({ userType: propUserType }) => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
-                      className="w-full rounded-xl border border-[#c6d1ef] bg-[#f2f5fc] py-3 pl-10 pr-10 text-[#31405f] outline-none focus:border-[#7d94e9] focus:ring-2 focus:ring-[#8da3ef]/30"
+                      className="tap-safe w-full rounded-xl border border-[#c6d1ef] bg-[#f2f5fc] py-3 pl-10 pr-10 text-[#31405f] outline-none focus:border-[#7d94e9] focus:ring-2 focus:ring-[#8da3ef]/30"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="********"
@@ -249,7 +249,7 @@ const Login = ({ userType: propUserType }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-2 w-full rounded-xl bg-gradient-to-r from-[#6f86da] to-[#5672d0] px-4 py-3 text-lg font-semibold text-white shadow-[0_12px_24px_rgba(72,97,185,0.34)] hover:from-[#617ad6] hover:to-[#4f69c8] disabled:cursor-not-allowed disabled:opacity-55"
+                  className="tap-safe mt-2 w-full rounded-xl bg-gradient-to-r from-[#6f86da] to-[#5672d0] px-4 py-3 text-lg font-semibold text-white shadow-[0_12px_24px_rgba(72,97,185,0.34)] hover:from-[#617ad6] hover:to-[#4f69c8] disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {loading ? 'Logging in...' : 'Login'}
                 </button>
