@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
@@ -21,6 +21,16 @@ const ManageServices = () => {
     name: '',
     price_cents: '',
   })
+  const [serviceSearch, setServiceSearch] = useState('')
+  const [serviceTypeFilter, setServiceTypeFilter] = useState('all')
+  const formSectionRef = useRef(null)
+  const imageInputRef = useRef(null)
+
+  const clearImageInput = () => {
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
+  }
 
   useEffect(() => {
     refreshData()
@@ -152,6 +162,7 @@ const ManageServices = () => {
       setVariants([])
       setEditingVariant(null)
       setVariantForm({ name: '', price_cents: '' })
+      clearImageInput()
       
       // Always refresh data to ensure everything is up to date
       // Use a longer delay for updates to ensure backend has fully processed
@@ -174,6 +185,11 @@ const ManageServices = () => {
 
   const handleEdit = async (service) => {
     setEditing(service)
+    // Jump to the edit form so admins do not need to scroll manually.
+    window.requestAnimationFrame(() => {
+      formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    clearImageInput()
     
     setFormData({
       name: service.name,
@@ -299,8 +315,59 @@ const ManageServices = () => {
 
   const navigate = useNavigate()
 
+  const formatPrice = (cents) =>
+    `PHP ${(Number(cents || 0) / 100).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`
+
+  const getVariantPriceRange = (service) => {
+    const variantPrices = Array.isArray(service?.variants)
+      ? service.variants
+        .map((variant) => Number(variant?.price_cents))
+        .filter((price) => Number.isFinite(price))
+      : []
+
+    if (variantPrices.length === 0) {
+      return null
+    }
+
+    const min = Math.min(...variantPrices)
+    const max = Math.max(...variantPrices)
+
+    if (min === max) {
+      return formatPrice(min)
+    }
+
+    return `${formatPrice(min)} - ${formatPrice(max)}`
+  }
+
+  const visibleServices = useMemo(() => {
+    const keyword = serviceSearch.trim().toLowerCase()
+
+    return services.filter((service) => {
+      const hasVariants = Array.isArray(service?.variants) && service.variants.length > 0
+
+      const matchesType =
+        serviceTypeFilter === 'all' ||
+        (serviceTypeFilter === 'with_variants' && hasVariants) ||
+        (serviceTypeFilter === 'single_price' && !hasVariants)
+
+      if (!matchesType) return false
+
+      if (!keyword) return true
+
+      const serviceName = String(service?.name || '').toLowerCase()
+      const variantNames = hasVariants
+        ? service.variants.map((variant) => String(variant?.name || '').toLowerCase()).join(' ')
+        : ''
+
+      return serviceName.includes(keyword) || variantNames.includes(keyword)
+    })
+  }, [serviceSearch, serviceTypeFilter, services])
+
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2D2D2D]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -309,31 +376,34 @@ const ManageServices = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="tap-safe px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >&larr;</button>
-              <h1 className="text-2xl font-bold">Manage Services</h1>
+              <h1 className="text-2xl font-bold text-[#2D2D2D]">Manage Services</h1>
             </div>
           </div>
 
-      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 sm:p-6">
-        <h2 className="text-xl font-semibold mb-4">{editing ? 'Edit' : 'Add'} Service</h2>
+      <div
+        ref={formSectionRef}
+        className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)] sm:p-6"
+      >
+        <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">{editing ? 'Edit' : 'Add'} Service</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Name *</label>
               <input
                 type="text"
                 required
-                className="w-full border rounded px-3 py-2"
+                className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] placeholder-[#8E84B7] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             {/* Service has categories/variants toggle */}
             <div className="md:col-span-2">
-              <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-4 transition hover:bg-[#F6F2FF]">
                 <input
                   type="checkbox"
                   checked={hasCategories}
@@ -347,11 +417,11 @@ const ManageServices = () => {
                       setVariantForm({ name: '', price_cents: '' })
                     }
                   }}
-                  className="w-5 h-5 text-blue-600 rounded"
+                  className="h-5 w-5 rounded border-[#C4B5FD] text-[#7B5CF5] focus:ring-[#C4B5FD]"
                 />
                 <div>
-                  <div className="font-medium text-gray-900">This service has categories/variants</div>
-                  <div className="text-xs text-[#8f7a6f] mt-1">
+                  <div className="font-medium text-[#2D2D2D]">This service has categories/variants</div>
+                  <div className="mt-1 text-xs text-[#6B6B6B]">
                     Check this if the service has different options (e.g., Premium Rebonding with different brands, Hair Curl for Women/Men)
                   </div>
                 </div>
@@ -361,13 +431,13 @@ const ManageServices = () => {
             {/* Base Price - only show if no categories */}
             {!hasCategories && (
               <div>
-                <label className="block text-sm font-medium mb-1">Price (PHP) *</label>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Price (PHP) *</label>
                 <input
                   type="number"
                   required
                   min="0"
                   step="0.01"
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] placeholder-[#8E84B7] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                   value={formData.price_cents}
                   onChange={(e) => setFormData({ ...formData, price_cents: e.target.value })}
                   placeholder="Enter price"
@@ -375,18 +445,19 @@ const ManageServices = () => {
               </div>
             )}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Image</label>
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Image</label>
               <input
+                ref={imageInputRef}
                 type="file"
                 accept="image/*"
-                className="w-full border rounded px-3 py-2"
+                className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] file:mr-3 file:rounded-lg file:border-0 file:bg-[#F2EDFF] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#7B5CF5] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                 onChange={handleImageChange}
               />
               {imagePreview && (
                 <img
                   src={imagePreview}
                   alt="Preview"
-                  className="mt-2 h-44 w-full rounded border border-[#eadfd5] bg-[#f7f1ec] p-2 object-contain"
+                  className="mt-2 h-44 w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-2 object-contain"
                 />
               )}
             </div>
@@ -394,9 +465,9 @@ const ManageServices = () => {
 
           {/* Service Variants/Categories Section */}
           {hasCategories && (
-            <div className="border-t pt-4 mt-4">
-              <h3 className="text-lg font-semibold mb-3">Service Categories/Variants</h3>
-              <p className="text-sm text-[#8f7a6f] mb-4">
+            <div className="mt-4 border-t border-[#DDD6FE] pt-4">
+              <h3 className="mb-3 text-lg font-semibold text-[#2D2D2D]">Service Categories/Variants</h3>
+              <p className="mb-4 text-sm text-[#6B6B6B]">
                 Add different categories, brands, or types for this service with different prices.
                 <br />
                 <span className="font-medium">Examples:</span> Premium Rebonding - LOREAL (PHP 3,500), SCHWARZKOPF (PHP 2,500) | Hair Curl - For Women (PHP 1,000), For Men (PHP 600)
@@ -406,10 +477,10 @@ const ManageServices = () => {
               {variants.length > 0 && (
                 <div className="mb-4 space-y-2">
                   {variants.map((variant, idx) => (
-                    <div key={variant.id || idx} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                    <div key={variant.id || idx} className="flex items-center justify-between rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{variant.name}</div>
-                        <div className="text-sm text-[#8f7a6f] mt-1">
+                        <div className="font-medium text-[#2D2D2D]">{variant.name}</div>
+                        <div className="mt-1 text-sm text-[#6B6B6B]">
                           <span className="font-semibold">Price:</span> PHP {
                             // All variants in local state are stored in pesos (converted when loading from DB)
                             (() => {
@@ -425,14 +496,14 @@ const ManageServices = () => {
                         <button
                           type="button"
                           onClick={() => handleEditVariant(variant)}
-                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          className="rounded-lg border border-[#7B5CF5] px-3 py-1.5 text-xs font-medium text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteVariant(variant.id, variant.name)}
-                          className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                          className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-1.5 text-xs font-medium text-[#B91C1C] transition hover:bg-[#FEE2E2]"
                         >
                           Delete
                         </button>
@@ -443,34 +514,34 @@ const ManageServices = () => {
               )}
 
               {/* Add/Edit Variant Form */}
-              <div className="bg-gray-50 rounded p-4 border-2 border-dashed border-gray-300">
-                <h4 className="font-medium mb-3 text-gray-900">{editingVariant ? 'Edit' : 'Add'} Category/Variant</h4>
+              <div className="rounded-xl border-2 border-dashed border-[#C4B5FD] bg-[#F6F2FF] p-4">
+                <h4 className="mb-3 font-medium text-[#2D2D2D]">{editingVariant ? 'Edit' : 'Add'} Category/Variant</h4>
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Category/Variant Name *</label>
+                    <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Category/Variant Name *</label>
                     <input
                       type="text"
-                      className="w-full border rounded px-3 py-2"
+                      className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] placeholder-[#8E84B7] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                       value={variantForm.name}
                       onChange={(e) => setVariantForm({ ...variantForm, name: e.target.value })}
                       placeholder="e.g., LOREAL, For Women, SCHWARZKOPF, For Men"
                     />
-                    <p className="text-xs text-[#9b857a] mt-1">
+                    <p className="mt-1 text-xs text-[#6B6B6B]">
                       Enter the category name (brand, type, gender, etc.)
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Price (PHP) *</label>
+                    <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Price (PHP) *</label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      className="w-full border rounded px-3 py-2"
+                      className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] placeholder-[#8E84B7] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                       value={variantForm.price_cents}
                       onChange={(e) => setVariantForm({ ...variantForm, price_cents: e.target.value })}
                       placeholder="e.g., 3500, 1000, 600"
                     />
-                    <p className="text-xs text-[#9b857a] mt-1">
+                    <p className="mt-1 text-xs text-[#6B6B6B]">
                       Enter the price for this specific category/variant
                     </p>
                   </div>
@@ -479,7 +550,7 @@ const ManageServices = () => {
                   <button
                     type="button"
                     onClick={handleAddVariant}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
+                    className="rounded-lg bg-[#7B5CF5] px-4 py-2 text-sm text-white transition hover:bg-[#6846E8]"
                   >
                     {editingVariant ? 'Update' : 'Add'} Category
                   </button>
@@ -490,7 +561,7 @@ const ManageServices = () => {
                         setEditingVariant(null)
                         setVariantForm({ name: '', price_cents: '' })
                       }}
-                      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm"
+                      className="rounded-lg border border-[#7B5CF5] bg-transparent px-4 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F2EDFF]"
                     >
                       Cancel
                     </button>
@@ -501,7 +572,7 @@ const ManageServices = () => {
           )}
 
           <div className="flex gap-2">
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            <button type="submit" className="rounded-lg bg-[#7B5CF5] px-4 py-2 text-white transition hover:bg-[#6846E8]">
               {editing ? 'Update' : 'Create'} Service
             </button>
             {editing && (
@@ -515,8 +586,9 @@ const ManageServices = () => {
       setVariants([])
       setEditingVariant(null)
       setVariantForm({ name: '', price_cents: '' })
+      clearImageInput()
                 }}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                className="rounded-lg border border-[#7B5CF5] bg-transparent px-4 py-2 text-[#7B5CF5] transition hover:bg-[#F2EDFF]"
               >
                 Cancel
               </button>
@@ -525,81 +597,131 @@ const ManageServices = () => {
         </form>
       </div>
 
-      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-        <h2 className="text-xl font-semibold mb-4">All Services</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {services.map(s => (
-            <div key={s.id} className="border rounded-lg overflow-hidden">
-              {s.image ? (
-                <img
-                  key={`${s.id}-${s.image}`}
-                  src={`http://localhost:8000/${s.image}?v=${Date.now()}`}
-                  alt={s.name}
-                  className="w-full h-52 bg-[#f7f1ec] p-2 object-contain"
-                  loading="lazy"
-                  onError={(e) => {
-                    // Hide broken images
-                    e.target.style.display = 'none'
-                  }}
-                />
-              ) : (
-                <div className="w-full h-52 bg-[#f7f1ec] flex items-center justify-center text-[#9b857a] text-sm">
-                  No Image
-                </div>
-              )}
-              <div className="p-4">
-                <div className="font-semibold">{s.name}</div>
-                <div className="text-sm text-[#8f7a6f]">
-                  {s.variants && s.variants.length > 0 ? (
-                    <div>
-                      <span className="text-xs text-blue-600 font-medium">
-                        {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
-                      </span>
-                      <div className="text-xs text-[#9b857a] mt-1">
-                        {s.variants.map(v => v.name).join(', ')}
-                      </div>
-                    </div>
-                  ) : (
-                    <span>PHP {(s.price_cents / 100).toFixed(2)}</span>
-                  )}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={() => handleEdit(s)}
-                    className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (!window.confirm(`Are you sure you want to delete "${s.name}"? This action cannot be undone.`)) {
-                        return
-                      }
-                      try {
-                        await api.delete(`/services/${s.id}`)
-                        toast.success('Service deleted successfully')
-                        refreshData()
-                      } catch (e) {
-                        const errorData = e.response?.data
-                        const message = errorData?.message || 'Failed to delete service'
-                        const appointmentCount = errorData?.appointment_count
-                        
-                        if (appointmentCount) {
-                          toast.error(message)
-                        } else {
-                          toast.error(message)
-                        }
-                      }
-                    }}
-                    className="text-sm bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+      <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)] sm:p-6">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-5">
+          <div>
+            <h2 className="text-2xl font-semibold text-[#2D2D2D]">All Services</h2>
+            <p className="mt-1 text-sm text-[#6B6B6B]">
+              {visibleServices.length} service{visibleServices.length === 1 ? '' : 's'} displayed
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <input
+              type="text"
+              value={serviceSearch}
+              onChange={(e) => setServiceSearch(e.target.value)}
+              placeholder="Search services or variants..."
+              className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3.5 py-2.5 text-sm text-[#2D2D2D] placeholder-[#8E84B7] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] sm:w-72"
+            />
+            <select
+              value={serviceTypeFilter}
+              onChange={(e) => setServiceTypeFilter(e.target.value)}
+              className="rounded-xl border border-[#DDD6FE] bg-white px-3.5 py-2.5 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
+            >
+              <option value="all">All</option>
+              <option value="with_variants">With Variants</option>
+              <option value="single_price">Single Price</option>
+            </select>
+          </div>
         </div>
+
+        {visibleServices.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#DDD6FE] bg-[#F6F2FF] px-4 py-8 text-center text-sm text-[#6B6B6B]">
+            No services found for this filter.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+            {visibleServices.map((s) => {
+              const hasVariants = Array.isArray(s?.variants) && s.variants.length > 0
+              const variantRange = getVariantPriceRange(s)
+
+              return (
+                <article
+                  key={s.id}
+                  className="group h-full overflow-hidden rounded-[14px] border border-[#DDD6FE] bg-white shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(123,92,245,0.16)]"
+                >
+                  <div className="relative h-44 overflow-hidden bg-[#F2EDFF]">
+                    {s.image ? (
+                      <img
+                        key={`${s.id}-${s.image}`}
+                        src={`http://localhost:8000/${s.image}?v=${Date.now()}`}
+                        alt={s.name}
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm font-medium text-[#7B5CF5]">
+                        No Image
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex min-h-[210px] flex-col justify-between p-4">
+                    <div>
+                      <h3 className="truncate text-xl font-semibold leading-tight text-[#2D2D2D]">{s.name}</h3>
+
+                      <div className="mt-2 min-h-[54px]">
+                        {hasVariants ? (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7B5CF5]">
+                              {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
+                            </p>
+                            <p className="max-h-8 overflow-hidden text-xs text-[#6B6B6B]">
+                              {s.variants.map((v) => v.name).join(', ')}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs font-medium text-[#6B6B6B]">Single-price service</p>
+                        )}
+                      </div>
+
+                      <p className="mt-2 text-2xl font-bold text-[#7B5CF5]">
+                        {hasVariants ? variantRange || formatPrice(s.price_cents) : formatPrice(s.price_cents)}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(s)}
+                        className="flex-1 rounded-lg border border-[#7B5CF5] bg-transparent px-3 py-2 text-sm font-medium text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm(`Are you sure you want to delete "${s.name}"? This action cannot be undone.`)) {
+                            return
+                          }
+                          try {
+                            await api.delete(`/services/${s.id}`)
+                            toast.success('Service deleted successfully')
+                            refreshData()
+                          } catch (e) {
+                            const errorData = e.response?.data
+                            const message = errorData?.message || 'Failed to delete service'
+                            const appointmentCount = errorData?.appointment_count
+
+                            if (appointmentCount) {
+                              toast.error(message)
+                            } else {
+                              toast.error(message)
+                            }
+                          }
+                        }}
+                        className="flex-1 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-sm font-medium text-[#B91C1C] transition hover:bg-[#FEE2E2]"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
       </div>
         </div>
       </main>

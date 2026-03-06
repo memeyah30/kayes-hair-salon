@@ -11,6 +11,8 @@ const StylistSchedule = () => {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10))
   const navigate = useNavigate()
   const user = JSON.parse((sessionStorage.getItem('user') || localStorage.getItem('user')) || '{}')
+  const glassPanelClass = 'rounded-[28px] border border-white/32 bg-white/78 p-4 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md'
+  const inputClass = 'rounded-xl border border-[#ddccff] bg-white/88 px-3 py-2 text-[#2d1f4f] outline-none focus:border-[#8c72df] focus:ring-2 focus:ring-[#d8cbff]'
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
@@ -95,14 +97,14 @@ const StylistSchedule = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f4edff] flex items-center justify-center">
+      <div className="min-h-screen app-admin-bg flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2d1f4f]">
       <Sidebar userType="stylist" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -111,25 +113,25 @@ const StylistSchedule = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/stylist/dashboard')}
-                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                className="rounded-2xl border border-white/36 bg-white/82 px-3 py-2 text-lg font-bold text-[#654abf] shadow-[0_14px_28px_rgba(43,20,97,0.12)] hover:bg-white"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >&larr;</button>
-              <h1 className="text-2xl font-bold">My Schedule</h1>
+              <h1 className="text-2xl font-bold text-[#24173f]">My Schedule</h1>
             </div>
           </div>
 
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+          <div className={glassPanelClass}>
             <label className="block text-sm font-medium mb-2">Select Date</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="border rounded px-3 py-2"
+              className={inputClass}
             />
           </div>
 
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+          <div className={glassPanelClass}>
             <h2 className="font-semibold text-lg mb-4">
               Schedule for {new Date(selectedDate).toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -140,25 +142,25 @@ const StylistSchedule = () => {
             </h2>
             
             {selectedDateAppointments.length === 0 ? (
-              <div className="text-center py-8 text-[#9b857a]">No appointments scheduled for this date</div>
+              <div className="py-8 text-center text-[#8a75b9]">No appointments scheduled for this date</div>
             ) : (
               <div className="space-y-3">
                 {selectedDateAppointments
                   .sort((a, b) => new Date(getStart(a)) - new Date(getStart(b)))
                   .map(apt => (
-                    <div key={apt.id} className="border-l-4 border-blue-500 rounded-lg p-4 bg-blue-50">
+                    <div key={apt.id} className="rounded-2xl border border-[#e7dbff] bg-[#f8f3ff] p-4 shadow-[0_10px_22px_rgba(59,31,114,0.08)]">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center text-blue-700 font-bold">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e3d7ff] font-bold text-[#6046b7]">
                               {apt.customer_name?.charAt(0)?.toUpperCase() || '?'}
                             </div>
                             <div>
                               <div className="font-semibold text-lg">{apt.customer_name}</div>
-                              <div className="text-xs text-[#8f7a6f]">Customer</div>
+                              <div className="text-xs text-[#7b67a9]">Customer</div>
                             </div>
                           </div>
-                          <div className="text-sm text-[#8f7a6f] mt-1">
+                          <div className="mt-1 text-sm text-[#7b67a9]">
                             <span className="font-medium">Time:</span>{' '}
                             {new Date(getStart(apt)).toLocaleTimeString('en-US', {
                               hour: '2-digit',
@@ -170,11 +172,11 @@ const StylistSchedule = () => {
                               timeZone: 'Asia/Manila'
                             })} PHT
                           </div>
-                          <div className="text-sm font-medium text-gray-700 mt-1">
-                            <span className="text-[#9b857a]">Service:</span>{' '}
+                          <div className="mt-1 text-sm font-medium text-[#47356f]">
+                            <span className="text-[#8a75b9]">Service:</span>{' '}
                             {getAppointmentServices(apt).map((service) => service.name).join(', ') || 'N/A'}
                           </div>
-                          <div className="text-xs text-[#8f7a6f] mt-2 space-y-1">
+                          <div className="mt-2 space-y-1 text-xs text-[#7b67a9]">
                             {apt.customer_phone && (
                               <div className="flex items-center gap-1">
                                 <span>Phone:</span>
@@ -191,9 +193,9 @@ const StylistSchedule = () => {
                         </div>
                         <div>
                           <span className={`px-2 py-1 rounded text-xs ${
-                            apt.status === 'booked' ? 'bg-blue-100 text-blue-800' :
-                            apt.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            'bg-red-100 text-red-800'
+                            apt.status === 'booked' ? 'bg-[#fff1e2] text-[#a86a2f]' :
+                            apt.status === 'completed' ? 'bg-[#e9f5ef] text-[#4f8177]' :
+                            'bg-[#fae8ee] text-[#9a4963]'
                           }`}>
                             {apt.status}
                           </span>
@@ -206,11 +208,11 @@ const StylistSchedule = () => {
           </div>
 
           {/* Calendar View */}
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+          <div className={glassPanelClass}>
             <h2 className="font-semibold text-lg mb-4">Monthly Overview</h2>
             <div className="grid grid-cols-7 gap-2 text-sm">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center font-medium text-[#8f7a6f] py-2">
+                <div key={day} className="py-2 text-center font-medium text-[#7b67a9]">
                   {day}
                 </div>
               ))}
@@ -229,10 +231,10 @@ const StylistSchedule = () => {
                     key={i}
                     onClick={() => setSelectedDate(dateStr)}
                     className={`p-2 rounded text-left min-h-[84px] transition ${
-                      isSelected ? 'bg-blue-600 text-white' :
-                      isToday ? 'bg-blue-100 text-blue-700' :
-                      dayAppointments.length > 0 ? 'bg-green-100 text-green-700' :
-                      'hover:bg-[#f7f1ec]'
+                      isSelected ? 'bg-gradient-to-br from-[#7f63e8] to-[#5a3dbd] text-white shadow-[0_14px_28px_rgba(43,20,97,0.24)]' :
+                      isToday ? 'bg-[#efe7ff] text-[#6046b7]' :
+                      dayAppointments.length > 0 ? 'bg-[#edf8f3] text-[#4f8177]' :
+                      'hover:bg-[#f5eeff]'
                     }`}
                   >
                     <div className={`font-medium ${isCurrentMonth ? '' : 'opacity-45'}`}>{date.getDate()}</div>

@@ -8,6 +8,7 @@ import {
   CUSTOMER_BOOKING_PENDING_EMAIL_KEY,
   CUSTOMER_BOOKING_TOKEN_KEY,
 } from '../utils/manageBookingApi'
+import './BookAppointment.css'
 
 // Validation helpers
 const validateEmail = (email) => {
@@ -53,6 +54,123 @@ const toManilaHHmm = (isoString) => {
   return `${hh}:${mm}`
 }
 
+const BOOK_APPOINTMENT_DRAFT_KEY = 'book_appointment_draft_v1'
+const BOOK_APPOINTMENT_RESTORE_KEY = 'book_appointment_restore_on_reload'
+const AUTO_STYLIST_VALUE = 'AUTO'
+
+const getTodayDateKey = () => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const readBookingDraft = () => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(BOOK_APPOINTMENT_DRAFT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+const wasPageReloaded = () => {
+  if (typeof window === 'undefined') return false
+  try {
+    const navEntries = window.performance?.getEntriesByType?.('navigation')
+    const navType = navEntries?.[0]?.type
+    if (navType === 'reload') return true
+
+    // Legacy fallback for older browsers.
+    if (window.performance?.navigation && typeof window.performance.navigation.type === 'number') {
+      return window.performance.navigation.type === 1
+    }
+  } catch {
+    // Ignore performance API errors
+  }
+  return false
+}
+
+const shouldRestoreBookingDraft = () => {
+  if (typeof window === 'undefined') return false
+  try {
+    // Primary behavior: restore state on actual browser refresh.
+    if (wasPageReloaded()) return true
+
+    // Secondary fallback for environments where navigation type is unavailable.
+    const restoreKey = window.sessionStorage.getItem(BOOK_APPOINTMENT_RESTORE_KEY)
+    const currentPath = `${window.location.pathname}${window.location.search}`
+    return restoreKey === currentPath
+  } catch {
+    return wasPageReloaded()
+  }
+}
+
+const normalizeStepValue = (value) => {
+  const num = Number(value)
+  if (num === 2 || num === 3) return num
+  return 1
+}
+
+const isIsoDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))
+const areStringArraysEqual = (a = [], b = []) =>
+  a.length === b.length && a.every((value, index) => value === b[index])
+
+const getStatusLabel = (status) => {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'busy') return 'Busy'
+  if (normalized === 'off' || normalized === 'off_duty') return 'Off Duty'
+  if (normalized === 'fully_booked' || normalized === 'full') return 'Fully Booked'
+  if (normalized === 'unknown') return 'Unknown'
+  return 'Available'
+}
+
+const getStatusClass = (status) => {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'busy') return 'bg-amber-100 text-amber-800'
+  if (normalized === 'off' || normalized === 'off_duty') return 'bg-gray-200 text-gray-700'
+  if (normalized === 'fully_booked' || normalized === 'full') return 'bg-red-100 text-red-700'
+  if (normalized === 'unknown') return 'bg-slate-100 text-slate-700'
+  return 'bg-emerald-100 text-emerald-700'
+}
+
+const normalizeStylistStatus = (stylist) => {
+  const raw = String(stylist?.status || '').toLowerCase().replace(/\s+/g, '_')
+  if (raw === 'busy') return 'busy'
+  if (raw === 'off' || raw === 'off_duty') return 'off'
+  if (raw === 'fully_booked' || raw === 'full') return 'fully_booked'
+  if (raw === 'available') return 'available'
+  if (stylist?.active === false) return 'off'
+  return 'available'
+}
+
+const filterStylists = (list, search, filter) => {
+  const keyword = String(search || '').trim().toLowerCase()
+  return (list || []).filter((stylist) => {
+    const status = normalizeStylistStatus(stylist)
+    if (filter && filter !== 'all' && status !== filter) {
+      return false
+    }
+
+    if (!keyword) {
+      return true
+    }
+
+    const name = String(stylist?.name || '').toLowerCase()
+    const role = String(stylist?.role || '').toLowerCase()
+    const specialties = Array.isArray(stylist?.specialties)
+      ? stylist.specialties.join(' ').toLowerCase()
+      : String(stylist?.specialties || '').toLowerCase()
+
+    return name.includes(keyword) || role.includes(keyword) || specialties.includes(keyword)
+  })
+}
+
 const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
   const start = new Date(year, month, 1)
   const end = new Date(year, month + 1, 0)
@@ -82,24 +200,24 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
   const canGoPrev = year > todayYear || (year === todayYear && month > todayMonth)
 
   return (
-    <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+    <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.07)] p-4">
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={handlePrevMonth}
           disabled={!canGoPrev}
-          className={`px-3 py-1 rounded ${canGoPrev ? 'hover:bg-[#f7f1ec] text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+          className={`px-3 py-1 rounded ${canGoPrev ? 'hover:bg-[#faf8fd] text-[#5f4a70]' : 'text-gray-300 cursor-not-allowed'}`}
           title={canGoPrev ? 'Previous month' : 'Cannot go before current month'}
         >&larr;</button>
-        <h3 className="font-semibold">{label}</h3>
+        <h3 className="font-semibold text-[#2C1338]">{label}</h3>
         <button
           onClick={handleNextMonth}
-          className="px-3 py-1 rounded hover:bg-[#f7f1ec] text-gray-700"
+          className="px-3 py-1 rounded hover:bg-[#faf8fd] text-[#5f4a70]"
           title="Next month"
         >
           &rarr;
         </button>
       </div>
-      <div className="grid grid-cols-7 text-xs text-[#9b857a] mb-2">
+      <div className="grid grid-cols-7 text-xs text-[#7c688f] mb-2">
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="text-center">{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1 text-sm">
@@ -126,8 +244,8 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
                 isDisabled 
                   ? 'bg-[#f7f1ec] text-gray-400 cursor-not-allowed' 
                   : isSelected 
-                    ? 'bg-blue-600 text-white border-blue-600' 
-                    : 'hover:border-blue-300'
+                    ? 'bg-[#E75480] text-white border-[#E75480]' 
+                    : 'hover:border-[#e7bdd0]'
               }`}
             >
               {day.getDate()}
@@ -139,11 +257,8 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
   )
 }
 
-const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
+const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) => {
   const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const selectedDateObj = new Date(selectedDate + 'T00:00:00')
-  const isToday = selectedDateObj && selectedDateObj.getTime() === today.getTime()
   
   // Minimum advance booking time: 30 minutes
   const minAdvanceMinutes = 30
@@ -174,10 +289,17 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
   const hasSlots = slots.length > 0
   
   return (
-    <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 h-full">
-      <div className="font-semibold mb-3">Time slots (8 AM - 8 PM)</div>
-      {!hasSlots && <div className="text-sm text-[#9b857a]">Loading slots...</div>}
-      {hasSlots && (
+    <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.07)] p-4 h-full">
+      <div className="font-semibold mb-3 text-[#2C1338]">Time slots (8 AM - 8 PM)</div>
+      {loading && !hasSlots && <div className="text-sm text-[#7c688f]">Loading slots...</div>}
+      {loading && hasSlots && <div className="text-xs text-[#7c688f] mb-2">Refreshing slots...</div>}
+      {!loading && !ready && (
+        <div className="text-sm text-[#7c688f]">Select a stylist and service to load time slots.</div>
+      )}
+      {!loading && ready && !hasSlots && (
+        <div className="text-sm text-red-500">No available slots for this date. Please choose another date or stylist.</div>
+      )}
+      {ready && hasSlots && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
             {filteredSlots.map((slot, idx) => {
@@ -236,8 +358,8 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
                     isDisabled
                       ? 'bg-[#f7f1ec] text-gray-400 border-gray-300 cursor-not-allowed line-through'
                       : isSelected
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'hover:border-blue-300 hover:bg-blue-50'
+                        ? 'bg-[#E75480] text-white border-[#E75480]'
+                        : 'hover:border-[#e7bdd0] hover:bg-[#fff4f9]'
                   }`}
                   title={tooltipMessage}
                 >
@@ -252,7 +374,7 @@ const SlotList = ({ slots, selected, onSelect, selectedDate }) => {
             </div>
           )}
           {availableSlots.length > 0 && (
-            <div className="text-xs text-[#9b857a] text-center">
+            <div className="text-xs text-[#7c688f] text-center">
               {availableSlots.length} of {slots.length} slots available
             </div>
           )}
@@ -575,47 +697,130 @@ Thank you for choosing Kaye's Hair Salon and Spa!
 }
 
 const BookAppointment = () => {
-  const [step, setStep] = useState(1) // 1: Customer Info, 2: Booking Details, 3: Payment
+  const shouldRestoreDraft = shouldRestoreBookingDraft()
+  const draft = shouldRestoreDraft ? readBookingDraft() : null
+  const [step, setStep] = useState(() => normalizeStepValue(draft?.step)) // 1: Customer Info, 2: Booking Details, 3: Payment
   const [stylists, setStylists] = useState([])
   const [services, setServices] = useState([])
   const [paymentAccounts, setPaymentAccounts] = useState([])
   const [availability, setAvailability] = useState([])
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    // Get local date string (YYYY-MM-DD) without timezone conversion
-    const year = today.getFullYear()
-    const month = String(today.getMonth() + 1).padStart(2, '0')
-    const day = String(today.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
+    return isIsoDateKey(draft?.selectedDate) ? draft.selectedDate : getTodayDateKey()
   })
-  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth())
-  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear())
-  const [selectedStylist, setSelectedStylist] = useState('')
-  const [selectedService, setSelectedService] = useState('') // Keep for backward compatibility
-  const [selectedServices, setSelectedServices] = useState([]) // New: array of selected service IDs
-  const [selectedVariants, setSelectedVariants] = useState({}) // Map of serviceId -> variantId
-  const [selectedSlot, setSelectedSlot] = useState(null)
-  const [booking, setBooking] = useState({ 
-    name: '', 
-    email: '',
-    phone: '',
-    address: ''
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const month = Number(draft?.calendarMonth)
+    return Number.isInteger(month) && month >= 0 && month <= 11 ? month : new Date().getMonth()
   })
-  const [payment, setPayment] = useState({
-    method: 'on_hand', // 'on_hand' or 'online'
-    paymentType: 'downpayment', // on_hand: downpayment only, online: downpayment or full
-    selectedAccount: '',
-    amount: '',
+  const [calendarYear, setCalendarYear] = useState(() => {
+    const year = Number(draft?.calendarYear)
+    return Number.isInteger(year) && year >= 1900 ? year : new Date().getFullYear()
+  })
+  const [selectedStylist, setSelectedStylist] = useState(() => (draft?.selectedStylist ? String(draft.selectedStylist) : ''))
+  const [stylistSearch, setStylistSearch] = useState('')
+  const [stylistFilter, setStylistFilter] = useState('all')
+  const [specializedStylistIds, setSpecializedStylistIds] = useState(null)
+  const [stylistSpecializationNames, setStylistSpecializationNames] = useState({})
+  const [specializationFilterLoading, setSpecializationFilterLoading] = useState(false)
+  const [specializationFilterError, setSpecializationFilterError] = useState('')
+  const [selectedService, setSelectedService] = useState(() => (draft?.selectedService ? String(draft.selectedService) : '')) // Keep for backward compatibility
+  const [selectedServices, setSelectedServices] = useState(() => (
+    Array.isArray(draft?.selectedServices)
+      ? draft.selectedServices.map((id) => String(id)).filter(Boolean)
+      : []
+  )) // New: array of selected service IDs
+  const [selectedVariants, setSelectedVariants] = useState(() => (
+    draft?.selectedVariants && typeof draft.selectedVariants === 'object' && !Array.isArray(draft.selectedVariants)
+      ? draft.selectedVariants
+      : {}
+  )) // Map of serviceId -> variantId
+  const [selectedSlot, setSelectedSlot] = useState(() => {
+    if (
+      draft?.selectedSlot &&
+      typeof draft.selectedSlot === 'object' &&
+      typeof draft.selectedSlot.start === 'string' &&
+      typeof draft.selectedSlot.end === 'string'
+    ) {
+      return {
+        start: draft.selectedSlot.start,
+        end: draft.selectedSlot.end,
+        available: draft.selectedSlot.available !== false,
+      }
+    }
+    return null
+  })
+  const [booking, setBooking] = useState(() => ({
+    name: typeof draft?.booking?.name === 'string' ? draft.booking.name : '',
+    email: typeof draft?.booking?.email === 'string' ? draft.booking.email : '',
+    phone: typeof draft?.booking?.phone === 'string' ? draft.booking.phone : '',
+    address: typeof draft?.booking?.address === 'string' ? draft.booking.address : '',
+  }))
+  const [payment, setPayment] = useState(() => ({
+    method: draft?.payment?.method === 'online' ? 'online' : 'on_hand', // 'on_hand' or 'online'
+    paymentType: draft?.payment?.paymentType === 'full' ? 'full' : 'downpayment', // on_hand: downpayment only, online: downpayment or full
+    selectedAccount: typeof draft?.payment?.selectedAccount === 'string' ? draft.payment.selectedAccount : '',
+    amount: typeof draft?.payment?.amount === 'string' ? draft.payment.amount : '',
     proofFile: null,
     proofPreview: null,
-  })
+  }))
   const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '' })
   const [rescheduling, setRescheduling] = useState(null)
   const [receipt, setReceipt] = useState(null)
   const [prefillServiceIds, setPrefillServiceIds] = useState([])
   const [prefillStylistId, setPrefillStylistId] = useState('')
+  const [prefillVariantId, setPrefillVariantId] = useState('')
+  const [hasAppliedServicePrefill, setHasAppliedServicePrefill] = useState(false)
   const navigate = useNavigate()
+  const selectedServiceIdsForStylistFilter = (selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : []))
+    .map((id) => String(id || '').trim())
+    .filter(Boolean)
+  const hasSelectedServicesForStylistFilter = selectedServiceIdsForStylistFilter.length > 0
+  const specializationIdSet = specializedStylistIds ? new Set(specializedStylistIds.map((id) => String(id))) : null
+  const specializationScopedStylists = specializationIdSet
+    ? stylists.filter((stylist) => specializationIdSet.has(String(stylist.id)))
+    : stylists
+  const selectedServiceFilterKey = selectedServiceIdsForStylistFilter.join(',')
+  const specializationScopedStylistKey = specializationScopedStylists.map((stylist) => String(stylist.id)).join(',')
+
+  const clearBookingDraft = () => {
+    try {
+      window.sessionStorage.removeItem(BOOK_APPOINTMENT_DRAFT_KEY)
+    } catch {
+      // Ignore session storage errors
+    }
+  }
+
+  useEffect(() => {
+    try {
+      if (shouldRestoreDraft) {
+        window.sessionStorage.removeItem(BOOK_APPOINTMENT_RESTORE_KEY)
+      } else {
+        clearBookingDraft()
+      }
+    } catch {
+      if (!shouldRestoreDraft) {
+        clearBookingDraft()
+      }
+    }
+  }, [shouldRestoreDraft])
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        const currentPath = `${window.location.pathname}${window.location.search}`
+        if (window.location.pathname === '/book') {
+          window.sessionStorage.setItem(BOOK_APPOINTMENT_RESTORE_KEY, currentPath)
+        }
+      } catch {
+        // Ignore session storage errors
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [])
 
   useEffect(() => {
     refreshData()
@@ -623,14 +828,22 @@ const BookAppointment = () => {
     const appointmentId = params.get('reschedule') || params.get('appointment')
     const servicesParam = params.get('services')
     const stylistParam = params.get('stylist')
+    const variantParam = params.get('variant_id') || params.get('variant')
     if (servicesParam) {
       const ids = servicesParam
         .split(',')
         .map(id => id.trim())
         .filter(Boolean)
       setPrefillServiceIds(ids)
+      setHasAppliedServicePrefill(false)
     } else {
       setPrefillServiceIds([])
+      setHasAppliedServicePrefill(true)
+    }
+    if (variantParam) {
+      setPrefillVariantId(variantParam.trim())
+    } else {
+      setPrefillVariantId('')
     }
     if (stylistParam) {
       setPrefillStylistId(stylistParam.trim())
@@ -639,8 +852,54 @@ const BookAppointment = () => {
     }
     if (appointmentId) {
       loadAppointmentForReschedule(appointmentId)
+      return
     }
-  }, [])
+
+    const isServiceEntry = Boolean(servicesParam)
+    if (isServiceEntry && !shouldRestoreDraft) {
+      setStep(1)
+      setSelectedSlot(null)
+      setBooking({
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+      })
+      setFormErrors({ email: '', phone: '', payment: '' })
+      setPayment({
+        method: 'on_hand',
+        paymentType: 'downpayment',
+        selectedAccount: '',
+        amount: '',
+        proofFile: null,
+        proofPreview: null,
+      })
+    }
+  }, [shouldRestoreDraft])
+
+  useEffect(() => {
+    if (!prefillVariantId || services.length === 0) return
+
+    const targetServiceId = prefillServiceIds[0] || selectedService || ''
+    if (!targetServiceId) return
+
+    const service = services.find((item) => String(item.id) === String(targetServiceId))
+    if (!service || !Array.isArray(service.variants) || service.variants.length === 0) return
+
+    const parsedVariantId = Number(prefillVariantId)
+    if (!Number.isFinite(parsedVariantId)) return
+    const hasVariant = service.variants.some((variant) => Number(variant.id) === parsedVariantId)
+    if (!hasVariant) return
+
+    setSelectedVariants((prev) => {
+      const existing = Number(prev[service.id])
+      if (existing === parsedVariantId) return prev
+      return {
+        ...prev,
+        [service.id]: parsedVariantId,
+      }
+    })
+  }, [prefillVariantId, prefillServiceIds, selectedService, services])
 
   useEffect(() => {
     if (rescheduling) {
@@ -651,21 +910,136 @@ const BookAppointment = () => {
       return
     }
 
-    if (prefillServiceIds.length > 0) {
+    if (prefillServiceIds.length > 0 && !hasAppliedServicePrefill) {
       const validIds = services
         .map(s => s.id.toString())
         .filter(id => prefillServiceIds.includes(id))
-      setSelectedServices(validIds)
-      setSelectedService(validIds[0] || '')
+      const nextPrimaryService = validIds[0] || ''
+      if (!areStringArraysEqual(selectedServices, validIds)) {
+        setSelectedServices(validIds)
+      }
+      if (selectedService !== nextPrimaryService) {
+        setSelectedService(nextPrimaryService)
+      }
+      setHasAppliedServicePrefill(true)
+      return
+    }
+
+    if (selectedServices.length > 0 || selectedService) {
+      const validIds = services.map(s => s.id.toString())
+      const normalizedSelectedServices = selectedServices.filter(id => validIds.includes(id))
+      if (normalizedSelectedServices.length !== selectedServices.length) {
+        setSelectedServices(normalizedSelectedServices)
+      }
+
+      if (!selectedService && normalizedSelectedServices.length > 0) {
+        setSelectedService(normalizedSelectedServices[0])
+      }
+
+      if (selectedService && !validIds.includes(selectedService)) {
+        setSelectedService(normalizedSelectedServices[0] || '')
+      }
       return
     }
 
     // No services selected from homepage, keep booking dashboard cleared
-    setSelectedServices([])
-    setSelectedService('')
-    setSelectedVariants({})
-    setSelectedSlot(null)
-  }, [services, prefillServiceIds, rescheduling])
+    if (selectedServices.length > 0) {
+      setSelectedServices([])
+    }
+    if (selectedService) {
+      setSelectedService('')
+    }
+    if (Object.keys(selectedVariants).length > 0) {
+      setSelectedVariants({})
+    }
+    if (selectedSlot) {
+      setSelectedSlot(null)
+    }
+  }, [services, prefillServiceIds, hasAppliedServicePrefill, rescheduling, selectedServices, selectedService, selectedVariants, selectedSlot])
+
+  useEffect(() => {
+    if (!hasSelectedServicesForStylistFilter) {
+      setSpecializedStylistIds(null)
+      setStylistSpecializationNames({})
+      setSpecializationFilterError('')
+      setSpecializationFilterLoading(false)
+      return
+    }
+
+    let isCancelled = false
+
+    const loadStylistsByServices = async () => {
+      const serviceIds = selectedServiceFilterKey
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+
+      try {
+        setSpecializationFilterLoading(true)
+        setSpecializationFilterError('')
+
+        const response = await api.get('/api/stylists/by-services', {
+          params: { services: serviceIds },
+        })
+
+        if (isCancelled) return
+
+        const payload = Array.isArray(response?.data?.data)
+          ? response.data.data
+          : (Array.isArray(response?.data) ? response.data : [])
+
+        const ids = payload
+          .map((item) => String(item?.id || '').trim())
+          .filter(Boolean)
+
+        const specializationMap = {}
+        payload.forEach((item) => {
+          const stylistId = String(item?.id || '').trim()
+          if (!stylistId) return
+          specializationMap[stylistId] = Array.isArray(item?.specialization_names)
+            ? item.specialization_names.filter(Boolean)
+            : []
+        })
+
+        // If no stylist matches selected services, fall back to full list so booking is not blocked.
+        if (ids.length === 0) {
+          setSpecializedStylistIds(null)
+          setStylistSpecializationNames({})
+          setSpecializationFilterError('No exact specialization match found. Showing all stylists.')
+          return
+        }
+
+        setSpecializedStylistIds(ids)
+        setStylistSpecializationNames(specializationMap)
+
+        if (!rescheduling) {
+          setSelectedStylist((previousValue) => {
+            const normalizedPrevious = String(previousValue || '')
+            if (!normalizedPrevious || normalizedPrevious.toUpperCase() === AUTO_STYLIST_VALUE) {
+              return previousValue
+            }
+            return ids.includes(normalizedPrevious) ? previousValue : AUTO_STYLIST_VALUE
+          })
+        }
+      } catch (error) {
+        if (isCancelled) return
+        console.error('Failed to filter stylists by selected services:', error)
+        setSpecializedStylistIds(null)
+        setStylistSpecializationNames({})
+        setSpecializationFilterError('Unable to load stylist specializations right now. Showing the full stylist list.')
+      } finally {
+        if (!isCancelled) {
+          setSpecializationFilterLoading(false)
+        }
+      }
+    }
+
+    loadStylistsByServices()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [hasSelectedServicesForStylistFilter, rescheduling, selectedServiceFilterKey])
 
   useEffect(() => {
     if (rescheduling) {
@@ -679,27 +1053,95 @@ const BookAppointment = () => {
     if (prefillStylistId) {
       const stylistMatch = stylists.find(s => s.id.toString() === prefillStylistId)
       if (stylistMatch) {
-        setSelectedStylist(stylistMatch.id)
+        setSelectedStylist(String(stylistMatch.id))
       }
       return
     }
 
+    if (String(selectedStylist || '').toUpperCase() === AUTO_STYLIST_VALUE) {
+      return
+    }
+
+    if (selectedStylist) {
+      const stylistMatch = stylists.find(s => s.id.toString() === String(selectedStylist))
+      if (stylistMatch) {
+        return
+      }
+    }
+
     // No prefill stylist provided, keep stylist selection cleared
     setSelectedStylist('')
-  }, [stylists, prefillStylistId, rescheduling])
+  }, [stylists, prefillStylistId, rescheduling, selectedStylist])
 
   useEffect(() => {
-    if (step === 2 && (selectedStylist || stylists[0])) {
+    if (step === 2 && (selectedStylist || specializationScopedStylists[0])) {
       // Only fetch if we have at least one service selected
       const hasServices = selectedServices.length > 0 || selectedService
       if (hasServices) {
         fetchAvailability()
       } else {
+        setAvailabilityLoading(false)
         setAvailability([])
         setSelectedSlot(null)
       }
     }
-  }, [selectedDate, selectedStylist, selectedService, selectedServices, stylists.length, step])
+  }, [selectedDate, selectedStylist, selectedService, selectedServices, specializationScopedStylistKey, step])
+
+  useEffect(() => {
+    if (receipt) return
+
+    const draftPayload = {
+      step: normalizeStepValue(step),
+      selectedDate,
+      calendarMonth,
+      calendarYear,
+      selectedStylist: selectedStylist ? String(selectedStylist) : '',
+      selectedService: selectedService ? String(selectedService) : '',
+      selectedServices: selectedServices.map((id) => String(id)).filter(Boolean),
+      selectedVariants,
+      selectedSlot: selectedSlot
+        ? {
+          start: selectedSlot.start,
+          end: selectedSlot.end,
+          available: selectedSlot.available !== false,
+        }
+        : null,
+      booking: {
+        name: booking.name || '',
+        email: booking.email || '',
+        phone: booking.phone || '',
+        address: booking.address || '',
+      },
+      payment: {
+        method: payment.method === 'online' ? 'online' : 'on_hand',
+        paymentType: payment.paymentType === 'full' ? 'full' : 'downpayment',
+        selectedAccount: payment.selectedAccount || '',
+        amount: payment.amount || '',
+      },
+    }
+
+    try {
+      window.sessionStorage.setItem(BOOK_APPOINTMENT_DRAFT_KEY, JSON.stringify(draftPayload))
+    } catch {
+      // Ignore session storage errors
+    }
+  }, [
+    step,
+    selectedDate,
+    calendarMonth,
+    calendarYear,
+    selectedStylist,
+    selectedService,
+    selectedServices,
+    selectedVariants,
+    selectedSlot,
+    booking,
+    payment.method,
+    payment.paymentType,
+    payment.selectedAccount,
+    payment.amount,
+    receipt,
+  ])
 
   const refreshData = async () => {
     try {
@@ -730,7 +1172,7 @@ const BookAppointment = () => {
       const startSource = appt.start_datetime_pht || appt.start_datetime
       const endSource = appt.end_datetime_pht || appt.end_datetime
       setSelectedDate(startSource.slice(0, 10))
-      setSelectedStylist(appt.stylist_id)
+      setSelectedStylist(appt.stylist_id ? String(appt.stylist_id) : '')
       setSelectedService(appt.service_id)
       setSelectedSlot({
         start: startSource,
@@ -751,12 +1193,32 @@ const BookAppointment = () => {
   }
 
   const fetchAvailability = async () => {
+    const selectedServiceId = selectedService || selectedServices[0] || ''
+    const stylistId = effectiveStylistId || specializationScopedStylists[0]?.id
+    if (!stylistId || !selectedServiceId) {
+      setAvailabilityLoading(false)
+      setAvailability([])
+      return
+    }
+
     try {
-      const stylistId = selectedStylist || stylists[0]?.id
-      if (!stylistId || !selectedService) return
-      const res = await api.get(`/stylists/${stylistId}/availability`, {
-        params: { date: selectedDate, service_id: selectedService },
-      })
+      setAvailabilityLoading(true)
+      const availabilityParams = {
+        params: { date: selectedDate, service_id: selectedServiceId },
+        timeout: 15000,
+      }
+
+      let res
+      try {
+        // Prefer stateless API route to avoid session-lock related pending requests.
+        res = await api.get(`/api/stylists/${stylistId}/availability`, availabilityParams)
+      } catch (primaryError) {
+        res = await api.get(`/stylists/${stylistId}/availability`, availabilityParams)
+        if (import.meta.env.DEV) {
+          // Keep primary error visible in development while fallback succeeds.
+          console.warn('Primary availability route failed, fallback route succeeded.', primaryError)
+        }
+      }
       setAvailability(res.data || [])
       // Clear selected slot if it's no longer available
       if (selectedSlot) {
@@ -779,8 +1241,11 @@ const BookAppointment = () => {
       }
     } catch (e) {
       console.error(e)
+      toast.error('Failed to load available time slots. Please try again.')
       setAvailability([])
       setSelectedSlot(null)
+    } finally {
+      setAvailabilityLoading(false)
     }
   }
 
@@ -860,7 +1325,7 @@ const BookAppointment = () => {
       }
     }
     
-    if (!selectedStylist) {
+    if (!effectiveStylistId) {
       toast.warn('Please select a stylist')
       return
     }
@@ -965,7 +1430,9 @@ const BookAppointment = () => {
         formData.append('service_variants', JSON.stringify(serviceVariantsMap))
       }
       
-      formData.append('stylist_id', selectedStylist)
+      if (effectiveStylistId) {
+        formData.append('stylist_id', effectiveStylistId)
+      }
       formData.append('date', bookingDate)
       formData.append('preferred_time', preferredTime)
       formData.append('payment_method', payment.method)
@@ -1087,7 +1554,19 @@ const BookAppointment = () => {
 
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
   const selectedServiceData = services.find(s => s.id === parseInt(selectedService)) // For backward compatibility
-  const selectedStylistData = stylists.find(s => s.id === parseInt(selectedStylist))
+  const isAutoStylistSelected = String(selectedStylist || '').toUpperCase() === AUTO_STYLIST_VALUE
+  const selectedStylistData = specializationScopedStylists.find((s) => s.id.toString() === String(selectedStylist))
+    || stylists.find((s) => s.id.toString() === String(selectedStylist))
+  const effectiveStylistData = isAutoStylistSelected ? (specializationScopedStylists[0] || null) : selectedStylistData
+  const effectiveStylistId = effectiveStylistData?.id ? String(effectiveStylistData.id) : ''
+  const visibleStylists = filterStylists(specializationScopedStylists, stylistSearch, stylistFilter)
+  const stylistFilterOptions = [
+    { key: 'all', label: 'All' },
+    { key: 'available', label: 'Available' },
+    { key: 'busy', label: 'Busy' },
+    { key: 'off', label: 'Off' },
+    { key: 'fully_booked', label: 'Fully Booked' },
+  ]
   const selectedDateLabel = selectedDate
     ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -1108,122 +1587,203 @@ const BookAppointment = () => {
     })}`
     : 'Select a time slot'
 
+  const selectedServiceIdsForSummary = selectedServices.length > 0
+    ? selectedServices
+    : (selectedService ? [selectedService] : [])
+  const selectedServicesForSummary = services.filter(s => selectedServiceIdsForSummary.includes(s.id.toString()))
+  const selectedServicesLabel = selectedServicesForSummary
+    .map((service) => {
+      if (service.variants && service.variants.length > 0 && selectedVariants[service.id]) {
+        const variant = service.variants.find(v => v.id === selectedVariants[service.id])
+        if (variant) {
+          return `${service.name} - ${variant.name}`
+        }
+      }
+      return service.name
+    })
+  const totalPriceForSummary = selectedServicesForSummary.reduce((sum, service) => {
+    if (service.variants && service.variants.length > 0 && selectedVariants[service.id]) {
+      const variant = service.variants.find(v => v.id === selectedVariants[service.id])
+      return sum + (variant ? variant.price_cents : service.price_cents)
+    }
+    return sum + service.price_cents
+  }, 0)
+  const canContinueStepTwo = Boolean(selectedSlot && selectedServiceIdsForSummary.length > 0 && effectiveStylistId)
+
+  const handleContinueFromStepTwo = () => {
+    if (!canContinueStepTwo) {
+      toast.warn('Please complete all booking details')
+      return
+    }
+
+    if (payment.method === 'online' || payment.method === 'on_hand') {
+      setStep(3)
+      return
+    }
+
+    handleBook()
+  }
+
   return (
-    <div className="min-h-screen bg-[#f4edff]">
+    <div className="booking-page min-h-screen app-panel-bg">
       {/* Header */}
-      <div className="bg-slate-900 text-white py-4 px-4 md:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
+      <header className="booking-nav px-4 md:px-6">
+        <div className="max-w-[1700px] mx-auto py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => navigate('/')}
-              className="text-gray-300 hover:text-white transition"
+              className="booking-brand flex items-center gap-3 min-w-0"
             >
-              Home
+              <span className="booking-logo-mark" aria-hidden="true">
+                <img
+                  src="/logo-transparent.png"
+                  alt="Kaye's Hair Salon logo"
+                  className="booking-logo-image"
+                />
+              </span>
+              <span className="truncate text-base md:text-lg font-semibold text-[#2C1338]">Kaye&apos;s Hair Salon and Spa</span>
             </button>
-            <h1 className="text-xl font-bold">Kaye's Hair Salon and Spa</h1>
+            <nav className="hidden md:flex items-center gap-2 text-sm">
+              <button onClick={() => navigate('/')} className="booking-nav-link">Home</button>
+              <button onClick={() => navigate('/services')} className="booking-nav-link">Services</button>
+              <button onClick={() => navigate('/stylists')} className="booking-nav-link">Stylists</button>
+            </nav>
           </div>
-          <button
-            onClick={() => navigate('/manage-booking/start')}
-            className="tap-safe w-full sm:w-auto px-4 py-2 bg-white/10 rounded hover:bg-white/20 text-sm transition"
-          >
-            Manage My Booking
-          </button>
+          <div className="flex items-center gap-2">
+            {step !== 1 && (
+              <button
+                onClick={() => navigate('/manage-booking/start')}
+                className="tap-safe booking-outline-btn"
+              >
+                Manage My Booking
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/book')}
+              className="tap-safe booking-cta-pill"
+            >
+              Book Appointment
+            </button>
+          </div>
         </div>
-      </div>
-      
-      <div className="app-mobile-shell space-y-6 max-w-[1400px] mx-auto w-full">
-      <h1 className="fluid-title-lg font-bold text-gray-900">Book Appointment</h1>
+      </header>
+
+      <section className="max-w-[1700px] mx-auto px-4 md:px-6 pt-6">
+        <div className="booking-hero rounded-3xl px-6 md:px-10 py-8 md:py-10 text-center md:text-left">
+          <h1 className="booking-hero-title fluid-title-lg font-bold">Book Your Salon Appointment</h1>
+          <p className="booking-hero-subtitle mt-2 text-base md:text-lg">
+            Schedule your visit with our professional stylists
+          </p>
+        </div>
+      </section>
+
+      <div className="app-mobile-shell space-y-6 max-w-[1700px] mx-auto w-full">
       
       {/* Step Indicator */}
-      <div className="flex items-center justify-center mb-6">
-        <div className="flex items-center">
-          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
-            step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-[#8f7a6f]'
-          }`}>
-            1
+      <div className="flex items-center justify-center mb-4">
+        <div className="booking-stepper flex items-start">
+          <div className="booking-step-item">
+            <div className={`booking-step-circle ${step >= 1 ? 'active' : ''}`}>
+              1
+            </div>
+            <div className="booking-step-label">Customer Information</div>
           </div>
-          <div className={`w-10 md:w-24 h-1 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
-            step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-[#8f7a6f]'
-          }`}>
-            2
+          <div className={`booking-step-line ${step >= 2 ? 'active' : ''}`}></div>
+          <div className="booking-step-item">
+            <div className={`booking-step-circle ${step >= 2 ? 'active' : ''}`}>
+              2
+            </div>
+            <div className="booking-step-label">Select Service</div>
           </div>
-          <div className={`w-10 md:w-24 h-1 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
-            step >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-[#8f7a6f]'
-          }`}>
-            3
+          <div className={`booking-step-line ${step >= 3 ? 'active' : ''}`}></div>
+          <div className="booking-step-item">
+            <div className={`booking-step-circle ${step >= 3 ? 'active' : ''}`}>
+              3
+            </div>
+            <div className="booking-step-label">Confirm Booking</div>
           </div>
         </div>
       </div>
 
       {/* Step 1: Customer Information */}
       {step === 1 && (
-        <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 sm:p-7 md:p-9 max-w-5xl mx-auto w-full">
+        <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
           <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Customer Information</h2>
           <p className="text-base md:text-lg text-gray-700 mb-7">Please provide your information to proceed with booking</p>
           
           <div className="space-y-5">
             <div>
               <label className="block text-base font-medium mb-2 text-gray-900">Full Name *</label>
-              <input
-                type="text"
-                required
-                className="w-full border rounded-lg px-4 py-3 text-base text-gray-900 placeholder-gray-500"
-                placeholder="Enter your full name"
-                value={booking.name}
-                onChange={e => setBooking({ ...booking, name: e.target.value })}
-              />
+              <div className="booking-input-wrap">
+                <span className="booking-input-icon" aria-hidden="true">👤</span>
+                <input
+                  type="text"
+                  required
+                  className="booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
+                  placeholder="Enter your full name"
+                  value={booking.name}
+                  onChange={e => setBooking({ ...booking, name: e.target.value })}
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-base font-medium mb-2 text-gray-900">Email *</label>
-              <input
-                type="email"
-                required
-                className={`w-full border rounded-lg px-4 py-3 text-base text-gray-900 placeholder-gray-500 ${formErrors.email ? 'border-red-500' : ''}`}
-                placeholder="your@email.com"
-                value={booking.email}
-                onChange={e => {
-                  setBooking({ ...booking, email: e.target.value })
-                  const validation = validateEmail(e.target.value)
-                  setFormErrors(prev => ({ ...prev, email: validation.message }))
-                }}
-              />
+              <div className="booking-input-wrap">
+                <span className="booking-input-icon" aria-hidden="true">✉</span>
+                <input
+                  type="email"
+                  required
+                  className={`booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.email ? 'border-red-500' : ''}`}
+                  placeholder="your@email.com"
+                  value={booking.email}
+                  onChange={e => {
+                    setBooking({ ...booking, email: e.target.value })
+                    const validation = validateEmail(e.target.value)
+                    setFormErrors(prev => ({ ...prev, email: validation.message }))
+                  }}
+                />
+              </div>
               {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
             </div>
             
             <div>
               <label className="block text-base font-medium mb-2 text-gray-900">Contact Number *</label>
-              <input
-                type="tel"
-                required
-                className={`w-full border rounded-lg px-4 py-3 text-base text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
-                placeholder="09171234567 or +639171234567"
-                value={booking.phone}
-                onChange={e => {
-                  setBooking({ ...booking, phone: e.target.value })
-                  const validation = validatePhone(e.target.value)
-                  setFormErrors(prev => ({ ...prev, phone: validation.message }))
-                }}
-              />
+              <div className="booking-input-wrap">
+                <span className="booking-input-icon" aria-hidden="true">📞</span>
+                <input
+                  type="tel"
+                  required
+                  className={`booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
+                  placeholder="09XXXXXXXXX"
+                  value={booking.phone}
+                  onChange={e => {
+                    setBooking({ ...booking, phone: e.target.value })
+                    const validation = validatePhone(e.target.value)
+                    setFormErrors(prev => ({ ...prev, phone: validation.message }))
+                  }}
+                />
+              </div>
               {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
             </div>
             
             <div>
               <label className="block text-base font-medium mb-2 text-gray-900">Address</label>
-              <input
-                type="text"
-                className="w-full border rounded-lg px-4 py-3 text-base text-gray-900 placeholder-gray-500"
-                placeholder="Your address"
-                value={booking.address}
-                onChange={e => setBooking({ ...booking, address: e.target.value })}
-              />
+              <div className="booking-input-wrap">
+                <span className="booking-input-icon" aria-hidden="true">📍</span>
+                <input
+                  type="text"
+                  className="booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
+                  placeholder="Your address"
+                  value={booking.address}
+                  onChange={e => setBooking({ ...booking, address: e.target.value })}
+                />
+              </div>
             </div>
             
             <button
               onClick={handleNextStep}
-              className="w-full bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 mt-4 text-base font-semibold"
+              className="booking-primary-btn w-full mt-4 text-base font-semibold px-5 py-3.5 rounded-xl"
             >
               Continue to Booking
             </button>
@@ -1234,24 +1794,200 @@ const BookAppointment = () => {
       {/* Step 2: Booking Details */}
       {step === 2 && (
         <>
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-5 md:p-6">
-            <div className="grid xl:grid-cols-12 gap-5">
-              <div className="xl:col-span-2">
-                <label className="text-sm text-gray-900 font-medium">Stylist *</label>
+          <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
+            <div className="booking-step2-layout">
+              <div className="booking-step2-column">
+                <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Stylist Selection *</label>
+                {/* Keep select in DOM for compatibility with existing state shape and fallback behavior */}
                 <select
-                  className="w-full mt-1 border rounded px-3 py-2 text-gray-900"
+                  className="sr-only"
+                  aria-hidden="true"
+                  tabIndex={-1}
                   value={selectedStylist}
                   onChange={e => setSelectedStylist(e.target.value)}
                 >
                   <option value="">Select Stylist</option>
-                  {stylists.map(s => (
+                  <option value={AUTO_STYLIST_VALUE}>No Preference</option>
+                  {specializationScopedStylists.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
+
+                <div className="booking-panel mt-3 rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
+                  <input
+                    type="text"
+                    value={stylistSearch}
+                    onChange={(e) => setStylistSearch(e.target.value)}
+                    placeholder="Search stylist, role, specialty..."
+                    className="w-full border border-[#e7e1ef] rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#f8c8dc] focus:border-[#E75480]"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {stylistFilterOptions.map((option) => (
+                      <button
+                        key={option.key}
+                        type="button"
+                        onClick={() => setStylistFilter(option.key)}
+                        className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                          stylistFilter === option.key
+                            ? 'bg-[#E75480] text-white border-[#E75480]'
+                            : 'bg-[#faf8fd] text-[#5f4a70] border-[#e9e2f2] hover:bg-[#f3edf9]'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {hasSelectedServicesForStylistFilter && (
+                    <div className="mt-3 space-y-2">
+                      {specializationFilterLoading && (
+                        <div className="rounded-lg border border-[#f3cade] bg-[#fff4f9] px-3 py-2 text-xs text-[#7e405a]">
+                          Filtering stylists based on selected services...
+                        </div>
+                      )}
+                      {!specializationFilterLoading && specializationFilterError && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                          {specializationFilterError}
+                        </div>
+                      )}
+                      {!specializationFilterLoading && !specializationFilterError && specializationScopedStylists.length === 0 && (
+                        <div className="rounded-lg border border-dashed border-[#e9e2f2] bg-[#faf8fd] px-3 py-3 text-xs text-[#7c688f]">
+                          No stylists match the selected services. Try removing a service or choose No Preference.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-3 max-h-[560px] overflow-y-auto space-y-3 pr-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStylist(AUTO_STYLIST_VALUE)}
+                      className={`w-full rounded-lg border px-4 py-4 text-left transition ${
+                        isAutoStylistSelected
+                          ? 'border-[#E75480] bg-[#fff4f9]'
+                          : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="h-12 w-12 rounded-full bg-[#fff1f7] text-[#b44d71] flex items-center justify-center text-lg">
+                          ⭐
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-base text-[#2C1338]">No Preference (Auto-Assign Best Available)</div>
+                          <div className="text-sm text-[#6f5b7e] mt-1">The system will choose an available stylist for your selected schedule.</div>
+                        </div>
+                        <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                          isAutoStylistSelected ? 'border-[#E75480] bg-[#E75480]' : 'border-[#d6c7ba]'
+                        }`}>
+                          {isAutoStylistSelected && <span className="h-2 w-2 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                    </button>
+
+                    {visibleStylists.length === 0 && (!hasSelectedServicesForStylistFilter || specializationScopedStylists.length > 0) && (
+                      <div className="rounded-lg border border-dashed border-[#e9e2f2] bg-[#faf8fd] px-3 py-4 text-xs text-[#7c688f] text-center">
+                        No stylists found for the current search/filter.
+                      </div>
+                    )}
+
+                    {visibleStylists.map((stylist) => {
+                      const stylistId = String(stylist.id)
+                      const status = normalizeStylistStatus(stylist)
+                      const statusLabel = getStatusLabel(status)
+                      const statusClass = getStatusClass(status)
+                      const isDisabled = (status === 'off' || status === 'fully_booked') && selectedStylist !== stylistId
+                      const isSelected = selectedStylist === stylistId
+                      const name = stylist?.name || 'Unnamed stylist'
+                      const initials = name
+                        .split(' ')
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((part) => part[0]?.toUpperCase() || '')
+                        .join('') || 'ST'
+                      const specialty = Array.isArray(stylist?.specialties)
+                        ? stylist.specialties.filter(Boolean).join(', ')
+                        : (stylist?.specialties || '')
+                      const specializationNames = Array.isArray(stylistSpecializationNames[stylistId])
+                        ? stylistSpecializationNames[stylistId].filter(Boolean)
+                        : []
+                      const metaLabel = specialty || specializationNames.join(', ') || stylist?.role || 'Stylist'
+                      const nextAvailable = stylist?.next_available || stylist?.nextAvailable || ''
+                      const imageSrc = stylist?.image
+                        ? (String(stylist.image).startsWith('http')
+                          ? stylist.image
+                          : `/${String(stylist.image).replace(/^\/+/, '')}`)
+                        : null
+
+                      return (
+                        <button
+                          key={stylist.id}
+                          type="button"
+                          onClick={() => !isDisabled && setSelectedStylist(stylistId)}
+                          disabled={isDisabled}
+                          title={isDisabled ? 'No slots available today' : `Select ${name}`}
+                          className={`w-full rounded-lg border px-4 py-4 text-left transition ${
+                            isDisabled
+                              ? 'opacity-60 cursor-not-allowed bg-[#f8f4ef] border-[#eadfd5]'
+                              : isSelected
+                                ? 'border-[#E75480] bg-[#fff4f9]'
+                                : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="relative h-12 w-12 rounded-full bg-[#fff1f7] text-[#7b4f63] flex items-center justify-center text-sm font-semibold overflow-hidden">
+                              <span>{initials}</span>
+                              {imageSrc && (
+                                <img
+                                  src={imageSrc}
+                                  alt={name}
+                                  className="absolute inset-0 h-full w-full object-cover"
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-base text-[#2C1338] truncate">{name}</div>
+                              <div className="text-sm text-[#6f5b7e] truncate">{metaLabel}</div>
+                              {specializationNames.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {specializationNames.slice(0, 3).map((serviceName) => (
+                                    <span
+                                      key={`${stylistId}-${serviceName}`}
+                                      className="px-2 py-0.5 rounded-full bg-[#f4edf9] text-[10px] font-medium text-[#614175]"
+                                    >
+                                      {serviceName}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}`}>
+                                  {statusLabel}
+                                </span>
+                                <span className="text-xs text-[#6f5b7e]">
+                                  {nextAvailable
+                                    ? `Next available: ${nextAvailable}`
+                                    : (status === 'off' || status === 'fully_booked' ? 'No slots today' : 'Next available: -')}
+                                </span>
+                              </div>
+                            </div>
+                            <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                              isSelected ? 'border-[#E75480] bg-[#E75480]' : 'border-[#d6c7ba]'
+                            }`}>
+                              {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="xl:col-span-7">
-                <label className="text-sm text-gray-900 font-medium">Services * (Select one or more)</label>
-                <div className="mt-2 max-h-[380px] overflow-y-auto border rounded-xl p-3 space-y-3 bg-white">
+              <div className="booking-step2-column">
+                <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Service Selection * (Select one or more)</label>
+                <div className="booking-panel mt-3 max-h-[560px] overflow-y-auto border border-[#ece6f4] rounded-2xl p-4 space-y-3 bg-white shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
                   {services.map(s => {
                     const serviceIdStr = s.id.toString()
                     const isSelected = selectedServices.includes(serviceIdStr) || selectedService === serviceIdStr
@@ -1259,8 +1995,8 @@ const BookAppointment = () => {
                     return (
                       <label
                         key={s.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition ${
-                          isSelected ? 'bg-blue-50 border-blue-300' : 'border-gray-200'
+                        className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
+                          isSelected ? 'bg-[#fff4f9] border-[#E75480]' : 'border-[#ece6f4] hover:border-[#e7bdd0] hover:bg-[#fff9fc]'
                         }`}
                       >
                         <input
@@ -1286,13 +2022,13 @@ const BookAppointment = () => {
                             }
                             setSelectedSlot(null) // Reset slot when services change
                           }}
-                          className="w-4 h-4 text-blue-600 rounded"
+                          className="w-5 h-5 text-[#E75480] rounded"
                         />
                         <div className="flex-1">
-                          <div className="font-semibold text-gray-900 text-base">{s.name}</div>
+                          <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
                           {s.variants && s.variants.length > 0 ? (
-                            <div className="text-xs text-gray-700 mt-1">
-                              <div className="font-medium text-blue-600 mb-1">
+                            <div className="text-sm text-[#5a4767] mt-1">
+                              <div className="font-medium text-[#E75480] mb-1.5">
                                 {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
                               </div>
                               {isSelected && (
@@ -1300,7 +2036,7 @@ const BookAppointment = () => {
                                   {s.variants.map(variant => (
                                     <label
                                       key={variant.id}
-                                      className="flex items-center gap-2 p-1 hover:bg-[#f7f1ec] rounded cursor-pointer"
+                                      className="flex items-center gap-2 p-1.5 hover:bg-[#f7f2fb] rounded-lg cursor-pointer"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <input
@@ -1314,9 +2050,9 @@ const BookAppointment = () => {
                                           })
                                           setSelectedSlot(null) // Reset slot when variant changes
                                         }}
-                                        className="w-3 h-3"
+                                        className="w-3 h-3 text-[#E75480]"
                                       />
-                                      <span className="text-xs">
+                                      <span className="text-sm text-[#4a3756]">
                                         {variant.name} - {currency(variant.price_cents)}
                                       </span>
                                     </label>
@@ -1325,7 +2061,7 @@ const BookAppointment = () => {
                               )}
                             </div>
                           ) : (
-                            <div className="text-xs text-gray-700">
+                            <div className="text-sm text-[#5a4767]">
                               {currency(s.price_cents)}
                             </div>
                           )}
@@ -1345,32 +2081,99 @@ const BookAppointment = () => {
                     return sum + s.price_cents
                   }, 0)
                   return (
-                    <div className="text-sm font-semibold text-blue-600 mt-2">
+                    <div className="text-sm font-semibold text-[#E75480] mt-3">
                       {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected |
                       Total: {currency(totalPrice)}
                     </div>
                   )
                 })()}
               </div>
-              <div className="xl:col-span-3">
-                <label className="text-sm text-gray-900 font-medium">Customer</label>
-                <div className="mt-1 p-2 bg-gray-50 rounded text-sm">
-                  <div className="font-medium text-gray-900">{booking.name}</div>
-                  {booking.email && <div className="text-xs text-gray-700">{booking.email}</div>}
-                  {booking.phone && <div className="text-xs text-gray-700">{booking.phone}</div>}
-                  {booking.address && <div className="text-xs text-gray-700">{booking.address}</div>}
+              <div className="booking-step2-column booking-summary-column">
+                <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
+                  <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Booking Summary</label>
+                  <div className="mt-3 space-y-3 text-sm">
+                    <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
+                      <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
+                      <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
+                      {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
+                      {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
+                    </div>
+
+                    <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                      <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Stylist</div>
+                      <div className="font-medium text-[#2C1338]">
+                        {isAutoStylistSelected
+                          ? (effectiveStylistData?.name
+                            ? `${effectiveStylistData.name} (Auto-assigned)`
+                            : 'No Preference (Auto-Assign)')
+                          : (selectedStylistData?.name || 'Not selected')}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                      <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
+                      {selectedServicesLabel.length > 0 ? (
+                        <ul className="mt-1 space-y-1">
+                          {selectedServicesLabel.slice(0, 3).map((serviceName) => (
+                            <li key={serviceName} className="text-xs text-[#4e3b5b]">{serviceName}</li>
+                          ))}
+                          {selectedServicesLabel.length > 3 && (
+                            <li className="text-xs text-[#7c688f]">+{selectedServicesLabel.length - 3} more</li>
+                          )}
+                        </ul>
+                      ) : (
+                        <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                        <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Date</div>
+                        <div className="text-xs font-medium text-[#2C1338]">{selectedDateLabel}</div>
+                      </div>
+                      <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                        <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Time</div>
+                        <div className="text-xs font-medium text-[#2C1338]">{selectedTimeLabel}</div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#f5d6e4] bg-[#fff6fa] px-3 py-2.5">
+                      <div className="text-[11px] uppercase tracking-wide text-[#8f5170]">Total Price</div>
+                      <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => setStep(1)}
+                        className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                      >
+                        Back to Customer Info
+                      </button>
+                      {rescheduling ? (
+                        <button
+                          onClick={handleReschedule}
+                          disabled={!selectedSlot}
+                          className="tap-safe bg-amber-500 text-white px-4 py-2.5 rounded-xl hover:bg-amber-600 disabled:opacity-50"
+                        >
+                          Confirm Reschedule
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleContinueFromStepTwo}
+                          disabled={!canContinueStepTwo}
+                          className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
+                        >
+                          {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment ->' : 'Confirm Booking'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setStep(1)}
-                  className="text-xs text-blue-600 hover:underline mt-1"
-                >
-                  Edit Information
-                </button>
               </div>
             </div>
           </div>
 
-          <div className="grid xl:grid-cols-2 gap-4">
+          <div className="booking-step2-schedule-grid grid xl:grid-cols-2 gap-4">
             <Calendar
               month={calendarMonth}
               year={calendarYear}
@@ -1393,7 +2196,8 @@ const BookAppointment = () => {
             <SlotList 
               slots={availability} 
               selected={selectedSlot}
-              selectedDate={selectedDate}
+              loading={availabilityLoading}
+              ready={Boolean((effectiveStylistId || stylists[0]?.id) && (selectedService || selectedServices.length > 0))}
               onSelect={(slot) => {
                 // Verify slot is available
                 if (slot.available === false) {
@@ -1432,126 +2236,22 @@ const BookAppointment = () => {
             />
           </div>
 
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-            <h3 className="font-semibold mb-2 text-gray-900">Selected Schedule</h3>
+          <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4">
+            <h3 className="font-semibold mb-2 text-[#2C1338]">Selected Schedule</h3>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
-              <div className="rounded-lg bg-[#f7f1ec] px-3 py-2 text-[#3b2f2a]">
+              <div className="rounded-lg bg-[#faf8fd] border border-[#efe8f5] px-3 py-2 text-[#4e3b5b]">
                 <span className="font-medium">Date:</span> {selectedDateLabel}
               </div>
-              <div className="rounded-lg bg-[#f7f1ec] px-3 py-2 text-[#3b2f2a]">
+              <div className="rounded-lg bg-[#faf8fd] border border-[#efe8f5] px-3 py-2 text-[#4e3b5b]">
                 <span className="font-medium">Time:</span> {selectedTimeLabel}
               </div>
             </div>
           </div>
 
-          {/* Booking Summary - Show all selected services */}
-          {((selectedServices.length > 0 || selectedService) && selectedStylistData) && (() => {
-            const serviceIds = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
-            const selectedServicesData = services.filter(s => serviceIds.includes(s.id.toString()))
-            // Calculate total price: use variant price if selected, otherwise service price
-            const totalPrice = selectedServicesData.reduce((sum, s) => {
-              if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
-                const variant = s.variants.find(v => v.id === selectedVariants[s.id])
-                return sum + (variant ? variant.price_cents : s.price_cents)
-              }
-              return sum + s.price_cents
-            }, 0)
-            
-            return (
-              <div className="bg-blue-50 rounded-xl p-4">
-                <h3 className="font-semibold mb-3 text-gray-900">Booking Summary</h3>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-900">Service{selectedServicesData.length > 1 ? 's' : ''}:</span>
-                    <ul className="list-disc list-inside ml-2 mt-1 space-y-1">
-                      {selectedServicesData.map(s => {
-                        // Get the price for this service (variant or base)
-                        let servicePrice = s.price_cents
-                        let serviceName = s.name
-                        if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
-                          const variant = s.variants.find(v => v.id === selectedVariants[s.id])
-                          if (variant) {
-                            servicePrice = variant.price_cents
-                            serviceName = `${s.name} - ${variant.name}`
-                          }
-                        }
-                        return (
-                          <li key={s.id} className="text-[#3b2f2a]">
-                            <span className="font-medium text-gray-900">{serviceName}</span> - {currency(servicePrice)}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                  <div className="pt-2 border-t border-gray-300">
-                    <span className="font-medium text-gray-900">Total Price:</span>
-                    <div className="font-bold text-lg text-green-700">{currency(totalPrice)}</div>
-                  </div>
-                  <div className="text-gray-900"><span className="font-medium">Stylist:</span> {selectedStylistData.name}</div>
-                  <div className="text-gray-900"><span className="font-medium">Date:</span> {selectedDateLabel}</div>
-                  <div className="text-gray-900"><span className="font-medium">Time:</span> {selectedTimeLabel}</div>
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* Payment Method Selection */}
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-            <h3 className="font-semibold mb-3 text-gray-900">Payment Method</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                payment.method === 'on_hand' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-              }`}>
-                <input
-                  type="radio"
-                  name="payment_method"
-                  value="on_hand"
-                  checked={payment.method === 'on_hand'}
-                  onChange={(e) => setPayment({
-                    ...payment,
-                    method: e.target.value,
-                    paymentType: 'downpayment',
-                    amount: '',
-                    proofFile: null,
-                    proofPreview: null,
-                  })}
-                  className="sr-only"
-                />
-                <div className="text-center">
-                  <div className="font-semibold text-gray-900">Pay at Salon (Cash)</div>
-                  <div className="text-sm text-[#8f7a6f] mt-1">Pay in person after the service</div>
-                </div>
-              </label>
-              <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                payment.method === 'online' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-              }`}>
-                <input
-                  type="radio"
-                  name="payment_method"
-                  value="online"
-                  checked={payment.method === 'online'}
-                  onChange={(e) => setPayment({
-                    ...payment,
-                    method: e.target.value,
-                    paymentType: 'downpayment',
-                    amount: '',
-                    proofFile: null,
-                    proofPreview: null,
-                  })}
-                  className="sr-only"
-                />
-                <div className="text-center">
-                  <div className="font-semibold text-gray-900">GCash (Manual)</div>
-                  <div className="text-sm text-[#8f7a6f] mt-1">Scan QR, pay via GCash, then upload your receipt</div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="booking-step2-mobile-actions flex flex-col sm:flex-row gap-3 xl:hidden">
             <button
               onClick={() => setStep(1)}
-              className="tap-safe bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
             >
               Back
             </button>
@@ -1559,28 +2259,17 @@ const BookAppointment = () => {
               <button
                 onClick={handleReschedule}
                 disabled={!selectedSlot}
-                className="tap-safe bg-amber-500 text-white px-4 py-2 rounded hover:bg-amber-600 disabled:opacity-50"
+                className="tap-safe bg-amber-500 text-white px-4 py-2.5 rounded-xl hover:bg-amber-600 disabled:opacity-50"
               >
                 Confirm Reschedule
               </button>
             ) : (
               <button
-                onClick={() => {
-                  if (!selectedSlot || (selectedServices.length === 0 && !selectedService) || !selectedStylist) {
-                    toast.warn('Please complete all booking details')
-                    return
-                  }
-                  // Go to payment step for both online and cash
-                  if (payment.method === 'online' || payment.method === 'on_hand') {
-                    setStep(3)
-                  } else {
-                    handleBook()
-                  }
-                }}
-                disabled={!selectedSlot || (selectedServices.length === 0 && !selectedService) || !selectedStylist}
-                className="tap-safe bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                onClick={handleContinueFromStepTwo}
+                disabled={!canContinueStepTwo}
+                className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
               >
-                {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment' : 'Confirm Booking'}
+                {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment ->' : 'Confirm Booking'}
               </button>
             )}
           </div>
@@ -1613,8 +2302,62 @@ const BookAppointment = () => {
           : (Number.isFinite(parsedPaymentAmount) ? parsedPaymentAmount : minDownpayment)
         
         return (
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 max-w-3xl mx-auto">
+          <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
             <h2 className="text-xl font-bold mb-4 text-gray-900">Payment Details</h2>
+
+            {/* Payment Method Selection (moved from Step 2) */}
+            <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4 mb-4">
+              <h3 className="font-semibold mb-3 text-[#2C1338]">Payment Method</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                  payment.method === 'on_hand' ? 'border-[#E75480] bg-[#fff4f9]' : 'border-[#e4dced] hover:border-[#d4c7e2]'
+                }`}>
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    value="on_hand"
+                    checked={payment.method === 'on_hand'}
+                    onChange={(e) => setPayment({
+                      ...payment,
+                      method: e.target.value,
+                      paymentType: 'downpayment',
+                      amount: '',
+                      proofFile: null,
+                      proofPreview: null,
+                    })}
+                    className="sr-only"
+                  />
+                  <div className="text-center">
+                    <div className="font-semibold text-[#2C1338]">Pay at Salon (Cash)</div>
+                    <div className="text-sm text-[#6f5b7e] mt-1">Pay in person after the service</div>
+                  </div>
+                </label>
+                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                  payment.method === 'online' ? 'border-[#E75480] bg-[#fff4f9]' : 'border-[#e4dced] hover:border-[#d4c7e2]'
+                }`}>
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    value="online"
+                    checked={payment.method === 'online'}
+                    onChange={(e) => setPayment({
+                      ...payment,
+                      method: e.target.value,
+                      paymentType: 'downpayment',
+                      amount: '',
+                      proofFile: null,
+                      proofPreview: null,
+                    })}
+                    className="sr-only"
+                  />
+                  <div className="text-center">
+                    <div className="font-semibold text-[#2C1338]">GCash (Manual)</div>
+                    <div className="text-sm text-[#6f5b7e] mt-1">Scan QR, pay via GCash, then upload your receipt</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <p className="text-sm text-[#8f7a6f] mb-4">
               {payment.method === 'online'
                 ? (
@@ -1631,6 +2374,14 @@ const BookAppointment = () => {
               <div className="text-sm space-y-1 text-gray-700">
                 <div><strong>Total Amount:</strong> {currency(totalAmountCents)}</div>
                 <div><strong>Services:</strong> {selectedServicesData.map(s => s.name).join(', ')}</div>
+                <div>
+                  <strong>Stylist:</strong>{' '}
+                  {isAutoStylistSelected
+                    ? (effectiveStylistData?.name
+                      ? `${effectiveStylistData.name} (Auto-assigned from No Preference)`
+                      : 'Auto-assigning stylist')
+                    : (selectedStylistData?.name || 'Not selected')}
+                </div>
                 <div><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                 {selectedSlot && (
                   <div><strong>Time:</strong> {new Date(selectedSlot.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}</div>
@@ -1815,7 +2566,7 @@ const BookAppointment = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="tap-safe bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
               >
                 Back
               </button>
@@ -1826,7 +2577,7 @@ const BookAppointment = () => {
                   (payment.method === 'online' && !payment.selectedAccount) ||
                   (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
                 )}
-                className="tap-safe flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
               >
                 {payment.method === 'online' ? 'Confirm Booking & Pay' : 'Confirm Booking'}
               </button>
@@ -1839,6 +2590,7 @@ const BookAppointment = () => {
         <ReceiptModal 
           appointment={receipt} 
           onClose={() => {
+            clearBookingDraft()
             localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
             localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
             localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)

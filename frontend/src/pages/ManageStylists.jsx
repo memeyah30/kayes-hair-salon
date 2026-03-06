@@ -80,7 +80,7 @@ const TimePicker = ({ value, onChange, disabled = false }) => {
         value={hour}
         onChange={handleHourChange}
         disabled={disabled}
-        className="tap-safe border rounded px-2 py-2 text-sm w-20"
+        className="tap-safe w-20 rounded-xl border border-[#DDD6FE] bg-white px-2 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
         style={{ 
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer'
@@ -92,12 +92,12 @@ const TimePicker = ({ value, onChange, disabled = false }) => {
           </option>
         ))}
       </select>
-      <span className="text-[#9b857a]">:</span>
+      <span className="text-[#6B6B6B]">:</span>
       <select
         value={minute}
         onChange={handleMinuteChange}
         disabled={disabled}
-        className="tap-safe border rounded px-2 py-2 text-sm w-20"
+        className="tap-safe w-20 rounded-xl border border-[#DDD6FE] bg-white px-2 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
         style={{ 
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer'
@@ -147,6 +147,30 @@ const buildDefaultWorkingHours = () => [
   { weekday: 6, enabled: false, start_time: '09:00', end_time: '17:00' },
 ]
 
+const normalizeStylistSpecializationIds = (stylist) => {
+  const rawIds = Array.isArray(stylist?.specialization_ids)
+    ? stylist.specialization_ids
+    : Array.isArray(stylist?.specialized_services)
+      ? stylist.specialized_services.map((service) => service?.id)
+      : []
+
+  return rawIds
+    .map((id) => String(id || '').trim())
+    .filter(Boolean)
+}
+
+const normalizeStylistSpecializationNames = (stylist) => {
+  if (Array.isArray(stylist?.specialization_names)) {
+    return stylist.specialization_names.filter(Boolean)
+  }
+  if (Array.isArray(stylist?.specialized_services)) {
+    return stylist.specialized_services
+      .map((service) => service?.name)
+      .filter(Boolean)
+  }
+  return []
+}
+
 const getInitialStylistFormData = () => ({
   name: '',
   email: '',
@@ -154,6 +178,7 @@ const getInitialStylistFormData = () => ({
   password: '',
   active: true,
   image: null,
+  specialization_ids: [],
   working_hours: buildDefaultWorkingHours(),
 })
 
@@ -215,6 +240,7 @@ const getMatchingSchedulePreset = (workingHours) => {
 
 const ManageStylists = () => {
   const [stylists, setStylists] = useState([])
+  const [services, setServices] = useState([])
   const [managers, setManagers] = useState([])
   const [selectedStaffType, setSelectedStaffType] = useState('')
   const [editing, setEditing] = useState(null)
@@ -228,6 +254,8 @@ const ManageStylists = () => {
   const [newTimeOff, setNewTimeOff] = useState({ start_datetime: '', end_datetime: '' })
   const [viewingStaff, setViewingStaff] = useState(null)
   const [weekOffset, setWeekOffset] = useState(0)
+  const [deleteDialog, setDeleteDialog] = useState(null)
+  const [isDeleteDialogLoading, setIsDeleteDialogLoading] = useState(false)
 
   useEffect(() => {
     refreshData()
@@ -284,13 +312,15 @@ const ManageStylists = () => {
   }
   const refreshData = async () => {
     try {
-      const [stylistsRes, managersRes] = await Promise.all([
+      const [stylistsRes, managersRes, servicesRes] = await Promise.all([
         api.get('/stylists'),
         api.get('/managers'),
+        api.get('/services'),
       ])
       console.log('Refreshed stylists:', stylistsRes.data) // Debug log
       setStylists(stylistsRes.data || [])
       setManagers(managersRes.data || [])
+      setServices(servicesRes.data || [])
     } catch (e) {
       toast.error('Failed to load staff records')
       console.error('Refresh error:', e)
@@ -404,6 +434,7 @@ const ManageStylists = () => {
         data.append('password', formData.password)
       }
       data.append('active', formData.active ? '1' : '0') // Convert boolean to string for FormData
+      data.append('specialization_ids', JSON.stringify(formData.specialization_ids || []))
       // Only send enabled working hours
       const enabledHours = formData.working_hours
         .filter(wh => wh.enabled)
@@ -500,6 +531,7 @@ const ManageStylists = () => {
       password: '', // Don't populate password when editing
       active: stylist.active,
       image: null,
+      specialization_ids: normalizeStylistSpecializationIds(stylist),
       working_hours: defaultHours,
     })
     setSchedulePreset(getMatchingSchedulePreset(defaultHours))
@@ -578,28 +610,67 @@ const ManageStylists = () => {
     }
   }
 
-  const handleDeleteManager = async (manager) => {
-    if (!window.confirm(`Are you sure you want to delete ${manager.name}?`)) {
-      return
-    }
+  const openDeleteDialog = (type, staff, mode = 'delete', meta = {}) => {
+    setDeleteDialog({
+      type,
+      staff,
+      mode,
+      ...meta,
+    })
+  }
 
+  const closeDeleteDialog = () => {
+    if (isDeleteDialogLoading) return
+    setDeleteDialog(null)
+  }
+
+  const handleDeleteManager = async (manager) => {
     try {
       await api.delete(`/managers/${manager.id}`)
       toast.success('Manager deleted')
       if (editingManager?.id === manager.id) {
         resetManagerForm()
       }
+      if (viewingStaff?.type === 'manager' && viewingStaff.staff.id === manager.id) {
+        setViewingStaff(null)
+      }
       refreshData()
+      return true
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to delete manager')
+      return false
+    }
+  }
+
+  const handleDeactivateStylist = async (stylist) => {
+    try {
+      const data = new FormData()
+      data.append('active', '0')
+      data.append('_method', 'PATCH')
+      const response = await api.post(`/stylists/${stylist.id}`, data, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+
+      toast.success('Stylist deactivated successfully')
+      if (response?.data) {
+        setStylists((prevStylists) =>
+          prevStylists.map((st) => (st.id === stylist.id ? { ...st, ...response.data } : st))
+        )
+      }
+      if (viewingStaff?.type === 'stylist' && viewingStaff.staff.id === stylist.id) {
+        setViewingStaff(null)
+      }
+      setTimeout(() => refreshData(), 500)
+      return true
+    } catch {
+      toast.error('Failed to deactivate stylist')
+      return false
     }
   }
 
   const handleDeleteStylist = async (stylist) => {
-    if (!window.confirm(`Are you sure you want to delete ${stylist.name}? This action cannot be undone.`)) {
-      return
-    }
-
     try {
       await api.delete(`/stylists/${stylist.id}`)
       toast.success('Stylist deleted successfully')
@@ -610,40 +681,68 @@ const ManageStylists = () => {
         setViewingStaff(null)
       }
       refreshData()
+      return { success: true }
     } catch (e) {
       const errorData = e.response?.data
       const message = errorData?.message || 'Failed to delete stylist'
       const appointmentCount = errorData?.appointment_count
 
       if (appointmentCount) {
-        const shouldDeactivate = window.confirm(
-          `${message}\n\nThis stylist has ${appointmentCount} appointment(s). Would you like to deactivate them instead?`
-        )
-        if (shouldDeactivate) {
-          try {
-            const data = new FormData()
-            data.append('active', '0')
-            data.append('_method', 'PATCH')
-            const response = await api.post(`/stylists/${stylist.id}`, data, {
-              headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-              }
-            })
-            toast.success('Stylist deactivated successfully')
-            setStylists(prevStylists =>
-              prevStylists.map(st => st.id === stylist.id ? { ...st, ...response.data } : st)
-            )
-            if (viewingStaff?.type === 'stylist' && viewingStaff.staff.id === stylist.id) {
-              setViewingStaff(null)
-            }
-            setTimeout(() => refreshData(), 500)
-          } catch (deactivateError) {
-            toast.error('Failed to deactivate stylist')
-          }
+        return {
+          success: false,
+          escalation: 'deactivate',
+          message,
+          appointmentCount,
         }
       } else {
         toast.error(message)
+        return { success: false }
       }
+    }
+  }
+
+  const confirmDeleteDialog = async () => {
+    if (!deleteDialog || isDeleteDialogLoading) return
+
+    const { type, staff, mode } = deleteDialog
+    setIsDeleteDialogLoading(true)
+
+    try {
+      if (mode === 'deactivate' && type === 'stylist') {
+        const deactivated = await handleDeactivateStylist(staff)
+        if (deactivated) {
+          setDeleteDialog(null)
+        }
+        return
+      }
+
+      if (type === 'manager') {
+        const deleted = await handleDeleteManager(staff)
+        if (deleted) {
+          setDeleteDialog(null)
+        }
+        return
+      }
+
+      const result = await handleDeleteStylist(staff)
+      if (result?.success) {
+        setDeleteDialog(null)
+        return
+      }
+
+      if (result?.escalation === 'deactivate') {
+        setDeleteDialog({
+          type: 'stylist',
+          staff,
+          mode: 'deactivate',
+          message: result.message,
+          appointmentCount: result.appointmentCount,
+        })
+        return
+      }
+      setDeleteDialog(null)
+    } finally {
+      setIsDeleteDialogLoading(false)
     }
   }
 
@@ -673,7 +772,7 @@ const ManageStylists = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2D2D2D]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -682,16 +781,16 @@ const ManageStylists = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="tap-safe px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >&larr;</button>
-              <h1 className="text-2xl font-bold">Manage Staff</h1>
+              <h1 className="text-2xl font-bold text-[#2D2D2D]">Manage Staff</h1>
             </div>
           </div>
 
-      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
-        <h2 className="text-xl font-semibold mb-4">
+      <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+        <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">
           {selectedStaffType === 'stylist'
             ? `${editing ? 'Edit' : 'Add'} Stylist`
             : selectedStaffType === 'manager'
@@ -701,9 +800,9 @@ const ManageStylists = () => {
         <form onSubmit={handleStaffFormSubmit} className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Staff Type *</label>
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Staff Type *</label>
               <select
-                className="w-full border rounded px-3 py-2"
+                className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                 value={selectedStaffType}
                 onChange={(e) => handleStaffTypeChange(e.target.value)}
               >
@@ -718,20 +817,20 @@ const ManageStylists = () => {
             <>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Name *</label>
               <input
                 type="text"
                 required
-                className="w-full border rounded px-3 py-2"
+                className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Email * (must be @gmail.com)</label>
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Email * (must be @gmail.com)</label>
               <input
                 type="email"
-                className={`w-full border rounded px-3 py-2 ${formErrors.email ? 'border-red-500' : ''}`}
+                className={`w-full rounded-xl border px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] ${formErrors.email ? 'border-red-500' : 'border-[#DDD6FE]'}`}
                 value={formData.email}
                 placeholder="stylist@gmail.com"
                 onChange={(e) => {
@@ -743,10 +842,10 @@ const ManageStylists = () => {
               {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Phone (Philippine format)</label>
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Phone (Philippine format)</label>
               <input
                 type="text"
-                className={`w-full border rounded px-3 py-2 ${formErrors.phone ? 'border-red-500' : ''}`}
+                className={`w-full rounded-xl border px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] ${formErrors.phone ? 'border-red-500' : 'border-[#DDD6FE]'}`}
                 value={formData.phone}
                 placeholder="09171234567 or +639171234567"
                 onChange={(e) => {
@@ -758,33 +857,33 @@ const ManageStylists = () => {
               {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">
                 Password {!editing && '*'} {editing && '(leave blank to keep current)'}
               </label>
               <input
                 type="password"
-                className="w-full border rounded px-3 py-2"
+                className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                 value={formData.password}
                 placeholder={editing ? '********' : 'Enter password (min 6 characters)'}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Image</label>
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Image</label>
               <input
                 type="file"
                 accept="image/*"
-                className="w-full border rounded px-3 py-2"
+                className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] file:mr-3 file:rounded-lg file:border-0 file:bg-[#F2EDFF] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#7B5CF5] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                 onChange={handleImageChange}
               />
               {imagePreview && (
-                <img src={imagePreview} alt="Preview" className="mt-2 h-44 w-full object-contain bg-[#f7f1ec] rounded" />
+                <img src={imagePreview} alt="Preview" className="mt-2 h-44 w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] object-contain" />
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
+              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Status</label>
               <select
-                className="w-full border rounded px-3 py-2"
+                className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                 value={formData.active ? 'true' : 'false'}
                 onChange={(e) => setFormData({ ...formData, active: e.target.value === 'true' })}
               >
@@ -794,51 +893,98 @@ const ManageStylists = () => {
             </div>
           </div>
 
+          <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3 md:p-4">
+            <label className="mb-2 block text-sm font-semibold text-[#2D2D2D]">Specializations</label>
+            <div className="max-h-44 overflow-y-auto rounded-xl border border-[#DDD6FE] bg-white p-3">
+              {services.length === 0 ? (
+                <div className="text-xs text-[#6B6B6B]">No services available yet.</div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {services.map((service) => {
+                    const serviceId = String(service.id)
+                    const isChecked = formData.specialization_ids.includes(serviceId)
+                    return (
+                      <label
+                        key={service.id}
+                        className={`flex items-center gap-2 rounded px-2 py-1.5 border transition cursor-pointer ${
+                          isChecked ? 'border-[#7B5CF5] bg-[#F2EDFF]' : 'border-transparent hover:bg-[#F6F2FF]'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(event) => {
+                            setFormData((prev) => {
+                              const current = Array.isArray(prev.specialization_ids) ? prev.specialization_ids : []
+                              const next = event.target.checked
+                                ? [...new Set([...current, serviceId])]
+                                : current.filter((id) => id !== serviceId)
+
+                              return {
+                                ...prev,
+                                specialization_ids: next,
+                              }
+                            })
+                          }}
+                          className="h-4 w-4 rounded border-[#C4B5FD] text-[#7B5CF5] focus:ring-[#C4B5FD]"
+                        />
+                        <span className="text-sm text-[#2D2D2D]">{service.name}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-[#6B6B6B]">
+              Select services this stylist can perform. This is used for booking-time stylist filtering.
+            </p>
+          </div>
+
           {isStylistBaseInfoComplete ? (
-          <div className="border-t pt-4 mt-4">
-            <div className="rounded-2xl border border-[#d6e3d3] bg-[#f9fcf8] p-4 md:p-5">
+          <div className="mt-4 border-t border-[#DDD6FE] pt-4">
+            <div className="rounded-2xl border border-[#DDD6FE] bg-[#FCFBFF] p-4 md:p-5">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <h3 className="font-semibold text-lg text-[#314235]">Weekly Schedule</h3>
-                  <p className="text-sm text-[#6f806f]">Set working days, day-offs, and manage absences for this staff member.</p>
+                  <h3 className="text-lg font-semibold text-[#2D2D2D]">Weekly Schedule</h3>
+                  <p className="text-sm text-[#6B6B6B]">Set working days, day-offs, and manage absences for this staff member.</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-[#6b574c]">
-                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#659a6d]" />Working</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#c8b9a9]" />Day Off</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#dc7f7f]" />Absent</span>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-[#6B6B6B]">
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#22C55E]" />Working</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#7B5CF5]" />Day Off</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#EF4444]" />Absent</span>
                 </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                <span className="inline-flex items-center rounded-full bg-[#dff0e1] px-3 py-1 text-[#4a8455]">{workingDaysCount} Working days</span>
-                <span className="inline-flex items-center rounded-full bg-[#f0e8df] px-3 py-1 text-[#8f7a6f]">{dayOffCount} Days off</span>
-                <span className="inline-flex items-center rounded-full bg-[#fbe3e3] px-3 py-1 text-[#bf5656]">{currentWeekAbsences} Absences this week</span>
+                <span className="inline-flex items-center rounded-full bg-[#DCFCE7] px-3 py-1 text-[#15803D]">{workingDaysCount} Working days</span>
+                <span className="inline-flex items-center rounded-full bg-[#F2EDFF] px-3 py-1 text-[#6846E8]">{dayOffCount} Days off</span>
+                <span className="inline-flex items-center rounded-full bg-[#FEE2E2] px-3 py-1 text-[#B91C1C]">{currentWeekAbsences} Absences this week</span>
               </div>
 
               <div className="mt-4 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setWeekOffset((prev) => prev - 1)}
-                  className="h-9 w-9 rounded-lg border border-[#e4d8ce] bg-white text-[#6b574c] hover:bg-[#f8f1ea]"
+                  className="h-9 w-9 rounded-lg border border-[#7B5CF5] bg-white text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                   aria-label="Previous week"
                 >
                   -
                 </button>
-                <div className="rounded-lg border border-[#e4d8ce] bg-white px-3 py-1.5 text-sm font-medium text-[#4b3d34]">
+                <div className="rounded-lg border border-[#DDD6FE] bg-white px-3 py-1.5 text-sm font-medium text-[#2D2D2D]">
                   {formatWeekRangeLabel(currentWeekRange.start, currentWeekRange.end)}
                 </div>
                 <button
                   type="button"
                   onClick={() => setWeekOffset((prev) => prev + 1)}
-                  className="h-9 w-9 rounded-lg border border-[#e4d8ce] bg-white text-[#6b574c] hover:bg-[#f8f1ea]"
+                  className="h-9 w-9 rounded-lg border border-[#7B5CF5] bg-white text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                   aria-label="Next week"
                 >
                   +
                 </button>
               </div>
 
-              <div className="mt-4 rounded-xl border border-[#efe6dc] bg-[#f7f2ec] p-3">
-                <div className="text-xs font-semibold tracking-[0.14em] text-[#9b857a] uppercase">Quick Presets</div>
+              <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-[#F6F2FF] p-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6B6B6B]">Quick Presets</div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {SCHEDULE_PRESETS.map((preset) => (
                     <button
@@ -847,8 +993,8 @@ const ManageStylists = () => {
                       onClick={() => applySchedulePreset(preset.value)}
                       className={`rounded-lg border px-3 py-1.5 text-sm transition ${
                         schedulePreset === preset.value
-                          ? 'border-[#6a9d72] bg-[#e6f4e9] text-[#3f7b4d]'
-                          : 'border-[#e3d8ce] bg-white text-[#6b574c] hover:bg-[#fdf9f5]'
+                          ? 'border-[#7B5CF5] bg-[#7B5CF5] text-white'
+                          : 'border-[#DDD6FE] bg-white text-[#7B5CF5] hover:bg-[#F2EDFF]'
                       }`}
                     >
                       {preset.shortLabel || preset.label}
@@ -868,8 +1014,8 @@ const ManageStylists = () => {
                   }
                   const isWorking = Boolean(daySchedule.enabled)
                   const rowClasses = isWorking
-                    ? 'border-[#9ac4a1] bg-[#eaf3ec]'
-                    : 'border-[#ddd2c6] bg-[#f1ece6]'
+                    ? 'border-[#BBF7D0] bg-[#F0FDF4]'
+                    : 'border-[#DDD6FE] bg-[#F8F5FF]'
 
                   return (
                     <div
@@ -877,14 +1023,14 @@ const ManageStylists = () => {
                       className={`flex flex-col gap-3 rounded-xl border px-3 py-3 md:flex-row md:items-center md:justify-between ${rowClasses}`}
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="w-24 text-sm font-semibold text-[#3b2f2a]">{dayLabel}</span>
+                        <span className="w-24 text-sm font-semibold text-[#2D2D2D]">{dayLabel}</span>
                         <button
                           type="button"
                           onClick={() => setDayStatus(weekday, 'working')}
                           className={`rounded-full border px-3 py-1 text-xs ${
                             isWorking
-                              ? 'border-[#6f9f75] bg-[#6f9f75] text-white'
-                              : 'border-[#a6c7ab] bg-[#eaf6ec] text-[#5d8f65] hover:bg-[#dff0e2]'
+                              ? 'border-[#22C55E] bg-[#22C55E] text-white'
+                              : 'border-[#BBF7D0] bg-[#DCFCE7] text-[#15803D] hover:bg-[#BBF7D0]'
                           }`}
                         >
                           Working
@@ -894,8 +1040,8 @@ const ManageStylists = () => {
                           onClick={() => setDayStatus(weekday, 'dayoff')}
                           className={`rounded-full border px-3 py-1 text-xs ${
                             !isWorking
-                              ? 'border-[#c8b9a9] bg-[#c8b9a9] text-white'
-                              : 'border-[#d9cdc0] bg-[#f3ede6] text-[#917f72] hover:bg-[#ebe1d6]'
+                              ? 'border-[#7B5CF5] bg-[#7B5CF5] text-white'
+                              : 'border-[#DDD6FE] bg-[#F2EDFF] text-[#6846E8] hover:bg-[#E9E2FF]'
                           }`}
                         >
                           Day Off
@@ -921,7 +1067,7 @@ const ManageStylists = () => {
                               absenceManager.scrollIntoView({ behavior: 'smooth', block: 'start' })
                             }
                           }}
-                          className="rounded-full border border-[#e9b9b9] bg-[#fdeceb] px-3 py-1 text-xs text-[#c46262] hover:bg-[#fbe0df]"
+                          className="rounded-full border border-[#FECACA] bg-[#FEE2E2] px-3 py-1 text-xs text-[#B91C1C] hover:bg-[#FECACA]"
                         >
                           Absent
                         </button>
@@ -933,13 +1079,13 @@ const ManageStylists = () => {
                           onChange={(value) => updateDaySchedule(weekday, 'start_time', value)}
                           disabled={!isWorking}
                         />
-                        <span className="text-[#9b857a]">to</span>
+                        <span className="text-[#6B6B6B]">to</span>
                         <TimePicker
                           value={daySchedule.end_time}
                           onChange={(value) => updateDaySchedule(weekday, 'end_time', value)}
                           disabled={!isWorking}
                         />
-                        <span className="w-10 text-right text-xs font-medium text-[#7c8f7f]">
+                        <span className="w-10 text-right text-xs font-medium text-[#6B6B6B]">
                           {getShiftHoursLabel(daySchedule)}
                         </span>
                       </div>
@@ -948,27 +1094,27 @@ const ManageStylists = () => {
                 })}
               </div>
 
-              <div className="mt-4 rounded-xl border border-[#e8ddd2] bg-white p-4" id="absence-manager">
-                <h4 className="text-lg font-semibold text-[#3b2f2a]">Absence Manager</h4>
-                <p className="mt-1 text-sm text-[#8f7a6f]">Mark specific dates the staff will be absent. These override the weekly schedule.</p>
+              <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-white p-4" id="absence-manager">
+                <h4 className="text-lg font-semibold text-[#2D2D2D]">Absence Manager</h4>
+                <p className="mt-1 text-sm text-[#6B6B6B]">Mark specific dates the staff will be absent. These override the weekly schedule.</p>
 
                 {editing ? (
                   <>
                     <div className="mt-3 grid gap-3 md:grid-cols-3">
                       <div>
-                        <label className="mb-1 block text-sm font-medium">Start Date & Time</label>
+                        <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Start Date & Time</label>
                         <input
                           type="datetime-local"
-                          className="w-full rounded-lg border border-[#e3d8ce] px-3 py-2"
+                          className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                           value={newTimeOff.start_datetime}
                           onChange={(e) => setNewTimeOff({ ...newTimeOff, start_datetime: e.target.value })}
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm font-medium">End Date & Time</label>
+                        <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">End Date & Time</label>
                         <input
                           type="datetime-local"
-                          className="w-full rounded-lg border border-[#e3d8ce] px-3 py-2"
+                          className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                           value={newTimeOff.end_datetime}
                           onChange={(e) => setNewTimeOff({ ...newTimeOff, end_datetime: e.target.value })}
                         />
@@ -977,7 +1123,7 @@ const ManageStylists = () => {
                         <button
                           type="button"
                           onClick={addTimeOff}
-                          className="w-full rounded-lg bg-[#de6666] px-4 py-2 font-medium text-white hover:bg-[#c75454]"
+                          className="w-full rounded-lg bg-[#EF4444] px-4 py-2 font-medium text-white transition hover:bg-[#DC2626]"
                         >
                           + Mark Absent
                         </button>
@@ -986,14 +1132,14 @@ const ManageStylists = () => {
 
                     <div className="mt-3 space-y-2">
                       {timeOffs.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-[#eadfd5] bg-[#faf7f4] px-3 py-3 text-sm text-[#9b857a]">
+                        <div className="rounded-lg border border-dashed border-[#DDD6FE] bg-[#F6F2FF] px-3 py-3 text-sm text-[#6B6B6B]">
                           No absences recorded.
                         </div>
                       ) : (
                         timeOffs.map((to, idx) => (
-                          <div key={idx} className="flex flex-col gap-2 rounded-lg border border-[#eadfd5] bg-[#faf7f4] p-3 md:flex-row md:items-center md:justify-between">
+                          <div key={idx} className="flex flex-col gap-2 rounded-lg border border-[#DDD6FE] bg-[#FCFBFF] p-3 md:flex-row md:items-center md:justify-between">
                             <div className="text-sm">
-                              <span className="font-medium text-[#3b2f2a]">
+                              <span className="font-medium text-[#2D2D2D]">
                                 {new Date(to.start_datetime).toLocaleDateString('en-US', {
                                   weekday: 'short',
                                   year: 'numeric',
@@ -1002,7 +1148,7 @@ const ManageStylists = () => {
                                   timeZone: 'Asia/Manila',
                                 })}
                               </span>
-                              <span className="ml-2 text-[#8f7a6f]">
+                              <span className="ml-2 text-[#6B6B6B]">
                                 {new Date(to.start_datetime).toLocaleTimeString('en-US', {
                                   hour: '2-digit',
                                   minute: '2-digit',
@@ -1014,7 +1160,7 @@ const ManageStylists = () => {
                                 })} PHT
                               </span>
                             </div>
-                            <button
+                              <button
                               type="button"
                               onClick={async () => {
                                 try {
@@ -1025,7 +1171,7 @@ const ManageStylists = () => {
                                   toast.error('Failed to remove day off')
                                 }
                               }}
-                              className="rounded-lg border border-[#efc1c1] bg-white px-3 py-1.5 text-sm text-[#c25d5d] hover:bg-[#fff4f4]"
+                              className="rounded-lg border border-[#FECACA] bg-white px-3 py-1.5 text-sm text-[#B91C1C] transition hover:bg-[#FEE2E2]"
                             >
                               Remove
                             </button>
@@ -1035,7 +1181,7 @@ const ManageStylists = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="mt-3 rounded-lg border border-dashed border-[#eadfd5] bg-[#faf7f4] px-3 py-3 text-sm text-[#9b857a]">
+                  <div className="mt-3 rounded-lg border border-dashed border-[#DDD6FE] bg-[#F6F2FF] px-3 py-3 text-sm text-[#6B6B6B]">
                     Save this staff first to enable Absence Manager.
                   </div>
                 )}
@@ -1043,22 +1189,22 @@ const ManageStylists = () => {
             </div>
           </div>
           ) : (
-            <div className="border-t pt-4 mt-4">
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-[#6b574c]">
+            <div className="mt-4 border-t border-[#DDD6FE] pt-4">
+              <div className="rounded-xl border border-[#FDE68A] bg-[#FEF3C7] p-4 text-sm text-[#B45309]">
                 Complete name, email, and password first to unlock weekly schedule.
               </div>
             </div>
           )}
 
           <div className="flex gap-2">
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            <button type="submit" className="rounded-lg bg-[#7B5CF5] px-4 py-2 text-white transition hover:bg-[#6846E8]">
               {editing ? 'Update' : 'Create'} Stylist
             </button>
             {editing && (
               <button
                 type="button"
                 onClick={resetStylistForm}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                className="rounded-lg border border-[#7B5CF5] bg-transparent px-4 py-2 text-[#7B5CF5] transition hover:bg-[#F2EDFF]"
               >
                 Cancel
               </button>
@@ -1069,41 +1215,41 @@ const ManageStylists = () => {
             <>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Name *</label>
+                  <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Name *</label>
                   <input
                     type="text"
                     required
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                     value={managerFormData.name}
                     onChange={(e) => setManagerFormData({ ...managerFormData, name: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Username *</label>
+                  <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Username *</label>
                   <input
                     type="text"
                     required
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                     value={managerFormData.username}
                     onChange={(e) => setManagerFormData({ ...managerFormData, username: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">
                     Password {!editingManager && '*'} {editingManager && '(leave blank to keep current)'}
                   </label>
                   <input
                     type="password"
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                     value={managerFormData.password}
                     placeholder={editingManager ? '********' : 'Enter password (min 6 characters)'}
                     onChange={(e) => setManagerFormData({ ...managerFormData, password: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Status</label>
+                  <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Status</label>
                   <select
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                     value={managerFormData.active ? 'true' : 'false'}
                     onChange={(e) => setManagerFormData({ ...managerFormData, active: e.target.value === 'true' })}
                   >
@@ -1114,14 +1260,14 @@ const ManageStylists = () => {
               </div>
 
               <div className="flex gap-2">
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                <button type="submit" className="rounded-lg bg-[#7B5CF5] px-4 py-2 text-white transition hover:bg-[#6846E8]">
                   {editingManager ? 'Update' : 'Create'} Manager
                 </button>
                 {editingManager && (
                   <button
                     type="button"
                     onClick={resetManagerForm}
-                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                    className="rounded-lg border border-[#7B5CF5] bg-transparent px-4 py-2 text-[#7B5CF5] transition hover:bg-[#F2EDFF]"
                   >
                     Cancel
                   </button>
@@ -1129,25 +1275,27 @@ const ManageStylists = () => {
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-[#eadfd5] bg-[#f7f1ec] p-4 text-sm text-[#6b574c]">
+            <div className="rounded-xl border border-[#DDD6FE] bg-[#F6F2FF] p-4 text-sm text-[#6B6B6B]">
               Select a staff type first to continue.
             </div>
           )}
         </form>
       </div>
 
-      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-        <h2 className="text-xl font-semibold mb-4">All Stylists ({stylists.length})</h2>
+      <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+        <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">All Stylists ({stylists.length})</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {stylists.length === 0 ? (
-            <div className="col-span-full text-center py-8 text-gray-400">
+            <div className="col-span-full py-8 text-center text-[#6B6B6B]">
               No stylists yet. Create your first stylist above.
             </div>
           ) : (
-            stylists.map(s => (
+            stylists.map((s) => {
+              const specializationNames = normalizeStylistSpecializationNames(s)
+              return (
               <div
                 key={s.id}
-                className="border rounded-lg p-4 hover:shadow-md transition cursor-pointer"
+                className="cursor-pointer rounded-[14px] border border-[#DDD6FE] bg-white p-4 transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(123,92,245,0.14)]"
                 onClick={() => openStaffProfile('stylist', s)}
                 role="button"
                 tabIndex={0}
@@ -1164,44 +1312,57 @@ const ManageStylists = () => {
                     key={`${s.id}-${s.image}`}
                     src={`http://localhost:8000/${s.image}?v=${Date.now()}`}
                   alt={s.name}
-                  className="w-full h-52 object-contain bg-[#f7f1ec] rounded mb-2"
+                  className="mb-2 h-52 w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] object-contain"
                     onError={(e) => {
                       e.target.style.display = 'none'
                     }}
                 />
                 ) : (
-                  <div className="w-full h-52 bg-gray-200 flex items-center justify-center text-gray-400 text-sm rounded mb-2">
+                  <div className="mb-2 flex h-52 w-full items-center justify-center rounded-xl border border-[#DDD6FE] bg-[#F6F2FF] text-sm text-[#7B5CF5]">
                     No Image
                   </div>
               )}
                 <div className="flex items-center gap-2">
-              <div className="font-semibold">{s.name}</div>
+              <div className="font-semibold text-[#2D2D2D]">{s.name}</div>
                   {!s.active && (
-                    <span className="text-xs bg-gray-200 text-[#8f7a6f] px-2 py-0.5 rounded">
+                    <span className="rounded-full bg-[#F2EDFF] px-2 py-0.5 text-xs text-[#6846E8]">
                       Inactive
                     </span>
                   )}
                 </div>
-              <div className="text-sm text-[#8f7a6f]">{s.email}</div>
-              <div className="text-xs text-[#9b857a] mt-1">Click this profile card to view details.</div>
+              <div className="text-sm text-[#6B6B6B]">{s.email}</div>
+              {specializationNames.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {specializationNames.slice(0, 3).map((name) => (
+                    <span
+                      key={`${s.id}-${name}`}
+                      className="inline-flex items-center rounded-full bg-[#f0eaff] px-2 py-0.5 text-[11px] text-[#5a47b8]"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="mt-1 text-xs text-[#6B6B6B]">Click this profile card to view details.</div>
             </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>
 
-      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-        <h2 className="text-xl font-semibold mb-4">All Managers ({managers.length})</h2>
+      <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+        <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">All Managers ({managers.length})</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {managers.length === 0 ? (
-            <div className="col-span-full text-center py-8 text-gray-400">
+            <div className="col-span-full py-8 text-center text-[#6B6B6B]">
               No managers yet. Create your first manager above.
             </div>
           ) : (
             managers.map((m) => (
               <div
                 key={m.id}
-                className="border rounded-lg p-4 hover:shadow-md transition cursor-pointer"
+                className="cursor-pointer rounded-[14px] border border-[#DDD6FE] bg-white p-4 transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(123,92,245,0.14)]"
                 onClick={() => openStaffProfile('manager', m)}
                 role="button"
                 tabIndex={0}
@@ -1214,15 +1375,15 @@ const ManageStylists = () => {
                 title="Click to view manager details"
               >
                 <div className="flex items-center gap-2">
-                  <div className="font-semibold">{m.name}</div>
+                  <div className="font-semibold text-[#2D2D2D]">{m.name}</div>
                   {!m.active && (
-                    <span className="text-xs bg-gray-200 text-[#8f7a6f] px-2 py-0.5 rounded">
+                    <span className="rounded-full bg-[#F2EDFF] px-2 py-0.5 text-xs text-[#6846E8]">
                       Inactive
                     </span>
                   )}
                 </div>
-                <div className="text-sm text-[#8f7a6f]">@{m.username}</div>
-                <div className="text-xs text-[#9b857a] mt-1">Click this profile card to view details.</div>
+                <div className="text-sm text-[#6B6B6B]">@{m.username}</div>
+                <div className="mt-1 text-xs text-[#6B6B6B]">Click this profile card to view details.</div>
               </div>
             ))
           )}
@@ -1232,23 +1393,23 @@ const ManageStylists = () => {
       {viewingStaff && (
         <div className="fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-[#1B1237]/45"
             onClick={closeStaffProfile}
             aria-hidden="true"
           />
-          <div className="absolute inset-x-0 top-8 mx-auto w-[92%] max-w-2xl bg-white rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.18)]">
+          <div className="absolute inset-x-0 top-8 mx-auto w-[92%] max-w-2xl rounded-[14px] border border-[#DDD6FE] bg-white shadow-[0_16px_32px_rgba(0,0,0,0.12)]">
             <div className="p-5 md:p-6">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <h3 className="text-xl font-semibold">
                     {viewingStaff.type === 'stylist' ? 'Stylist Profile' : 'Manager Profile'}
                   </h3>
-                  <p className="text-sm text-[#8f7a6f]">Review staff information before taking action.</p>
+                  <p className="text-sm text-[#6B6B6B]">Review staff information before taking action.</p>
                 </div>
                 <button
                   type="button"
                   onClick={closeStaffProfile}
-                  className="text-[#9b857a] hover:text-[#3b2f2a]"
+                  className="text-[#7B5CF5] transition hover:text-[#6846E8]"
                 >
                   Close
                 </button>
@@ -1260,39 +1421,56 @@ const ManageStylists = () => {
                     <img
                       src={`http://localhost:8000/${viewingStaff.staff.image}?v=${Date.now()}`}
                       alt={viewingStaff.staff.name}
-                      className="w-full h-64 object-contain bg-[#f7f1ec] rounded-xl"
+                      className="h-64 w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] object-contain"
                     />
                   ) : (
-                    <div className="w-full h-64 rounded-xl bg-[#f7f1ec] flex items-center justify-center text-[#9b857a]">
+                    <div className="flex h-64 w-full items-center justify-center rounded-xl border border-[#DDD6FE] bg-[#F6F2FF] text-[#7B5CF5]">
                       No Profile Image
                     </div>
                   )}
                   <div className="grid md:grid-cols-2 gap-3 text-sm">
-                    <div><span className="text-[#8f7a6f]">Name:</span> <span className="font-medium">{viewingStaff.staff.name}</span></div>
-                    <div><span className="text-[#8f7a6f]">Status:</span> <span className="font-medium">{viewingStaff.staff.active ? 'Active' : 'Inactive'}</span></div>
-                    <div><span className="text-[#8f7a6f]">Email:</span> <span className="font-medium">{viewingStaff.staff.email || 'N/A'}</span></div>
-                    <div><span className="text-[#8f7a6f]">Phone:</span> <span className="font-medium">{viewingStaff.staff.phone || 'N/A'}</span></div>
+                    <div><span className="text-[#6B6B6B]">Name:</span> <span className="font-medium">{viewingStaff.staff.name}</span></div>
+                    <div><span className="text-[#6B6B6B]">Status:</span> <span className="font-medium">{viewingStaff.staff.active ? 'Active' : 'Inactive'}</span></div>
+                    <div><span className="text-[#6B6B6B]">Email:</span> <span className="font-medium">{viewingStaff.staff.email || 'N/A'}</span></div>
+                    <div><span className="text-[#6B6B6B]">Phone:</span> <span className="font-medium">{viewingStaff.staff.phone || 'N/A'}</span></div>
                   </div>
                   <div>
-                    <div className="text-sm text-[#8f7a6f] mb-1">Weekly Schedule</div>
+                    <div className="mb-1 text-sm text-[#6B6B6B]">Specializations</div>
+                    {normalizeStylistSpecializationNames(viewingStaff.staff).length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {normalizeStylistSpecializationNames(viewingStaff.staff).map((name) => (
+                          <span
+                            key={`profile-specialization-${viewingStaff.staff.id}-${name}`}
+                            className="inline-flex items-center rounded-full bg-[#f0eaff] px-2 py-0.5 text-xs text-[#5a47b8]"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-[#6B6B6B]">No specialization assigned.</div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="mb-1 text-sm text-[#6B6B6B]">Weekly Schedule</div>
                     {Array.isArray(viewingStaff.staff.working_hours) && viewingStaff.staff.working_hours.length > 0 ? (
                       <div className="space-y-1 text-sm">
                         {viewingStaff.staff.working_hours.map((wh, idx) => (
-                          <div key={`${wh.weekday}-${idx}`} className="text-[#3b2f2a]">
+                          <div key={`${wh.weekday}-${idx}`} className="text-[#2D2D2D]">
                             {(WEEKDAYS.find((day) => day.value === wh.weekday)?.label || `Day ${wh.weekday}`)}: {wh.start_time} - {wh.end_time}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-sm text-[#8f7a6f]">No schedule set.</div>
+                      <div className="text-sm text-[#6B6B6B]">No schedule set.</div>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3 text-sm">
-                  <div><span className="text-[#8f7a6f]">Name:</span> <span className="font-medium">{viewingStaff.staff.name}</span></div>
-                  <div><span className="text-[#8f7a6f]">Username:</span> <span className="font-medium">@{viewingStaff.staff.username}</span></div>
-                  <div><span className="text-[#8f7a6f]">Status:</span> <span className="font-medium">{viewingStaff.staff.active ? 'Active' : 'Inactive'}</span></div>
+                  <div><span className="text-[#6B6B6B]">Name:</span> <span className="font-medium">{viewingStaff.staff.name}</span></div>
+                  <div><span className="text-[#6B6B6B]">Username:</span> <span className="font-medium">@{viewingStaff.staff.username}</span></div>
+                  <div><span className="text-[#6B6B6B]">Status:</span> <span className="font-medium">{viewingStaff.staff.active ? 'Active' : 'Inactive'}</span></div>
                 </div>
               )}
 
@@ -1309,25 +1487,75 @@ const ManageStylists = () => {
                       handleEditManager(staff)
                     }
                   }}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  className="rounded-lg bg-[#7B5CF5] px-4 py-2 text-white transition hover:bg-[#6846E8]"
                 >
                   Edit
                 </button>
                 <button
                   type="button"
-                  onClick={async () => {
+                  onClick={() => {
                     const staff = viewingStaff.staff
                     const type = viewingStaff.type
                     closeStaffProfile()
-                    if (type === 'stylist') {
-                      await handleDeleteStylist(staff)
-                    } else {
-                      await handleDeleteManager(staff)
-                    }
+                    openDeleteDialog(type, staff)
                   }}
-                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                  className="rounded-lg bg-[#EF4444] px-4 py-2 text-white transition hover:bg-[#DC2626]"
                 >
                   Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteDialog && (
+        <div className="fixed inset-0 z-[60]">
+          <div
+            className="absolute inset-0 bg-[#1B1237]/45"
+            onClick={closeDeleteDialog}
+            aria-hidden="true"
+          />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_16px_32px_rgba(0,0,0,0.12)]">
+              <h3 className="text-lg font-semibold text-[#2D2D2D]">
+                {deleteDialog.mode === 'deactivate'
+                  ? 'Cannot Delete Stylist'
+                  : `Delete ${deleteDialog.type === 'stylist' ? 'Stylist' : 'Manager'}?`}
+              </h3>
+              <p className="mt-2 text-sm text-[#6B6B6B]">
+                {deleteDialog.mode === 'deactivate'
+                  ? (deleteDialog.message || 'This stylist cannot be deleted.')
+                  : `Are you sure you want to delete ${deleteDialog.staff?.name || 'this staff'}?${deleteDialog.type === 'stylist' ? ' This action cannot be undone.' : ''}`}
+              </p>
+              {deleteDialog.mode === 'deactivate' && (
+                <p className="mt-2 text-xs text-[#6B6B6B]">
+                  This stylist has {deleteDialog.appointmentCount || 0} appointment(s). You can deactivate instead to keep appointment history.
+                </p>
+              )}
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeDeleteDialog}
+                  disabled={isDeleteDialogLoading}
+                  className="rounded-lg border border-[#7B5CF5] bg-transparent px-4 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF] disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteDialog}
+                  disabled={isDeleteDialogLoading}
+                  className={`rounded-lg px-4 py-2 text-sm text-white disabled:opacity-60 ${
+                    deleteDialog.mode === 'deactivate'
+                      ? 'bg-[#F59E0B] hover:bg-[#D97706]'
+                      : 'bg-[#EF4444] hover:bg-[#DC2626]'
+                  }`}
+                >
+                  {isDeleteDialogLoading
+                    ? 'Processing...'
+                    : deleteDialog.mode === 'deactivate'
+                      ? 'Deactivate Instead'
+                      : 'Delete'}
                 </button>
               </div>
             </div>

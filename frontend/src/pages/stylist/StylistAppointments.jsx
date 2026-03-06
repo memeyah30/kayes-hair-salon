@@ -18,6 +18,8 @@ const StylistAppointments = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const user = JSON.parse((sessionStorage.getItem('user') || localStorage.getItem('user')) || '{}')
+  const glassPanelClass = 'rounded-[28px] border border-white/32 bg-white/78 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md'
+  const inputClass = 'w-full rounded-xl border border-[#ddccff] bg-white/88 px-3 py-2 text-sm text-[#2d1f4f] outline-none focus:border-[#8c72df] focus:ring-2 focus:ring-[#d8cbff]'
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
@@ -186,14 +188,14 @@ const StylistAppointments = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f4edff] flex items-center justify-center">
+      <div className="min-h-screen app-admin-bg flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2d1f4f]">
       <Sidebar userType="stylist" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -202,20 +204,20 @@ const StylistAppointments = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/stylist/dashboard')}
-                className="h-11 w-11 rounded-full bg-white/80 border border-[#eadfd5] shadow-[0_8px_16px_rgba(92,64,51,0.08)] text-[#8f7a6f] hover:text-[#6f5b50] hover:bg-white transition text-xl font-bold flex items-center justify-center"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/36 bg-white/82 text-xl font-bold text-[#654abf] shadow-[0_14px_28px_rgba(43,20,97,0.12)] transition hover:bg-white"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >
                 &larr;
               </button>
               <div>
-                <h1 className="text-2xl font-semibold">My Appointments</h1>
-                <p className="text-sm text-[#8f7a6f]">All your assigned bookings in one view</p>
+                <h1 className="text-2xl font-semibold text-[#24173f]">My Appointments</h1>
+                <p className="text-sm text-[#7b67a9]">All your assigned bookings in one view</p>
               </div>
             </div>
             <button
               onClick={() => navigate('/stylist/schedule')}
-              className="w-full md:w-auto px-4 py-2 rounded-xl bg-[#b48a6b] text-white hover:bg-[#a27758]"
+              className="w-full md:w-auto rounded-2xl bg-gradient-to-r from-[#6f4ed0] to-[#8867df] px-4 py-2 text-white shadow-[0_14px_28px_rgba(43,20,97,0.24)] hover:from-[#6546c4] hover:to-[#7b5cd2]"
             >
               Go to My Schedule
             </button>
@@ -224,40 +226,40 @@ const StylistAppointments = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <button
               onClick={() => setFilter('all')}
-              className={`text-left rounded-2xl border p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)] ${filter === 'all' ? 'bg-[#f3e7dd] border-[#d8b8a4]' : 'bg-white/80 border-[#eadfd5]'}`}
+              className={`text-left rounded-[24px] border p-4 shadow-[0_14px_32px_rgba(59,31,114,0.12)] ${filter === 'all' ? 'border-white/14 bg-gradient-to-br from-[#8365ea] to-[#5b3dbe] text-white' : 'border-white/32 bg-white/78 backdrop-blur-md'}`}
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">All</p>
+              <p className={`text-xs uppercase tracking-[0.2em] ${filter === 'all' ? 'text-white/76' : 'text-[#8a75b9]'}`}>All</p>
               <p className="text-2xl font-semibold mt-2">{appointmentCounts.all}</p>
             </button>
             <button
               onClick={() => setFilter('today')}
-              className={`text-left rounded-2xl border p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)] ${filter === 'today' ? 'bg-[#eaf1ff] border-[#b9ccff]' : 'bg-white/80 border-[#eadfd5]'}`}
+              className={`text-left rounded-[24px] border p-4 shadow-[0_14px_32px_rgba(59,31,114,0.12)] ${filter === 'today' ? 'border-white/14 bg-gradient-to-br from-[#e88fa7] to-[#cf6d91] text-white' : 'border-white/32 bg-white/78 backdrop-blur-md'}`}
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Today</p>
+              <p className={`text-xs uppercase tracking-[0.2em] ${filter === 'today' ? 'text-white/76' : 'text-[#8a75b9]'}`}>Today</p>
               <p className="text-2xl font-semibold mt-2">{appointmentCounts.today}</p>
             </button>
             <button
               onClick={() => setFilter('upcoming')}
-              className={`text-left rounded-2xl border p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)] ${filter === 'upcoming' ? 'bg-[#ebf7f0] border-[#bfe2cf]' : 'bg-white/80 border-[#eadfd5]'}`}
+              className={`text-left rounded-[24px] border p-4 shadow-[0_14px_32px_rgba(59,31,114,0.12)] ${filter === 'upcoming' ? 'border-white/14 bg-gradient-to-br from-[#f0a160] to-[#d9874d] text-white' : 'border-white/32 bg-white/78 backdrop-blur-md'}`}
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Upcoming</p>
+              <p className={`text-xs uppercase tracking-[0.2em] ${filter === 'upcoming' ? 'text-white/76' : 'text-[#8a75b9]'}`}>Upcoming</p>
               <p className="text-2xl font-semibold mt-2">{appointmentCounts.upcoming}</p>
             </button>
             <button
               onClick={() => setFilter('completed')}
-              className={`text-left rounded-2xl border p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)] ${filter === 'completed' ? 'bg-[#edf7ef] border-[#c5decb]' : 'bg-white/80 border-[#eadfd5]'}`}
+              className={`text-left rounded-[24px] border p-4 shadow-[0_14px_32px_rgba(59,31,114,0.12)] ${filter === 'completed' ? 'border-white/14 bg-gradient-to-br from-[#74a0ae] to-[#547f91] text-white' : 'border-white/32 bg-white/78 backdrop-blur-md'}`}
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Completed</p>
+              <p className={`text-xs uppercase tracking-[0.2em] ${filter === 'completed' ? 'text-white/76' : 'text-[#8a75b9]'}`}>Completed</p>
               <p className="text-2xl font-semibold mt-2">{appointmentCounts.completed}</p>
             </button>
           </div>
 
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-3 md:p-4">
+          <div className={`${glassPanelClass} p-3 md:p-4`}>
             <div className="flex flex-col lg:flex-row lg:items-center gap-3">
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                className={`lg:w-auto ${inputClass}`}
               >
                 <option value="all">All Status</option>
                 <option value="today">Today</option>
@@ -268,7 +270,7 @@ const StylistAppointments = () => {
               <select
                 value={rangeFilter}
                 onChange={(e) => setRangeFilter(e.target.value)}
-                className="w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                className={`lg:w-auto ${inputClass}`}
               >
                 <option value="">All Dates</option>
                 <option value="today">Today</option>
@@ -279,7 +281,7 @@ const StylistAppointments = () => {
                 type="date"
                 value={searchDate}
                 onChange={(e) => setSearchDate(e.target.value)}
-                className="w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                className={`lg:w-auto ${inputClass}`}
               />
               <button
                 onClick={() => {
@@ -288,7 +290,7 @@ const StylistAppointments = () => {
                   setRangeFilter('')
                   setFilter('all')
                 }}
-                className="w-full lg:w-auto bg-[#f4ebe4] text-[#6f5b50] border border-[#eadfd5] rounded-xl px-4 py-2 text-sm hover:bg-[#eadfd5]"
+                className="w-full rounded-2xl border border-[#ddccff] bg-white/88 px-4 py-2 text-sm text-[#6046b7] hover:bg-white lg:w-auto"
               >
                 Reset
               </button>
@@ -298,9 +300,9 @@ const StylistAppointments = () => {
                   placeholder="Search customer or service..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-white/90 border border-[#eadfd5] rounded-xl pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                  className={`pl-4 pr-10 ${inputClass}`}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#b79b8f]">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8a75b9]">
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                     <circle cx="11" cy="11" r="7" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M20 20l-3.5-3.5" />
@@ -310,20 +312,20 @@ const StylistAppointments = () => {
             </div>
           </div>
 
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] overflow-hidden">
+          <div className={`${glassPanelClass} overflow-hidden`}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px]">
-                <thead className="bg-[#f6efea]">
+                <thead className="bg-[#f3ebff]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Service</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Date & Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Price</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#8a75b9]">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#8a75b9]">Service</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#8a75b9]">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#8a75b9]">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#8a75b9]">Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#8a75b9]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#f0e4dc]">
+                <tbody className="divide-y divide-[#ece2ff]">
                   {sortedAppointments.map((apt) => {
                     const appointmentServices = getAppointmentServices(apt)
                     const totalPrice = appointmentServices.reduce((sum, service) => sum + (service?.price_cents || 0), 0)
@@ -333,10 +335,10 @@ const StylistAppointments = () => {
                     const canModify = apt.status === 'booked'
 
                     return (
-                      <tr key={apt.id} className="hover:bg-[#f9f4ef]">
+                      <tr key={apt.id} className="hover:bg-[#fbf8ff]/70">
                         <td className="px-4 py-4">
-                          <div className="font-semibold text-sm">{apt.customer_name}</div>
-                          <div className="text-xs text-[#9b857a] mt-1">{apt.customer_phone || apt.customer_email || 'No contact'}</div>
+                          <div className="text-sm font-semibold text-[#2f2252]">{apt.customer_name}</div>
+                          <div className="mt-1 text-xs text-[#8a75b9]">{apt.customer_phone || apt.customer_email || 'No contact'}</div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="font-medium">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
@@ -350,7 +352,7 @@ const StylistAppointments = () => {
                               year: 'numeric',
                             })}
                           </div>
-                          <div className="text-xs text-[#9b857a] mt-1">
+                          <div className="mt-1 text-xs text-[#8a75b9]">
                             {startDate.toLocaleTimeString('en-US', {
                               timeZone: 'Asia/Manila',
                               hour: 'numeric',
@@ -367,10 +369,10 @@ const StylistAppointments = () => {
                         <td className="px-4 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                             apt.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
+                              ? 'bg-[#e9f5ef] text-[#4f8177]'
                               : apt.status === 'cancelled'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-blue-100 text-blue-800'
+                                ? 'bg-[#fae8ee] text-[#9a4963]'
+                                : 'bg-[#fff1e2] text-[#a86a2f]'
                           }`}>
                             {apt.status}
                           </span>
@@ -386,7 +388,7 @@ const StylistAppointments = () => {
                                 event.stopPropagation()
                                 setOpenActionId(openActionId === apt.id ? null : apt.id)
                               }}
-                              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#f4ebe4]"
+                              className="inline-flex items-center gap-2 rounded-full border border-[#ddccff] bg-white/90 px-4 py-2 text-sm text-[#6046b7] hover:bg-white"
                             >
                               Actions
                               <svg
@@ -401,7 +403,7 @@ const StylistAppointments = () => {
                             </button>
 
                             {openActionId === apt.id && (
-                              <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-[#eadfd5] bg-white/95 shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-2 z-20">
+                              <div className="absolute right-0 z-20 mt-2 w-48 rounded-2xl border border-white/36 bg-white/95 p-2 shadow-[0_16px_32px_rgba(59,31,114,0.14)]">
                                 <button
                                   onClick={() => {
                                     if (!canModify) return
@@ -409,7 +411,7 @@ const StylistAppointments = () => {
                                     handleAction(apt.id, 'complete')
                                   }}
                                   className={`w-full text-left text-sm px-3 py-2 rounded-xl ${
-                                    canModify ? 'hover:bg-emerald-50 text-emerald-700' : 'text-[#b7a59a] cursor-not-allowed'
+                                    canModify ? 'text-[#4f8177] hover:bg-[#eef8f2]' : 'cursor-not-allowed text-[#b6a6d8]'
                                   }`}
                                 >
                                   Mark Complete
@@ -421,7 +423,7 @@ const StylistAppointments = () => {
                                     handleAction(apt.id, 'cancel')
                                   }}
                                   className={`w-full text-left text-sm px-3 py-2 rounded-xl ${
-                                    canModify ? 'hover:bg-red-50 text-red-700' : 'text-[#b7a59a] cursor-not-allowed'
+                                    canModify ? 'text-[#9a4963] hover:bg-[#faedf2]' : 'cursor-not-allowed text-[#b6a6d8]'
                                   }`}
                                 >
                                   Cancel
@@ -436,7 +438,7 @@ const StylistAppointments = () => {
                 </tbody>
               </table>
               {sortedAppointments.length === 0 && (
-                <div className="text-center py-8 text-[#9b857a]">No appointments found</div>
+                <div className="py-8 text-center text-[#8a75b9]">No appointments found</div>
               )}
             </div>
           </div>

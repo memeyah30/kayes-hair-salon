@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -27,6 +28,7 @@ class Stylist extends Authenticatable
 
     protected $casts = [
         'active' => 'boolean',
+        'specializations' => 'array',
     ];
 
     public function setPasswordAttribute($value)
@@ -58,6 +60,9 @@ class Stylist extends Authenticatable
     {
         return $this->hasMany(CustomerRating::class);
     }
+
+    public function specializedServices(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'service_stylist', 'stylist_id', 'service_id');
+    }
 }
-
-

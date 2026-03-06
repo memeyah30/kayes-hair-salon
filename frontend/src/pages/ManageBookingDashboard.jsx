@@ -173,7 +173,7 @@ const ManageBookingDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] px-4 py-4 sm:py-6">
+    <div className="min-h-screen app-panel-bg px-4 py-4 sm:py-6">
       <div className="mx-auto w-full max-w-4xl">
         <div className="mb-5 rounded-2xl border border-[#eadfd5] bg-white/90 p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

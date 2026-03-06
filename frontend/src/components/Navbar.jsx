@@ -49,13 +49,13 @@ const resolveImageUrl = (imagePath) => {
 }
 
 const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
-  const isAdminTheme = true
   const [userType, setUserType] = useState(getStoredUserType)
   const [user, setUser] = useState(parseStoredUser)
   const [menuOpen, setMenuOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
   const menuRef = useRef(null)
+  const isAdminTheme = userType !== 'customer'
 
   useEffect(() => {
     const syncUserState = () => {
@@ -156,7 +156,7 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
     <header
       className={`px-3 md:px-6 py-3 flex items-center justify-between border-b ${
         isAdminTheme
-          ? 'bg-[#ece4ff] border-[#d9cbff] shadow-[0_4px_16px_rgba(79,57,145,0.08)]'
+          ? 'bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] border-white/10 shadow-[0_14px_34px_rgba(35,12,88,0.18)]'
           : 'bg-white shadow'
       }`}
     >
@@ -165,7 +165,7 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
           type="button"
           onClick={handleToggleSidebar}
           className={`p-2 rounded md:hidden ${
-            isAdminTheme ? 'hover:bg-white/70 text-[#5f4f8f]' : 'hover:bg-[#f4edff] text-gray-700'
+            isAdminTheme ? 'hover:bg-white/16 text-white' : 'hover:bg-[#f4edff] text-gray-700'
           }`}
           aria-label="Toggle side panel"
           title="Toggle side panel"
@@ -175,16 +175,18 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
           </svg>
         </button>
         <div className="flex flex-col leading-tight min-w-0">
-          <div className={`font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-[#453676]' : 'text-gray-900'}`}>
+          <div className={`font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
             Kaye&apos;s Hair Salon and Spa
           </div>
-          <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-[#7f6aa8]' : 'text-[#7f6aa8]'}`}>{title}</div>
+          <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-white/68' : 'text-[#7f6aa8]'}`}>{title}</div>
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-3">
         <div
           className={`hidden md:flex items-center gap-2 rounded-full px-3 py-2 text-sm border ${
-            isAdminTheme ? 'bg-white/85 border-[#d9cbff] text-[#5f4f8f]' : 'bg-white border-gray-200'
+            isAdminTheme
+              ? 'bg-white/18 border-white/16 text-white shadow-[0_10px_24px_rgba(33,10,86,0.16)]'
+              : 'bg-white border-gray-200'
           }`}
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -193,13 +195,15 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
           <input
             type="text"
             placeholder="Search"
-            className={`bg-transparent outline-none w-32 ${isAdminTheme ? 'placeholder:text-[#9a89c7]' : 'placeholder:text-gray-400'}`}
+            className={`bg-transparent outline-none w-32 ${isAdminTheme ? 'placeholder:text-white/72' : 'placeholder:text-gray-400'}`}
           />
         </div>
         <button
           type="button"
           className={`h-10 w-10 rounded-full flex items-center justify-center ${
-            isAdminTheme ? 'bg-white/85 text-[#5f4f8f] border border-[#d9cbff]' : 'bg-blue-100 text-blue-700'
+            isAdminTheme
+              ? 'bg-white/20 text-white border border-white/16 shadow-[0_10px_24px_rgba(33,10,86,0.14)] hover:bg-white/28'
+              : 'bg-blue-100 text-blue-700'
           }`}
           aria-label="Notifications"
         >
@@ -217,12 +221,12 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                 setMenuOpen((prev) => !prev)
               }}
               className={`flex items-center gap-2 rounded-full px-2 py-1 ${
-                isAdminTheme ? 'bg-white/80 border border-[#d9cbff]' : ''
-              } ${canManagePhoto ? 'hover:bg-white' : ''}`}
+                isAdminTheme ? 'bg-white/18 border border-white/14 shadow-[0_10px_24px_rgba(33,10,86,0.14)]' : ''
+              } ${canManagePhoto ? (isAdminTheme ? 'hover:bg-white/24' : 'hover:bg-white') : ''}`}
               title={canManagePhoto ? 'Edit profile photo' : undefined}
             >
               <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold overflow-hidden ${
-                isAdminTheme ? 'bg-[#e5dbff] text-[#5f4f8f]' : 'bg-blue-100 text-blue-700'
+                isAdminTheme ? 'bg-white text-[#5d41b7]' : 'bg-blue-100 text-blue-700'
               }`}>
                 {profileImageUrl ? (
                   <img src={profileImageUrl} alt={`${displayName} profile`} className="h-full w-full object-cover" />
@@ -230,13 +234,13 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                   initials
                 )}
               </div>
-              <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-[#5f4f8f]' : 'text-gray-700'}`}>{roleLabel}</div>
+              <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-white' : 'text-gray-700'}`}>{roleLabel}</div>
             </button>
 
             {canManagePhoto && menuOpen && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#d9cbff] bg-white p-3 shadow-[0_12px_28px_rgba(92,64,51,0.16)] z-50">
-                <div className="flex items-center gap-3 pb-3 border-b border-[#e8dcff]">
-                  <div className="h-12 w-12 rounded-full overflow-hidden bg-[#e5dbff] flex items-center justify-center text-[#5f4f8f] font-semibold">
+              <div className="absolute right-0 mt-2 w-64 rounded-[22px] border border-[#dbcfff] bg-[linear-gradient(180deg,#fdfbff_0%,#f4edff_100%)] p-3 shadow-[0_18px_36px_rgba(41,21,93,0.2)] z-50">
+                <div className="flex items-center gap-3 pb-3 border-b border-[#ebe1ff]">
+                  <div className="h-12 w-12 rounded-full overflow-hidden bg-[#e8ddff] flex items-center justify-center text-[#5b3bb0] font-semibold">
                     {profileImageUrl ? (
                       <img src={profileImageUrl} alt={`${displayName} profile`} className="h-full w-full object-cover" />
                     ) : (
@@ -244,8 +248,8 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-[#453676] truncate">{displayName}</div>
-                    <div className="text-xs text-[#7f6aa8]">{roleLabel}</div>
+                    <div className="text-sm font-semibold text-[#3a2868] truncate">{displayName}</div>
+                    <div className="text-xs text-[#8068b6]">{roleLabel}</div>
                   </div>
                 </div>
 
@@ -262,7 +266,7 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="w-full rounded-lg bg-[#6d84db] px-3 py-2 text-sm font-medium text-white hover:bg-[#5f75cb] disabled:opacity-60"
+                    className="w-full rounded-xl bg-gradient-to-r from-[#6f4ed0] to-[#8867df] px-3 py-2 text-sm font-medium text-white hover:from-[#6546c4] hover:to-[#7f5ed4] disabled:opacity-60"
                   >
                     {uploading ? 'Uploading...' : (profileImageUrl ? 'Change Photo' : 'Upload Photo')}
                   </button>
@@ -271,13 +275,13 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
                       type="button"
                       onClick={handleRemovePhoto}
                       disabled={uploading}
-                      className="w-full rounded-lg border border-[#d9cbff] px-3 py-2 text-sm text-[#5f4f8f] hover:bg-[#f4edff] disabled:opacity-60"
+                      className="w-full rounded-xl border border-[#dbcfff] px-3 py-2 text-sm text-[#5c3fb1] hover:bg-[#f3ecff] disabled:opacity-60"
                     >
                       Remove Photo
                     </button>
                   )}
                 </div>
-                <div className="mt-2 text-[11px] text-[#7f6aa8]">JPG, PNG, GIF up to 2MB.</div>
+                <div className="mt-2 text-[11px] text-[#8068b6]">JPG, PNG, GIF up to 2MB.</div>
               </div>
             )}
           </div>

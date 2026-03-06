@@ -7,9 +7,11 @@ use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\Stylist;
 use App\Models\Holiday;
+use App\Services\InventoryWorkflowService;
 use App\Services\Scheduler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -216,8 +218,9 @@ class AppointmentController extends Controller
             }
         }
 
-        $stylist = $data['stylist_id']
-            ? Stylist::findOrFail($data['stylist_id'])
+        $selectedStylistId = $data['stylist_id'] ?? null;
+        $stylist = $selectedStylistId
+            ? Stylist::findOrFail($selectedStylistId)
             : Stylist::where('active', true)->firstOrFail();
 
         // Use default duration of 30 minutes per service (since duration is removed)
@@ -586,9 +589,9 @@ class AppointmentController extends Controller
         return response()->json(['message' => 'Cancelled']);
     }
 
-    public function complete(Appointment $appointment)
+    public function complete(Appointment $appointment, Request $request, InventoryWorkflowService $inventoryWorkflowService)
     {
-        // Check if appointment is already completed to avoid duplicate sales
+        // Check if appointment is already completed to avoid duplicate sales or stock deduction.
         if ($appointment->status === 'completed') {
             $appointment = $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
             return $this->formatAppointmentForResponse($appointment);
@@ -607,71 +610,103 @@ class AppointmentController extends Controller
         // Admin/manager completing an appointment means service is done and payment is settled.
         $newPaymentStatus = 'paid';
 
-        // Update appointment status
-        $appointment->update([
-            'status' => 'completed',
-            'payment_status' => $newPaymentStatus,
-        ]);
-        
-        // Refresh appointment to get updated status
-        $appointment->refresh();
+        try {
+            DB::transaction(function () use (
+                $appointment,
+                $request,
+                $inventoryWorkflowService,
+                $newPaymentStatus,
+                $salePaymentMethod
+            ) {
+                // Update appointment status
+                $appointment->update([
+                    'status' => 'completed',
+                    'payment_status' => $newPaymentStatus,
+                ]);
 
-        // Load appointment with all relationships
-        $appointment->load(['stylist', 'service', 'services.variants']);
+                // Refresh appointment to get updated status
+                $appointment->refresh();
 
-        // Create sales records for each service in the appointment
-        $appointmentServices = $appointment->services->count() > 0 
-            ? $appointment->services 
-            : ($appointment->service ? collect([$appointment->service]) : collect());
+                // Load appointment with all relationships
+                $appointment->load(['stylist', 'service', 'services.variants']);
 
-        $salePaymentStatus = $appointment->payment_status === 'paid' ? 'paid' : 'pending';
+                // Create sales records for each service in the appointment
+                $appointmentServices = $appointment->services->count() > 0
+                    ? $appointment->services
+                    : ($appointment->service ? collect([$appointment->service]) : collect());
 
-        foreach ($appointmentServices as $service) {
-            // Get the variant if one was selected
-            $variantId = $service->pivot?->service_variant_id;
-            $variant = null;
-            $serviceName = $service->name;
-            $servicePrice = $service->price_cents;
+                $salePaymentStatus = $appointment->payment_status === 'paid' ? 'paid' : 'pending';
 
-            if ($variantId && $service->variants) {
-                $variant = $service->variants->find($variantId);
-                if ($variant) {
-                    $serviceName = $service->name . ' - ' . $variant->name;
-                    $servicePrice = $variant->price_cents;
+                foreach ($appointmentServices as $service) {
+                    // Get the variant if one was selected
+                    $variantId = $service->pivot?->service_variant_id;
+                    $variant = null;
+                    $serviceName = $service->name;
+                    $servicePrice = $service->price_cents;
+
+                    if ($variantId && $service->variants) {
+                        $variant = $service->variants->find($variantId);
+                        if ($variant) {
+                            $serviceName = $service->name . ' - ' . $variant->name;
+                            $servicePrice = $variant->price_cents;
+                        }
+                    }
+
+                    // Check if a sale record already exists for this appointment and service
+                    $existingSale = \App\Models\Sale::where('appointment_id', $appointment->id)
+                        ->where('item_name', $serviceName)
+                        ->first();
+
+                    if (!$existingSale) {
+                        \App\Models\Sale::create([
+                            'appointment_id' => $appointment->id,
+                            'inventory_id' => null, // Services don't have inventory
+                            'transaction_type' => 'service',
+                            'item_name' => $serviceName,
+                            'quantity' => 1,
+                            'unit_price_cents' => $servicePrice,
+                            'total_amount_cents' => $servicePrice,
+                            'payment_method' => $salePaymentMethod,
+                            'payment_status' => $salePaymentStatus,
+                            'customer_name' => $appointment->customer_name,
+                            'customer_phone' => $appointment->customer_phone,
+                            'stylist_id' => $appointment->stylist_id,
+                            'notes' => 'Completed appointment service',
+                        ]);
+                    }
                 }
+
+                // Deduct inventory based on service-product mapping.
+                $inventoryWorkflowService->deductForCompletedAppointment(
+                    $appointment,
+                    $appointmentServices,
+                    $request->user()?->id
+                );
+            });
+        } catch (\RuntimeException $e) {
+            if ((int) $e->getCode() === 422) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                ], 422);
             }
 
-            // Check if a sale record already exists for this appointment and service
-            $existingSale = \App\Models\Sale::where('appointment_id', $appointment->id)
-                ->where('item_name', $serviceName)
-                ->first();
+            Log::error('Failed to complete appointment with inventory deduction', [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage(),
+            ]);
 
-            if (!$existingSale) {
-                try {
-                    // Create sale record
-                    \App\Models\Sale::create([
-                        'appointment_id' => $appointment->id,
-                        'inventory_id' => null, // Services don't have inventory
-                        'transaction_type' => 'service',
-                        'item_name' => $serviceName,
-                        'quantity' => 1,
-                        'unit_price_cents' => $servicePrice,
-                        'total_amount_cents' => $servicePrice,
-                        'payment_method' => $salePaymentMethod,
-                        'payment_status' => $salePaymentStatus,
-                        'customer_name' => $appointment->customer_name,
-                        'customer_phone' => $appointment->customer_phone,
-                        'stylist_id' => $appointment->stylist_id,
-                        'notes' => 'Completed appointment service',
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::error('Failed to create sale record on appointment completion', [
-                        'appointment_id' => $appointment->id,
-                        'service_name' => $serviceName,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+            return response()->json([
+                'message' => 'Failed to complete appointment.',
+            ], 500);
+        } catch (\Throwable $e) {
+            Log::error('Unexpected error while completing appointment', [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to complete appointment.',
+            ], 500);
         }
 
         $customerEmail = strtolower(trim((string) ($appointment->customer_email ?? '')));
@@ -730,7 +765,24 @@ class AppointmentController extends Controller
                 ], 422);
             }
         }
-        $appointment->update(['status' => 'confirmed']);
+
+        $updateData = ['status' => 'confirmed'];
+
+        // Confirmation means payment proof/deposit has been validated, so do not keep "pending".
+        if (strtolower((string) ($appointment->payment_status ?? '')) === 'pending') {
+            $total = (int) ($appointment->total_amount_cents ?? 0);
+            $deposit = (int) ($appointment->downpayment_amount_cents ?? 0);
+
+            if ($deposit <= 0) {
+                $updateData['payment_status'] = 'unpaid';
+            } elseif ($total > 0 && $deposit >= $total) {
+                $updateData['payment_status'] = 'paid';
+            } else {
+                $updateData['payment_status'] = 'downpayment';
+            }
+        }
+
+        $appointment->update($updateData);
         return $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
     }
 

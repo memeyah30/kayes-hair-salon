@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\AppointmentRating;
 use App\Models\CustomerRating;
+use App\Models\Inventory;
 use App\Models\Sale;
 use App\Models\Service;
 use App\Models\Stylist;
@@ -75,10 +76,31 @@ class DashboardController extends Controller
             return $start->betweenIncluded($monthStart, $periodEnd);
         });
 
+        $sumAppointmentRevenue = function ($collection) {
+            return (int) $collection->sum(function ($apt) {
+                if (!empty($apt->total_amount_cents)) {
+                    return (int) $apt->total_amount_cents;
+                }
+                return (int) ($apt->service->price_cents ?? 0);
+            });
+        };
+
+        $completedTodayAppointments = $todayAppointments->where('status', 'completed');
+        $completedWeekAppointments = $weekAppointments->where('status', 'completed');
+        $completedMonthAppointments = $monthAppointments->where('status', 'completed');
+
         $todayRevenue = 0;
         $weekRevenue = 0;
         $monthRevenue = 0;
         if ($canViewSales) {
+            $serviceSaleAppointmentIds = Sale::query()
+                ->whereNotNull('appointment_id')
+                ->where('transaction_type', 'service')
+                ->pluck('appointment_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->flip();
+
             $sumSalesForRange = function (Carbon $fromManila, Carbon $toManila) {
                 return Sale::query()
                     ->whereBetween('created_at', [
@@ -88,9 +110,25 @@ class DashboardController extends Controller
                     ->sum('total_amount_cents');
             };
 
-            $todayRevenue = $sumSalesForRange($todayStart, $todayEnd);
-            $weekRevenue = $sumSalesForRange($weekStart, $periodEnd);
-            $monthRevenue = $sumSalesForRange($monthStart, $periodEnd);
+            $unsyncedTodayRevenue = $sumAppointmentRevenue(
+                $completedTodayAppointments->filter(
+                    fn ($apt) => !$serviceSaleAppointmentIds->has((int) $apt->id)
+                )
+            );
+            $unsyncedWeekRevenue = $sumAppointmentRevenue(
+                $completedWeekAppointments->filter(
+                    fn ($apt) => !$serviceSaleAppointmentIds->has((int) $apt->id)
+                )
+            );
+            $unsyncedMonthRevenue = $sumAppointmentRevenue(
+                $completedMonthAppointments->filter(
+                    fn ($apt) => !$serviceSaleAppointmentIds->has((int) $apt->id)
+                )
+            );
+
+            $todayRevenue = (int) $sumSalesForRange($todayStart, $todayEnd) + $unsyncedTodayRevenue;
+            $weekRevenue = (int) $sumSalesForRange($weekStart, $periodEnd) + $unsyncedWeekRevenue;
+            $monthRevenue = (int) $sumSalesForRange($monthStart, $periodEnd) + $unsyncedMonthRevenue;
         }
 
         // Count unique customers using email if present, otherwise phone
@@ -108,6 +146,20 @@ class DashboardController extends Controller
             'booked' => $appointments->where('status', 'booked')->count(),
             'completed' => $appointments->where('status', 'completed')->count(),
             'cancelled' => $appointments->where('status', 'cancelled')->count(),
+        ];
+
+        $inventoryStats = [
+            'total_items' => (int) Inventory::query()->where('is_active', true)->count(),
+            'low_stock_items' => (int) Inventory::query()
+                ->where('is_active', true)
+                ->lowStock()
+                ->count(),
+            'low_stock_alerts' => Inventory::query()
+                ->where('is_active', true)
+                ->lowStock()
+                ->orderBy('quantity')
+                ->limit(10)
+                ->get(['id', 'name', 'quantity', 'min_stock_level']),
         ];
 
         return response()->json([
@@ -135,6 +187,7 @@ class DashboardController extends Controller
             'customers' => $customers,
             'services' => Service::count(),
             'status_summary' => $statusSummary,
+            'inventory' => $inventoryStats,
         ]);
     }
 

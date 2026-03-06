@@ -9,17 +9,19 @@ use App\Services\Scheduler;
 use Carbon\Carbon;
 use Carbon\CarbonInterval;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class StylistController extends Controller
 {
     public function index()
     {
-        return Stylist::with(['workingHours', 'timeOffs'])->get();
+        $stylists = Stylist::with(['workingHours', 'timeOffs', 'specializedServices:id,name'])->get();
+        return $stylists->map(fn (Stylist $stylist) => $this->appendSpecializationPayload($stylist))->values();
     }
 
     public function show(Stylist $stylist)
     {
-        return $stylist->load(['workingHours', 'timeOffs']);
+        return $this->appendSpecializationPayload($stylist->load(['workingHours', 'timeOffs', 'specializedServices:id,name']));
     }
 
     public function store(Request $request)
@@ -32,7 +34,14 @@ class StylistController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'active' => 'nullable', // Will convert to boolean manually
             'working_hours' => 'nullable|string', // Accept as JSON string, will parse
+            'specialization_ids' => 'nullable',
         ]);
+
+        $specializationIds = $this->parseSpecializationIds($request);
+        if (!$this->areServiceIdsValid($specializationIds)) {
+            return response()->json(['message' => 'One or more specialization services are invalid.'], 422);
+        }
+        unset($data['specialization_ids']);
 
         // Parse working_hours if it's a JSON string
         if (isset($data['working_hours']) && is_string($data['working_hours'])) {
@@ -81,7 +90,11 @@ class StylistController extends Controller
             }
         }
 
-        return $stylist->load('workingHours');
+        $this->syncSpecializations($stylist, $specializationIds);
+
+        return $this->appendSpecializationPayload(
+            $stylist->load(['workingHours', 'timeOffs', 'specializedServices:id,name'])
+        );
     }
 
     public function update(Request $request, Stylist $stylist)
@@ -94,7 +107,14 @@ class StylistController extends Controller
             'image' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'active' => 'sometimes|nullable', // Will convert to boolean manually
             'working_hours' => 'sometimes|nullable|string', // Accept as JSON string, will parse
+            'specialization_ids' => 'nullable',
         ]);
+
+        $specializationIds = $this->parseSpecializationIds($request);
+        if (!$this->areServiceIdsValid($specializationIds)) {
+            return response()->json(['message' => 'One or more specialization services are invalid.'], 422);
+        }
+        unset($data['specialization_ids']);
 
         // Parse working_hours if it's a JSON string
         if (isset($data['working_hours']) && is_string($data['working_hours'])) {
@@ -146,8 +166,14 @@ class StylistController extends Controller
             }
         }
 
+        if ($request->has('specialization_ids')) {
+            $this->syncSpecializations($stylist, $specializationIds);
+        }
+
         // Return fresh instance with all relationships loaded
-        return $stylist->fresh()->load(['workingHours', 'timeOffs']);
+        return $this->appendSpecializationPayload(
+            $stylist->fresh()->load(['workingHours', 'timeOffs', 'specializedServices:id,name'])
+        );
     }
 
     public function availability(Request $request, Stylist $stylist, Scheduler $scheduler)
@@ -285,5 +311,63 @@ class StylistController extends Controller
         $stylist->delete();
         return response()->json(['message' => 'Stylist deleted successfully']);
     }
-}
 
+    private function parseSpecializationIds(Request $request): array
+    {
+        $raw = $request->input('specialization_ids', []);
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $raw = $decoded;
+            } else {
+                $raw = array_filter(array_map('trim', explode(',', $raw)));
+            }
+        }
+
+        if (!is_array($raw)) {
+            $raw = [$raw];
+        }
+
+        return collect($raw)
+            ->flatten()
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function areServiceIdsValid(array $serviceIds): bool
+    {
+        if (empty($serviceIds)) {
+            return true;
+        }
+
+        return Service::whereIn('id', $serviceIds)->count() === count($serviceIds);
+    }
+
+    private function syncSpecializations(Stylist $stylist, array $serviceIds): void
+    {
+        if (!Schema::hasTable('service_stylist')) {
+            return;
+        }
+
+        $stylist->specializedServices()->sync($serviceIds);
+    }
+
+    private function appendSpecializationPayload(Stylist $stylist): Stylist
+    {
+        $serviceNames = $stylist->specializedServices
+            ? $stylist->specializedServices->pluck('name')->values()->all()
+            : [];
+        $serviceIds = $stylist->specializedServices
+            ? $stylist->specializedServices->pluck('id')->map(fn ($id) => (int) $id)->values()->all()
+            : [];
+
+        $stylist->setAttribute('specialization_names', $serviceNames);
+        $stylist->setAttribute('specialization_ids', $serviceIds);
+
+        return $stylist;
+    }
+}

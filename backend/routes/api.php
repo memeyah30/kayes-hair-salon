@@ -13,6 +13,7 @@ use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\ServiceInventoryRequirementController;
 use App\Http\Controllers\ManageBookingController;
 use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
 use App\Http\Controllers\Admin\StaffApprovalController;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/stylists', [PublicStylistController::class, 'index']);
+Route::get('/stylists/by-services', [PublicStylistController::class, 'byServices']);
 Route::get('/stylists/{stylist}/availability', [StylistController::class, 'availability']);
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
 Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
@@ -115,9 +117,14 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index']);
     Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
     Route::get('/inventory/stats', [InventoryController::class, 'stats']);
+    Route::get('/inventory/usage-logs', [InventoryController::class, 'usageLogs']);
     Route::post('/inventory', [InventoryController::class, 'store']);
     Route::patch('/inventory/{inventory}', [InventoryController::class, 'update']);
     Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy']);
+
+    // Service-to-product usage mapping
+    Route::get('/services/{service}/inventory-requirements', [ServiceInventoryRequirementController::class, 'index']);
+    Route::put('/services/{service}/inventory-requirements', [ServiceInventoryRequirementController::class, 'sync']);
 
     // Sales management
     Route::get('/sales', [SaleController::class, 'index']);

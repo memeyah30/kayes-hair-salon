@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Inventory extends Model
 {
@@ -35,13 +36,45 @@ class Inventory extends Model
         'is_active' => 'boolean',
     ];
 
-    public function sales()
+    protected $appends = [
+        'stock_status',
+    ];
+
+    public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
+    }
+
+    public function usageLogs(): HasMany
+    {
+        return $this->hasMany(InventoryUsageLog::class, 'inventory_id');
+    }
+
+    public function serviceRequirements(): HasMany
+    {
+        return $this->hasMany(ServiceInventoryRequirement::class, 'inventory_id');
     }
 
     public function isLowStock(): bool
     {
         return $this->quantity <= $this->min_stock_level;
+    }
+
+    public function getStockStatusAttribute(): string
+    {
+        if ((int) $this->quantity <= 0) {
+            return 'OUT OF STOCK';
+        }
+
+        if ($this->isLowStock()) {
+            return 'LOW STOCK';
+        }
+
+        return 'IN STOCK';
+    }
+
+    public function scopeLowStock($query)
+    {
+        return $query->whereColumn('quantity', '<=', 'min_stock_level');
     }
 }

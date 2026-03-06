@@ -5,11 +5,134 @@ import api from '../../utils/api'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
 
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MOBILE_TABS = [
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'slots', label: 'Time Slots' },
+  { id: 'appointments', label: 'Appointments' },
+]
+const BUSINESS_SLOT_KEYS = Array.from({ length: 12 }, (_, index) =>
+  `${String(index + 8).padStart(2, '0')}:00`
+)
+
+const normalizeStatus = (status) => (status || '').toLowerCase().trim()
+
+const parseDateKey = (dateKey) => {
+  if (!dateKey) return null
+  const parts = dateKey.split('-').map((value) => Number(value))
+  if (parts.length !== 3 || parts.some((value) => Number.isNaN(value))) return null
+  return { year: parts[0], month: parts[1], day: parts[2] }
+}
+
+const monthStartFromKey = (dateKey) => {
+  const parsed = parseDateKey(dateKey)
+  if (!parsed) return null
+  return new Date(parsed.year, parsed.month - 1, 1)
+}
+
+const dateFromKey = (dateKey) => {
+  const parsed = parseDateKey(dateKey)
+  if (!parsed) return null
+  return new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day, 12, 0, 0))
+}
+
+const formatDateKeyLabel = (dateKey, options) => {
+  const date = dateFromKey(dateKey)
+  if (!date) return 'N/A'
+  return date.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', ...options })
+}
+
+const formatTimeKeyLabel = (timeKey) => {
+  if (!timeKey) return 'N/A'
+  const [hourText, minuteText] = timeKey.split(':')
+  const hour = Number(hourText)
+  const minute = Number(minuteText)
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return timeKey
+  const suffix = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = ((hour + 11) % 12) + 1
+  return `${displayHour}:${String(minute).padStart(2, '0')} ${suffix}`
+}
+
+const buildMonthGrid = (monthDate) => {
+  const year = monthDate.getFullYear()
+  const monthIndex = monthDate.getMonth()
+  const firstWeekday = new Date(year, monthIndex, 1).getDay()
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
+  const daysInPrevMonth = new Date(year, monthIndex, 0).getDate()
+  const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7
+  const cells = []
+
+  for (let index = 0; index < totalCells; index += 1) {
+    const dayOffset = index - firstWeekday + 1
+    let cellYear = year
+    let cellMonthIndex = monthIndex
+    let dayNumber = dayOffset
+    let isCurrentMonth = true
+
+    if (dayOffset <= 0) {
+      isCurrentMonth = false
+      dayNumber = daysInPrevMonth + dayOffset
+      if (monthIndex === 0) {
+        cellYear -= 1
+        cellMonthIndex = 11
+      } else {
+        cellMonthIndex -= 1
+      }
+    } else if (dayOffset > daysInMonth) {
+      isCurrentMonth = false
+      dayNumber = dayOffset - daysInMonth
+      if (monthIndex === 11) {
+        cellYear += 1
+        cellMonthIndex = 0
+      } else {
+        cellMonthIndex += 1
+      }
+    }
+
+    cells.push({
+      dateKey: `${cellYear}-${String(cellMonthIndex + 1).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`,
+      dayNumber,
+      isCurrentMonth,
+    })
+  }
+
+  return cells
+}
+
+const statusPillClass = (status) => {
+  if (status === 'confirmed') return 'bg-[#DCFCE7] text-[#15803D]'
+  if (status === 'pending') return 'bg-[#FEF3C7] text-[#B45309]'
+  if (status === 'booked') return 'bg-[#DBEAFE] text-[#1D4ED8]'
+  if (status === 'completed') return 'bg-[#DCFCE7] text-[#15803D]'
+  if (status === 'cancelled') return 'bg-[#FEE2E2] text-[#B91C1C]'
+  return 'bg-[#F2EDFF] text-[#6B6B6B]'
+}
+
+const getFifoId = (appointment) => {
+  const bookingId = Number(appointment.booking_id)
+  if (!Number.isNaN(bookingId)) return bookingId
+  const id = Number(appointment.id)
+  if (!Number.isNaN(id)) return id
+  return Number.MAX_SAFE_INTEGER
+}
+
+const sortByFifo = (a, b) => {
+  const aCreated = a.created_at || a.createdAt
+  const bCreated = b.created_at || b.createdAt
+  if (aCreated && bCreated) {
+    const aTime = new Date(aCreated).getTime()
+    const bTime = new Date(bCreated).getTime()
+    if (!Number.isNaN(aTime) && !Number.isNaN(bTime) && aTime !== bTime) {
+      return aTime - bTime
+    }
+  }
+  return getFifoId(a) - getFifoId(b)
+}
+
 const AdminAppointments = () => {
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // all, booked, completed, cancelled
-  const [showCreateModal, setShowCreateModal] = useState(false)
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
   const [reschedulingAppointment, setReschedulingAppointment] = useState(null)
   const [rescheduleData, setRescheduleData] = useState({
@@ -23,9 +146,17 @@ const AdminAppointments = () => {
   const [searchDate, setSearchDate] = useState('')
   const [searchServiceId, setSearchServiceId] = useState('')
   const [rangeFilter, setRangeFilter] = useState('')
+  const [completedDateScope, setCompletedDateScope] = useState('month') // day | month | year
   const [openActionId, setOpenActionId] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [processingAppointmentId, setProcessingAppointmentId] = useState(null)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState('')
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+  const [mobileTab, setMobileTab] = useState('calendar')
   const navigate = useNavigate()
   const location = useLocation()
   const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
@@ -33,11 +164,12 @@ const AdminAppointments = () => {
   const canAccessSales = storedUserType === 'admin'
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
-  const getEnd = (appointment) => appointment.end_datetime_pht || appointment.end_datetime
   const getAppointmentServices = (appointment) =>
     appointment.services && appointment.services.length > 0
       ? appointment.services
       : (appointment.service ? [appointment.service] : [])
+  const getServiceDurationMinutes = (service) =>
+    Number(service?.duration_minutes || service?.duration || service?.estimated_duration_minutes || 0)
   const formatManilaDate = (value) => {
     try {
       return new Intl.DateTimeFormat('en-CA', {
@@ -49,6 +181,24 @@ const AdminAppointments = () => {
     } catch {
       return ''
     }
+  }
+  const formatManilaTimeKey = (value) => {
+    try {
+      return new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Manila',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(new Date(value))
+    } catch {
+      return ''
+    }
+  }
+  const titleCaseStatus = (status) => {
+    const normalized = normalizeStatus(status)
+    if (!normalized) return 'Unknown'
+    if (normalized === 'booked') return 'Pending'
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1)
   }
   const toManilaDate = (value) => formatManilaDate(value)
 
@@ -69,10 +219,19 @@ const AdminAppointments = () => {
     setRangeFilter('')
 
     const params = new URLSearchParams(location.search)
+    const statusParam = (params.get('status') || '').toLowerCase().trim()
     const dateParam = params.get('date')
     const range = params.get('range')
     const serviceId = params.get('serviceId')
     const query = params.get('q')
+
+    if (statusParam) {
+      if (statusParam === 'pending') {
+        setFilter('booked')
+      } else if (['all', 'booked', 'confirmed', 'completed', 'cancelled'].includes(statusParam)) {
+        setFilter(statusParam)
+      }
+    }
 
     if (serviceId) setSearchServiceId(serviceId)
     if (query !== null) setSearchTerm(query)
@@ -89,6 +248,27 @@ const AdminAppointments = () => {
       }
     }
   }, [location.search])
+
+  const applyStatusOnlyFilter = (nextFilter) => {
+    setFilter(nextFilter)
+    setSearchTerm('')
+    setSearchDate('')
+    setSearchServiceId('')
+    setRangeFilter('')
+    if (nextFilter === 'completed') {
+      setCompletedDateScope('month')
+    }
+    setSelectedDate('')
+    setSelectedTimeSlot('')
+    setMobileTab('calendar')
+  }
+
+  useEffect(() => {
+    if (!searchDate) return
+    setSelectedDate(searchDate)
+    const month = monthStartFromKey(searchDate)
+    if (month) setCalendarMonth(month)
+  }, [searchDate])
 
   const rangeDates = useMemo(() => {
     if (!rangeFilter) return null
@@ -110,6 +290,30 @@ const AdminAppointments = () => {
     }
     return null
   }, [rangeFilter])
+
+  const completedDateWindow = useMemo(() => {
+    if (filter !== 'completed') return null
+    const anchorDate = searchDate || formatManilaDate(new Date())
+    const parsed = parseDateKey(anchorDate)
+    if (!parsed) return null
+
+    if (completedDateScope === 'year') {
+      return {
+        start: `${parsed.year}-01-01`,
+        end: `${parsed.year}-12-31`,
+      }
+    }
+
+    if (completedDateScope === 'month') {
+      const lastDay = new Date(parsed.year, parsed.month, 0).getDate()
+      return {
+        start: `${parsed.year}-${String(parsed.month).padStart(2, '0')}-01`,
+        end: `${parsed.year}-${String(parsed.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+      }
+    }
+
+    return { start: anchorDate, end: anchorDate }
+  }, [filter, completedDateScope, searchDate])
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -136,7 +340,7 @@ const AdminAppointments = () => {
       setAppointments(apptsRes.data)
       setStylists(stylistsRes.data)
       setServices(servicesRes.data)
-    } catch (e) {
+    } catch {
       toast.error('Failed to load data')
     } finally {
       setLoading(false)
@@ -237,9 +441,10 @@ const AdminAppointments = () => {
   }
 
   const handleDelete = async (apt) => {
+    const appointmentServices = getAppointmentServices(apt)
     const confirmMessage = `Are you sure you want to permanently delete this appointment?\n\n` +
       `Customer: ${apt.customer_name}\n` +
-      `Service: ${apt.service?.name}\n` +
+      `Service: ${appointmentServices[0]?.name || 'N/A'}\n` +
       `Date: ${new Date(getStart(apt)).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT\n\n` +
       `This action cannot be undone.`
     
@@ -271,7 +476,7 @@ const AdminAppointments = () => {
     })
 
     return { total, pending, completed, revenueCents }
-  }, [appointments, monthKey])
+  }, [appointments, monthKey, toManilaDate])
 
   const normalizedSearch = searchTerm.trim().toLowerCase()
   const filteredAppointments = appointments.filter(apt => {
@@ -293,7 +498,9 @@ const AdminAppointments = () => {
     }
 
     const aptDate = toManilaDate(getStart(apt))
-    if (searchDate) {
+    if (filter === 'completed' && completedDateWindow) {
+      if (!aptDate || aptDate < completedDateWindow.start || aptDate > completedDateWindow.end) return false
+    } else if (searchDate) {
       if (aptDate !== searchDate) return false
     } else if (rangeDates) {
       if (!aptDate || aptDate < rangeDates.start || aptDate > rangeDates.end) return false
@@ -314,20 +521,125 @@ const AdminAppointments = () => {
   })
 
   const sortedAppointments = useMemo(() => {
-    return [...filteredAppointments].sort((a, b) => {
-      const aTime = new Date(getStart(a)).getTime()
-      const bTime = new Date(getStart(b)).getTime()
-      if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0
-      if (Number.isNaN(aTime)) return 1
-      if (Number.isNaN(bTime)) return -1
-      return aTime - bTime
-    })
+    return [...filteredAppointments].sort(sortByFifo)
   }, [filteredAppointments])
+
+  const calendarDateCounts = useMemo(() => {
+    const counts = {}
+    filteredAppointments.forEach((apt) => {
+      const dateKey = toManilaDate(getStart(apt))
+      if (!dateKey) return
+      if (!counts[dateKey]) {
+        counts[dateKey] = { pending: 0, confirmed: 0, completed: 0 }
+      }
+      const status = normalizeStatus(apt.status)
+      if (status === 'confirmed') counts[dateKey].confirmed += 1
+      else if (status === 'completed') counts[dateKey].completed += 1
+      else if (status !== 'cancelled') counts[dateKey].pending += 1
+    })
+    return counts
+  }, [filteredAppointments, toManilaDate])
+
+  const appointmentsByDateAndSlot = useMemo(() => {
+    const grouped = {}
+    filteredAppointments.forEach((apt) => {
+      const dateKey = toManilaDate(getStart(apt))
+      const slotKey = formatManilaTimeKey(getStart(apt))
+      if (!dateKey || !slotKey) return
+      if (!grouped[dateKey]) grouped[dateKey] = {}
+      if (!grouped[dateKey][slotKey]) grouped[dateKey][slotKey] = []
+      grouped[dateKey][slotKey].push(apt)
+    })
+    Object.keys(grouped).forEach((dateKey) => {
+      Object.keys(grouped[dateKey]).forEach((slotKey) => {
+        grouped[dateKey][slotKey] = [...grouped[dateKey][slotKey]].sort(sortByFifo)
+      })
+    })
+    return grouped
+  }, [filteredAppointments])
+
+  const selectedDateSlots = useMemo(() => {
+    if (!selectedDate) return []
+    const slots = appointmentsByDateAndSlot[selectedDate] || {}
+    return Array.from(new Set([...BUSINESS_SLOT_KEYS, ...Object.keys(slots)])).sort((a, b) => a.localeCompare(b))
+  }, [appointmentsByDateAndSlot, selectedDate])
+
+  useEffect(() => {
+    setSelectedTimeSlot('')
+  }, [selectedDate])
+
+  useEffect(() => {
+    if (!selectedTimeSlot && mobileTab === 'appointments') {
+      setMobileTab(selectedDate ? 'slots' : 'calendar')
+    }
+  }, [selectedDate, selectedTimeSlot, mobileTab])
+
+  const timeSlotSummaries = useMemo(() => {
+    if (!selectedDate) return []
+    const stylistCapacity = stylists.length
+    return selectedDateSlots.map((slotKey) => {
+      const slotAppointments = appointmentsByDateAndSlot[selectedDate]?.[slotKey] || []
+      const statusCounts = slotAppointments.reduce((acc, apt) => {
+        const status = normalizeStatus(apt.status)
+        if (status === 'confirmed') acc.confirmed += 1
+        else if (status === 'completed') acc.completed += 1
+        else if (status !== 'cancelled') acc.pending += 1
+        return acc
+      }, { pending: 0, confirmed: 0, completed: 0 })
+      return {
+        slotKey,
+        total: slotAppointments.length,
+        ...statusCounts,
+        isFull: stylistCapacity > 0 && slotAppointments.length >= stylistCapacity,
+      }
+    })
+  }, [appointmentsByDateAndSlot, selectedDate, selectedDateSlots, stylists.length])
+
+  const slotAppointments = useMemo(() => {
+    if (!selectedDate || !selectedTimeSlot) return []
+    const appointmentsInSlot = appointmentsByDateAndSlot[selectedDate]?.[selectedTimeSlot] || []
+    return [...appointmentsInSlot].sort(sortByFifo)
+  }, [appointmentsByDateAndSlot, selectedDate, selectedTimeSlot])
+  const calendarCells = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth])
+  const selectedDateLongLabel = formatDateKeyLabel(selectedDate, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  const selectedDateShortLabel = formatDateKeyLabel(selectedDate, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
 
-  const paymentStatusLabel = (status) => {
-    if (!status) return 'UNPAID'
+  const shouldHidePaymentStatusBadge = (method, appointmentStatus) => {
+    const normalizedMethod = (method || '').toLowerCase()
+    const normalizedAppointmentStatus = normalizeStatus(appointmentStatus)
+    return normalizedMethod === 'on_hand' && normalizedAppointmentStatus === 'completed'
+  }
+
+  const effectivePaymentStatus = (status, appointmentStatus, method) => {
+    const normalizedStatus = (status || 'unpaid').toLowerCase()
+    const normalizedAppointmentStatus = normalizeStatus(appointmentStatus)
+    const normalizedMethod = (method || '').toLowerCase()
+
+    // For paid-at-salon downpayment bookings, show PENDING while appointment is active.
+    if (
+      normalizedMethod === 'on_hand' &&
+      normalizedStatus === 'downpayment' &&
+      (normalizedAppointmentStatus === 'booked' || normalizedAppointmentStatus === 'confirmed')
+    ) {
+      return 'pending'
+    }
+
+    return normalizedStatus
+  }
+  const paymentStatusLabel = (status, appointmentStatus, method) => {
+    if (shouldHidePaymentStatusBadge(method, appointmentStatus)) return ''
+    const normalizedStatus = effectivePaymentStatus(status, appointmentStatus, method)
     const map = {
       unpaid: 'UNPAID',
       pending: 'PENDING',
@@ -336,16 +648,17 @@ const AdminAppointments = () => {
       downpayment: 'DOWNPAYMENT',
       refunded: 'REFUNDED',
     }
-    return map[status] || status.toUpperCase()
+    return map[normalizedStatus] || normalizedStatus.toUpperCase()
   }
-  const paymentStatusClass = (status) => {
-    const s = status || 'unpaid'
-    if (s === 'paid') return 'bg-green-100 text-green-800'
-    if (s === 'pending' || s === 'downpayment') return 'bg-yellow-100 text-yellow-800'
-    if (s === 'rejected' || s === 'refunded') return 'bg-red-100 text-red-800'
-    return 'bg-[#f7f1ec] text-[#3b2f2a]'
+  const paymentStatusClass = (status, appointmentStatus, method) => {
+    if (shouldHidePaymentStatusBadge(method, appointmentStatus)) return ''
+    const s = effectivePaymentStatus(status, appointmentStatus, method)
+    if (s === 'paid') return 'bg-[#DCFCE7] text-[#15803D]'
+    if (s === 'pending' || s === 'downpayment') return 'bg-[#FEF3C7] text-[#B45309]'
+    if (s === 'rejected' || s === 'refunded') return 'bg-[#FEE2E2] text-[#B91C1C]'
+    return 'bg-[#F2EDFF] text-[#6B6B6B]'
   }
-  const paymentChoiceLabel = (method, status) => {
+  const paymentChoiceLabel = (method, status, appointmentStatus) => {
     const normalizedMethod = (method || '').toLowerCase()
     const normalizedStatus = (status || '').toLowerCase()
     if (normalizedMethod === 'online') return 'Online Payment (GCash)'
@@ -354,28 +667,57 @@ const AdminAppointments = () => {
     if (normalizedStatus === 'downpayment') return 'Downpayment'
     return 'Not Set'
   }
-  const paymentChoiceClass = (method, status) => {
+  const paymentChoiceClass = (method, status, appointmentStatus) => {
     const normalizedMethod = (method || '').toLowerCase()
     const normalizedStatus = (status || '').toLowerCase()
-    if (normalizedMethod === 'online') return 'bg-blue-100 text-blue-700'
-    if (normalizedMethod === 'on_hand' && normalizedStatus === 'downpayment') return 'bg-amber-100 text-amber-700'
-    if (normalizedMethod === 'on_hand') return 'bg-[#e9edf3] text-[#566173]'
-    if (normalizedStatus === 'downpayment') return 'bg-yellow-100 text-yellow-800'
-    return 'bg-[#f4ebe4] text-[#6f5b50]'
+    if (normalizedMethod === 'online') return 'bg-[#EDE9FE] text-[#6D4DE6]'
+    if (normalizedMethod === 'on_hand' && normalizedStatus === 'downpayment') return 'bg-[#FEF3C7] text-[#B45309]'
+    if (normalizedMethod === 'on_hand') return 'bg-[#EEF2FF] text-[#5B3CC4]'
+    if (normalizedStatus === 'downpayment') return 'bg-[#FEF3C7] text-[#B45309]'
+    return 'bg-[#F2EDFF] text-[#6B6B6B]'
   }
+  const shouldShowPaymentStatusBadge = (method, status, appointmentStatus) =>
+    !shouldHidePaymentStatusBadge(method, appointmentStatus)
   const resolveProofUrl = (url) => {
     if (!url) return null
     if (url.startsWith('http')) return url
     return `/${url.replace(/^\/+/, '')}`
   }
+  const openProofFile = async (proofUrl) => {
+    if (!proofUrl) {
+      toast.error('Payment proof is unavailable for this appointment.')
+      return
+    }
+
+    try {
+      const resolvedUrl = new URL(proofUrl, window.location.origin)
+      if (resolvedUrl.origin === window.location.origin) {
+        const response = await fetch(resolvedUrl.toString(), {
+          method: 'HEAD',
+          credentials: 'include',
+        })
+
+        // Some local servers can reject HEAD even for existing files.
+        if (response.status !== 405) {
+          const contentType = (response.headers.get('content-type') || '').toLowerCase()
+          if (!response.ok || contentType.includes('text/html')) {
+            toast.error('Payment proof file was not found.')
+            return
+          }
+        }
+      }
+    } catch {
+      // Best effort check only; continue opening the URL.
+    }
+
+    window.open(proofUrl, '_blank', 'noopener,noreferrer')
+  }
 
   const selectedAppointmentServices = selectedAppointment ? getAppointmentServices(selectedAppointment) : []
   const selectedProofUrl = selectedAppointment ? resolveProofUrl(selectedAppointment.payment_proof_url) : null
   const selectedStartDate = selectedAppointment ? new Date(getStart(selectedAppointment)) : null
-  const selectedStatus = (selectedAppointment?.status || '').toLowerCase().trim()
-  const selectedStatusLabel = selectedStatus
-    ? selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)
-    : 'Unknown'
+  const selectedStatus = normalizeStatus(selectedAppointment?.status)
+  const selectedStatusLabel = titleCaseStatus(selectedStatus)
   const selectedDateLabel = selectedStartDate
     ? selectedStartDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium' })
     : 'N/A'
@@ -395,8 +737,15 @@ const AdminAppointments = () => {
     })
   }
 
+  const todayKey = formatManilaDate(new Date())
+  const calendarMonthLabel = calendarMonth.toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+  const showLegacyLayout = true
+
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2D2D2D]">
       <Sidebar userType={storedUserType} onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -406,7 +755,7 @@ const AdminAppointments = () => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate('/admin/dashboard')}
-                  className="tap-safe h-11 w-11 rounded-full bg-white/80 border border-[#eadfd5] shadow-[0_8px_16px_rgba(92,64,51,0.08)] text-[#8f7a6f] hover:text-[#6f5b50] hover:bg-white transition text-xl font-bold flex items-center justify-center"
+                  className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
                   aria-label="Return to Dashboard"
                   title="Return to Dashboard"
                 >
@@ -414,62 +763,76 @@ const AdminAppointments = () => {
                 </button>
                 <div>
                   <h1 className="text-2xl font-semibold">Appointment Management</h1>
-                  <p className="text-sm text-[#8f7a6f]">Manage and monitor all salon bookings</p>
+                  <p className="text-sm text-[#6B6B6B]">Manage and monitor all salon bookings</p>
                 </div>
               </div>
               <button
                 onClick={() => navigate('/book')}
-                className="tap-safe w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#b48a6b] text-white shadow-[0_10px_20px_rgba(92,64,51,0.18)] hover:bg-[#a27758] transition"
+                className="tap-safe inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#7B5CF5] px-5 py-2.5 text-white shadow-[0_8px_20px_rgba(123,92,245,0.24)] transition hover:bg-[#6846E8] sm:w-auto"
               >
                 + New Appointment
               </button>
             </div>
 
             <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${canAccessSales ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Total This Month</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#7B5CF5]">Total This Month</p>
                   <p className="text-2xl font-semibold mt-2">{monthlyStats.total}</p>
-                  <p className="text-xs text-[#9b857a] mt-1">This month</p>
+                  <p className="mt-1 text-xs text-[#6B6B6B]">This month</p>
                 </div>
-                <div className="h-12 w-12 rounded-2xl bg-[#f4ebe4] flex items-center justify-center text-[#b48a6b]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2EDFF] text-[#7B5CF5]">
                   <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v4M17 3v4M4 9h16M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7Z" />
                   </svg>
                 </div>
               </div>
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => applyStatusOnlyFilter('booked')}
+                className={`flex items-center justify-between gap-4 rounded-[14px] border bg-white p-5 text-left shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition ${
+                  filter === 'booked' ? 'border-[#F59E0B]' : 'border-[#DDD6FE] hover:border-[#C4B5FD]'
+                }`}
+                title="Show only pending appointments"
+              >
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Pending</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#F59E0B]">Pending</p>
                   <p className="text-2xl font-semibold mt-2">{monthlyStats.pending}</p>
-                  <p className="text-xs text-[#9b857a] mt-1">Awaiting service</p>
+                  <p className="mt-1 text-xs text-[#6B6B6B]">Awaiting service</p>
                 </div>
-                <div className="h-12 w-12 rounded-2xl bg-[#f4ebe4] flex items-center justify-center text-[#c79a6b]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF7ED] text-[#F59E0B]">
                   <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3 3M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16Z" />
                   </svg>
                 </div>
-              </div>
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 flex items-center justify-between gap-4">
+              </button>
+              <button
+                type="button"
+                onClick={() => applyStatusOnlyFilter('completed')}
+                className={`flex items-center justify-between gap-4 rounded-[14px] border bg-white p-5 text-left shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition ${
+                  filter === 'completed' ? 'border-[#22C55E]' : 'border-[#DDD6FE] hover:border-[#C4B5FD]'
+                }`}
+                title="Show only completed appointments"
+              >
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Completed</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#22C55E]">Completed</p>
                   <p className="text-2xl font-semibold mt-2">{monthlyStats.completed}</p>
-                  <p className="text-xs text-[#9b857a] mt-1">Completed</p>
+                  <p className="mt-1 text-xs text-[#6B6B6B]">Completed</p>
                 </div>
-                <div className="h-12 w-12 rounded-2xl bg-[#edf2ed] flex items-center justify-center text-[#6e8f74]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#DCFCE7] text-[#22C55E]">
                   <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m5 12 4 4L19 6" />
                   </svg>
                 </div>
-              </div>
+              </button>
               {canAccessSales && (
-                <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-[#b79b8f]">Revenue</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#7B5CF5]">Revenue</p>
                     <p className="text-2xl font-semibold mt-2">{currency(monthlyStats.revenueCents)}</p>
-                    <p className="text-xs text-[#9b857a] mt-1">This month</p>
+                    <p className="mt-1 text-xs text-[#6B6B6B]">This month</p>
                   </div>
-                  <div className="h-12 w-12 rounded-2xl bg-[#f4ebe4] flex items-center justify-center text-[#b48a6b]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2EDFF] text-[#7B5CF5]">
                     <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                       <rect x="4" y="6" width="16" height="12" rx="2" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4 10h16M9 14h2" />
@@ -479,12 +842,12 @@ const AdminAppointments = () => {
               )}
             </div>
 
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-3 md:p-4">
+            <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
               <div className="flex flex-col lg:flex-row lg:items-center gap-3">
                 <select
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  className="tap-safe w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
                 >
                   <option value="all">All Status</option>
                   <option value="booked">Booked / Confirmed</option>
@@ -495,7 +858,7 @@ const AdminAppointments = () => {
                 <select
                   value={searchServiceId}
                   onChange={(e) => setSearchServiceId(e.target.value)}
-                  className="tap-safe w-full lg:w-56 bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-56"
                 >
                   <option value="">All Services</option>
                   {services.map(s => (
@@ -505,17 +868,59 @@ const AdminAppointments = () => {
                 <input
                   type="date"
                   value={searchDate}
-                  onChange={(e) => setSearchDate(e.target.value)}
-                  className="tap-safe w-full lg:w-auto bg-white/90 border border-[#eadfd5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                  onChange={(e) => {
+                    setSearchDate(e.target.value)
+                    setRangeFilter('')
+                    if (e.target.value) {
+                      setSelectedDate(e.target.value)
+                      const month = monthStartFromKey(e.target.value)
+                      if (month) setCalendarMonth(month)
+                    }
+                  }}
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
                 />
+                {filter === 'completed' && (
+                  <select
+                    value={completedDateScope}
+                    onChange={(e) => setCompletedDateScope(e.target.value)}
+                    className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
+                    title="Completed date scope"
+                  >
+                    <option value="day">By Day</option>
+                    <option value="month">By Month</option>
+                    <option value="year">By Year</option>
+                  </select>
+                )}
+                <button
+                  onClick={() => {
+                    setSearchDate(todayKey)
+                    setRangeFilter('')
+                    setSelectedDate(todayKey)
+                    setSelectedTimeSlot('')
+                    const month = monthStartFromKey(todayKey)
+                    if (month) setCalendarMonth(month)
+                    setMobileTab('slots')
+                  }}
+                  className={`tap-safe w-full rounded-lg border px-4 py-2 text-sm transition lg:w-auto ${
+                    searchDate === todayKey
+                      ? 'border-[#7B5CF5] bg-[#7B5CF5] text-white hover:bg-[#6846E8]'
+                      : 'border-[#7B5CF5] bg-transparent text-[#7B5CF5] hover:bg-[#F6F2FF]'
+                  }`}
+                >
+                  Today
+                </button>
                 <button
                   onClick={() => {
                     setSearchTerm('')
                     setSearchDate('')
                     setSearchServiceId('')
                     setRangeFilter('')
+                    setCompletedDateScope('month')
+                    setSelectedDate('')
+                    setSelectedTimeSlot('')
+                    setMobileTab('calendar')
                   }}
-                  className="tap-safe w-full lg:w-auto bg-[#f4ebe4] text-[#6f5b50] border border-[#eadfd5] rounded-xl px-4 py-2 text-sm hover:bg-[#eadfd5]"
+                  className="tap-safe w-full rounded-lg border border-[#7B5CF5] bg-transparent px-4 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF] lg:w-auto"
                 >
                   Reset
                 </button>
@@ -525,9 +930,9 @@ const AdminAppointments = () => {
                     placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="tap-safe w-full bg-white/90 border border-[#eadfd5] rounded-xl pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d9bfb1]"
+                    className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white py-2 pl-4 pr-10 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#b79b8f]">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B5CF5]">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                       <circle cx="11" cy="11" r="7" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M20 20l-3.5-3.5" />
@@ -538,7 +943,390 @@ const AdminAppointments = () => {
             </div>
           </div>
 
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] overflow-hidden">
+          {!showLegacyLayout && (
+          <>
+          {selectedDate && (
+          <div className="md:hidden bg-white rounded-2xl border border-[#eadfd5] shadow-[0_10px_28px_rgba(92,64,51,0.08)] p-2 flex gap-2">
+            {(selectedTimeSlot ? MOBILE_TABS : MOBILE_TABS.filter((tab) => tab.id !== 'appointments')).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setMobileTab(tab.id)}
+                className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                  mobileTab === tab.id
+                    ? 'bg-[#b48a6b] text-white'
+                    : 'bg-[#f8f2ee] text-[#6f5b50] hover:bg-[#f4ebe4]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          )}
+
+          <section className={`grid grid-cols-1 gap-4 items-start ${
+            selectedDate && selectedTimeSlot
+              ? 'md:grid-cols-2 xl:grid-cols-3'
+              : selectedDate
+                ? 'md:grid-cols-2 xl:grid-cols-2'
+                : ''
+          }`}>
+            <div className={`${mobileTab === 'calendar' ? 'block' : 'hidden'} md:block md:col-start-1 xl:col-start-1`}>
+              <div className="bg-white rounded-2xl border border-[#eadfd5] shadow-[0_10px_28px_rgba(92,64,51,0.08)] p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h2 className="text-lg font-semibold">Calendar</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                      className="h-9 w-9 rounded-lg border border-[#eadfd5] text-[#6f5b50] hover:bg-[#f4ebe4]"
+                      aria-label="Previous month"
+                    >
+                      &larr;
+                    </button>
+                    <p className="text-sm font-semibold text-[#6f5b50] min-w-[120px] text-center">{calendarMonthLabel}</p>
+                    <button
+                      type="button"
+                      onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                      className="h-9 w-9 rounded-lg border border-[#eadfd5] text-[#6f5b50] hover:bg-[#f4ebe4]"
+                      aria-label="Next month"
+                    >
+                      &rarr;
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 text-xs uppercase tracking-wide text-[#9b857a] mb-2">
+                  {WEEKDAY_LABELS.map((label) => (
+                    <div key={label} className="text-center py-1">{label}</div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarCells.map((cell) => {
+                    const dayCounts = calendarDateCounts[cell.dateKey]
+                    const isSelected = selectedDate === cell.dateKey
+                    const isToday = todayKey === cell.dateKey
+                    return (
+                      <button
+                        key={cell.dateKey}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDate(cell.dateKey)
+                          const month = monthStartFromKey(cell.dateKey)
+                          if (month) setCalendarMonth(month)
+                          setMobileTab('slots')
+                        }}
+                        className={`min-h-[84px] rounded-xl border p-2 text-left transition ${
+                          isSelected
+                            ? 'border-[#b48a6b] bg-[#f7efe9] shadow-[0_8px_20px_rgba(92,64,51,0.10)]'
+                            : cell.isCurrentMonth
+                              ? 'border-[#efe3d9] bg-[#fffdfa] hover:bg-[#f9f2ed]'
+                              : 'border-[#f2ebe4] bg-[#fbf8f5] text-[#c6b4a8]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-semibold ${isToday ? 'text-[#b48a6b]' : ''}`}>
+                            {cell.dayNumber}
+                          </span>
+                          {isToday && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#f4ebe4] text-[#8b6c58]">Today</span>
+                          )}
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          {dayCounts?.confirmed > 0 && (
+                            <div className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 w-fit">
+                              {dayCounts.confirmed} confirmed
+                            </div>
+                          )}
+                          {dayCounts?.pending > 0 && (
+                            <div className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 w-fit">
+                              {dayCounts.pending} pending
+                            </div>
+                          )}
+                          {dayCounts?.completed > 0 && (
+                            <div className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 w-fit">
+                              {dayCounts.completed} completed
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {selectedDate && (
+            <div className={`${mobileTab === 'slots' ? 'block' : 'hidden'} md:block md:col-start-1 md:row-start-2 xl:col-start-2 xl:row-start-1`}>
+              <div className="bg-white rounded-2xl border border-[#eadfd5] shadow-[0_10px_28px_rgba(92,64,51,0.08)] p-4">
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold">Appointments for {selectedDateLongLabel}</h2>
+                  <p className="text-xs text-[#8f7a6f] mt-1">Select a time slot to view appointments.</p>
+                </div>
+                <div className="space-y-2 max-h-[540px] overflow-y-auto pr-1">
+                  {timeSlotSummaries.map((slot) => {
+                    const isActive = selectedTimeSlot === slot.slotKey
+                    return (
+                      <button
+                        key={slot.slotKey}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTimeSlot(slot.slotKey)
+                          setMobileTab('appointments')
+                        }}
+                        className={`w-full rounded-xl border p-3 text-left transition ${
+                          isActive
+                            ? 'border-[#b48a6b] bg-[#f7efe9]'
+                            : 'border-[#efe3d9] bg-[#fffdfa] hover:bg-[#f9f2ed]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-sm">{formatTimeKeyLabel(slot.slotKey)}</span>
+                          <div className="flex items-center gap-2">
+                            {slot.isFull && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700">Full</span>
+                            )}
+                            <span className="text-xs text-[#8f7a6f]">{slot.total} booking{slot.total === 1 ? '' : 's'}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Pending {slot.pending}</span>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Confirmed {slot.confirmed}</span>
+                          <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700">Completed {slot.completed}</span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            )}
+
+            {selectedDate && selectedTimeSlot && (
+            <div className={`${mobileTab === 'appointments' ? 'block' : 'hidden'} md:block md:col-start-2 md:row-start-1 md:row-span-2 xl:col-start-3 xl:row-start-1 xl:row-span-1`}>
+              <div className="bg-white rounded-2xl border border-[#eadfd5] shadow-[0_10px_28px_rgba(92,64,51,0.08)] p-4">
+                <div className="flex flex-col gap-1 mb-4">
+                  <h2 className="text-lg font-semibold">
+                    {selectedDate && selectedTimeSlot
+                      ? `Appointments for ${formatTimeKeyLabel(selectedTimeSlot)} on ${selectedDateShortLabel}`
+                      : 'Appointments'}
+                  </h2>
+                  <p className="text-xs text-[#8f7a6f]">
+                    {selectedDate && selectedTimeSlot
+                      ? 'FIFO ordering by booking creation time.'
+                      : 'Select a date, then a time slot to view appointments.'}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {slotAppointments.length > 0 ? (
+                    slotAppointments.map((apt, index) => {
+                      const appointmentServices = getAppointmentServices(apt)
+                      const totalPrice = appointmentServices.reduce((sum, service) => sum + (service.price_cents || 0), 0)
+                      const totalDuration = appointmentServices.reduce((sum, service) => sum + getServiceDurationMinutes(service), 0)
+                      const serviceNames = appointmentServices.map((service) => service.name || 'Service').join(', ')
+                      const proofUrl = resolveProofUrl(apt.payment_proof_url)
+                      const normalizedStatus = normalizeStatus(apt.status)
+                      const canModify = normalizedStatus === 'booked' || normalizedStatus === 'confirmed' || normalizedStatus === 'pending'
+                      const canConfirm = normalizedStatus === 'booked' || normalizedStatus === 'pending'
+                      const isProcessingAction = processingAppointmentId === apt.id
+
+                      return (
+                        <article key={apt.id} className="rounded-xl border border-[#eadfd5] bg-[#fffdfa] p-3 shadow-[0_8px_20px_rgba(92,64,51,0.08)]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs text-[#8f7a6f]">FIFO #{index + 1}</p>
+                              <p className="font-semibold truncate">{apt.customer_name || 'Customer'}</p>
+                              <p className="text-xs text-[#8f7a6f] mt-1 truncate">{apt.customer_phone || apt.customer_email || '-'}</p>
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusPillClass(normalizedStatus)}`}>
+                              {titleCaseStatus(normalizedStatus)}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 space-y-1 text-sm text-[#4a3a2f]">
+                            <p><span className="text-[#8f7a6f]">Services:</span> {serviceNames || 'N/A'}</p>
+                            <p><span className="text-[#8f7a6f]">Duration:</span> {totalDuration > 0 ? `${totalDuration} min` : 'N/A'}</p>
+                            <p><span className="text-[#8f7a6f]">Stylist:</span> {apt.stylist?.name || 'Unassigned'}</p>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
+                              {paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)}
+                            </span>
+                            {shouldShowPaymentStatusBadge(apt.payment_method, apt.payment_status, apt.status) && (
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentStatusClass(apt.payment_status, apt.status, apt.payment_method)}`}>
+                                {paymentStatusLabel(apt.payment_status, apt.status, apt.payment_method)}
+                              </span>
+                            )}
+                            <span className="ml-auto font-semibold">{currency(totalPrice)}</span>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => canConfirm && !isProcessingAction && handleAction(apt.id, 'confirm')}
+                              disabled={!canConfirm || isProcessingAction}
+                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                canConfirm && !isProcessingAction
+                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
+                              }`}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => canConfirm && !isProcessingAction && handleAction(apt.id, 'confirm')}
+                              disabled={!canConfirm || isProcessingAction}
+                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                canConfirm && !isProcessingAction
+                                  ? 'bg-teal-600 text-white hover:bg-teal-700'
+                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
+                              }`}
+                            >
+                              Start
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'complete')}
+                              disabled={!canModify || isProcessingAction}
+                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                canModify && !isProcessingAction
+                                  ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
+                              }`}
+                            >
+                              Done
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => canModify && !isProcessingAction && handleRescheduleClick(apt)}
+                              disabled={!canModify || isProcessingAction}
+                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                canModify && !isProcessingAction
+                                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
+                              }`}
+                            >
+                              Reschedule
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'cancel')}
+                              disabled={!canModify || isProcessingAction}
+                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                canModify && !isProcessingAction
+                                  ? 'bg-amber-500 text-white hover:bg-amber-600'
+                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
+                              }`}
+                            >
+                              Cancel
+                            </button>
+
+                            <div className="relative apt-actions ml-auto">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  if (isProcessingAction) return
+                                  setOpenActionId(openActionId === apt.id ? null : apt.id)
+                                }}
+                                className={`tap-safe px-3 py-1.5 rounded-lg border text-xs font-medium ${
+                                  isProcessingAction
+                                    ? 'bg-gray-200 text-[#9b857a] border-gray-200 cursor-not-allowed'
+                                    : 'bg-white text-[#6f5b50] border-[#eadfd5] hover:bg-[#f4ebe4]'
+                                }`}
+                              >
+                                More
+                              </button>
+
+                              {openActionId === apt.id && (
+                                <div className="absolute right-0 mt-2 w-52 rounded-xl border border-[#eadfd5] bg-white shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-2 z-20">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionId(null)
+                                      setSelectedAppointment(apt)
+                                    }}
+                                    className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-[#f4ebe4] text-[#6f5b50]"
+                                  >
+                                    View Details
+                                  </button>
+                                  {proofUrl && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionId(null)
+                                        openProofFile(proofUrl)
+                                      }}
+                                      className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-[#f4ebe4] text-[#6f5b50]"
+                                    >
+                                      View Proof
+                                    </button>
+                                  )}
+                                  {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionId(null)
+                                          handlePaymentStatus(apt.id, 'paid')
+                                        }}
+                                        className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-emerald-50 text-emerald-700"
+                                      >
+                                        Mark Paid
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionId(null)
+                                          handlePaymentStatus(apt.id, 'rejected')
+                                        }}
+                                        className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-red-50 text-red-700"
+                                      >
+                                        Reject
+                                      </button>
+                                    </>
+                                  )}
+                                  <div className="border-t border-[#f0e4dc] my-1" />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionId(null)
+                                      handleDelete(apt)
+                                    }}
+                                    className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-red-50 text-red-700"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-[#ddccbf] bg-[#fffdfa] p-6 text-center text-sm text-[#9b857a]">
+                      {!selectedDate
+                        ? 'Select a date to begin.'
+                        : !selectedTimeSlot
+                          ? 'Select a time slot to view appointments.'
+                          : 'No appointments found for this date and time slot.'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            )}
+          </section>
+          </>
+          )}
+
+          {showLegacyLayout && (
+          <div className="overflow-hidden rounded-[14px] border border-[#DDD6FE] bg-white shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
             <div className="md:hidden space-y-3 p-3">
               {sortedAppointments.map((apt) => {
                 const appointmentServices = getAppointmentServices(apt)
@@ -565,19 +1353,14 @@ const AdminAppointments = () => {
                 const canModify = normalizedStatus === 'booked' || normalizedStatus === 'confirmed'
                 const canConfirm = normalizedStatus === 'booked'
                 const isProcessingAction = processingAppointmentId === apt.id
-                const paymentLabel = paymentStatusLabel(apt.payment_status)
-                const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status)
-                const statusBadgeClass =
-                  normalizedStatus === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
-                  normalizedStatus === 'booked' ? 'bg-blue-100 text-blue-700' :
-                  normalizedStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                  normalizedStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
-                  'bg-[#f4ebe4] text-[#6f5b50]'
+                const paymentLabel = paymentStatusLabel(apt.payment_status, apt.status, apt.payment_method)
+                const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)
+                const statusBadgeClass = statusPillClass(normalizedStatus)
 
                 return (
                   <article
                     key={apt.id}
-                    className="rounded-xl border border-[#eadfd5] bg-white p-3 shadow-[0_8px_20px_rgba(92,64,51,0.08)]"
+                    className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]"
                   >
                     <button
                       type="button"
@@ -586,24 +1369,26 @@ const AdminAppointments = () => {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="font-semibold text-[#3b2f2a] truncate">{apt.customer_name || 'Customer'}</div>
-                          <div className="text-xs text-[#9b857a] mt-1 truncate">{apt.customer_phone || apt.customer_email || '-'}</div>
+                          <div className="truncate font-semibold text-[#2D2D2D]">{apt.customer_name || 'Customer'}</div>
+                          <div className="mt-1 truncate text-xs text-[#6B6B6B]">{apt.customer_phone || apt.customer_email || '-'}</div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusBadgeClass}`}>
                           {normalizedStatus === 'confirmed' ? 'Confirmed' : displayStatus}
                         </span>
                       </div>
-                      <div className="mt-2 text-sm text-[#4a3a2f]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
-                      <div className="mt-1 text-xs text-[#8f7a6f]">Stylist: {apt.stylist?.name || 'Unassigned'}</div>
-                      <div className="mt-1 text-xs text-[#8f7a6f]">{dateLabel} • {timeLabel}</div>
+                      <div className="mt-2 text-sm text-[#2D2D2D]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
+                      <div className="mt-1 text-xs text-[#6B6B6B]">Stylist: {apt.stylist?.name || 'Unassigned'}</div>
+                      <div className="mt-1 text-xs text-[#6B6B6B]">{dateLabel} • {timeLabel}</div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(apt.payment_method, apt.payment_status)}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
                           {paymentChoice}
                         </span>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentStatusClass(apt.payment_status)}`}>
-                          {paymentLabel}
-                        </span>
-                        <span className="ml-auto text-sm font-semibold text-[#3b2f2a]">{currency(totalPrice)}</span>
+                        {shouldShowPaymentStatusBadge(apt.payment_method, apt.payment_status, apt.status) && (
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentStatusClass(apt.payment_status, apt.status, apt.payment_method)}`}>
+                            {paymentLabel}
+                          </span>
+                        )}
+                        <span className="ml-auto text-sm font-semibold text-[#2D2D2D]">{currency(totalPrice)}</span>
                       </div>
                     </button>
 
@@ -611,8 +1396,8 @@ const AdminAppointments = () => {
                       {proofUrl && (
                         <button
                           type="button"
-                          onClick={() => window.open(proofUrl, '_blank')}
-                          className="tap-safe px-3 py-2 rounded-lg border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#f4ebe4]"
+                          onClick={() => openProofFile(proofUrl)}
+                          className="tap-safe rounded-lg border border-[#7B5CF5] px-3 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                         >
                           View Proof
                         </button>
@@ -620,7 +1405,7 @@ const AdminAppointments = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedAppointment(apt)}
-                        className="tap-safe px-3 py-2 rounded-lg border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#f4ebe4]"
+                        className="tap-safe rounded-lg border border-[#7B5CF5] px-3 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                       >
                         Details
                       </button>
@@ -628,7 +1413,7 @@ const AdminAppointments = () => {
                         type="button"
                         onClick={() => canConfirm && !isProcessingAction && handleAction(apt.id, 'confirm')}
                         disabled={!canConfirm || isProcessingAction}
-                        className={`tap-safe px-3 py-2 rounded-lg text-sm ${canConfirm && !isProcessingAction ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'}`}
+                        className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${canConfirm && !isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
                       >
                         Confirm
                       </button>
@@ -636,7 +1421,7 @@ const AdminAppointments = () => {
                         type="button"
                         onClick={() => canModify && !isProcessingAction && handleRescheduleClick(apt)}
                         disabled={!canModify || isProcessingAction}
-                        className={`tap-safe px-3 py-2 rounded-lg text-sm ${canModify && !isProcessingAction ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'}`}
+                        className={`tap-safe rounded-lg border px-3 py-2 text-sm transition ${canModify && !isProcessingAction ? 'border-[#7B5CF5] bg-transparent text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed border-[#E5E7EB] bg-[#E5E7EB] text-[#9CA3AF]'}`}
                       >
                         Reschedule
                       </button>
@@ -644,7 +1429,7 @@ const AdminAppointments = () => {
                         type="button"
                         onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'cancel')}
                         disabled={!canModify || isProcessingAction}
-                        className={`tap-safe px-3 py-2 rounded-lg text-sm ${canModify && !isProcessingAction ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'}`}
+                        className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${canModify && !isProcessingAction ? 'bg-[#FEF3C7] text-[#B45309] hover:bg-[#FDE68A]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
                       >
                         Cancel
                       </button>
@@ -652,17 +1437,17 @@ const AdminAppointments = () => {
                         type="button"
                         onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'complete')}
                         disabled={!canModify || isProcessingAction}
-                        className={`tap-safe px-3 py-2 rounded-lg text-sm ${canModify && !isProcessingAction ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'}`}
+                        className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${canModify && !isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
                       >
                         {isProcessingAction ? 'Completing...' : 'Complete'}
                       </button>
-                      {apt.payment_method === 'online' && apt.payment_status === 'pending' && (
+                      {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
                         <>
                           <button
                             type="button"
                             onClick={() => !isProcessingAction && handlePaymentStatus(apt.id, 'paid')}
                             disabled={isProcessingAction}
-                            className={`tap-safe px-3 py-2 rounded-lg text-sm ${isProcessingAction ? 'bg-gray-200 text-[#9b857a] cursor-not-allowed' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
+                            className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#DCFCE7] text-[#15803D] hover:bg-[#BBF7D0]'}`}
                           >
                             Mark Paid
                           </button>
@@ -670,7 +1455,7 @@ const AdminAppointments = () => {
                             type="button"
                             onClick={() => !isProcessingAction && handlePaymentStatus(apt.id, 'rejected')}
                             disabled={isProcessingAction}
-                            className={`tap-safe px-3 py-2 rounded-lg text-sm ${isProcessingAction ? 'bg-gray-200 text-[#9b857a] cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                            className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#FEE2E2] text-[#B91C1C] hover:bg-[#FECACA]'}`}
                           >
                             Reject
                           </button>
@@ -680,7 +1465,7 @@ const AdminAppointments = () => {
                         type="button"
                         onClick={() => !isProcessingAction && handleDelete(apt)}
                         disabled={isProcessingAction}
-                        className={`tap-safe col-span-2 px-3 py-2 rounded-lg text-sm ${isProcessingAction ? 'bg-gray-200 text-[#9b857a] cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                        className={`tap-safe col-span-2 rounded-lg px-3 py-2 text-sm transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#EF4444] text-white hover:bg-[#DC2626]'}`}
                       >
                         Delete
                       </button>
@@ -689,23 +1474,23 @@ const AdminAppointments = () => {
                 )
               })}
               {sortedAppointments.length === 0 && (
-                <div className="text-center py-8 text-[#9b857a]">No appointments found</div>
+                <div className="py-8 text-center text-[#6B6B6B]">No appointments found</div>
               )}
             </div>
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[720px]">
-                <thead className="bg-[#f6efea]">
+                <thead className="bg-[#F2EDFF]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Service</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Date & Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Payment Choice</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Price</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Service</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Payment Choice</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#f0e4dc]">
+                <tbody className="divide-y divide-[#DDD6FE]">
                   {sortedAppointments.map(apt => {
                     const appointmentServices = getAppointmentServices(apt)
                     const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
@@ -731,13 +1516,13 @@ const AdminAppointments = () => {
                     const canModify = normalizedStatus === 'booked' || normalizedStatus === 'confirmed'
                     const canConfirm = normalizedStatus === 'booked'
                     const isProcessingAction = processingAppointmentId === apt.id
-                    const paymentLabel = paymentStatusLabel(apt.payment_status)
-                    const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status)
+                    const paymentLabel = paymentStatusLabel(apt.payment_status, apt.status, apt.payment_method)
+                    const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)
 
                     return (
                     <tr
                       key={apt.id}
-                      className="hover:bg-[#f9f4ef] cursor-pointer focus-visible:outline-none focus-visible:bg-[#f9f4ef]"
+                      className="cursor-pointer transition hover:bg-[#F6F2FF] focus-visible:bg-[#F6F2FF] focus-visible:outline-none"
                       onClick={() => {
                         setOpenActionId(null)
                         setSelectedAppointment(apt)
@@ -754,15 +1539,15 @@ const AdminAppointments = () => {
                       aria-label={`View details for appointment of ${apt.customer_name || 'customer'}`}
                     >
                       <td className="px-4 py-4">
-                        <div className="font-semibold text-sm">{apt.customer_name}</div>
-                        <div className="text-xs text-[#9b857a] mt-1">
+                        <div className="text-sm font-semibold text-[#2D2D2D]">{apt.customer_name}</div>
+                        <div className="mt-1 text-xs text-[#6B6B6B]">
                           {apt.customer_phone || apt.customer_email}
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="font-medium">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
-                        <div className="text-xs text-[#9b857a] mt-1 flex items-center gap-1">
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#f4ebe4] text-[#b48a6b]">
+                        <div className="font-medium text-[#2D2D2D]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
+                        <div className="mt-1 flex items-center gap-1 text-xs text-[#6B6B6B]">
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#F2EDFF] text-[#7B5CF5]">
                             <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                               <circle cx="12" cy="8" r="3" />
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c1.5-3 5-5 7-5s5.5 2 7 5" />
@@ -772,35 +1557,31 @@ const AdminAppointments = () => {
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="font-medium">{dateLabel}</div>
-                        <div className="text-xs text-[#9b857a] mt-1">{timeLabel}</div>
+                        <div className="font-medium text-[#2D2D2D]">{dateLabel}</div>
+                        <div className="mt-1 text-xs text-[#6B6B6B]">{timeLabel}</div>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex flex-col gap-1">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium w-fit ${
-                            normalizedStatus === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
-                            normalizedStatus === 'booked' ? 'bg-blue-100 text-blue-700' :
-                            normalizedStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                            normalizedStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
-                            'bg-[#f4ebe4] text-[#6f5b50]'
-                          }`}>
+                          <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${statusPillClass(normalizedStatus)}`}>
                             {normalizedStatus === 'confirmed' ? 'Confirmed' : displayStatus}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex flex-col gap-1">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium w-fit ${paymentChoiceClass(apt.payment_method, apt.payment_status)}`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium w-fit ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
                             {paymentChoice}
                           </span>
-                          <span className={`px-3 py-1 rounded-full text-[11px] w-fit ${paymentStatusClass(apt.payment_status)}`}>
-                            {paymentLabel}
-                          </span>
+                          {shouldShowPaymentStatusBadge(apt.payment_method, apt.payment_status, apt.status) && (
+                            <span className={`px-3 py-1 rounded-full text-[11px] w-fit ${paymentStatusClass(apt.payment_status, apt.status, apt.payment_method)}`}>
+                              {paymentLabel}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="font-semibold">{currency(totalPrice)}</div>
-                        <div className="text-xs text-[#9b857a] mt-1">{appointmentServices.length > 1 ? 'Total' : 'Service price'}</div>
+                        <div className="font-semibold text-[#2D2D2D]">{currency(totalPrice)}</div>
+                        <div className="mt-1 text-xs text-[#6B6B6B]">{appointmentServices.length > 1 ? 'Total' : 'Service price'}</div>
                       </td>
                       <td className="px-4 py-4">
                         <div
@@ -815,7 +1596,7 @@ const AdminAppointments = () => {
                               event.stopPropagation()
                               setOpenActionId(openActionId === apt.id ? null : apt.id)
                             }}
-                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-[#eadfd5] text-sm ${isProcessingAction ? 'text-[#b7a59a] cursor-not-allowed' : 'text-[#6f5b50] hover:bg-[#f4ebe4]'}`}
+                            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition ${isProcessingAction ? 'cursor-not-allowed border-[#E5E7EB] bg-[#E5E7EB] text-[#9CA3AF]' : 'border-[#7B5CF5] bg-white text-[#7B5CF5] hover:bg-[#F6F2FF]'}`}
                             aria-haspopup="menu"
                             aria-expanded={openActionId === apt.id}
                             disabled={isProcessingAction}
@@ -832,15 +1613,15 @@ const AdminAppointments = () => {
                             </svg>
                           </button>
                           {openActionId === apt.id && (
-                            <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-[#eadfd5] bg-white/95 shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-2 z-20">
+                            <div className="absolute right-0 z-20 mt-2 w-56 rounded-[14px] border border-[#DDD6FE] bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
                               {proofUrl && (
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setOpenActionId(null)
-                                    window.open(proofUrl, '_blank')
+                                    openProofFile(proofUrl)
                                   }}
-                                  className="w-full text-left text-sm px-3 py-2 rounded-xl hover:bg-[#f4ebe4] text-[#6f5b50]"
+                                  className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                                 >
                                   View Proof
                                 </button>
@@ -851,7 +1632,7 @@ const AdminAppointments = () => {
                                   setOpenActionId(null)
                                   handleAction(apt.id, 'confirm')
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canConfirm && !isProcessingAction ? 'hover:bg-emerald-50 text-emerald-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canConfirm && !isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
                               >
                                 Confirm
                               </button>
@@ -861,11 +1642,11 @@ const AdminAppointments = () => {
                                   setOpenActionId(null)
                                   handleRescheduleClick(apt)
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify && !isProcessingAction ? 'hover:bg-blue-50 text-blue-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canModify && !isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
                               >
                                 Reschedule
                               </button>
-                              {apt.payment_method === 'online' && apt.payment_status === 'pending' && (
+                              {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
                                 <>
                                   <button
                                     onClick={() => {
@@ -873,7 +1654,7 @@ const AdminAppointments = () => {
                                       setOpenActionId(null)
                                       handlePaymentStatus(apt.id, 'paid')
                                     }}
-                                    className={`w-full text-left text-sm px-3 py-2 rounded-xl ${isProcessingAction ? 'text-[#b7a59a] cursor-not-allowed' : 'hover:bg-emerald-50 text-emerald-700'}`}
+                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#15803D] hover:bg-[#DCFCE7]'}`}
                                   >
                                     Mark Paid
                                   </button>
@@ -883,7 +1664,7 @@ const AdminAppointments = () => {
                                       setOpenActionId(null)
                                       handlePaymentStatus(apt.id, 'rejected')
                                     }}
-                                    className={`w-full text-left text-sm px-3 py-2 rounded-xl ${isProcessingAction ? 'text-[#b7a59a] cursor-not-allowed' : 'hover:bg-red-50 text-red-700'}`}
+                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#B91C1C] hover:bg-[#FEE2E2]'}`}
                                   >
                                     Reject
                                   </button>
@@ -895,7 +1676,7 @@ const AdminAppointments = () => {
                                   setOpenActionId(null)
                                   handleAction(apt.id, 'cancel')
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify && !isProcessingAction ? 'hover:bg-amber-50 text-amber-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canModify && !isProcessingAction ? 'text-[#B45309] hover:bg-[#FEF3C7]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
                               >
                                 Cancel
                               </button>
@@ -905,18 +1686,18 @@ const AdminAppointments = () => {
                                   setOpenActionId(null)
                                   handleAction(apt.id, 'complete')
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${canModify && !isProcessingAction ? 'hover:bg-purple-50 text-purple-700' : 'text-[#b7a59a] cursor-not-allowed'}`}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canModify && !isProcessingAction ? 'text-[#6846E8] hover:bg-[#F2EDFF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
                               >
                                 {isProcessingAction ? 'Completing...' : 'Complete'}
                               </button>
-                              <div className="border-t border-[#f0e4dc] my-1" />
+                              <div className="my-1 border-t border-[#DDD6FE]" />
                               <button
                                 onClick={() => {
                                   if (isProcessingAction) return
                                   setOpenActionId(null)
                                   handleDelete(apt)
                                 }}
-                                className={`w-full text-left text-sm px-3 py-2 rounded-xl ${isProcessingAction ? 'text-[#b7a59a] cursor-not-allowed' : 'hover:bg-red-50 text-red-700'}`}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#B91C1C] hover:bg-[#FEE2E2]'}`}
                               >
                                 Delete
                               </button>
@@ -930,104 +1711,107 @@ const AdminAppointments = () => {
                 </tbody>
               </table>
               {sortedAppointments.length === 0 && (
-                <div className="text-center py-8 text-[#9b857a]">No appointments found</div>
+                <div className="py-8 text-center text-[#6B6B6B]">No appointments found</div>
               )}
             </div>
           </div>
+          )}
         </div>
         {selectedAppointment && (
           <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B1237]/45 p-4"
             onClick={() => setSelectedAppointment(null)}
           >
             <div
-              className="bg-white rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.16)] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-5 md:p-6"
+              className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_16px_32px_rgba(0,0,0,0.12)] sm:p-5 md:p-6"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-semibold">Appointment Details</h2>
-                  <p className="text-sm text-[#8f7a6f] mt-1">View booking information and payment proof.</p>
+                  <p className="mt-1 text-sm text-[#6B6B6B]">View booking information and payment proof.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedAppointment(null)}
-                  className="h-9 w-9 rounded-full border border-[#eadfd5] hover:bg-[#f4ebe4] text-[#6f5b50]"
+                  className="h-9 w-9 rounded-full border border-[#DDD6FE] text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                   aria-label="Close details"
                 >
-                  ×
+                  X
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-                <div className="rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
-                  <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Customer</p>
+                <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Customer</p>
                   <p className="mt-2 font-semibold">{selectedAppointment.customer_name || 'N/A'}</p>
-                  <p className="text-sm text-[#6f5b50] mt-1">{selectedAppointment.customer_phone || 'No phone provided'}</p>
-                  <p className="text-sm text-[#6f5b50] mt-1">{selectedAppointment.customer_email || 'No email provided'}</p>
+                  <p className="mt-1 text-sm text-[#6B6B6B]">{selectedAppointment.customer_phone || 'No phone provided'}</p>
+                  <p className="mt-1 text-sm text-[#6B6B6B]">{selectedAppointment.customer_email || 'No email provided'}</p>
                 </div>
-                <div className="rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
-                  <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Schedule</p>
+                <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Schedule</p>
                   <p className="mt-2 font-semibold">{selectedDateLabel}</p>
-                  <p className="text-sm text-[#6f5b50] mt-1">{selectedTimeLabel} PHT</p>
-                  <p className="text-sm text-[#6f5b50] mt-1">Stylist: {selectedAppointment.stylist?.name || 'Unassigned'}</p>
+                  <p className="mt-1 text-sm text-[#6B6B6B]">{selectedTimeLabel} PHT</p>
+                  <p className="mt-1 text-sm text-[#6B6B6B]">Stylist: {selectedAppointment.stylist?.name || 'Unassigned'}</p>
                 </div>
-                <div className="rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
-                  <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Status</p>
+                <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Status</p>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-[#f4ebe4] text-[#6f5b50]">
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusPillClass(selectedStatus)}`}>
                       {selectedStatusLabel}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(selectedAppointment.payment_method, selectedAppointment.payment_status)}`}>
-                      {paymentChoiceLabel(selectedAppointment.payment_method, selectedAppointment.payment_status)}
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(selectedAppointment.payment_method, selectedAppointment.payment_status, selectedAppointment.status)}`}>
+                      {paymentChoiceLabel(selectedAppointment.payment_method, selectedAppointment.payment_status, selectedAppointment.status)}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${paymentStatusClass(selectedAppointment.payment_status)}`}>
-                      {paymentStatusLabel(selectedAppointment.payment_status)}
-                    </span>
+                    {shouldShowPaymentStatusBadge(selectedAppointment.payment_method, selectedAppointment.payment_status, selectedAppointment.status) && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${paymentStatusClass(selectedAppointment.payment_status, selectedAppointment.status, selectedAppointment.payment_method)}`}>
+                        {paymentStatusLabel(selectedAppointment.payment_status, selectedAppointment.status, selectedAppointment.payment_method)}
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
-                  <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Total Price</p>
+                <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Total Price</p>
                   <p className="mt-2 text-xl font-semibold">{currency(selectedTotalPrice)}</p>
-                  <p className="text-xs text-[#8f7a6f] mt-1">{selectedAppointmentServices.length} service{selectedAppointmentServices.length === 1 ? '' : 's'}</p>
+                  <p className="mt-1 text-xs text-[#6B6B6B]">{selectedAppointmentServices.length} service{selectedAppointmentServices.length === 1 ? '' : 's'}</p>
                 </div>
               </div>
 
-              <div className="mt-4 rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Services</p>
+              <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Services</p>
                 <div className="mt-2 space-y-2">
                   {selectedAppointmentServices.length > 0 ? (
                     selectedAppointmentServices.map((service, index) => (
                       <div key={`${service.id || service.name || 'service'}-${index}`} className="flex items-center justify-between gap-3 text-sm">
                         <span className="font-medium">{service.name || 'Service'}</span>
-                        <span className="text-[#6f5b50]">{currency(service.price_cents || 0)}</span>
+                        <span className="text-[#6B6B6B]">{currency(service.price_cents || 0)}</span>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-[#8f7a6f]">No service information available.</p>
+                    <p className="text-sm text-[#6B6B6B]">No service information available.</p>
                   )}
                 </div>
               </div>
 
-              <div className="mt-4 rounded-xl border border-[#f0e4dc] bg-[#fcfaf8] p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-[#9b857a]">Payment Proof</p>
+              <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Payment Proof</p>
                 {selectedProofUrl ? (
                   <div className="mt-2 space-y-3">
                     <img
                       src={selectedProofUrl}
                       alt="Payment proof"
-                      className="w-full max-h-72 object-contain rounded-lg border border-[#eadfd5] bg-white"
+                      className="w-full max-h-72 rounded-lg border border-[#DDD6FE] bg-white object-contain"
                     />
                     <button
                       type="button"
-                      onClick={() => window.open(selectedProofUrl, '_blank')}
-                      className="tap-safe px-4 py-2 rounded-lg bg-[#f4ebe4] border border-[#eadfd5] text-sm text-[#6f5b50] hover:bg-[#eadfd5]"
+                      onClick={() => openProofFile(selectedProofUrl)}
+                      className="tap-safe rounded-lg border border-[#7B5CF5] px-4 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                     >
                       Open Full Image
                     </button>
                   </div>
                 ) : (
-                  <p className="text-sm text-[#8f7a6f] mt-2">No payment proof uploaded.</p>
+                  <p className="mt-2 text-sm text-[#6B6B6B]">No payment proof uploaded.</p>
                 )}
               </div>
             </div>
@@ -1035,14 +1819,14 @@ const AdminAppointments = () => {
         )}
         {/* Reschedule Modal */}
         {showRescheduleModal && reschedulingAppointment && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-4 sm:p-6 w-full max-w-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B1237]/45 p-4">
+            <div className="w-full max-w-md rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_16px_32px_rgba(0,0,0,0.12)] sm:p-6">
               <h2 className="text-xl font-bold mb-4">Reschedule Appointment</h2>
-              <div className="mb-4 p-3 bg-gray-50 rounded">
-                <p className="text-sm text-[#8f7a6f]">
+              <div className="mb-4 rounded-xl border border-[#DDD6FE] bg-[#F6F2FF] p-3">
+                <p className="text-sm text-[#6B6B6B]">
                   <strong>Customer:</strong> {reschedulingAppointment.customer_name}
                 </p>
-                <p className="text-sm text-[#8f7a6f]">
+                <p className="text-sm text-[#6B6B6B]">
                   <strong>Current Date:</strong> {new Date(getStart(reschedulingAppointment)).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT
                 </p>
               </div>
@@ -1052,7 +1836,7 @@ const AdminAppointments = () => {
                   <input
                     type="date"
                     required
-                    className="tap-safe w-full border rounded px-3 py-2"
+                    className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                     value={rescheduleData.date}
                     onChange={(e) => setRescheduleData({ ...rescheduleData, date: e.target.value })}
                     min={new Date().toISOString().split('T')[0]}
@@ -1063,18 +1847,18 @@ const AdminAppointments = () => {
                   <input
                     type="time"
                     required
-                    className="tap-safe w-full border rounded px-3 py-2"
+                    className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                     value={rescheduleData.preferred_time}
                     onChange={(e) => setRescheduleData({ ...rescheduleData, preferred_time: e.target.value })}
                     min="08:00"
                     max="19:59"
                   />
-                  <p className="text-xs text-[#9b857a] mt-1">Business hours: 8:00 AM - 8:00 PM</p>
+                  <p className="mt-1 text-xs text-[#6B6B6B]">Business hours: 8:00 AM - 8:00 PM</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Reason (Optional)</label>
                   <textarea
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                     rows="3"
                     value={rescheduleData.reschedule_reason}
                     onChange={(e) => setRescheduleData({ ...rescheduleData, reschedule_reason: e.target.value })}
@@ -1084,7 +1868,7 @@ const AdminAppointments = () => {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     type="submit"
-                    className="tap-safe flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    className="tap-safe flex-1 rounded-lg bg-[#7B5CF5] px-4 py-2 text-white transition hover:bg-[#6846E8]"
                   >
                     Reschedule
                   </button>
@@ -1099,7 +1883,7 @@ const AdminAppointments = () => {
                         reschedule_reason: '',
                       })
                     }}
-                    className="tap-safe flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+                    className="tap-safe flex-1 rounded-lg border border-[#7B5CF5] bg-transparent px-4 py-2 text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                   >
                     Cancel
                   </button>

@@ -50,7 +50,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         ? stylistLinks
         : customerLinks
 
-  const isAdminTheme = true
+  const isAdminTheme = userType !== 'customer'
 
   const renderIcon = (name) => {
     const base = 'h-5 w-5'
@@ -159,15 +159,19 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     <>
       <aside
         className={`hidden md:flex w-20 shrink-0 flex-col border-r ${
-          isAdminTheme ? 'bg-[#ece4ff] border-[#d9cbff]' : 'bg-slate-900 border-slate-800'
+          isAdminTheme
+            ? 'bg-gradient-to-b from-[#5e3eb3] via-[#5635aa] to-[#472a90] border-white/10 text-white shadow-[inset_-1px_0_0_rgba(255,255,255,0.08)]'
+            : 'bg-slate-900 border-slate-800'
         }`}
       >
-        <div className={`h-[74px] flex items-center justify-center border-b ${isAdminTheme ? 'border-[#d9cbff]' : 'border-slate-800'}`}>
+        <div className={`h-[74px] flex items-center justify-center border-b ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
           <button
             type="button"
             onClick={() => setIsOpen(true)}
             className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-              isAdminTheme ? 'bg-white/85 text-[#5f4f8f] hover:bg-white' : 'bg-slate-800 text-white'
+              isAdminTheme
+                ? 'border border-white/40 bg-white/95 text-[#5d41b7] shadow-[0_12px_28px_rgba(33,10,86,0.22)] hover:bg-white'
+                : 'bg-slate-800 text-white'
             }`}
             aria-label="Open full side panel"
             title="Open full side panel"
@@ -187,8 +191,8 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
               className={({ isActive }) => (
                 `h-12 w-12 mx-auto rounded-xl flex items-center justify-center transition ${
                   isActive
-                    ? 'bg-white text-[#453676] shadow-sm'
-                    : 'text-[#5f4f8f] hover:bg-white/70'
+                    ? 'bg-white text-[#5437a9] shadow-[0_14px_30px_rgba(26,9,67,0.28)]'
+                    : 'text-white hover:bg-white/16 hover:text-white'
                 }`
               )}
             >
@@ -198,12 +202,12 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         </nav>
 
         {(userType === 'admin' || userType === 'manager' || userType === 'stylist') && onLogout && (
-          <div className={`px-2 pb-3 border-t ${isAdminTheme ? 'border-[#d9cbff]' : 'border-slate-800'}`}>
+          <div className={`px-2 pb-3 border-t ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
             <button
               type="button"
               onClick={onLogout}
               className={`h-12 w-12 mt-3 mx-auto rounded-xl flex items-center justify-center ${
-                isAdminTheme ? 'bg-[#c97c5d] text-white hover:bg-[#b86f54]' : 'bg-red-600 text-white'
+                isAdminTheme ? 'bg-[#d96c82] text-white hover:bg-[#c85f74]' : 'bg-red-600 text-white'
               }`}
               title="Logout"
               aria-label="Logout"
@@ -221,7 +225,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       <div className={`fixed inset-0 z-40 ${isOpen ? '' : 'pointer-events-none'}`}>
         <div
           className={`absolute inset-0 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'} ${
-            isAdminTheme ? 'bg-black/20' : 'bg-black/40'
+            isAdminTheme ? 'bg-[#120628]/52' : 'bg-black/40'
           }`}
           onClick={() => setIsOpen(false)}
           aria-hidden="true"
@@ -230,17 +234,21 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         <aside
           className={`absolute left-0 top-0 h-full w-72 flex flex-col transform transition-transform ${
             isOpen ? 'translate-x-0' : '-translate-x-full'
-          } ${isAdminTheme ? 'bg-[#ece4ff] text-[#453676] border-r border-[#d9cbff]' : 'bg-slate-900 text-white'}`}
+          } ${
+            isAdminTheme
+              ? 'bg-gradient-to-b from-[#5f3eb4] via-[#5635aa] to-[#472a90] text-white border-r border-white/10'
+              : 'bg-slate-900 text-white'
+          }`}
           role="dialog"
           aria-modal="true"
         >
           <div
             className={`px-5 py-4 text-base font-semibold flex items-center justify-between ${
-              isAdminTheme ? 'border-b border-[#d9cbff]' : 'border-b border-slate-800'
+              isAdminTheme ? 'border-b border-white/10' : 'border-b border-slate-800'
             }`}
           >
             <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden">
+              <span className="h-12 w-12 rounded-2xl bg-white/22 border border-white/16 flex items-center justify-center overflow-hidden">
                 <img
                   src="/logo.png"
                   alt="Kaye's Hair Salon logo"
@@ -249,13 +257,13 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
               </span>
               <div className="leading-tight">
                 <div className="text-sm font-semibold">Kaye&apos;s Hair Salon</div>
-                <div className={`text-xs ${isAdminTheme ? 'text-[#7f6aa8]' : 'text-slate-300'}`}>and Spa</div>
+                <div className={`text-xs ${isAdminTheme ? 'text-white/68' : 'text-slate-300'}`}>and Spa</div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className={`text-sm ${isAdminTheme ? 'text-[#7f6aa8] hover:text-[#5f4f8f]' : 'text-slate-300 hover:text-white'}`}
+              className={`text-sm ${isAdminTheme ? 'text-white/68 hover:text-white' : 'text-slate-300 hover:text-white'}`}
               aria-label="Close menu"
             >
               Close
@@ -270,13 +278,19 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
                 className={({ isActive }) => (
                   `flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
                     isActive
-                      ? 'bg-white/85 text-[#453676] shadow-sm'
-                      : 'text-[#5f4f8f] hover:bg-white/70'
+                      ? 'bg-white text-[#5437a9] shadow-[0_14px_30px_rgba(26,9,67,0.24)]'
+                      : 'text-white hover:bg-white/16 hover:text-white'
                   }`
                 )}
                 onClick={() => setIsOpen(false)}
               >
-                <span className="h-9 w-9 rounded-xl bg-white/80 text-[#5f4f8f] flex items-center justify-center shadow-sm">
+                <span
+                  className={`h-9 w-9 rounded-xl flex items-center justify-center ${
+                    isAdminTheme
+                      ? 'bg-white/12 border border-white/20'
+                      : 'bg-slate-800 text-white'
+                  }`}
+                >
                   {renderIcon(link.icon)}
                 </span>
                 <span className="font-medium">{link.label}</span>
@@ -285,7 +299,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
           </nav>
 
           {(userType === 'admin' || userType === 'manager' || userType === 'stylist') && onLogout && (
-            <div className={`px-5 py-4 border-t ${isAdminTheme ? 'border-[#d9cbff]' : 'border-slate-800'}`}>
+            <div className={`px-5 py-4 border-t ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
               <button
                 onClick={() => {
                   setIsOpen(false)
@@ -293,7 +307,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
                 }}
                 className={`w-full px-3 py-2 rounded text-sm ${
                   isAdminTheme
-                    ? 'bg-[#c97c5d] hover:bg-[#b86f54] text-white'
+                    ? 'bg-[#d96c82] hover:bg-[#c85f74] text-white'
                     : 'bg-red-600 hover:bg-red-700 text-white'
                 }`}
               >

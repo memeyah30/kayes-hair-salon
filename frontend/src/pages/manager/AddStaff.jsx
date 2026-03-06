@@ -20,6 +20,8 @@ const AddStaff = () => {
   const navigate = useNavigate()
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
+  const glassPanelClass = 'rounded-[28px] border border-white/32 bg-white/78 p-4 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md sm:p-5'
+  const inputClass = 'tap-safe w-full rounded-xl border border-[#ddccff] bg-white/88 px-3 py-2 text-[#2d1f4f] outline-none focus:border-[#8c72df] focus:ring-2 focus:ring-[#d8cbff]'
 
   const handleLogout = () => {
     api.post('/logout').finally(() => {
@@ -60,7 +62,7 @@ const AddStaff = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2d1f4f]">
       <Sidebar userType="manager" onLogout={handleLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -68,14 +70,14 @@ const AddStaff = () => {
           <div className="flex flex-col sm:flex-row sm:items-start gap-3">
             <button
               onClick={() => navigate('/admin/dashboard')}
-              className="tap-safe w-fit px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+              className="tap-safe w-fit rounded-2xl border border-white/36 bg-white/82 px-3 py-2 text-lg font-bold text-[#654abf] shadow-[0_14px_28px_rgba(43,20,97,0.12)] hover:bg-white"
               title="Back to dashboard"
             >
               &larr;
             </button>
             <div>
-              <h1 className="text-2xl font-bold">Add Staff Request</h1>
-              <p className="text-sm text-[#8f7a6f] mt-1">
+              <h1 className="text-2xl font-bold text-[#24173f]">Add Staff Request</h1>
+              <p className="mt-1 text-sm text-[#7b67a9]">
                 New staff requests are sent to admin for approval.
               </p>
             </div>
@@ -83,12 +85,12 @@ const AddStaff = () => {
 
           <form
             onSubmit={handleSubmit}
-            className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 sm:p-5 grid md:grid-cols-2 gap-4"
+            className={`${glassPanelClass} grid gap-4 md:grid-cols-2`}
           >
             <div>
               <label className="block text-sm font-medium mb-1">First Name *</label>
               <input
-                className="tap-safe w-full border rounded px-3 py-2"
+                className={inputClass}
                 value={form.first_name}
                 onChange={(e) => setForm((prev) => ({ ...prev, first_name: e.target.value }))}
                 maxLength={100}
@@ -98,7 +100,7 @@ const AddStaff = () => {
             <div>
               <label className="block text-sm font-medium mb-1">Last Name *</label>
               <input
-                className="tap-safe w-full border rounded px-3 py-2"
+                className={inputClass}
                 value={form.last_name}
                 onChange={(e) => setForm((prev) => ({ ...prev, last_name: e.target.value }))}
                 maxLength={100}
@@ -109,7 +111,7 @@ const AddStaff = () => {
               <label className="block text-sm font-medium mb-1">Email</label>
               <input
                 type="email"
-                className="tap-safe w-full border rounded px-3 py-2"
+                className={inputClass}
                 value={form.email}
                 onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
                 maxLength={150}
@@ -118,7 +120,7 @@ const AddStaff = () => {
             <div>
               <label className="block text-sm font-medium mb-1">Phone</label>
               <input
-                className="tap-safe w-full border rounded px-3 py-2"
+                className={inputClass}
                 value={form.phone}
                 onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
                 maxLength={30}
@@ -127,7 +129,7 @@ const AddStaff = () => {
             <div>
               <label className="block text-sm font-medium mb-1">Role</label>
               <select
-                className="tap-safe w-full border rounded px-3 py-2"
+                className={inputClass}
                 value={form.role}
                 onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
               >
@@ -141,33 +143,33 @@ const AddStaff = () => {
               <input
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                className="tap-safe w-full border rounded px-3 py-2"
+                className={inputClass}
                 onChange={(e) => setForm((prev) => ({ ...prev, photo: e.target.files?.[0] || null }))}
               />
-              <div className="text-xs text-[#8f7a6f] mt-1">Max 2MB</div>
+              <div className="mt-1 text-xs text-[#7b67a9]">Max 2MB</div>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Specialization</label>
               <input
-                className="tap-safe w-full border rounded px-3 py-2"
+                className={inputClass}
                 value={form.specialization}
                 onChange={(e) => setForm((prev) => ({ ...prev, specialization: e.target.value }))}
                 placeholder="hair color, nail art, treatment"
               />
-              <div className="text-xs text-[#8f7a6f] mt-1">Use comma-separated values.</div>
+              <div className="mt-1 text-xs text-[#7b67a9]">Use comma-separated values.</div>
             </div>
             <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
               <button
                 type="button"
                 onClick={() => navigate('/manager/staff/requests')}
-                className="tap-safe w-full sm:w-auto px-4 py-2 border rounded hover:bg-gray-50"
+                className="tap-safe w-full sm:w-auto rounded-2xl border border-[#ddccff] bg-white/88 px-4 py-2 text-[#6046b7] hover:bg-white"
               >
                 View Requests
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="tap-safe w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60"
+                className="tap-safe w-full sm:w-auto rounded-2xl bg-gradient-to-r from-[#6f4ed0] to-[#8867df] px-4 py-2 text-white shadow-[0_14px_28px_rgba(43,20,97,0.24)] hover:from-[#6546c4] hover:to-[#7b5cd2] disabled:opacity-60"
               >
                 {submitting ? 'Submitting...' : 'Submit for Approval'}
               </button>

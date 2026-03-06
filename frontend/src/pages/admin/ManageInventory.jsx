@@ -132,7 +132,7 @@ const ManageInventory = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#3b2f2a]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />

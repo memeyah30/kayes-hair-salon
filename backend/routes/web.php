@@ -12,6 +12,7 @@ use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\ServiceInventoryRequirementController;
 use App\Http\Controllers\ManageBookingController;
 use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
 use App\Http\Controllers\Admin\StaffApprovalController;
@@ -21,7 +22,12 @@ use Illuminate\Http\Request;
 // Root route - serve frontend
 Route::get('/', function () {
     return file_exists(public_path('index.html')) 
-        ? file_get_contents(public_path('index.html'))
+        ? response(file_get_contents(public_path('index.html')), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ])
         : response()->json([
             'message' => 'THOLITS SALON API',
             'status' => 'running',
@@ -36,8 +42,34 @@ Route::get('/csrf-token', function () {
 });
 
 // Public routes
-Route::get('/services', [ServiceController::class, 'index']);
-Route::get('/stylists', [StylistController::class, 'index']);
+Route::get('/services', function (Request $request) {
+    if ($request->expectsJson() || $request->wantsJson()) {
+        return app(ServiceController::class)->index($request);
+    }
+
+    return file_exists(public_path('index.html'))
+        ? response(file_get_contents(public_path('index.html')), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ])
+        : response()->json(['message' => 'Frontend not found'], 404);
+});
+Route::get('/stylists', function (Request $request) {
+    if ($request->expectsJson() || $request->wantsJson()) {
+        return app(StylistController::class)->index($request);
+    }
+
+    return file_exists(public_path('index.html'))
+        ? response(file_get_contents(public_path('index.html')), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ])
+        : response()->json(['message' => 'Frontend not found'], 404);
+});
 Route::get('/stylists/{stylist}/availability', [StylistController::class, 'availability']);
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
 Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
@@ -114,9 +146,14 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index']);
     Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
     Route::get('/inventory/stats', [InventoryController::class, 'stats']);
+    Route::get('/inventory/usage-logs', [InventoryController::class, 'usageLogs']);
     Route::post('/inventory', [InventoryController::class, 'store']);
     Route::patch('/inventory/{inventory}', [InventoryController::class, 'update']);
     Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy']);
+
+    // Service-to-product usage mapping
+    Route::get('/services/{service}/inventory-requirements', [ServiceInventoryRequirementController::class, 'index']);
+    Route::put('/services/{service}/inventory-requirements', [ServiceInventoryRequirementController::class, 'sync']);
 
     // Sales management
     Route::get('/sales', [SaleController::class, 'index']);
@@ -187,6 +224,11 @@ Route::get('/manage-booking/dashboard', function (Request $request) {
 // Catch-all route for React Router - must be last
 Route::get('/{any}', function () {
     return file_exists(public_path('index.html')) 
-        ? file_get_contents(public_path('index.html'))
+        ? response(file_get_contents(public_path('index.html')), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ])
         : response()->json(['message' => 'Not found'], 404);
-})->where('any', '.*');
+})->where('any', '^(?!storage/|assets/).*$');

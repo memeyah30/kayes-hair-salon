@@ -1,28 +1,230 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../utils/api'
 import heroMainImage from '../assets/landing-hero-main.jpg'
-import heroSecondaryImage from '../assets/landing-hero-secondary.jpg'
+import './HomeHero.css'
 
-const currency = (cents) => `P${(cents / 100).toFixed(2)}`
+const currency = (cents) => `PHP ${(Number(cents || 0) / 100).toFixed(2)}`
 
-const formatDuration = (minutes) => {
-  const minutesValue = Number(minutes)
-  if (!Number.isFinite(minutesValue)) {
-    return 'Price'
-  }
-  if (minutesValue < 60) {
-    return `${minutesValue}m`
-  }
-  const hours = Math.floor(minutesValue / 60)
-  const mins = minutesValue % 60
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+const imageUrl = (path) => {
+  if (!path) return null
+  if (/^https?:\/\//i.test(path)) return path
+  const normalizedPath = String(path).replace(/^\/+/, '')
+  const origin = window.location.origin.includes(':5173')
+    ? 'http://localhost:8000'
+    : window.location.origin
+  return `${origin}/${normalizedPath}`
 }
 
-const imageUrl = (path) => (path ? `http://localhost:8000/${path}` : null)
-const heroImages = {
-  primary: heroMainImage,
-  secondary: heroSecondaryImage,
+const parsePriceCents = (centsValue, pesoValue) => {
+  if (centsValue !== null && typeof centsValue !== 'undefined' && centsValue !== '') {
+    const asCents = Number(centsValue)
+    return Number.isFinite(asCents) ? Math.round(asCents) : null
+  }
+  if (pesoValue !== null && typeof pesoValue !== 'undefined' && pesoValue !== '') {
+    const asPesos = Number(pesoValue)
+    return Number.isFinite(asPesos) ? Math.round(asPesos * 100) : null
+  }
+  return null
+}
+
+const normalizeCategory = (value) => String(value || '').trim().toLowerCase()
+
+const detectVariantGender = (variant) => {
+  const gender = normalizeCategory(variant?.gender)
+  if (gender === 'men' || gender === 'women') return gender
+
+  const name = String(variant?.variant_name || variant?.name || '').toLowerCase()
+  if (/(^|\b)(men|male|gentleman|gents)(\b|$)/.test(name)) return 'men'
+  if (/(^|\b)(women|female|ladies|lady)(\b|$)/.test(name)) return 'women'
+  return 'unisex'
+}
+
+const buildServiceDescription = (service) => {
+  const description = String(service?.description || '').trim()
+  if (description) return description
+
+  const tag = String(service?.specialization_tag || '').replace(/[-_]+/g, ' ').trim()
+  if (tag) return `Specialized ${tag} service tailored for your style.`
+
+  return 'Professional salon care personalized to your needs.'
+}
+
+const getNameAudienceHints = (service) => {
+  const text = `${service?.name || ''} ${service?.specialization_tag || ''}`.toLowerCase()
+  const menHint = /(^|\b)(men|male|gentleman|gents|barber|beard|fade)(\b|$)/.test(text)
+  const womenHint = /(^|\b)(women|female|ladies|lady)(\b|$)/.test(text)
+  return { menHint, womenHint }
+}
+
+const normalizeServiceName = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+const MEN_EXCLUDED_SERVICE_PATTERNS = [
+  /\bregular rebond\b.*\bcellophane\b/,
+  /\bpedicure gel\b/,
+  /\bpremium rebonding\b/,
+  /\bmanicure gel\b/,
+  /\bhot oil\b/,
+  /\bsemidilino\b/,
+  /\bloreal mask treatment\b/,
+  /\bhair and makeup\b/,
+  /\bhair makeup\b/,
+]
+
+const isWomenOnlyServiceByRule = (service) => {
+  const normalizedName = normalizeServiceName(service?.name)
+  if (!normalizedName) return false
+  return MEN_EXCLUDED_SERVICE_PATTERNS.some((pattern) => pattern.test(normalizedName))
+}
+
+const deriveServiceCategory = (service, variants) => {
+  const explicitCategory = normalizeCategory(service?.category)
+  if (['women', 'men', 'nails', 'treatments'].includes(explicitCategory)) return explicitCategory
+
+  const text = `${service?.name || ''} ${service?.specialization_tag || ''}`.toLowerCase()
+  if (/(nail|manicure|pedicure|acrylic|gel)/.test(text)) return 'nails'
+  if (/(rebond|keratin|treatment|spa|perm|botox|cellophane|therapy|color|relax)/.test(text)) return 'treatments'
+  if (/(men|male|gentleman|barber|fade|beard)/.test(text)) return 'men'
+  if (/(women|female|ladies|lady)/.test(text)) return 'women'
+
+  const genders = new Set((variants || []).map((variant) => detectVariantGender(variant)))
+  if (genders.has('women') && !genders.has('men')) return 'women'
+  if (genders.has('men') && !genders.has('women')) return 'men'
+  return 'treatments'
+}
+
+const deriveServiceAudiences = (service, variants) => {
+  if (isWomenOnlyServiceByRule(service)) {
+    return { men: false, women: true }
+  }
+
+  const genders = new Set((variants || []).map((variant) => variant.gender))
+  const hasMen = genders.has('men')
+  const hasWomen = genders.has('women')
+  const hasUnisex = genders.has('unisex')
+  const { menHint, womenHint } = getNameAudienceHints(service)
+
+  if (hasMen || hasWomen) {
+    return {
+      men: hasMen || hasUnisex,
+      women: hasWomen || hasUnisex,
+    }
+  }
+
+  if (hasUnisex) {
+    return {
+      men: true,
+      women: true,
+    }
+  }
+
+  if (menHint || womenHint) {
+    return {
+      men: menHint,
+      women: womenHint,
+    }
+  }
+
+  // Services without explicit gender markers are treated as available to both.
+  return { men: true, women: true }
+}
+
+const summarizeServicePricing = (service, variants) => {
+  const toRangeLabel = (prices = []) => {
+    if (!prices.length) return null
+    const minPrice = Math.min(...prices)
+    const maxPrice = Math.max(...prices)
+    return minPrice === maxPrice ? currency(minPrice) : `${currency(minPrice)} - ${currency(maxPrice)}`
+  }
+
+  const activeVariants = (variants || []).filter((variant) => {
+    if (typeof variant?.is_active === 'undefined' || variant?.is_active === null) return true
+    return Boolean(variant.is_active)
+  })
+
+  const variantPrices = activeVariants
+    .map((variant) => ({
+      id: variant.id,
+      name: variant.variant_name || variant.name || 'Option',
+      priceCents: parsePriceCents(variant.price_cents, variant.price),
+      durationMinutes: Number(variant.duration_minutes || service?.base_duration || service?.duration_minutes || 0) || null,
+      gender: detectVariantGender(variant),
+    }))
+    .filter((variant) => Number.isFinite(variant.priceCents))
+
+  const basePrice = parsePriceCents(
+    service?.base_price_cents ?? service?.price_cents,
+    service?.base_price ?? service?.price
+  )
+
+  if (variantPrices.length > 1) {
+    const allPrices = variantPrices.map((variant) => variant.priceCents)
+
+    const byGender = {
+      men: variantPrices.filter((variant) => variant.gender === 'men').map((variant) => variant.priceCents),
+      women: variantPrices.filter((variant) => variant.gender === 'women').map((variant) => variant.priceCents),
+    }
+
+    const menRange = toRangeLabel(byGender.men)
+    const womenRange = toRangeLabel(byGender.women)
+    const allRange = toRangeLabel(allPrices)
+    const genderLines = []
+    if (menRange) genderLines.push(`Men: ${menRange}`)
+    if (womenRange) genderLines.push(`Women: ${womenRange}`)
+
+    return {
+      variants: variantPrices,
+      headline: allRange || 'Price upon consultation',
+      sublines: genderLines,
+      genderRanges: {
+        men: menRange,
+        women: womenRange,
+      },
+      ctaLabel: 'View Options',
+    }
+  }
+
+  if (variantPrices.length === 1) {
+    const singleVariant = variantPrices[0]
+    return {
+      variants: variantPrices,
+      headline: currency(singleVariant.priceCents),
+      sublines: [],
+      genderRanges: {
+        men: singleVariant.gender === 'men' ? currency(singleVariant.priceCents) : null,
+        women: singleVariant.gender === 'women' ? currency(singleVariant.priceCents) : null,
+      },
+      ctaLabel: 'Book Now',
+    }
+  }
+
+  if (Number.isFinite(basePrice)) {
+    return {
+      variants: [],
+      headline: `Starting at ${currency(basePrice)}`,
+      sublines: [],
+      genderRanges: {
+        men: null,
+        women: null,
+      },
+      ctaLabel: 'Book Now',
+    }
+  }
+
+  return {
+    variants: [],
+    headline: 'Price upon consultation',
+    sublines: [],
+    genderRanges: {
+      men: null,
+      women: null,
+    },
+    ctaLabel: 'Book Now',
+  }
 }
 
 const Home = () => {
@@ -31,6 +233,11 @@ const Home = () => {
   const [services, setServices] = useState([])
   const [stylists, setStylists] = useState([])
   const [loading, setLoading] = useState(true)
+  const activeServiceCategory = 'all'
+  const [isServiceOptionsOpen, setIsServiceOptionsOpen] = useState(false)
+  const [optionsService, setOptionsService] = useState(null)
+  const [optionsGender, setOptionsGender] = useState('')
+  const [selectedOptionVariantId, setSelectedOptionVariantId] = useState('')
 
   useEffect(() => {
     loadData()
@@ -59,31 +266,179 @@ const Home = () => {
     setMobileMenuOpen(false)
   }
 
+  const preparedServices = useMemo(() => {
+    return (services || []).map((service) => {
+      const pricing = summarizeServicePricing(service, service?.variants || [])
+      return {
+        ...service,
+        _category: deriveServiceCategory(service, pricing.variants),
+        _audiences: deriveServiceAudiences(service, pricing.variants),
+        _description: buildServiceDescription(service),
+        _pricing: pricing,
+      }
+    })
+  }, [services])
+
+  const filteredServices = useMemo(() => {
+    if (activeServiceCategory === 'all') return preparedServices
+    if (activeServiceCategory === 'men' || activeServiceCategory === 'women') {
+      return preparedServices.filter((service) => service?._audiences?.[activeServiceCategory])
+    }
+    return preparedServices.filter((service) => service._category === activeServiceCategory)
+  }, [activeServiceCategory, preparedServices])
+
+  const resolveCardPrice = (service) => {
+    const pricing = service?._pricing
+    if (!pricing) return { headline: 'Price upon consultation', sublines: [] }
+
+    if (activeServiceCategory === 'men' || activeServiceCategory === 'women') {
+      const audienceRange = pricing?.genderRanges?.[activeServiceCategory]
+      if (audienceRange) {
+        return {
+          headline: audienceRange,
+          sublines: [],
+        }
+      }
+    }
+
+    return {
+      headline: pricing.headline,
+      sublines: pricing.sublines || [],
+    }
+  }
+
+  const previewServices = useMemo(() => filteredServices.slice(0, 6), [filteredServices])
+
+  const handleViewAllServices = () => {
+    if (activeServiceCategory === 'all') {
+      navigate('/services')
+      return
+    }
+    navigate(`/services?category=${encodeURIComponent(activeServiceCategory)}`)
+  }
+
+  const modalGenderChoices = useMemo(() => {
+    const variants = optionsService?._pricing?.variants || []
+    const hasWomen = variants.some((variant) => variant.gender === 'women')
+    const hasMen = variants.some((variant) => variant.gender === 'men')
+    const choices = []
+    if (hasWomen) choices.push('women')
+    if (hasMen) choices.push('men')
+    return choices
+  }, [optionsService])
+
+  const visibleModalVariants = useMemo(() => {
+    const variants = optionsService?._pricing?.variants || []
+    if (!optionsGender) return variants
+    return variants.filter((variant) => variant.gender === optionsGender || variant.gender === 'unisex')
+  }, [optionsGender, optionsService])
+
+  const selectedModalVariant = useMemo(() => {
+    return visibleModalVariants.find((variant) => String(variant.id) === String(selectedOptionVariantId)) || null
+  }, [selectedOptionVariantId, visibleModalVariants])
+
+  useEffect(() => {
+    if (!isServiceOptionsOpen) return
+    const variantStillVisible = visibleModalVariants.some((variant) => String(variant.id) === String(selectedOptionVariantId))
+    if (!variantStillVisible) {
+      setSelectedOptionVariantId(visibleModalVariants[0] ? String(visibleModalVariants[0].id) : '')
+    }
+  }, [isServiceOptionsOpen, selectedOptionVariantId, visibleModalVariants])
+
+  useEffect(() => {
+    if (!isServiceOptionsOpen) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [isServiceOptionsOpen])
+
+  useEffect(() => {
+    if (!isServiceOptionsOpen) return
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        closeServiceOptions()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isServiceOptionsOpen])
+
+  const closeServiceOptions = () => {
+    setIsServiceOptionsOpen(false)
+    setOptionsService(null)
+    setOptionsGender('')
+    setSelectedOptionVariantId('')
+  }
+
+  const openServiceOptions = (service) => {
+    if (!service?._pricing) return
+
+    if (service._pricing.variants.length <= 1) {
+      const singleVariant = service._pricing.variants[0]
+      const variantQuery = singleVariant ? `&variant_id=${singleVariant.id}` : ''
+      navigate(`/book?services=${service.id}${variantQuery}`)
+      return
+    }
+
+    setOptionsService(service)
+    setIsServiceOptionsOpen(true)
+    const genders = service._pricing.variants.reduce((acc, variant) => {
+      if (variant.gender === 'women' && !acc.includes('women')) acc.push('women')
+      if (variant.gender === 'men' && !acc.includes('men')) acc.push('men')
+      return acc
+    }, [])
+    const preferredGender = (activeServiceCategory === 'men' || activeServiceCategory === 'women')
+      ? activeServiceCategory
+      : ''
+    const initialGender = preferredGender && genders.includes(preferredGender)
+      ? preferredGender
+      : (genders[0] || '')
+    setOptionsGender(initialGender)
+    const initialVariants = initialGender
+      ? service._pricing.variants.filter((variant) => variant.gender === initialGender || variant.gender === 'unisex')
+      : service._pricing.variants
+    setSelectedOptionVariantId(initialVariants[0] ? String(initialVariants[0].id) : '')
+  }
+
+  const handleContinueBooking = () => {
+    if (!optionsService) return
+    const variantQuery = selectedModalVariant ? `&variant_id=${selectedModalVariant.id}` : ''
+    navigate(`/book?services=${optionsService.id}${variantQuery}`)
+    closeServiceOptions()
+  }
+
+  const heroBackgroundImage = `url('/hero-salon-interior.png'), url(${heroMainImage})`
+
   return (
     <div className="min-h-screen bg-[#f4edff] text-[#2f245a]">
-      <header className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,#8a78ff_0%,#6e62df_35%,#5a49c4_65%,#4a3ba7_100%)] text-white">
-        <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_80%_10%,#d9c8ff_0%,transparent_45%),radial-gradient(circle_at_20%_85%,#c5b3ff_0%,transparent_35%)]" />
-        <div className="absolute -bottom-24 left-0 right-0 h-56 bg-[radial-gradient(ellipse_at_center,#cdbdff_0%,#f4edff_70%)] opacity-80" />
+      <header
+        className="home-hero text-white"
+        style={{ '--hero-bg-image': heroBackgroundImage }}
+      >
+        <div className="home-hero__media" aria-hidden="true"></div>
+        <div className="home-hero__overlay" aria-hidden="true"></div>
 
-        <nav className="relative z-20 max-w-7xl mx-auto px-4 md:px-8 pt-5 pb-3">
-          <div className="flex items-center justify-between">
+        <nav className="home-hero__nav relative z-20 w-full px-4 md:px-8 lg:px-12 pt-5 pb-3">
+          <div className="home-hero__nav-shell flex items-center justify-between gap-3">
             <button
               onClick={() => navigate('/')}
-              className="inline-flex items-center gap-2 sm:gap-3 text-lg sm:text-2xl md:text-[2rem] font-semibold tracking-tight hover:opacity-90 transition min-w-0"
+              className="home-hero__brand inline-flex items-center gap-2 sm:gap-3 text-lg sm:text-2xl md:text-[2rem] font-semibold tracking-tight hover:opacity-95 transition min-w-0"
             >
-              <span className="h-12 w-12 md:h-14 md:w-14 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center overflow-hidden">
+              <span className="home-hero__brand-mark h-12 w-12 md:h-14 md:w-14 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center overflow-hidden">
                 <img src="/logo.png" alt="Kaye's Hair Salon logo" className="h-10 w-10 md:h-12 md:w-12 object-contain" />
               </span>
               <span className="truncate">Kaye&apos;s Hair Salon and Spa</span>
             </button>
 
             <div className="hidden md:flex items-center gap-7 text-lg">
-              <button onClick={() => scrollToSection('services')} className="hover:text-[#f1e8ff] transition">Our Services</button>
-              <button onClick={() => scrollToSection('about')} className="hover:text-[#f1e8ff] transition">About Us</button>
-              <button onClick={() => scrollToSection('contact')} className="hover:text-[#f1e8ff] transition">Contact</button>
+              <button onClick={() => scrollToSection('services')} className="home-hero__link transition">Our Services</button>
+              <button onClick={() => scrollToSection('about')} className="home-hero__link transition">About Us</button>
+              <button onClick={() => scrollToSection('contact')} className="home-hero__link transition">Contact</button>
               <button
                 onClick={() => navigate('/manage-booking/start')}
-                className="px-4 py-2 rounded-2xl border border-white/40 bg-white/15 hover:bg-white/25 transition"
+                className="home-hero__manage-btn px-4 py-2 rounded-2xl border border-white/40 bg-white/10 hover:bg-white/20 transition"
                 title="Manage My Booking"
               >
                 Manage
@@ -92,14 +447,14 @@ const Home = () => {
 
             <button
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="md:hidden px-3 py-2 rounded-xl border border-white/35 bg-white/10 hover:bg-white/20"
+              className="home-hero__menu-btn md:hidden px-3 py-2 rounded-xl border border-white/35 bg-white/10 hover:bg-white/20"
             >
               Menu
             </button>
           </div>
 
           {mobileMenuOpen && (
-            <div className="md:hidden mt-4 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 space-y-2">
+            <div className="home-hero__mobile-menu md:hidden mt-4 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 space-y-2">
               <button
                 onClick={() => scrollToSection('services')}
                 className="block w-full text-left py-2 px-2 rounded hover:bg-white/15"
@@ -131,54 +486,27 @@ const Home = () => {
           )}
         </nav>
 
-        <section className="relative z-20 max-w-7xl mx-auto px-4 md:px-8 pt-6 pb-24 md:pb-28">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <h1 className="text-[clamp(2rem,8vw,4.5rem)] leading-[1.05] font-semibold tracking-tight mb-6">
-                Welcome to Kaye&apos;s<br />Hair Salon and Spa
-              </h1>
-              <p className="text-base sm:text-xl md:text-2xl text-[#eee8ff] mb-8 max-w-2xl">
-                Your trusted beauty destination. Experience premium hair, nail, and beauty services with our expert stylists.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => navigate('/book')}
-                  className="tap-safe px-8 py-3 rounded-xl bg-gradient-to-r from-[#7d63ff] to-[#5f47e7] hover:from-[#8a73ff] hover:to-[#6d57ee] shadow-lg shadow-[#2d1f7a]/40 transition font-semibold text-lg"
-                >
-                  Book Appointment
-                </button>
-                <button
-                  onClick={() => navigate('/manage-booking/start')}
-                  className="tap-safe px-8 py-3 rounded-xl border border-white/50 bg-white/20 hover:bg-white/30 transition font-semibold text-lg"
-                >
-                  Manage My Booking
-                </button>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="rounded-3xl p-2 md:p-3 bg-white/35 backdrop-blur-sm border border-white/40 shadow-2xl">
-                <div className="rounded-[1.3rem] overflow-hidden h-[300px] md:h-[360px] bg-[#efe8ff]">
-                  {heroImages.primary ? (
-                    <img src={heroImages.primary} alt="Salon hero" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[#5a49c4] text-lg font-medium">
-                      Salon Image
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="absolute -bottom-14 right-0 w-[72%] rounded-2xl p-2 bg-white/40 border border-white/40 shadow-xl">
-                <div className="rounded-xl overflow-hidden h-36 md:h-44 bg-[#efe8ff]">
-                  {heroImages.secondary ? (
-                    <img src={heroImages.secondary} alt="Salon preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[#5a49c4] text-sm font-medium">
-                      Service Preview
-                    </div>
-                  )}
-                </div>
-              </div>
+        <section className="home-hero__content-wrap relative z-20 px-4 md:px-8 pb-14">
+          <div className="home-hero__content max-w-4xl mx-auto text-center">
+            <h1 className="home-hero__title">
+              Book Your Salon Appointment Online
+            </h1>
+            <p className="home-hero__subtitle">
+              Enjoy premium hair, nail, and beauty services with professional stylists.
+            </p>
+            <div className="home-hero__actions flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => navigate('/book')}
+                className="home-hero__btn home-hero__btn--primary tap-safe"
+              >
+                Book Appointment
+              </button>
+              <button
+                onClick={() => navigate('/manage-booking/start')}
+                className="home-hero__btn home-hero__btn--secondary tap-safe"
+              >
+                Manage My Booking
+              </button>
             </div>
           </div>
         </section>
@@ -187,71 +515,203 @@ const Home = () => {
       <main className="relative z-10 -mt-4">
         <section id="services" className="px-4 md:px-8 py-14 md:py-20 bg-[radial-gradient(circle_at_20%_10%,#efe7ff_0%,#f6f1ff_55%,#f3ecff_100%)]">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-10 md:mb-12">
+            <div className="text-center mb-8 md:mb-10">
               <h2 className="text-[clamp(1.85rem,7vw,3.75rem)] font-semibold mb-4 text-[#2f245a]">Our Services</h2>
               <p className="max-w-3xl mx-auto text-lg md:text-xl text-[#6b5b95]">
-                Discover our wide range of beauty and wellness services designed to make you look and feel your best.
+                Discover premium salon services with clear pricing and quick options tailored to your needs.
               </p>
             </div>
 
             {loading ? (
               <div className="text-center py-16 text-[#6b5b95] text-lg">Loading services...</div>
+            ) : filteredServices.length === 0 ? (
+              <div className="text-center py-16 text-[#6b5b95] text-lg">No services available in this category yet.</div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {services.slice(0, 6).map((service) => (
-                    <div
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {previewServices.map((service) => {
+                  const serviceImage = service.image_url || service.image
+                  const cardPrice = resolveCardPrice(service)
+                  return (
+                    <article
                       key={service.id}
-                      className="rounded-2xl border border-[#d8cbff] bg-white/85 shadow-[0_12px_28px_rgba(70,45,130,0.12)] overflow-hidden transition hover:-translate-y-1.5 hover:shadow-[0_18px_32px_rgba(70,45,130,0.2)]"
+                      className="group h-full rounded-3xl border border-[#d8cbff] bg-white shadow-[0_12px_28px_rgba(70,45,130,0.12)] overflow-hidden transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_34px_rgba(70,45,130,0.2)]"
                     >
-                      {service.image ? (
+                      {serviceImage ? (
                         <img
-                          src={imageUrl(service.image)}
+                          src={imageUrl(serviceImage)}
                           alt={service.name}
-                          className="w-full h-44 object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                            e.target.nextSibling.style.display = 'flex'
+                          className="w-full h-32 object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none'
+                            const fallback = event.currentTarget.nextSibling
+                            if (fallback) fallback.style.display = 'flex'
                           }}
                         />
                       ) : null}
                       <div
-                        className={`w-full h-44 ${service.image ? 'hidden' : 'flex'} items-center justify-center bg-[#efe8ff] text-[#6b5b95] font-medium`}
+                        className={`w-full h-32 ${serviceImage ? 'hidden' : 'flex'} items-center justify-center bg-[#ede5ff] text-[#6b5b95] text-sm font-medium`}
                       >
-                        No Image
+                        Service Image
                       </div>
 
-                      <div className="p-4">
-                        <div className="text-3xl md:text-[2rem] font-semibold text-[#2f245a] mb-2">{service.name}</div>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="text-[#6b5b95]">{formatDuration(service.duration_minutes)}</div>
-                          <div className="text-4xl font-bold text-[#11914a]">{currency(service.price_cents)}</div>
+                      <div className="p-6 flex flex-col h-[calc(100%-8rem)]">
+                        <h3 className="text-xl font-semibold text-[#2f245a] truncate">{service.name}</h3>
+                        <div className="mt-4 min-h-[72px]">
+                          <p className="text-lg font-semibold text-[#453493]">{cardPrice.headline}</p>
+                          <div className="space-y-1 mt-1">
+                            {cardPrice.sublines.slice(0, 2).map((line) => (
+                              <p key={`${service.id}-${line}`} className="text-xs text-[#7b6ba8]">
+                                {line}
+                              </p>
+                            ))}
+                          </div>
                         </div>
+
                         <button
-                          onClick={() => navigate(`/book?services=${service.id}`)}
-                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#5f7dff] to-[#405ae1] text-white font-semibold hover:from-[#6b88ff] hover:to-[#4b66ea] transition"
+                          type="button"
+                          onClick={() => openServiceOptions(service)}
+                          className="mt-auto tap-safe w-full rounded-xl bg-gradient-to-r from-[#6f5cff] to-[#4b3bd6] text-white font-semibold py-2.5 hover:from-[#7f6dff] hover:to-[#5b4ae1] transition"
                         >
-                          Book Now
+                          {service._pricing.ctaLabel}
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    </article>
+                  )
+                  })}
                 </div>
 
-                {services.length > 6 && (
-                  <div className="text-center mt-10">
-                    <button
-                      onClick={() => navigate('/services')}
-                      className="px-8 py-3 rounded-xl border border-[#bca8ff] text-[#4a3ba7] bg-white/70 hover:bg-white transition text-lg"
-                    >
-                      View All Services
-                    </button>
-                  </div>
-                )}
+                <div className="text-center mt-8">
+                  <button
+                    type="button"
+                    onClick={handleViewAllServices}
+                    className="tap-safe px-8 py-3 rounded-xl border border-[#bca8ff] text-[#4a3ba7] bg-white/85 hover:bg-white transition font-medium"
+                  >
+                    View All Services
+                  </button>
+                </div>
               </>
             )}
           </div>
         </section>
+
+        {isServiceOptionsOpen && optionsService && (
+          <div
+            className="fixed inset-0 z-[120] bg-[#1f153f]/60 backdrop-blur-[1px] px-4 py-6 md:py-8"
+            onClick={closeServiceOptions}
+          >
+            <div
+              className="max-w-3xl mx-auto h-full flex items-center justify-center"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="w-full max-h-[90vh] overflow-y-auto rounded-3xl border border-[#d8cbff] bg-white shadow-[0_20px_42px_rgba(58,40,126,0.28)]">
+                <div className="p-5 md:p-6 border-b border-[#eee6ff] flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-2xl font-semibold text-[#2f245a]">{optionsService.name}</h3>
+                    <p className="text-sm text-[#7a6aa7] mt-1">{optionsService._description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeServiceOptions}
+                    className="h-10 w-10 rounded-full border border-[#d8cbff] text-[#5a4a89] hover:bg-[#f5f0ff] transition"
+                    aria-label="Close service options"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="p-5 md:p-6">
+                  <div className="rounded-2xl overflow-hidden border border-[#ece3ff] bg-[#f8f4ff] mb-5">
+                    {optionsService.image_url || optionsService.image ? (
+                      <img
+                        src={imageUrl(optionsService.image_url || optionsService.image)}
+                        alt={optionsService.name}
+                        className="w-full h-40 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-40 flex items-center justify-center text-[#6b5b95] text-sm">
+                        Service Image
+                      </div>
+                    )}
+                  </div>
+
+                  {modalGenderChoices.length > 0 && (
+                    <div className="mb-5">
+                      <p className="text-sm font-medium text-[#4d3f7e] mb-2">Choose gender</p>
+                      <div className="flex flex-wrap gap-2">
+                        {modalGenderChoices.map((gender) => (
+                          <button
+                            key={gender}
+                            type="button"
+                            onClick={() => setOptionsGender(gender)}
+                            className={`px-4 py-2 rounded-full border text-sm font-medium transition ${
+                              optionsGender === gender
+                                ? 'bg-[#6f5cff] border-[#6f5cff] text-white'
+                                : 'bg-white border-[#d8cbff] text-[#5a4a89] hover:bg-[#f5f0ff]'
+                            }`}
+                          >
+                            {gender === 'women' ? 'Women' : 'Men'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                    {visibleModalVariants.map((variant) => {
+                      const isSelected = String(variant.id) === String(selectedOptionVariantId)
+                      return (
+                        <button
+                          key={variant.id}
+                          type="button"
+                          onClick={() => setSelectedOptionVariantId(String(variant.id))}
+                          className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                            isSelected
+                              ? 'border-[#6f5cff] bg-[#f3f0ff]'
+                              : 'border-[#e6dcff] bg-white hover:bg-[#faf7ff]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-[#2f245a] truncate">{variant.name}</p>
+                              <p className="text-xs text-[#7b6ba8] mt-1">
+                                {variant.durationMinutes ? `${variant.durationMinutes} min` : 'Duration varies'}
+                              </p>
+                            </div>
+                            <p className="font-semibold text-[#3f2f86]">{currency(variant.priceCents)}</p>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="sticky bottom-0 bg-white border-t border-[#eee6ff] px-5 md:px-6 py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="text-sm text-[#5a4a89]">
+                      <p className="font-medium">Selected option</p>
+                      <p>
+                        {selectedModalVariant ? `${selectedModalVariant.name} - ${currency(selectedModalVariant.priceCents)}` : 'Please choose a variant'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleContinueBooking}
+                      disabled={!selectedModalVariant}
+                      className={`tap-safe px-5 py-2.5 rounded-xl font-semibold text-white transition ${
+                        selectedModalVariant
+                          ? 'bg-gradient-to-r from-[#6f5cff] to-[#4b3bd6] hover:from-[#7f6dff] hover:to-[#5b4ae1]'
+                          : 'bg-[#c8bdf3] cursor-not-allowed'
+                      }`}
+                    >
+                      Continue Booking
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <section id="stylists" className="px-4 md:px-8 py-16 bg-[radial-gradient(circle_at_80%_10%,#ece3ff_0%,#f7f2ff_60%,#f4edff_100%)]">
           <div className="max-w-7xl mx-auto">

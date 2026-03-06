@@ -13,16 +13,11 @@ import manageBookingApi, {
 
 const statusClasses = {
   pending: 'bg-amber-100 text-amber-800',
-  confirmed: 'bg-blue-100 text-blue-800',
+  confirmed: 'bg-[#fce7f1] text-[#9b2f64]',
   completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
   missed: 'bg-gray-200 text-gray-700',
-  booked: 'bg-blue-100 text-blue-800',
-}
-
-const renderStars = (ratingValue) => {
-  const rating = Math.max(0, Math.min(5, Math.round(Number(ratingValue) || 0)))
-  return `${'\u2605'.repeat(rating)}${'\u2606'.repeat(5 - rating)}`
+  booked: 'bg-[#fce7f1] text-[#9b2f64]',
 }
 
 const CustomerDashboard = () => {
@@ -41,7 +36,6 @@ const CustomerDashboard = () => {
   const [showProfile, setShowProfile] = useState(() => !initialOtpToken && (!initialCustomerEmail || !initialCustomerPhone))
   const [appointments, setAppointments] = useState({ upcoming: [], history: [] })
   const [otpAppointments, setOtpAppointments] = useState([])
-  const [customerRatings, setCustomerRatings] = useState([])
   const [loading, setLoading] = useState(false)
 
   const [rescheduleForId, setRescheduleForId] = useState(null)
@@ -108,7 +102,6 @@ const CustomerDashboard = () => {
     setOtpEmail('')
     setOtpToken('')
     setOtpAppointments([])
-    setCustomerRatings([])
   }
 
   const loadOtpAppointments = async () => {
@@ -116,7 +109,6 @@ const CustomerDashboard = () => {
       setLoading(true)
       const { data } = await manageBookingApi.get('/manage-booking/appointments')
       setOtpAppointments(data.appointments || [])
-      setCustomerRatings(data.ratings || [])
     } catch (e) {
       if (e.response?.status === 401) {
         clearOtpSession()
@@ -126,7 +118,6 @@ const CustomerDashboard = () => {
       }
       toast.error(e.response?.data?.message || 'Failed to load appointments')
       setOtpAppointments([])
-      setCustomerRatings([])
     } finally {
       setLoading(false)
     }
@@ -135,7 +126,6 @@ const CustomerDashboard = () => {
   const loadLegacyAppointments = async () => {
     if (!customerEmail || !customerPhone) {
       setAppointments({ upcoming: [], history: [] })
-      setCustomerRatings([])
       return
     }
 
@@ -150,11 +140,9 @@ const CustomerDashboard = () => {
         upcoming: res.data.upcoming || [],
         history: res.data.history || [],
       })
-      setCustomerRatings(res.data.ratings || [])
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to load appointments')
       setAppointments({ upcoming: [], history: [] })
-      setCustomerRatings([])
     } finally {
       setLoading(false)
     }
@@ -171,7 +159,6 @@ const CustomerDashboard = () => {
       loadLegacyAppointments()
     } else {
       setAppointments({ upcoming: [], history: [] })
-      setCustomerRatings([])
     }
   }, [isOtpSession, customerEmail, customerPhone]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -240,7 +227,7 @@ const CustomerDashboard = () => {
         await api.post(`/appointments/${appointmentId}/cancel`)
         toast.success('Appointment cancelled')
         loadLegacyAppointments()
-      } catch (e) {
+      } catch {
         toast.error('Failed to cancel appointment')
       }
       return
@@ -293,22 +280,20 @@ const CustomerDashboard = () => {
   }
 
   const otpUpcomingCount = otpAppointments.filter((a) => ['pending', 'confirmed', 'booked'].includes(a.status)).length
-  const averageCustomerRating = customerRatings.length > 0
-    ? (
-      customerRatings.reduce((sum, rating) => sum + (Number(rating.overall_rating ?? rating.rating) || 0), 0) / customerRatings.length
-    ).toFixed(1)
-    : null
+  const totalBookedCount = isOtpSession
+    ? otpAppointments.length
+    : appointments.upcoming.length + appointments.history.length
 
   if (showProfile && !isOtpSession) {
     return (
-      <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+      <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
           <Navbar hideUserBadge />
           <div className="app-mobile-shell">
-            <div className="max-w-md mx-auto bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6">
+            <div className="max-w-md mx-auto bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6">
               <h2 className="text-xl font-bold mb-4">Customer Profile</h2>
-              <p className="text-sm text-[#8f7a6f] mb-4">
+              <p className="text-sm text-[#6f5b7e] mb-4">
                 Enter the email and phone you used when booking to view your appointments.
               </p>
               <div className="space-y-4">
@@ -336,7 +321,7 @@ const CustomerDashboard = () => {
                 </div>
                 <button
                   onClick={handleSaveProfile}
-                  className="tap-safe w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    className="tap-safe w-full bg-gradient-to-r from-[#E75480] to-[#b03879] text-white px-4 py-2 rounded hover:brightness-105"
                 >
                   Save Profile
                 </button>
@@ -350,7 +335,7 @@ const CustomerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+      <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
         <Sidebar userType="customer" />
         <main className="flex-1 min-w-0 flex flex-col">
           <Navbar hideUserBadge />
@@ -363,7 +348,7 @@ const CustomerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
       <Sidebar userType="customer" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar hideUserBadge />
@@ -372,7 +357,7 @@ const CustomerDashboard = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/home')}
-                className="tap-safe px-3 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 text-lg font-bold"
+                className="tap-safe px-3 py-2 bg-[#2C1338] text-white rounded hover:brightness-110 text-lg font-bold"
                 aria-label="Back to Home"
                 title="Back to Home"
               >
@@ -383,14 +368,14 @@ const CustomerDashboard = () => {
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => navigate('/book')}
-                className="tap-safe w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                className="tap-safe w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-[#E75480] to-[#b03879] text-white rounded hover:brightness-105 text-sm"
               >
                 Book New
               </button>
               {!isOtpSession && (
                 <button
                   onClick={() => setShowProfile(true)}
-                  className="tap-safe w-full sm:w-auto px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+                  className="tap-safe w-full sm:w-auto px-4 py-2 border border-[#e2d7ea] bg-white text-[#5c4b68] rounded hover:bg-[#faf6fd] text-sm"
                 >
                   Edit Profile
                 </button>
@@ -399,30 +384,22 @@ const CustomerDashboard = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-              <div className="text-[#9b857a] text-sm">Upcoming Appointments</div>
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+              <div className="text-[#7c688f] text-sm">Upcoming Appointments</div>
+              <div className="text-2xl font-bold text-[#E75480]">
                 {isOtpSession ? otpUpcomingCount : appointments.upcoming.length}
               </div>
             </div>
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-              <div className="text-[#9b857a] text-sm">My Ratings</div>
-              {averageCustomerRating ? (
-                <div className="space-y-1">
-                  <div className="text-2xl font-bold text-emerald-700">{averageCustomerRating}/5</div>
-                  <div className="text-sm text-[#8f7a6f]">
-                    {renderStars(averageCustomerRating)} from {customerRatings.length} rating{customerRatings.length !== 1 ? 's' : ''}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-[#8f7a6f] mt-2">No ratings yet</div>
-              )}
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+              <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
+              <div className="text-2xl font-bold text-emerald-700">{totalBookedCount}</div>
+              <div className="text-sm text-[#6f5b7e] mt-2">All bookings linked to this account</div>
             </div>
           </div>
 
           {isOtpSession ? (
             otpAppointments.length > 0 ? (
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+              <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
                 <h2 className="font-semibold text-lg mb-4">My Appointments</h2>
                 <div className="space-y-3">
                   {otpAppointments.map((appt) => {
@@ -436,10 +413,10 @@ const CustomerDashboard = () => {
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                           <div className="flex-1">
                             <div className="font-semibold text-lg">{appt.service_name}</div>
-                            <div className="text-sm text-[#8f7a6f] mt-1">
+                            <div className="text-sm text-[#6f5b7e] mt-1">
                               {appt.appointment_date} at {appt.appointment_time}
                             </div>
-                            <div className="text-sm text-[#9b857a] mt-1">with {appt.stylist_name}</div>
+                            <div className="text-sm text-[#7c688f] mt-1">with {appt.stylist_name}</div>
                             <div className="text-sm font-medium text-green-600 mt-2">
                               {currency(appt.total_amount)}
                             </div>
@@ -448,7 +425,7 @@ const CustomerDashboard = () => {
                             {appt.can_reschedule && (
                               <button
                                 onClick={() => openReschedule(appt)}
-                                className="tap-safe px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                                className="tap-safe px-3 py-1 bg-[#fce7f1] text-[#9b2f64] rounded hover:bg-[#f8d6e7] text-sm"
                               >
                                 Reschedule
                               </button>
@@ -482,7 +459,7 @@ const CustomerDashboard = () => {
                         </div>
 
                         {rescheduleForId === appt.id && (
-                          <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                          <div className="mt-4 rounded-xl border border-[#f3cade] bg-[#fff4f9] p-3">
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div>
                                 <label className="mb-1 block text-xs font-medium text-gray-700">New Date</label>
@@ -490,7 +467,7 @@ const CustomerDashboard = () => {
                                   type="date"
                                   value={rescheduleDate}
                                   onChange={(e) => setRescheduleDate(e.target.value)}
-                                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#E75480]"
                                 />
                               </div>
                               <div>
@@ -499,7 +476,7 @@ const CustomerDashboard = () => {
                                   type="time"
                                   value={rescheduleTime}
                                   onChange={(e) => setRescheduleTime(e.target.value)}
-                                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#E75480]"
                                 />
                               </div>
                             </div>
@@ -507,7 +484,7 @@ const CustomerDashboard = () => {
                               <button
                                 onClick={() => handleReschedule(appt.id)}
                                 disabled={submittingReschedule}
-                                className="tap-safe rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                                className="tap-safe rounded bg-gradient-to-r from-[#E75480] to-[#b03879] px-3 py-1.5 text-xs font-medium text-white hover:brightness-105 disabled:opacity-60"
                               >
                                 {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
                               </button>
@@ -526,20 +503,20 @@ const CustomerDashboard = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 text-center">
-                <div className="text-sm font-semibold text-[#8f7a6f] mb-4">No appointments found</div>
+              <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6 text-center">
+                <div className="text-sm font-semibold text-[#6f5b7e] mb-4">No appointments found</div>
                 <h3 className="text-xl font-semibold mb-2">No Appointment Yet</h3>
-                <p className="text-[#8f7a6f] mb-4">Book a new appointment to get started.</p>
+                <p className="text-[#6f5b7e] mb-4">Book a new appointment to get started.</p>
                   <button
                     onClick={() => navigate('/book')}
-                    className="tap-safe px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                    className="tap-safe px-6 py-3 bg-gradient-to-r from-[#E75480] to-[#b03879] text-white rounded-lg hover:brightness-105 font-medium"
                   >
                     Book Appointment Now
                   </button>
               </div>
             )
           ) : appointments.upcoming.length > 0 ? (
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
               <h2 className="font-semibold text-lg mb-4">Upcoming Appointments</h2>
               <div className="space-y-3">
                 {appointments.upcoming.map((appt) => {
@@ -559,7 +536,7 @@ const CustomerDashboard = () => {
                             )}
                           </div>
                           {appointmentServices.length > 1 && (
-                            <div className="text-sm text-[#8f7a6f] mt-1">
+                            <div className="text-sm text-[#6f5b7e] mt-1">
                               <ul className="list-disc list-inside ml-2 space-y-0.5">
                                 {appointmentServices.map((s, idx) => (
                                   <li key={idx}>{getServiceName(s)} - {currencyFromCents(getServicePrice(s))}</li>
@@ -567,7 +544,7 @@ const CustomerDashboard = () => {
                               </ul>
                             </div>
                           )}
-                          <div className="text-sm text-[#8f7a6f] mt-1">
+                          <div className="text-sm text-[#6f5b7e] mt-1">
                             {appointmentDate.toLocaleDateString('en-US', {
                               weekday: 'long',
                               year: 'numeric',
@@ -584,7 +561,7 @@ const CustomerDashboard = () => {
                             })}{' '}
                             PHT
                           </div>
-                          <div className="text-sm text-[#9b857a] mt-1">with {appt.stylist?.name}</div>
+                          <div className="text-sm text-[#7c688f] mt-1">with {appt.stylist?.name}</div>
                           <div className="text-sm font-medium text-green-600 mt-2">
                             {appointmentServices.length > 1 ? (
                               <span>Total: {currencyFromCents(totalPrice)}</span>
@@ -598,7 +575,7 @@ const CustomerDashboard = () => {
                             <>
                               <button
                                 onClick={() => { window.location.href = `/book?reschedule=${appt.id}` }}
-                                className="tap-safe px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                                className="tap-safe px-3 py-1 bg-[#fce7f1] text-[#9b2f64] rounded hover:bg-[#f8d6e7] text-sm"
                               >
                                 Reschedule
                               </button>
@@ -621,88 +598,34 @@ const CustomerDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-6 text-center">
-              <div className="text-sm font-semibold text-[#8f7a6f] mb-4">No upcoming appointments</div>
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6 text-center">
+              <div className="text-sm font-semibold text-[#6f5b7e] mb-4">No upcoming appointments</div>
               <h3 className="text-xl font-semibold mb-2">No Upcoming Appointment</h3>
-              <p className="text-[#8f7a6f] mb-4">Book a new appointment to get started.</p>
+              <p className="text-[#6f5b7e] mb-4">Book a new appointment to get started.</p>
               <button
                 onClick={() => navigate('/book')}
-                className="tap-safe px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                className="tap-safe px-6 py-3 bg-gradient-to-r from-[#E75480] to-[#b03879] text-white rounded-lg hover:brightness-105 font-medium"
               >
                 Book Appointment Now
               </button>
             </div>
           )}
 
-          {customerRatings.length > 0 && (
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-              <h2 className="font-semibold text-lg mb-4">My Rating History</h2>
-              <div className="space-y-3">
-                {customerRatings.map((rating) => {
-                  const ratedAt = rating.rated_at ? new Date(rating.rated_at) : null
-                  const ratedAtLabel = ratedAt && !Number.isNaN(ratedAt.getTime())
-                    ? `${ratedAt.toLocaleDateString('en-US', { timeZone: 'Asia/Manila' })} ${ratedAt.toLocaleTimeString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                      timeZone: 'Asia/Manila',
-                    })}`
-                    : null
-
-                  return (
-                    <div key={`${rating.appointment_id}-${rating.rated_at || rating.appointment_date || 'rating'}`} className="border rounded-lg p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="font-semibold text-base">{rating.service_name || 'Service'}</div>
-                          <div className="text-sm text-[#8f7a6f] mt-1">with {rating.stylist_name || 'Stylist'}</div>
-                          {(rating.appointment_date && rating.appointment_time) && (
-                            <div className="text-xs text-[#9b857a] mt-1">
-                              Appointment: {rating.appointment_date} at {rating.appointment_time}
-                            </div>
-                          )}
-                          {ratedAtLabel && (
-                            <div className="text-xs text-[#9b857a] mt-1">
-                              Rated on: {ratedAtLabel}
-                            </div>
-                          )}
-                          {rating.comment && (
-                            <p className="text-sm text-[#6b5a51] mt-2">{rating.comment}</p>
-                          )}
-                        </div>
-                        <div className="text-left sm:text-right">
-                          <div className="text-yellow-500 text-lg leading-none">
-                            {renderStars(rating.overall_rating ?? rating.rating)}
-                          </div>
-                          <div className="text-sm font-semibold text-emerald-700 mt-1">
-                            {Number(rating.overall_rating ?? rating.rating) || 0}/5
-                          </div>
-                          <div className="text-xs text-[#8f7a6f] mt-1">
-                            Service: {Number(rating.service_rating ?? rating.rating) || 0} | Stylist: {Number(rating.stylist_rating ?? rating.rating) || 0}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
-              <div className="text-sm font-semibold mb-2 text-[#8f7a6f]">Stylist</div>
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-center">
+              <div className="text-sm font-semibold mb-2 text-[#6f5b7e]">Stylist</div>
               <h4 className="font-semibold">Professional Stylists</h4>
-              <p className="text-sm text-[#9b857a]">Expert care for your beauty needs</p>
+              <p className="text-sm text-[#7c688f]">Expert care for your beauty needs</p>
             </div>
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
-              <div className="text-sm font-semibold mb-2 text-[#8f7a6f]">Booking</div>
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-center">
+              <div className="text-sm font-semibold mb-2 text-[#6f5b7e]">Booking</div>
               <h4 className="font-semibold">Easy Booking</h4>
-              <p className="text-sm text-[#9b857a]">Book appointments in seconds</p>
+              <p className="text-sm text-[#7c688f]">Book appointments in seconds</p>
             </div>
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4 text-center">
-              <div className="text-sm font-semibold mb-2 text-[#8f7a6f]">Service</div>
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-center">
+              <div className="text-sm font-semibold mb-2 text-[#6f5b7e]">Service</div>
               <h4 className="font-semibold">Quality Service</h4>
-              <p className="text-sm text-[#9b857a]">Premium beauty experience</p>
+              <p className="text-sm text-[#7c688f]">Premium beauty experience</p>
             </div>
           </div>
         </div>

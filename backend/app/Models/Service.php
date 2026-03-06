@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
@@ -25,6 +26,21 @@ class Service extends Model
     {
         return $this->hasMany(ServiceVariant::class)->orderBy('order');
     }
+
+    public function stylists(): BelongsToMany
+    {
+        return $this->belongsToMany(Stylist::class, 'service_stylist', 'service_id', 'stylist_id');
+    }
+
+    public function inventoryRequirements(): HasMany
+    {
+        return $this->hasMany(ServiceInventoryRequirement::class);
+    }
+
+    public function inventoryItems(): BelongsToMany
+    {
+        return $this->belongsToMany(Inventory::class, 'service_inventory_requirements', 'service_id', 'inventory_id')
+            ->withPivot(['quantity_required', 'is_active'])
+            ->withTimestamps();
+    }
 }
-
-

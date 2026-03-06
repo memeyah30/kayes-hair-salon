@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import Sidebar from '../../components/Sidebar'
@@ -18,20 +18,52 @@ const getManilaDateInput = (date = new Date()) => {
   return `${year}-${month}-${day}`
 }
 
+const isDateInput = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))
+
+const getDateRangeFromSearch = (search, todayKey) => {
+  const monthStart = `${todayKey.slice(0, 7)}-01`
+  const params = new URLSearchParams(search)
+  const startParam = params.get('start_date')
+  const endParam = params.get('end_date')
+  const rangeParam = params.get('range')
+
+  if (isDateInput(startParam) && isDateInput(endParam)) {
+    return { start_date: startParam, end_date: endParam }
+  }
+  if (isDateInput(startParam) && !endParam) {
+    return { start_date: startParam, end_date: startParam }
+  }
+  if (!startParam && isDateInput(endParam)) {
+    return { start_date: endParam, end_date: endParam }
+  }
+  if (rangeParam === 'today') {
+    return { start_date: todayKey, end_date: todayKey }
+  }
+
+  return { start_date: monthStart, end_date: todayKey }
+}
+
 const SalesMonitoring = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
   const manilaToday = getManilaDateInput()
-  const manilaMonthStart = `${manilaToday.slice(0, 7)}-01`
   const [sales, setSales] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [dateRange, setDateRange] = useState({
-    start_date: manilaMonthStart,
-    end_date: manilaToday,
-  })
+  const [dateRange, setDateRange] = useState(() => getDateRangeFromSearch(location.search, manilaToday))
   const [filters, setFilters] = useState({
     transaction_type: '',
     stylist_id: '',
   })
+
+  useEffect(() => {
+    const nextRange = getDateRangeFromSearch(location.search, manilaToday)
+    setDateRange((prev) => (
+      prev.start_date === nextRange.start_date && prev.end_date === nextRange.end_date
+        ? prev
+        : nextRange
+    ))
+  }, [location.search, manilaToday])
 
   useEffect(() => {
     loadSales()
@@ -82,10 +114,8 @@ const SalesMonitoring = () => {
     })
   }
 
-  const navigate = useNavigate()
-
   return (
-    <div className="min-h-screen bg-[#f4edff] flex flex-col md:flex-row text-[#3b2f2a]">
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2D2D2D]">
       <Sidebar userType="admin" />
       <main className="flex-1 min-w-0 flex flex-col">
         <Navbar />
@@ -94,39 +124,39 @@ const SalesMonitoring = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="tap-safe px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >&larr;</button>
-              <h1 className="text-2xl font-bold">Sales Monitoring</h1>
+              <h1 className="text-2xl font-bold text-[#2D2D2D]">Sales Monitoring</h1>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
+          <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
             <div className="grid md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Start Date</label>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Start Date</label>
                 <input
                   type="date"
-                  className="tap-safe w-full border rounded px-3 py-2"
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                   value={dateRange.start_date}
                   onChange={(e) => setDateRange({ ...dateRange, start_date: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">End Date</label>
                 <input
                   type="date"
-                  className="tap-safe w-full border rounded px-3 py-2"
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                   value={dateRange.end_date}
                   onChange={(e) => setDateRange({ ...dateRange, end_date: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Transaction Type</label>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Transaction Type</label>
                 <select
-                  className="tap-safe w-full border rounded px-3 py-2"
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                   value={filters.transaction_type}
                   onChange={(e) => setFilters({ ...filters, transaction_type: e.target.value })}
                 >
@@ -137,9 +167,9 @@ const SalesMonitoring = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Stylist</label>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Stylist</label>
                 <select
-                  className="tap-safe w-full border rounded px-3 py-2"
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                   value={filters.stylist_id}
                   onChange={(e) => setFilters({ ...filters, stylist_id: e.target.value })}
                 >
@@ -153,28 +183,28 @@ const SalesMonitoring = () => {
           {/* Stats Cards */}
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-                <div className="text-sm text-[#8f7a6f]">Total Sales</div>
-                <div className="text-2xl font-bold text-green-600">{currency(stats.total_sales_cents)}</div>
-                <div className="text-xs text-[#9b857a] mt-1">
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-sm text-[#6B6B6B]">Total Sales</div>
+                <div className="text-2xl font-bold text-[#7B5CF5]">{currency(stats.total_sales_cents)}</div>
+                <div className="mt-1 text-xs text-[#6B6B6B]">
                   {stats.period.start_date} to {stats.period.end_date}
                 </div>
               </div>
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-                <div className="text-sm text-[#8f7a6f]">Service Sales</div>
-                <div className="text-2xl font-bold">
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-sm text-[#6B6B6B]">Service Sales</div>
+                <div className="text-2xl font-bold text-[#22C55E]">
                   {currency(stats.sales_by_type?.service || 0)}
                 </div>
               </div>
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-                <div className="text-sm text-[#8f7a6f]">Product Sales</div>
-                <div className="text-2xl font-bold">
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-sm text-[#6B6B6B]">Product Sales</div>
+                <div className="text-2xl font-bold text-[#3B82F6]">
                   {currency(stats.sales_by_type?.product || 0)}
                 </div>
               </div>
-              <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-                <div className="text-sm text-[#8f7a6f]">Cash Payments</div>
-                <div className="text-2xl font-bold">
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-sm text-[#6B6B6B]">Cash Payments</div>
+                <div className="text-2xl font-bold text-[#F59E0B]">
                   {currency(stats.sales_by_payment_method?.cash || 0)}
                 </div>
               </div>
@@ -183,34 +213,34 @@ const SalesMonitoring = () => {
 
           {/* Top Selling Items */}
           {stats?.top_selling_items && stats.top_selling_items.length > 0 && (
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-              <h2 className="text-xl font-semibold mb-4">Top Selling Items</h2>
+            <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+              <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">Top Selling Items</h2>
               <div className="md:hidden space-y-2">
                 {stats.top_selling_items.map((item, idx) => (
-                  <div key={idx} className="rounded-lg border border-[#eadfd5] bg-white p-3">
-                    <div className="font-medium text-[#3b2f2a]">{item.item_name}</div>
-                    <div className="mt-2 flex items-center justify-between text-sm text-[#8f7a6f]">
+                  <div key={idx} className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
+                    <div className="font-medium text-[#2D2D2D]">{item.item_name}</div>
+                    <div className="mt-2 flex items-center justify-between text-sm text-[#6B6B6B]">
                       <span>Qty: {item.total_quantity}</span>
-                      <span className="font-semibold text-[#3b2f2a]">{currency(item.total_revenue)}</span>
+                      <span className="font-semibold text-[#7B5CF5]">{currency(item.total_revenue)}</span>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[640px]">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Item Name</th>
-                      <th className="text-right p-2">Quantity Sold</th>
-                      <th className="text-right p-2">Total Revenue</th>
+                  <thead className="bg-[#F2EDFF]">
+                    <tr className="border-b border-[#DDD6FE]">
+                      <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Item Name</th>
+                      <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Quantity Sold</th>
+                      <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Total Revenue</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-[#DDD6FE]">
                     {stats.top_selling_items.map((item, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="p-2">{item.item_name}</td>
-                        <td className="p-2 text-right">{item.total_quantity}</td>
-                        <td className="p-2 text-right font-bold">{currency(item.total_revenue)}</td>
+                      <tr key={idx} className="transition hover:bg-[#F6F2FF]">
+                        <td className="p-3 text-[#2D2D2D]">{item.item_name}</td>
+                        <td className="p-3 text-right text-[#2D2D2D]">{item.total_quantity}</td>
+                        <td className="p-3 text-right font-bold text-[#7B5CF5]">{currency(item.total_revenue)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -220,43 +250,43 @@ const SalesMonitoring = () => {
           )}
 
           {/* Sales List */}
-          <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-            <h2 className="text-xl font-semibold mb-4">Sales Transactions</h2>
+          <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+            <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">Sales Transactions</h2>
             {loading ? (
               <div className="text-center py-8">Loading...</div>
             ) : (
               <>
                 <div className="md:hidden space-y-3">
                   {sales.map((sale) => (
-                    <div key={sale.id} className="rounded-xl border border-[#eadfd5] bg-white p-3">
+                    <div key={sale.id} className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="font-medium text-[#3b2f2a]">{sale.item_name}</div>
-                          <div className="text-xs text-[#8f7a6f] mt-1">{formatDate(sale.created_at)}</div>
+                          <div className="font-medium text-[#2D2D2D]">{sale.item_name}</div>
+                          <div className="mt-1 text-xs text-[#6B6B6B]">{formatDate(sale.created_at)}</div>
                         </div>
-                        <span className={`px-2.5 py-1 rounded text-xs ${
-                          sale.transaction_type === 'service' ? 'bg-blue-100 text-blue-700' :
-                          sale.transaction_type === 'product' ? 'bg-green-100 text-green-700' :
-                          'bg-purple-100 text-purple-700'
+                        <span className={`rounded-full px-2.5 py-1 text-xs ${
+                          sale.transaction_type === 'service' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                          sale.transaction_type === 'product' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                          'bg-[#EDE9FE] text-[#6D4DE6]'
                         }`}>
                           {sale.transaction_type}
                         </span>
                       </div>
-                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-[#6f5b50]">
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-[#6B6B6B]">
                         <div>Qty: {sale.quantity}</div>
                         <div className="text-right">Unit: {currency(sale.unit_price_cents)}</div>
                         <div>Customer: {sale.customer_name || '-'}</div>
                         <div className="text-right">Stylist: {sale.stylist?.name || '-'}</div>
                       </div>
                       <div className="mt-3 flex items-center justify-between">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          sale.payment_method === 'cash' ? 'bg-[#f7f1ec] text-gray-700' :
-                          sale.payment_method === 'gcash' ? 'bg-blue-100 text-blue-700' :
-                          'bg-green-100 text-green-700'
+                        <span className={`rounded-full px-2.5 py-1 text-xs ${
+                          sale.payment_method === 'cash' ? 'bg-[#FEF3C7] text-[#B45309]' :
+                          sale.payment_method === 'gcash' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                          'bg-[#DCFCE7] text-[#15803D]'
                         }`}>
                           {sale.payment_method}
                         </span>
-                        <span className="text-base font-semibold text-[#3b2f2a]">{currency(sale.total_amount_cents)}</span>
+                        <span className="text-base font-semibold text-[#7B5CF5]">{currency(sale.total_amount_cents)}</span>
                       </div>
                     </div>
                   ))}
@@ -264,54 +294,54 @@ const SalesMonitoring = () => {
 
                 <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[640px]">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Date</th>
-                        <th className="text-left p-2">Item</th>
-                        <th className="text-left p-2">Type</th>
-                        <th className="text-right p-2">Quantity</th>
-                        <th className="text-right p-2">Unit Price</th>
-                        <th className="text-right p-2">Total</th>
-                        <th className="text-left p-2">Payment</th>
-                        <th className="text-left p-2">Customer</th>
-                        <th className="text-left p-2">Stylist</th>
+                    <thead className="bg-[#F2EDFF]">
+                      <tr className="border-b border-[#DDD6FE]">
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Date</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Item</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Type</th>
+                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Quantity</th>
+                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Unit Price</th>
+                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Total</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Payment</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Customer</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Stylist</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-[#DDD6FE]">
                       {sales.map(sale => (
-                        <tr key={sale.id} className="border-b hover:bg-gray-50">
-                          <td className="p-2 text-sm">{formatDate(sale.created_at)}</td>
-                          <td className="p-2">{sale.item_name}</td>
-                          <td className="p-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              sale.transaction_type === 'service' ? 'bg-blue-100 text-blue-700' :
-                              sale.transaction_type === 'product' ? 'bg-green-100 text-green-700' :
-                              'bg-purple-100 text-purple-700'
+                        <tr key={sale.id} className="transition hover:bg-[#F6F2FF]">
+                          <td className="p-3 text-sm text-[#2D2D2D]">{formatDate(sale.created_at)}</td>
+                          <td className="p-3 text-[#2D2D2D]">{sale.item_name}</td>
+                          <td className="p-3">
+                            <span className={`rounded-full px-2.5 py-1 text-xs ${
+                              sale.transaction_type === 'service' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                              sale.transaction_type === 'product' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                              'bg-[#EDE9FE] text-[#6D4DE6]'
                             }`}>
                               {sale.transaction_type}
                             </span>
                           </td>
-                          <td className="p-2 text-right">{sale.quantity}</td>
-                          <td className="p-2 text-right">{currency(sale.unit_price_cents)}</td>
-                          <td className="p-2 text-right font-bold">{currency(sale.total_amount_cents)}</td>
-                          <td className="p-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              sale.payment_method === 'cash' ? 'bg-[#f7f1ec] text-gray-700' :
-                              sale.payment_method === 'gcash' ? 'bg-blue-100 text-blue-700' :
-                              'bg-green-100 text-green-700'
+                          <td className="p-3 text-right text-[#2D2D2D]">{sale.quantity}</td>
+                          <td className="p-3 text-right text-[#2D2D2D]">{currency(sale.unit_price_cents)}</td>
+                          <td className="p-3 text-right font-bold text-[#7B5CF5]">{currency(sale.total_amount_cents)}</td>
+                          <td className="p-3">
+                            <span className={`rounded-full px-2.5 py-1 text-xs ${
+                              sale.payment_method === 'cash' ? 'bg-[#FEF3C7] text-[#B45309]' :
+                              sale.payment_method === 'gcash' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                              'bg-[#DCFCE7] text-[#15803D]'
                             }`}>
                               {sale.payment_method}
                             </span>
                           </td>
-                          <td className="p-2 text-sm">{sale.customer_name || '-'}</td>
-                          <td className="p-2 text-sm">{sale.stylist?.name || '-'}</td>
+                          <td className="p-3 text-sm text-[#2D2D2D]">{sale.customer_name || '-'}</td>
+                          <td className="p-3 text-sm text-[#2D2D2D]">{sale.stylist?.name || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
                 {sales.length === 0 && (
-                  <div className="text-center py-8 text-[#9b857a]">No sales found for the selected period</div>
+                  <div className="py-8 text-center text-[#6B6B6B]">No sales found for the selected period</div>
                 )}
               </>
             )}

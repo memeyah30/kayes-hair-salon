@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\Inventory;
-use App\Models\Appointment;
+use App\Services\InventoryWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -50,7 +50,7 @@ class SaleController extends Controller
         return $query->orderBy('created_at', 'desc')->get();
     }
 
-    public function store(Request $request)
+    public function store(Request $request, InventoryWorkflowService $inventoryWorkflowService)
     {
         $data = $request->validate([
             'appointment_id' => 'nullable|exists:appointments,id',
@@ -71,20 +71,34 @@ class SaleController extends Controller
         $data['total_amount_cents'] = $data['quantity'] * $data['unit_price_cents'];
         $data['payment_status'] = $data['payment_status'] ?? 'paid';
 
-        // If inventory item is sold, reduce quantity
-        if ($data['inventory_id']) {
-            $inventory = Inventory::findOrFail($data['inventory_id']);
-            if ($inventory->quantity < $data['quantity']) {
-                return response()->json([
-                    'message' => 'Insufficient inventory. Available: ' . $inventory->quantity
-                ], 422);
-            }
-            $inventory->quantity -= $data['quantity'];
-            $inventory->save();
-        }
+        try {
+            $sale = DB::transaction(function () use ($data, $inventoryWorkflowService, $request) {
+                $sale = Sale::create($data);
 
-        $sale = Sale::create($data);
-        return response()->json($sale->load(['appointment', 'inventory', 'stylist']), 201);
+                // If inventory item is sold, reduce quantity and log usage.
+                if (!empty($data['inventory_id'])) {
+                    $inventory = Inventory::findOrFail($data['inventory_id']);
+                    $inventoryWorkflowService->applyStockChange(
+                        $inventory,
+                        -((int) $data['quantity']),
+                        'stock_deducted',
+                        'sale',
+                        (int) $sale->id,
+                        $request->user()?->id,
+                        'Inventory sold'
+                    );
+                }
+
+                return $sale;
+            });
+
+            return response()->json($sale->load(['appointment', 'inventory', 'stylist']), 201);
+        } catch (\RuntimeException $e) {
+            if ((int) $e->getCode() === 422) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+            throw $e;
+        }
     }
 
     public function show(Sale $sale)
@@ -103,18 +117,28 @@ class SaleController extends Controller
         return $sale->fresh()->load(['appointment', 'inventory', 'stylist']);
     }
 
-    public function destroy(Sale $sale)
+    public function destroy(Request $request, Sale $sale, InventoryWorkflowService $inventoryWorkflowService)
     {
-        // If inventory item was sold, restore quantity
-        if ($sale->inventory_id) {
-            $inventory = Inventory::find($sale->inventory_id);
-            if ($inventory) {
-                $inventory->quantity += $sale->quantity;
-                $inventory->save();
+        DB::transaction(function () use ($request, $sale, $inventoryWorkflowService) {
+            // If inventory item was sold, restore quantity and log.
+            if ($sale->inventory_id) {
+                $inventory = Inventory::find($sale->inventory_id);
+                if ($inventory) {
+                    $inventoryWorkflowService->applyStockChange(
+                        $inventory,
+                        (int) $sale->quantity,
+                        'stock_added',
+                        'sale',
+                        (int) $sale->id,
+                        $request->user()?->id,
+                        'Sale deleted, stock restored'
+                    );
+                }
             }
-        }
 
-        $sale->delete();
+            $sale->delete();
+        });
+
         return response()->json(['message' => 'Sale deleted successfully']);
     }
 

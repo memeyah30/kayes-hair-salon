@@ -70,7 +70,7 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen bg-[#f4edff] flex items-center justify-center">
+      <div className="min-h-screen app-panel-bg flex items-center justify-center">
         <div>Verifying authentication...</div>
       </div>
     )
