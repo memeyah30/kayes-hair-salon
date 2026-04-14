@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
+import { resolveAssetUrl } from '../utils/runtime'
 
 const ROLE_LABELS = {
   admin: 'Admin',
@@ -32,23 +33,10 @@ const getInitials = (name) => {
 }
 
 const resolveImageUrl = (imagePath) => {
-  if (!imagePath) return null
-  if (/^https?:\/\//i.test(imagePath)) return imagePath
-
-  const normalized = String(imagePath).replace(/^\/+/, '')
-  const currentOrigin = window.location.origin
-
-  if (currentOrigin.includes(':5173')) {
-    const backendHost = currentOrigin.includes('127.0.0.1')
-      ? 'http://127.0.0.1:8000'
-      : 'http://localhost:8000'
-    return `${backendHost}/${normalized}`
-  }
-
-  return `/${normalized}`
+  return resolveAssetUrl(imagePath)
 }
 
-const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
+const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => {
   const [userType, setUserType] = useState(getStoredUserType)
   const [user, setUser] = useState(parseStoredUser)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -89,6 +77,11 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
   const canManagePhoto = userType === 'manager' || userType === 'stylist'
 
   const handleToggleSidebar = () => {
+    if (typeof onMenuClick === 'function') {
+      onMenuClick()
+      return
+    }
+
     window.dispatchEvent(new CustomEvent('sidebar:toggle'))
   }
 
@@ -154,30 +147,30 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false }) => {
 
   return (
     <header
-      className={`px-3 md:px-6 py-3 flex items-center justify-between border-b ${
+      className={`px-3 md:px-6 py-3 flex items-center justify-between border-b transition-[padding,transform] duration-300 ease-out ${
         isAdminTheme
           ? 'bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] border-white/10 shadow-[0_14px_34px_rgba(35,12,88,0.18)]'
           : 'bg-white shadow'
       }`}
-    >
-      <div className="flex items-center gap-3 min-w-0">
-        <button
-          type="button"
-          onClick={handleToggleSidebar}
-          className={`p-2 rounded md:hidden ${
-            isAdminTheme ? 'hover:bg-white/16 text-white' : 'hover:bg-[#f4edff] text-gray-700'
-          }`}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={handleToggleSidebar}
+            className={`tap-safe p-2.5 rounded-xl transition md:hidden ${
+              isAdminTheme ? 'hover:bg-white/16 text-white' : 'hover:bg-[#f4edff] text-gray-700'
+            }`}
           aria-label="Toggle side panel"
           title="Toggle side panel"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-        <div className="flex flex-col leading-tight min-w-0">
-          <div className={`font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
-            Kaye&apos;s Hair Salon and Spa
-          </div>
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div className="flex flex-col leading-tight min-w-0">
+            <div className={`font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
+              Kaye&apos;s Hair Salon and Spa
+            </div>
           <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-white/68' : 'text-[#7f6aa8]'}`}>{title}</div>
         </div>
       </div>

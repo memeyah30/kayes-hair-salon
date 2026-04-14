@@ -65,11 +65,25 @@ const getAppointmentServices = (appointment) => (
     : (appointment.service ? [appointment.service] : [])
 )
 
+const getAppointmentServiceVariant = (service) => {
+  const variantId = service?.pivot?.service_variant_id
+  if (!variantId || !Array.isArray(service?.variants)) return null
+  return service.variants.find((variant) => String(variant.id) === String(variantId)) || null
+}
+
+const getAppointmentServicePriceCents = (service) => {
+  const variant = getAppointmentServiceVariant(service)
+  const price = variant?.price_cents ?? service?.price_cents ?? 0
+  const parsed = Number(price)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 const getAppointmentTotalCents = (appointment) => {
-  if (Number.isFinite(appointment.total_amount_cents)) {
-    return appointment.total_amount_cents
+  const storedTotal = Number(appointment?.total_amount_cents)
+  if (Number.isFinite(storedTotal)) {
+    return storedTotal
   }
-  return getAppointmentServices(appointment).reduce((sum, service) => sum + (service?.price_cents || 0), 0)
+  return getAppointmentServices(appointment).reduce((sum, service) => sum + getAppointmentServicePriceCents(service), 0)
 }
 
 const getStatusBadgeStyle = (status) => {
@@ -330,7 +344,7 @@ const BarChart = ({
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
     appointments: { today: 0, week: 0, month: 0, total: 0 },
-    revenue: { today: 0, week: 0, month: 0 },
+    revenue: { today: 0, week: 0, month: 0, week_series: [] },
     stylists: { active: 0, total: 0 },
     customers: 0,
     services: 0,
@@ -350,7 +364,6 @@ const AdminDashboard = () => {
   const darkChartShellClass = 'mt-4 h-44 rounded-[24px] border border-white/12 bg-gradient-to-br from-[#7050d3] via-[#5d3fbd] to-[#43257f] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
   const accentNoteClass = 'mt-3 rounded-full bg-[#f2e9ff]/90 px-4 py-2 text-sm text-[#644fa0]'
   const emptyStateClass = 'rounded-xl border border-dashed border-[#dccdff] bg-[#f7f1ff] p-6 text-center text-sm text-[#8b77bc]'
-  const listCardClass = 'rounded-xl border border-white/38 bg-[#faf6ff]/82 px-4 py-3 flex items-center justify-between'
 
   useEffect(() => {
     loadStats()
@@ -427,6 +440,13 @@ const AdminDashboard = () => {
   }, [appointments])
 
   const revenueThisWeek = useMemo(() => {
+    if (Array.isArray(stats.revenue?.week_series) && stats.revenue.week_series.length > 0) {
+      return stats.revenue.week_series.map((day, idx) => ({
+        label: day?.label || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][idx] || '-',
+        value: Number(day?.value) || 0,
+      }))
+    }
+
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     const values = Array(7).fill(0)
     const now = new Date()
@@ -443,7 +463,7 @@ const AdminDashboard = () => {
     })
 
     return labels.map((label, idx) => ({ label, value: values[idx] }))
-  }, [appointments])
+  }, [appointments, stats.revenue?.week_series])
 
   const appointmentsThisWeek = useMemo(() => {
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -463,31 +483,6 @@ const AdminDashboard = () => {
     return labels.map((label, idx) => ({ label, value: values[idx] }))
   }, [appointments])
 
-  const stylistPerformance = useMemo(() => {
-    const now = new Date()
-    const month = now.getMonth()
-    const year = now.getFullYear()
-    const byStylist = {}
-
-    appointments.forEach((appointment) => {
-      const date = new Date(appointment.start_datetime_pht || appointment.start_datetime)
-      if (date.getMonth() !== month || date.getFullYear() !== year) return
-      const stylistName = appointment.stylist?.name || 'Unassigned'
-      if (!byStylist[stylistName]) {
-        byStylist[stylistName] = { name: stylistName, completed: 0, revenue: 0 }
-      }
-      if (appointment.status === 'completed') {
-        byStylist[stylistName].completed += 1
-        byStylist[stylistName].revenue += getAppointmentTotalCents(appointment)
-      }
-    })
-
-    return Object.values(byStylist)
-      .sort((a, b) => b.completed - a.completed || b.revenue - a.revenue)
-      .slice(0, 4)
-  }, [appointments])
-
-  const topStylist = stylistPerformance[0] || null
   const peakMonth = useMemo(() => (
     monthlyAppointments.reduce((best, month) => (month.value > best.value ? month : best), { label: '-', value: 0 })
   ), [monthlyAppointments])
@@ -526,9 +521,7 @@ const AdminDashboard = () => {
             <h1 className="fluid-title-lg font-semibold text-[#24173f]">
               {canAccessSales ? 'Admin Dashboard' : 'Manager Dashboard'}
             </h1>
-            <p className="mt-1 text-sm text-[#7d69ab]">
-              Monitor performance here. Use the side panel for all management pages.
-            </p>
+           
           </div>
 
           <div className={`grid gap-4 md:grid-cols-2 ${canAccessSales ? 'xl:grid-cols-7' : 'xl:grid-cols-5'}`}>
@@ -693,7 +686,7 @@ const AdminDashboard = () => {
 
           <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 {canAccessSales ? (
                   <button
                     type="button"
@@ -716,13 +709,6 @@ const AdminDashboard = () => {
                   <div className="mt-1 text-3xl font-semibold">{stats.appointments.week}</div>
                   <div className="mt-3 text-sm text-[#7b67a9]">Total services: {stats.services}</div>
                 </div>
-                <div className={statCardClass}>
-                  <div className="text-sm text-[#7b67a9]">Top Stylist</div>
-                  <div className="mt-1 text-2xl font-semibold">{topStylist?.name || 'No data yet'}</div>
-                  <div className="mt-3 text-sm text-[#7b67a9]">
-                    {topStylist ? `${topStylist.completed} completed` : 'Track completed services this month'}
-                  </div>
-                </div>
               </div>
 
               <div className={glassPanelClass}>
@@ -741,33 +727,6 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className={glassPanelClass}>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-[#2f2252]">Stylist Performance</h3>
-                  <span className="text-xs text-[#806caf]">This month</span>
-                </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {stylistPerformance.length === 0 && (
-                    <div className={`col-span-full ${emptyStateClass}`}>
-                      No completed appointments yet.
-                    </div>
-                  )}
-                  {stylistPerformance.map((stylist) => (
-                    <div
-                      key={stylist.name}
-                      className={listCardClass}
-                    >
-                      <div>
-                        <div className="font-semibold text-[#2f2252]">{stylist.name}</div>
-                        <div className="text-xs text-[#806caf]">{stylist.completed} completed appointments</div>
-                      </div>
-                      <div className="text-sm font-semibold text-[#5d488f]">
-                        {canAccessSales ? formatCurrency(stylist.revenue) : `${stylist.completed} completed`}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
 
             <div className="space-y-4">

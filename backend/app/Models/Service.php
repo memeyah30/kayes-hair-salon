@@ -29,7 +29,8 @@ class Service extends Model
 
     public function stylists(): BelongsToMany
     {
-        return $this->belongsToMany(Stylist::class, 'service_stylist', 'service_id', 'stylist_id');
+        return $this->belongsToMany(Stylist::class, 'stylist_services', 'service_id', 'stylist_id')
+            ->withTimestamps();
     }
 
     public function inventoryRequirements(): HasMany

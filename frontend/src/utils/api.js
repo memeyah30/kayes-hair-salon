@@ -96,11 +96,9 @@ api.interceptors.response.use(
           || localStorage.getItem('userType')
           || 'admin'
         const loginPath =
-          currentUserType === 'stylist'
-            ? '/login/stylist'
-            : currentUserType === 'manager'
+          currentUserType === 'manager'
               ? '/login/manager'
-              : '/login/admin'
+              : '/login'
 
         clearAuthStorage()
         window.location.href = loginPath

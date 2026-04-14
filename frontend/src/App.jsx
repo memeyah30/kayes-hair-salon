@@ -10,7 +10,6 @@ import BookAppointment from './pages/BookAppointment'
 import Stylists from './pages/Stylists'
 import Services from './pages/Services'
 import AdminDashboard from './pages/AdminDashboard'
-import StylistDashboard from './pages/StylistDashboard'
 import CustomerDashboard from './pages/CustomerDashboard'
 import ManageStylists from './pages/ManageStylists'
 import ManageServices from './pages/ManageServices'
@@ -22,8 +21,6 @@ import ManagePaymentAccounts from './pages/admin/ManagePaymentAccounts'
 import ManageInventory from './pages/admin/ManageInventory'
 import SalesMonitoring from './pages/admin/SalesMonitoring'
 import PendingStaffApprovals from './pages/admin/PendingStaffApprovals'
-import StylistAppointments from './pages/stylist/StylistAppointments'
-import StylistSchedule from './pages/stylist/StylistSchedule'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
 import ManageBookingDashboard from './pages/ManageBookingDashboard'
@@ -42,7 +39,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/login/admin" element={<Login userType="admin" />} />
         <Route path="/login/manager" element={<Login userType="manager" />} />
-        <Route path="/login/stylist" element={<Login userType="stylist" />} />
+        <Route path="/login/stylist" element={<Navigate to="/login" replace />} />
         
         {/* Customer manage-booking routes (public OTP flow) */}
         <Route path="/my-appointments" element={<Navigate to="/" replace />} />
@@ -169,31 +166,10 @@ const App = () => {
           }
         />
         
-        {/* Protected stylist routes */}
-        <Route
-          path="/stylist/dashboard"
-          element={
-            <ProtectedRoute allowedTypes={['stylist']}>
-              <StylistDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/stylist/appointments"
-          element={
-            <ProtectedRoute allowedTypes={['stylist']}>
-              <StylistAppointments />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/stylist/schedule"
-          element={
-            <ProtectedRoute allowedTypes={['stylist']}>
-              <StylistSchedule />
-            </ProtectedRoute>
-          }
-        />
+        {/* Retired staff panel routes */}
+        <Route path="/stylist/dashboard" element={<Navigate to="/login" replace />} />
+        <Route path="/stylist/appointments" element={<Navigate to="/login" replace />} />
+        <Route path="/stylist/schedule" element={<Navigate to="/login" replace />} />
         
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

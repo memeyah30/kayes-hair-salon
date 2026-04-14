@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithPagination;
 use App\Models\Sale;
 use App\Models\Inventory;
 use App\Services\InventoryWorkflowService;
@@ -11,6 +12,8 @@ use Carbon\Carbon;
 
 class SaleController extends Controller
 {
+    use InteractsWithPagination;
+
     public function index(Request $request)
     {
         $request->validate([
@@ -18,6 +21,9 @@ class SaleController extends Controller
             'end_date' => ['nullable', 'date_format:Y-m-d'],
             'transaction_type' => ['nullable', 'in:service,product,both'],
             'stylist_id' => ['nullable', 'integer', 'exists:stylists,id'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'paginate' => ['nullable'],
         ]);
 
         $timezone = 'Asia/Manila';
@@ -47,7 +53,15 @@ class SaleController extends Controller
             $query->where('stylist_id', $request->stylist_id);
         }
 
-        return $query->orderBy('created_at', 'desc')->get();
+        $query->orderBy('created_at', 'desc');
+
+        if ($this->shouldPaginate($request)) {
+            return response()->json(
+                $query->paginate($this->resolvePerPage($request))
+            );
+        }
+
+        return $query->get();
     }
 
     public function store(Request $request, InventoryWorkflowService $inventoryWorkflowService)

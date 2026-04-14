@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import api from '../utils/api'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
+import { resolveAssetUrl } from '../utils/runtime'
 
 const WEEKDAYS = [
   { value: 0, label: 'Sunday' },
@@ -270,7 +271,6 @@ const ManageStylists = () => {
   const isStylistBaseInfoComplete = Boolean(
     formData.name.trim() &&
     formData.email.trim() &&
-    (editing || formData.password.trim()) &&
     !formErrors.email &&
     !formErrors.phone
   )
@@ -413,18 +413,13 @@ const ManageStylists = () => {
       return
     }
     
-    // For creating new stylist, require email for login
+    // Keep email required for staff profile records.
     if (!editing && !formData.email) {
-      toast.error('Email is required to create a stylist account')
-      setFormErrors(prev => ({ ...prev, email: 'Email is required for stylist login' }))
+      toast.error('Email is required to create a stylist profile')
+      setFormErrors(prev => ({ ...prev, email: 'Email is required for stylist profiles' }))
       return
     }
 
-    if (!editing && !schedulePreset) {
-      toast.error('Please choose a weekly schedule preset')
-      return
-    }
-    
     try {
       const data = new FormData()
       data.append('name', formData.name)
@@ -439,7 +434,12 @@ const ManageStylists = () => {
       const enabledHours = formData.working_hours
         .filter(wh => wh.enabled)
         .map(wh => ({ weekday: wh.weekday, start_time: wh.start_time, end_time: wh.end_time }))
-      data.append('working_hours', JSON.stringify(enabledHours))
+      const fallbackHours = !editing && enabledHours.length === 0
+        ? buildHoursFromPreset(SCHEDULE_PRESETS[0])
+          .filter(wh => wh.enabled)
+          .map(wh => ({ weekday: wh.weekday, start_time: wh.start_time, end_time: wh.end_time }))
+        : enabledHours
+      data.append('working_hours', JSON.stringify(fallbackHours))
       if (formData.image) {
         data.append('image', formData.image)
       }
@@ -536,7 +536,7 @@ const ManageStylists = () => {
     })
     setSchedulePreset(getMatchingSchedulePreset(defaultHours))
     setWeekOffset(0)
-    setImagePreview(stylist.image ? `http://localhost:8000/${stylist.image}` : null)
+    setImagePreview(stylist.image ? resolveAssetUrl(stylist.image) : null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -778,14 +778,18 @@ const ManageStylists = () => {
         <Navbar />
         <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
                 className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >&larr;</button>
-              <h1 className="text-2xl font-bold text-[#2D2D2D]">Manage Staff</h1>
+              <div>
+                <h1 className="text-2xl font-bold text-[#2D2D2D]">Staff Profiles</h1>
+                <p className="mt-1 text-sm text-[#6B6B6B]">Create and manage staff accounts and profiles.</p>
+                <p className="mt-1 text-sm text-[#8C72DF]">Staff profiles are used for internal management and system operations.</p>
+              </div>
             </div>
           </div>
 
@@ -847,7 +851,7 @@ const ManageStylists = () => {
                 type="text"
                 className={`w-full rounded-xl border px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] ${formErrors.phone ? 'border-red-500' : 'border-[#DDD6FE]'}`}
                 value={formData.phone}
-                placeholder="09171234567 or +639171234567"
+                placeholder="+63XXXXXXXXXX"
                 onChange={(e) => {
                   setFormData({ ...formData, phone: e.target.value })
                   const validation = validatePhone(e.target.value)
@@ -855,18 +859,6 @@ const ManageStylists = () => {
                 }}
               />
               {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">
-                Password {!editing && '*'} {editing && '(leave blank to keep current)'}
-              </label>
-              <input
-                type="password"
-                className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
-                value={formData.password}
-                placeholder={editing ? '********' : 'Enter password (min 6 characters)'}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Image</label>
@@ -892,309 +884,6 @@ const ManageStylists = () => {
               </select>
             </div>
           </div>
-
-          <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3 md:p-4">
-            <label className="mb-2 block text-sm font-semibold text-[#2D2D2D]">Specializations</label>
-            <div className="max-h-44 overflow-y-auto rounded-xl border border-[#DDD6FE] bg-white p-3">
-              {services.length === 0 ? (
-                <div className="text-xs text-[#6B6B6B]">No services available yet.</div>
-              ) : (
-                <div className="grid sm:grid-cols-2 gap-2">
-                  {services.map((service) => {
-                    const serviceId = String(service.id)
-                    const isChecked = formData.specialization_ids.includes(serviceId)
-                    return (
-                      <label
-                        key={service.id}
-                        className={`flex items-center gap-2 rounded px-2 py-1.5 border transition cursor-pointer ${
-                          isChecked ? 'border-[#7B5CF5] bg-[#F2EDFF]' : 'border-transparent hover:bg-[#F6F2FF]'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(event) => {
-                            setFormData((prev) => {
-                              const current = Array.isArray(prev.specialization_ids) ? prev.specialization_ids : []
-                              const next = event.target.checked
-                                ? [...new Set([...current, serviceId])]
-                                : current.filter((id) => id !== serviceId)
-
-                              return {
-                                ...prev,
-                                specialization_ids: next,
-                              }
-                            })
-                          }}
-                          className="h-4 w-4 rounded border-[#C4B5FD] text-[#7B5CF5] focus:ring-[#C4B5FD]"
-                        />
-                        <span className="text-sm text-[#2D2D2D]">{service.name}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-            <p className="mt-1 text-xs text-[#6B6B6B]">
-              Select services this stylist can perform. This is used for booking-time stylist filtering.
-            </p>
-          </div>
-
-          {isStylistBaseInfoComplete ? (
-          <div className="mt-4 border-t border-[#DDD6FE] pt-4">
-            <div className="rounded-2xl border border-[#DDD6FE] bg-[#FCFBFF] p-4 md:p-5">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-[#2D2D2D]">Weekly Schedule</h3>
-                  <p className="text-sm text-[#6B6B6B]">Set working days, day-offs, and manage absences for this staff member.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-[#6B6B6B]">
-                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#22C55E]" />Working</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#7B5CF5]" />Day Off</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#EF4444]" />Absent</span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                <span className="inline-flex items-center rounded-full bg-[#DCFCE7] px-3 py-1 text-[#15803D]">{workingDaysCount} Working days</span>
-                <span className="inline-flex items-center rounded-full bg-[#F2EDFF] px-3 py-1 text-[#6846E8]">{dayOffCount} Days off</span>
-                <span className="inline-flex items-center rounded-full bg-[#FEE2E2] px-3 py-1 text-[#B91C1C]">{currentWeekAbsences} Absences this week</span>
-              </div>
-
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setWeekOffset((prev) => prev - 1)}
-                  className="h-9 w-9 rounded-lg border border-[#7B5CF5] bg-white text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
-                  aria-label="Previous week"
-                >
-                  -
-                </button>
-                <div className="rounded-lg border border-[#DDD6FE] bg-white px-3 py-1.5 text-sm font-medium text-[#2D2D2D]">
-                  {formatWeekRangeLabel(currentWeekRange.start, currentWeekRange.end)}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setWeekOffset((prev) => prev + 1)}
-                  className="h-9 w-9 rounded-lg border border-[#7B5CF5] bg-white text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
-                  aria-label="Next week"
-                >
-                  +
-                </button>
-              </div>
-
-              <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-[#F6F2FF] p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6B6B6B]">Quick Presets</div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {SCHEDULE_PRESETS.map((preset) => (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      onClick={() => applySchedulePreset(preset.value)}
-                      className={`rounded-lg border px-3 py-1.5 text-sm transition ${
-                        schedulePreset === preset.value
-                          ? 'border-[#7B5CF5] bg-[#7B5CF5] text-white'
-                          : 'border-[#DDD6FE] bg-white text-[#7B5CF5] hover:bg-[#F2EDFF]'
-                      }`}
-                    >
-                      {preset.shortLabel || preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {WEEKLY_DISPLAY_ORDER.map((weekday) => {
-                  const dayLabel = WEEKDAYS.find((day) => day.value === weekday)?.label || `Day ${weekday}`
-                  const daySchedule = formData.working_hours.find((wh) => wh.weekday === weekday) || {
-                    weekday,
-                    enabled: false,
-                    start_time: '09:00',
-                    end_time: '17:00',
-                  }
-                  const isWorking = Boolean(daySchedule.enabled)
-                  const rowClasses = isWorking
-                    ? 'border-[#BBF7D0] bg-[#F0FDF4]'
-                    : 'border-[#DDD6FE] bg-[#F8F5FF]'
-
-                  return (
-                    <div
-                      key={weekday}
-                      className={`flex flex-col gap-3 rounded-xl border px-3 py-3 md:flex-row md:items-center md:justify-between ${rowClasses}`}
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="w-24 text-sm font-semibold text-[#2D2D2D]">{dayLabel}</span>
-                        <button
-                          type="button"
-                          onClick={() => setDayStatus(weekday, 'working')}
-                          className={`rounded-full border px-3 py-1 text-xs ${
-                            isWorking
-                              ? 'border-[#22C55E] bg-[#22C55E] text-white'
-                              : 'border-[#BBF7D0] bg-[#DCFCE7] text-[#15803D] hover:bg-[#BBF7D0]'
-                          }`}
-                        >
-                          Working
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDayStatus(weekday, 'dayoff')}
-                          className={`rounded-full border px-3 py-1 text-xs ${
-                            !isWorking
-                              ? 'border-[#7B5CF5] bg-[#7B5CF5] text-white'
-                              : 'border-[#DDD6FE] bg-[#F2EDFF] text-[#6846E8] hover:bg-[#E9E2FF]'
-                          }`}
-                        >
-                          Day Off
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!editing) {
-                              toast.info('Save this staff first to mark absences')
-                              return
-                            }
-
-                            const targetDate = new Date(currentWeekRange.start)
-                            const offsetFromMonday = weekday === 0 ? 6 : weekday - 1
-                            targetDate.setDate(targetDate.getDate() + offsetFromMonday)
-                            const isoDate = targetDate.toISOString().split('T')[0]
-                            setNewTimeOff({
-                              start_datetime: `${isoDate}T${daySchedule.start_time || '09:00'}`,
-                              end_datetime: `${isoDate}T${daySchedule.end_time || '18:00'}`,
-                            })
-                            const absenceManager = document.getElementById('absence-manager')
-                            if (absenceManager) {
-                              absenceManager.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                            }
-                          }}
-                          className="rounded-full border border-[#FECACA] bg-[#FEE2E2] px-3 py-1 text-xs text-[#B91C1C] hover:bg-[#FECACA]"
-                        >
-                          Absent
-                        </button>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <TimePicker
-                          value={daySchedule.start_time}
-                          onChange={(value) => updateDaySchedule(weekday, 'start_time', value)}
-                          disabled={!isWorking}
-                        />
-                        <span className="text-[#6B6B6B]">to</span>
-                        <TimePicker
-                          value={daySchedule.end_time}
-                          onChange={(value) => updateDaySchedule(weekday, 'end_time', value)}
-                          disabled={!isWorking}
-                        />
-                        <span className="w-10 text-right text-xs font-medium text-[#6B6B6B]">
-                          {getShiftHoursLabel(daySchedule)}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-white p-4" id="absence-manager">
-                <h4 className="text-lg font-semibold text-[#2D2D2D]">Absence Manager</h4>
-                <p className="mt-1 text-sm text-[#6B6B6B]">Mark specific dates the staff will be absent. These override the weekly schedule.</p>
-
-                {editing ? (
-                  <>
-                    <div className="mt-3 grid gap-3 md:grid-cols-3">
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Start Date & Time</label>
-                        <input
-                          type="datetime-local"
-                          className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
-                          value={newTimeOff.start_datetime}
-                          onChange={(e) => setNewTimeOff({ ...newTimeOff, start_datetime: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">End Date & Time</label>
-                        <input
-                          type="datetime-local"
-                          className="w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
-                          value={newTimeOff.end_datetime}
-                          onChange={(e) => setNewTimeOff({ ...newTimeOff, end_datetime: e.target.value })}
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={addTimeOff}
-                          className="w-full rounded-lg bg-[#EF4444] px-4 py-2 font-medium text-white transition hover:bg-[#DC2626]"
-                        >
-                          + Mark Absent
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 space-y-2">
-                      {timeOffs.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-[#DDD6FE] bg-[#F6F2FF] px-3 py-3 text-sm text-[#6B6B6B]">
-                          No absences recorded.
-                        </div>
-                      ) : (
-                        timeOffs.map((to, idx) => (
-                          <div key={idx} className="flex flex-col gap-2 rounded-lg border border-[#DDD6FE] bg-[#FCFBFF] p-3 md:flex-row md:items-center md:justify-between">
-                            <div className="text-sm">
-                              <span className="font-medium text-[#2D2D2D]">
-                                {new Date(to.start_datetime).toLocaleDateString('en-US', {
-                                  weekday: 'short',
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  timeZone: 'Asia/Manila',
-                                })}
-                              </span>
-                              <span className="ml-2 text-[#6B6B6B]">
-                                {new Date(to.start_datetime).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  timeZone: 'Asia/Manila',
-                                })} - {new Date(to.end_datetime).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  timeZone: 'Asia/Manila',
-                                })} PHT
-                              </span>
-                            </div>
-                              <button
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  await api.delete(`/stylists/${editing.id}/time-offs/${to.id}`)
-                                  toast.success('Day off removed')
-                                  loadTimeOffs(editing.id)
-                                } catch (e) {
-                                  toast.error('Failed to remove day off')
-                                }
-                              }}
-                              className="rounded-lg border border-[#FECACA] bg-white px-3 py-1.5 text-sm text-[#B91C1C] transition hover:bg-[#FEE2E2]"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <div className="mt-3 rounded-lg border border-dashed border-[#DDD6FE] bg-[#F6F2FF] px-3 py-3 text-sm text-[#6B6B6B]">
-                    Save this staff first to enable Absence Manager.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          ) : (
-            <div className="mt-4 border-t border-[#DDD6FE] pt-4">
-              <div className="rounded-xl border border-[#FDE68A] bg-[#FEF3C7] p-4 text-sm text-[#B45309]">
-                Complete name, email, and password first to unlock weekly schedule.
-              </div>
-            </div>
-          )}
 
           <div className="flex gap-2">
             <button type="submit" className="rounded-lg bg-[#7B5CF5] px-4 py-2 text-white transition hover:bg-[#6846E8]">
@@ -1291,7 +980,6 @@ const ManageStylists = () => {
             </div>
           ) : (
             stylists.map((s) => {
-              const specializationNames = normalizeStylistSpecializationNames(s)
               return (
               <div
                 key={s.id}
@@ -1310,7 +998,7 @@ const ManageStylists = () => {
                 {s.image ? (
                 <img
                     key={`${s.id}-${s.image}`}
-                    src={`http://localhost:8000/${s.image}?v=${Date.now()}`}
+                    src={`${resolveAssetUrl(s.image)}?v=${Date.now()}`}
                   alt={s.name}
                   className="mb-2 h-52 w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] object-contain"
                     onError={(e) => {
@@ -1331,18 +1019,6 @@ const ManageStylists = () => {
                   )}
                 </div>
               <div className="text-sm text-[#6B6B6B]">{s.email}</div>
-              {specializationNames.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {specializationNames.slice(0, 3).map((name) => (
-                    <span
-                      key={`${s.id}-${name}`}
-                      className="inline-flex items-center rounded-full bg-[#f0eaff] px-2 py-0.5 text-[11px] text-[#5a47b8]"
-                    >
-                      {name}
-                    </span>
-                  ))}
-                </div>
-              )}
               <div className="mt-1 text-xs text-[#6B6B6B]">Click this profile card to view details.</div>
             </div>
               )
@@ -1419,7 +1095,7 @@ const ManageStylists = () => {
                 <div className="space-y-4">
                   {viewingStaff.staff.image ? (
                     <img
-                      src={`http://localhost:8000/${viewingStaff.staff.image}?v=${Date.now()}`}
+                      src={`${resolveAssetUrl(viewingStaff.staff.image)}?v=${Date.now()}`}
                       alt={viewingStaff.staff.name}
                       className="h-64 w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] object-contain"
                     />
@@ -1433,37 +1109,6 @@ const ManageStylists = () => {
                     <div><span className="text-[#6B6B6B]">Status:</span> <span className="font-medium">{viewingStaff.staff.active ? 'Active' : 'Inactive'}</span></div>
                     <div><span className="text-[#6B6B6B]">Email:</span> <span className="font-medium">{viewingStaff.staff.email || 'N/A'}</span></div>
                     <div><span className="text-[#6B6B6B]">Phone:</span> <span className="font-medium">{viewingStaff.staff.phone || 'N/A'}</span></div>
-                  </div>
-                  <div>
-                    <div className="mb-1 text-sm text-[#6B6B6B]">Specializations</div>
-                    {normalizeStylistSpecializationNames(viewingStaff.staff).length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {normalizeStylistSpecializationNames(viewingStaff.staff).map((name) => (
-                          <span
-                            key={`profile-specialization-${viewingStaff.staff.id}-${name}`}
-                            className="inline-flex items-center rounded-full bg-[#f0eaff] px-2 py-0.5 text-xs text-[#5a47b8]"
-                          >
-                            {name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-[#6B6B6B]">No specialization assigned.</div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="mb-1 text-sm text-[#6B6B6B]">Weekly Schedule</div>
-                    {Array.isArray(viewingStaff.staff.working_hours) && viewingStaff.staff.working_hours.length > 0 ? (
-                      <div className="space-y-1 text-sm">
-                        {viewingStaff.staff.working_hours.map((wh, idx) => (
-                          <div key={`${wh.weekday}-${idx}`} className="text-[#2D2D2D]">
-                            {(WEEKDAYS.find((day) => day.value === wh.weekday)?.label || `Day ${wh.weekday}`)}: {wh.start_time} - {wh.end_time}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-[#6B6B6B]">No schedule set.</div>
-                    )}
                   </div>
                 </div>
               ) : (

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithPagination;
 use App\Models\AppointmentRating;
 use App\Models\CustomerRating;
 use App\Models\Appointment;
@@ -9,18 +10,61 @@ use Illuminate\Http\Request;
 
 class CustomerRatingController extends Controller
 {
+    use InteractsWithPagination;
+
     public function index(Request $request)
     {
         $this->syncAppointmentRatingsToCustomerRatings();
 
+        $request->validate([
+            'stylist_id' => ['nullable', 'integer', 'exists:stylists,id'],
+            'appointment_id' => ['nullable', 'integer', 'exists:appointments,id'],
+            'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'paginate' => ['nullable'],
+        ]);
+
         $query = CustomerRating::with(['appointment', 'stylist']);
 
-        if ($request->has('stylist_id')) {
+        if ($request->filled('stylist_id')) {
             $query->where('stylist_id', $request->stylist_id);
         }
 
-        if ($request->has('appointment_id')) {
+        if ($request->filled('appointment_id')) {
             $query->where('appointment_id', $request->appointment_id);
+        }
+
+        if ($request->filled('rating')) {
+            $query->where('rating', (int) $request->rating);
+        }
+
+        if ($this->shouldPaginate($request)) {
+            $summaryQuery = clone $query;
+
+            $distribution = (clone $summaryQuery)
+                ->selectRaw('rating, COUNT(*) as total')
+                ->groupBy('rating')
+                ->pluck('total', 'rating');
+
+            $summary = [
+                'average_rating' => round((float) ((clone $summaryQuery)->avg('rating') ?? 0), 1),
+                'total_ratings' => (int) ((clone $summaryQuery)->count()),
+                'rating_distribution' => [
+                    5 => (int) ($distribution[5] ?? 0),
+                    4 => (int) ($distribution[4] ?? 0),
+                    3 => (int) ($distribution[3] ?? 0),
+                    2 => (int) ($distribution[2] ?? 0),
+                    1 => (int) ($distribution[1] ?? 0),
+                ],
+            ];
+
+            $paginator = $query->latest()->paginate($this->resolvePerPage($request));
+
+            return response()->json(array_merge(
+                $paginator->toArray(),
+                ['summary' => $summary]
+            ));
         }
 
         return $query->latest()->get();
@@ -51,6 +95,7 @@ class CustomerRatingController extends Controller
 
         $rating = CustomerRating::create([
             'appointment_id' => $data['appointment_id'],
+            // Ratings must remain available even when an appointment has not been assigned to a stylist yet.
             'stylist_id' => $appointment->stylist_id,
             'customer_name' => $appointment->customer_name,
             'customer_email' => $appointment->customer_email,
@@ -98,6 +143,7 @@ class CustomerRatingController extends Controller
             CustomerRating::query()->updateOrCreate(
                 ['appointment_id' => $appointment->id],
                 [
+                    // Keep sync backward-compatible with older and unassigned appointments.
                     'stylist_id' => $appointment->stylist_id,
                     'customer_name' => $appointment->customer_name,
                     'customer_email' => $appointment->customer_email ?: $appointmentRating->customer_email,

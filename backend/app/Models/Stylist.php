@@ -61,8 +61,14 @@ class Stylist extends Authenticatable
         return $this->hasMany(CustomerRating::class);
     }
 
+    public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'stylist_services', 'stylist_id', 'service_id')
+            ->withTimestamps();
+    }
+
     public function specializedServices(): BelongsToMany
     {
-        return $this->belongsToMany(Service::class, 'service_stylist', 'stylist_id', 'service_id');
+        return $this->services();
     }
 }

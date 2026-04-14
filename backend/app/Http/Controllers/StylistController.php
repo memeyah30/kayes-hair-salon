@@ -349,11 +349,11 @@ class StylistController extends Controller
 
     private function syncSpecializations(Stylist $stylist, array $serviceIds): void
     {
-        if (!Schema::hasTable('service_stylist')) {
+        if (!Schema::hasTable('stylist_services')) {
             return;
         }
 
-        $stylist->specializedServices()->sync($serviceIds);
+        $stylist->services()->sync($serviceIds);
     }
 
     private function appendSpecializationPayload(Stylist $stylist): Stylist

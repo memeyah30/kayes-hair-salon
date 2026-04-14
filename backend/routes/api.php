@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminCustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceVariantController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ServiceInventoryRequirementController;
 use App\Http\Controllers\ManageBookingController;
+use App\Http\Controllers\ReturningBookingController;
 use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
 use App\Http\Controllers\Admin\StaffApprovalController;
 use App\Http\Controllers\Public\StylistController as PublicStylistController;
@@ -25,6 +27,7 @@ Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/stylists', [PublicStylistController::class, 'index']);
 Route::get('/stylists/by-services', [PublicStylistController::class, 'byServices']);
 Route::get('/stylists/{stylist}/availability', [StylistController::class, 'availability']);
+Route::get('/appointments/availability', [AppointmentController::class, 'availability']);
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
 Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
 Route::get('/appointments/{appointment}/receipt', [AppointmentController::class, 'receipt']); // Public receipt
@@ -37,6 +40,16 @@ Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public -
 // Customer manage-booking OTP routes
 Route::post('/manage-booking/send-otp', [ManageBookingController::class, 'sendOtp']);
 Route::post('/manage-booking/verify-otp', [ManageBookingController::class, 'verifyOtp']);
+
+// Email-first returning-customer booking routes.
+Route::post('/returning-booking/check-email', [ReturningBookingController::class, 'checkEmail']);
+Route::post('/returning-booking/send-otp', [ReturningBookingController::class, 'sendOtp']);
+Route::post('/returning-booking/verify-otp', [ReturningBookingController::class, 'verifyOtp']);
+
+Route::middleware('customer.booking')->group(function () {
+    Route::get('/returning-booking/profile', [ReturningBookingController::class, 'profile']);
+    Route::patch('/returning-booking/profile', [ReturningBookingController::class, 'updateProfile']);
+});
 
 Route::middleware('customer.otp')->group(function () {
     Route::get('/manage-booking/appointments', [ManageBookingController::class, 'appointments']);
@@ -139,6 +152,7 @@ Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
 Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
     Route::get('/ratings', [CustomerRatingController::class, 'index']);
+    Route::get('/customers', [AdminCustomerController::class, 'index']);
 });
 
 // Admin + Manager routes (shared management permissions)

@@ -47,4 +47,3 @@ class Staff extends Model
         return $this->belongsTo(Stylist::class, 'user_id');
     }
 }
-

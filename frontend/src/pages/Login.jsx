@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
+import { resolveBackendOrigin } from '../utils/runtime'
 
 const Login = ({ userType: propUserType }) => {
-  const [selectedType, setSelectedType] = useState(propUserType || 'admin')
+  const initialType = propUserType === 'manager' ? 'manager' : 'admin'
+  const [selectedType, setSelectedType] = useState(initialType)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -42,12 +44,7 @@ const Login = ({ userType: propUserType }) => {
       toast.success(`Welcome, ${res.data.user.name}!`)
       
       // Determine redirect path
-      let redirectPath = '/admin/dashboard'
-      if (selectedType === 'manager') {
-        redirectPath = '/admin/dashboard' // Managers use admin dashboard
-      } else if (selectedType === 'stylist') {
-        redirectPath = '/stylist/dashboard'
-      }
+      const redirectPath = '/admin/dashboard'
       
       console.log('Login successful, redirecting to:', redirectPath)
       console.log('User type:', res.data.type)
@@ -62,9 +59,7 @@ const Login = ({ userType: propUserType }) => {
       // Otherwise, use relative path (will stay on same origin)
       let finalRedirectPath = redirectPath
       if (isDevServer) {
-        // Determine backend hostname - prefer localhost but support 127.0.0.1
-        const backendHost = currentOrigin.includes('127.0.0.1') ? 'http://127.0.0.1:8000' : 'http://localhost:8000'
-        finalRedirectPath = `${backendHost}${redirectPath}`
+        finalRedirectPath = `${resolveBackendOrigin()}${redirectPath}`
       }
       
       // #region agent log
@@ -97,15 +92,11 @@ const Login = ({ userType: propUserType }) => {
 
   const loginLabel = selectedType === 'admin'
     ? 'Username or Email'
-    : selectedType === 'manager'
-      ? 'Username'
-      : 'Email or Phone'
+    : 'Username'
 
   const loginPlaceholder = selectedType === 'admin'
     ? 'admin'
-    : selectedType === 'manager'
-      ? ''
-      : 'email or phone'
+    : ''
 
   return (
     <div className="min-h-screen bg-[#dfe4f3] p-3 sm:p-4 md:p-8 flex items-center justify-center">
@@ -114,10 +105,10 @@ const Login = ({ userType: propUserType }) => {
           <section className="bg-gradient-to-br from-[#8ea3f1] via-[#7d95e8] to-[#6c84dc] px-5 sm:px-8 py-8 sm:py-10 text-white lg:min-h-[700px] lg:rounded-r-[220px] lg:px-12 lg:py-14">
             <div className="flex h-full flex-col justify-between gap-12">
               <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-white/75">Staff Portal</p>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/75">Management Portal</p>
                 <h1 className="mt-6 text-[clamp(2rem,8vw,3.25rem)] font-semibold leading-none">Welcome!</h1>
                 <p className="mt-6 max-w-md text-sm sm:text-base md:text-lg text-white/90">
-                  Manage appointments, services, and staff workflows from one secure dashboard.
+                  Manage appointments, services, and salon operations from one secure dashboard.
                 </p>
               </div>
               <div>
@@ -151,7 +142,7 @@ const Login = ({ userType: propUserType }) => {
 
               <div className="mt-8">
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-[#7784aa]">Role</label>
-                <div className="grid grid-cols-3 gap-1 rounded-xl bg-[#dde5f7] p-1.5">
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#dde5f7] p-1.5">
                   <button
                     type="button"
                     onClick={() => setSelectedType('admin')}
@@ -173,17 +164,6 @@ const Login = ({ userType: propUserType }) => {
                     }`}
                   >
                     Manager
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedType('stylist')}
-                    className={`tap-safe rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold ${
-                      selectedType === 'stylist'
-                        ? 'bg-white text-[#5670ca]'
-                        : 'text-[#6f7ca3] hover:bg-white/80'
-                    }`}
-                  >
-                    Staff
                   </button>
                 </div>
               </div>

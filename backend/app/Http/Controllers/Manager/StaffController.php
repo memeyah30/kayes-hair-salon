@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreStaffRequest;
+use App\Models\Service;
 use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -27,6 +28,31 @@ class StaffController extends Controller
     {
         $manager = $request->user();
         $data = $request->validated();
+        $selectedServiceIds = ($data['role'] ?? 'stylist') === 'stylist'
+            ? collect($data['specialization_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values()
+            : collect();
+
+        $selectedServiceNames = collect();
+        if ($selectedServiceIds->isNotEmpty()) {
+            $servicesById = Service::query()
+                ->whereIn('id', $selectedServiceIds->all())
+                ->get(['id', 'name'])
+                ->keyBy('id');
+
+            $selectedServiceNames = $selectedServiceIds
+                ->map(fn ($id) => $servicesById->get($id)?->name)
+                ->filter()
+                ->values();
+        } elseif (!empty($data['specialization']) && is_array($data['specialization'])) {
+            $selectedServiceNames = collect($data['specialization'])
+                ->map(fn ($value) => trim((string) $value))
+                ->filter()
+                ->values();
+        }
 
         $photoPath = null;
         if ($request->hasFile('photo')) {
@@ -39,7 +65,7 @@ class StaffController extends Controller
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'role' => $data['role'] ?? 'stylist',
-            'specialization' => $data['specialization'] ?? null,
+            'specialization' => $selectedServiceNames->isNotEmpty() ? $selectedServiceNames->all() : null,
             'photo_path' => $photoPath,
             'status' => 'pending',
             'created_by_manager_id' => $manager->id,
@@ -54,4 +80,3 @@ class StaffController extends Controller
         ], 201);
     }
 }
-

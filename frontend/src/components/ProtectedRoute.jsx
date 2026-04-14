@@ -77,7 +77,10 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
   }
 
   if (!isAuthorized) {
-    return <Navigate to={`/login/${allowedTypes[0] || 'admin'}`} replace />
+    const loginPath = allowedTypes[0] === 'manager'
+      ? '/login/manager'
+      : '/login'
+    return <Navigate to={loginPath} replace />
   }
 
   return children

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Sidebar from '../components/Sidebar'
@@ -18,6 +18,23 @@ const statusClasses = {
   cancelled: 'bg-red-100 text-red-800',
   missed: 'bg-gray-200 text-gray-700',
   booked: 'bg-[#fce7f1] text-[#9b2f64]',
+}
+
+const wasRescheduled = (appointment) => Boolean(appointment?.is_rescheduled || appointment?.rescheduled_at)
+
+const formatRescheduledAtLabel = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString('en-US', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
 }
 
 const CustomerDashboard = () => {
@@ -45,6 +62,9 @@ const CustomerDashboard = () => {
   const [submittingCancelId, setSubmittingCancelId] = useState(null)
   const [ratingAppointment, setRatingAppointment] = useState(null)
   const [submittingRating, setSubmittingRating] = useState(false)
+  const [showBookingHistory, setShowBookingHistory] = useState(false)
+  const appointmentsSectionRef = useRef(null)
+  const historySectionRef = useRef(null)
 
   const isOtpSession = Boolean(otpEmail && otpToken)
 
@@ -94,6 +114,7 @@ const CustomerDashboard = () => {
   )
   const currencyFromCents = (cents) => `PHP ${(Number(cents || 0) / 100).toFixed(2)}`
   const currency = (amount) => `PHP ${Number(amount || 0).toFixed(2)}`
+  const primaryActionButtonClass = 'tap-safe rounded-[30px] bg-[#7b5cf5] px-5 py-2.5 text-white font-semibold shadow-[0_14px_30px_rgba(40,28,110,0.3)] transition hover:-translate-y-px hover:bg-[#8a6cf8] disabled:opacity-60'
 
   const clearOtpSession = () => {
     localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
@@ -283,6 +304,30 @@ const CustomerDashboard = () => {
   const totalBookedCount = isOtpSession
     ? otpAppointments.length
     : appointments.upcoming.length + appointments.history.length
+  const totalCardInteractive = isOtpSession
+    ? otpAppointments.length > 0
+    : (appointments.history.length > 0 || appointments.upcoming.length > 0)
+
+  const scrollToLinkedBookings = () => {
+    if (!totalCardInteractive) return
+
+    if (!isOtpSession && appointments.history.length > 0) {
+      setShowBookingHistory(true)
+      return
+    }
+
+    appointmentsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  useEffect(() => {
+    if (!showBookingHistory) return
+    historySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [showBookingHistory])
+
+  useEffect(() => {
+    if (isOtpSession || appointments.history.length > 0) return
+    setShowBookingHistory(false)
+  }, [isOtpSession, appointments.history.length])
 
   if (showProfile && !isOtpSession) {
     return (
@@ -321,7 +366,7 @@ const CustomerDashboard = () => {
                 </div>
                 <button
                   onClick={handleSaveProfile}
-                    className="tap-safe w-full bg-gradient-to-r from-[#E75480] to-[#b03879] text-white px-4 py-2 rounded hover:brightness-105"
+                  className={`${primaryActionButtonClass} w-full`}
                 >
                   Save Profile
                 </button>
@@ -367,8 +412,8 @@ const CustomerDashboard = () => {
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <button
-                onClick={() => navigate('/book')}
-                className="tap-safe w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-[#E75480] to-[#b03879] text-white rounded hover:brightness-105 text-sm"
+                onClick={() => navigate('/book?fresh=1')}
+                className={`${primaryActionButtonClass} w-full sm:w-auto text-sm`}
               >
                 Book New
               </button>
@@ -390,16 +435,27 @@ const CustomerDashboard = () => {
                 {isOtpSession ? otpUpcomingCount : appointments.upcoming.length}
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+            <button
+              type="button"
+              onClick={scrollToLinkedBookings}
+              disabled={!totalCardInteractive}
+              className={`bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-left transition ${totalCardInteractive ? 'tap-safe hover:-translate-y-px hover:border-[#d9cdf0] cursor-pointer' : 'cursor-default'}`}
+            >
               <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
               <div className="text-2xl font-bold text-emerald-700">{totalBookedCount}</div>
-              <div className="text-sm text-[#6f5b7e] mt-2">All bookings linked to this account</div>
-            </div>
+              <div className="text-sm text-[#6f5b7e] mt-2">
+                {totalCardInteractive
+                  ? (!isOtpSession && appointments.history.length > 0
+                    ? 'Click to view booking history'
+                    : 'Click to view all bookings linked to this account')
+                  : 'All bookings linked to this account'}
+              </div>
+            </button>
           </div>
 
           {isOtpSession ? (
             otpAppointments.length > 0 ? (
-              <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+              <div ref={appointmentsSectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
                 <h2 className="font-semibold text-lg mb-4">My Appointments</h2>
                 <div className="space-y-3">
                   {otpAppointments.map((appt) => {
@@ -407,6 +463,8 @@ const CustomerDashboard = () => {
                       ? Boolean(appt.can_rate)
                       : String(appt.raw_status || appt.status || '').toLowerCase() === 'completed'
                     const statusLabel = appt.status === 'pending' ? 'booked' : appt.status
+                    const isRescheduled = wasRescheduled(appt)
+                    const rescheduledAtLabel = formatRescheduledAtLabel(appt.rescheduled_at_pht || appt.rescheduled_at)
 
                     return (
                       <div key={appt.id} className="border rounded-lg p-4">
@@ -416,6 +474,18 @@ const CustomerDashboard = () => {
                             <div className="text-sm text-[#6f5b7e] mt-1">
                               {appt.appointment_date} at {appt.appointment_time}
                             </div>
+                            {isRescheduled && (
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#6d28d9]">
+                                  Rescheduled
+                                </span>
+                                {rescheduledAtLabel && (
+                                  <span className="text-xs text-[#7c688f]">
+                                    Updated on {rescheduledAtLabel} PHT
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             <div className="text-sm text-[#7c688f] mt-1">with {appt.stylist_name}</div>
                             <div className="text-sm font-medium text-green-600 mt-2">
                               {currency(appt.total_amount)}
@@ -425,7 +495,7 @@ const CustomerDashboard = () => {
                             {appt.can_reschedule && (
                               <button
                                 onClick={() => openReschedule(appt)}
-                                className="tap-safe px-3 py-1 bg-[#fce7f1] text-[#9b2f64] rounded hover:bg-[#f8d6e7] text-sm"
+                                className={`${primaryActionButtonClass} px-4 py-1.5 text-sm`}
                               >
                                 Reschedule
                               </button>
@@ -450,6 +520,11 @@ const CustomerDashboard = () => {
                             {!canRate && appt.rating && (
                               <span className="px-2 py-1 rounded text-xs self-center bg-emerald-100 text-emerald-700">
                                 Rated {Number(appt.rating.overall_rating) || 0}/5
+                              </span>
+                            )}
+                            {isRescheduled && (
+                              <span className="px-2 py-1 rounded text-xs self-center bg-[#ede9fe] text-[#6d28d9]">
+                                rescheduled
                               </span>
                             )}
                             <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appt.status] || 'bg-gray-100 text-gray-700'}`}>
@@ -484,7 +559,7 @@ const CustomerDashboard = () => {
                               <button
                                 onClick={() => handleReschedule(appt.id)}
                                 disabled={submittingReschedule}
-                                className="tap-safe rounded bg-gradient-to-r from-[#E75480] to-[#b03879] px-3 py-1.5 text-xs font-medium text-white hover:brightness-105 disabled:opacity-60"
+                                className={`${primaryActionButtonClass} px-4 py-1.5 text-xs`}
                               >
                                 {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
                               </button>
@@ -508,21 +583,23 @@ const CustomerDashboard = () => {
                 <h3 className="text-xl font-semibold mb-2">No Appointment Yet</h3>
                 <p className="text-[#6f5b7e] mb-4">Book a new appointment to get started.</p>
                   <button
-                    onClick={() => navigate('/book')}
-                    className="tap-safe px-6 py-3 bg-gradient-to-r from-[#E75480] to-[#b03879] text-white rounded-lg hover:brightness-105 font-medium"
+                    onClick={() => navigate('/book?fresh=1')}
+                    className={primaryActionButtonClass}
                   >
                     Book Appointment Now
                   </button>
               </div>
             )
           ) : appointments.upcoming.length > 0 ? (
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+            <div ref={appointmentsSectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
               <h2 className="font-semibold text-lg mb-4">Upcoming Appointments</h2>
               <div className="space-y-3">
                 {appointments.upcoming.map((appt) => {
                   const appointmentDate = new Date(getStart(appt))
                   const appointmentServices = getAppointmentServices(appt)
                   const totalPrice = getAppointmentTotal(appt)
+                  const isRescheduled = wasRescheduled(appt)
+                  const rescheduledAtLabel = formatRescheduledAtLabel(appt.rescheduled_at_pht || appt.rescheduled_at)
 
                   return (
                     <div key={appt.id} className="border rounded-lg p-4">
@@ -561,6 +638,18 @@ const CustomerDashboard = () => {
                             })}{' '}
                             PHT
                           </div>
+                          {isRescheduled && (
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#6d28d9]">
+                                Rescheduled
+                              </span>
+                              {rescheduledAtLabel && (
+                                <span className="text-xs text-[#7c688f]">
+                                  Updated on {rescheduledAtLabel} PHT
+                                </span>
+                              )}
+                            </div>
+                          )}
                           <div className="text-sm text-[#7c688f] mt-1">with {appt.stylist?.name}</div>
                           <div className="text-sm font-medium text-green-600 mt-2">
                             {appointmentServices.length > 1 ? (
@@ -575,7 +664,7 @@ const CustomerDashboard = () => {
                             <>
                               <button
                                 onClick={() => { window.location.href = `/book?reschedule=${appt.id}` }}
-                                className="tap-safe px-3 py-1 bg-[#fce7f1] text-[#9b2f64] rounded hover:bg-[#f8d6e7] text-sm"
+                                className={`${primaryActionButtonClass} px-4 py-1.5 text-sm`}
                               >
                                 Reschedule
                               </button>
@@ -586,6 +675,11 @@ const CustomerDashboard = () => {
                                 Cancel
                               </button>
                             </>
+                          )}
+                          {isRescheduled && (
+                            <span className="px-2 py-1 rounded text-xs self-center bg-[#ede9fe] text-[#6d28d9]">
+                              rescheduled
+                            </span>
                           )}
                           <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appt.status] || 'bg-gray-100 text-gray-700'}`}>
                             {appt.status}
@@ -598,36 +692,114 @@ const CustomerDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6 text-center">
+            <div ref={appointmentsSectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6 text-center">
               <div className="text-sm font-semibold text-[#6f5b7e] mb-4">No upcoming appointments</div>
               <h3 className="text-xl font-semibold mb-2">No Upcoming Appointment</h3>
               <p className="text-[#6f5b7e] mb-4">Book a new appointment to get started.</p>
               <button
-                onClick={() => navigate('/book')}
-                className="tap-safe px-6 py-3 bg-gradient-to-r from-[#E75480] to-[#b03879] text-white rounded-lg hover:brightness-105 font-medium"
+                onClick={() => navigate('/book?fresh=1')}
+                className={primaryActionButtonClass}
               >
                 Book Appointment Now
               </button>
             </div>
           )}
 
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-center">
-              <div className="text-sm font-semibold mb-2 text-[#6f5b7e]">Stylist</div>
-              <h4 className="font-semibold">Professional Stylists</h4>
-              <p className="text-sm text-[#7c688f]">Expert care for your beauty needs</p>
+          {!isOtpSession && showBookingHistory && appointments.history.length > 0 && (
+            <div ref={historySectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="font-semibold text-lg">Booking History</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowBookingHistory(false)}
+                  className="tap-safe rounded-lg border border-[#e2d7ea] bg-white px-3 py-1.5 text-sm text-[#5c4b68] hover:bg-[#faf6fd]"
+                >
+                  Close History
+                </button>
+              </div>
+              <div className="space-y-3">
+                {appointments.history.map((appt) => {
+                  const appointmentDate = new Date(getStart(appt))
+                  const appointmentServices = getAppointmentServices(appt)
+                  const totalPrice = getAppointmentTotal(appt)
+                  const isRescheduled = wasRescheduled(appt)
+                  const rescheduledAtLabel = formatRescheduledAtLabel(appt.rescheduled_at_pht || appt.rescheduled_at)
+
+                  return (
+                    <div key={appt.id} className="border rounded-lg p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="font-semibold text-lg">
+                            {appointmentServices.length > 1 ? (
+                              <span>{appointmentServices.length} Services</span>
+                            ) : (
+                              <span>{appointmentServices[0]?.name || 'Service'}</span>
+                            )}
+                          </div>
+                          {appointmentServices.length > 1 && (
+                            <div className="text-sm text-[#6f5b7e] mt-1">
+                              <ul className="list-disc list-inside ml-2 space-y-0.5">
+                                {appointmentServices.map((s, idx) => (
+                                  <li key={idx}>{getServiceName(s)} - {currencyFromCents(getServicePrice(s))}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          <div className="text-sm text-[#6f5b7e] mt-1">
+                            {appointmentDate.toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              timeZone: 'Asia/Manila',
+                            })}{' '}
+                            at{' '}
+                            {appointmentDate.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true,
+                              timeZone: 'Asia/Manila',
+                            })}{' '}
+                            PHT
+                          </div>
+                          {isRescheduled && (
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#6d28d9]">
+                                Rescheduled
+                              </span>
+                              {rescheduledAtLabel && (
+                                <span className="text-xs text-[#7c688f]">
+                                  Updated on {rescheduledAtLabel} PHT
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div className="text-sm text-[#7c688f] mt-1">with {appt.stylist?.name || 'No stylist assigned'}</div>
+                          <div className="text-sm font-medium text-green-600 mt-2">
+                            {appointmentServices.length > 1 ? (
+                              <span>Total: {currencyFromCents(totalPrice)}</span>
+                            ) : (
+                              <span>{currencyFromCents(totalPrice)}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 sm:ml-4">
+                          {isRescheduled && (
+                            <span className="px-2 py-1 rounded text-xs self-center bg-[#ede9fe] text-[#6d28d9]">
+                              rescheduled
+                            </span>
+                          )}
+                          <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appt.status] || 'bg-gray-100 text-gray-700'}`}>
+                            {appt.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-center">
-              <div className="text-sm font-semibold mb-2 text-[#6f5b7e]">Booking</div>
-              <h4 className="font-semibold">Easy Booking</h4>
-              <p className="text-sm text-[#7c688f]">Book appointments in seconds</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-center">
-              <div className="text-sm font-semibold mb-2 text-[#6f5b7e]">Service</div>
-              <h4 className="font-semibold">Quality Service</h4>
-              <p className="text-sm text-[#7c688f]">Premium beauty experience</p>
-            </div>
-          </div>
+          )}
         </div>
       </main>
 

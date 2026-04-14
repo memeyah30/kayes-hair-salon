@@ -11,6 +11,7 @@ class CustomerOtp extends Model
 
     protected $fillable = [
         'email',
+        'purpose',
         'otp_hash',
         'expires_at',
         'attempts',
@@ -23,4 +24,3 @@ class CustomerOtp extends Model
         'attempts' => 'integer',
     ];
 }
-

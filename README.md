@@ -102,6 +102,7 @@ npm run dev
 
 - **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Detailed setup instructions
 - **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Quick command reference
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - GitHub and deployment workflow
 
 ## 🛠️ Technology Stack
 

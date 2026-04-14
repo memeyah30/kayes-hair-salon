@@ -74,53 +74,59 @@ const VerifyOtp = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4edff] px-4 py-6 sm:py-10">
-      <div className="mx-auto w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white/90 p-5 sm:p-6 shadow-[0_12px_28px_rgba(92,64,51,0.12)]">
-        <h1 className="mb-2 text-2xl font-bold text-[#3b2f2a]">Verify OTP</h1>
-        <p className="mb-4 text-sm text-[#8f7a6f]">
-          Enter the 6-digit code sent to <span className="font-medium text-[#5a463c]">{email || 'your email'}</span>.
-        </p>
+    <div className="min-h-screen bg-[linear-gradient(135deg,#e9e2ff,#d8ccff)] px-4 py-8 sm:py-12">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl items-center justify-center">
+        <div className="w-full max-w-md rounded-[22px] border border-[#d8ccff] bg-white px-6 py-7 shadow-[0_18px_40px_rgba(91,60,196,0.16)] sm:px-7">
+          <h1 className="mb-2 text-3xl font-semibold text-[#2d2d2d]">Verify OTP</h1>
+          <p className="mb-5 text-sm leading-6 text-[#6b6b6b]">
+            Enter the 6-digit code sent to <span className="font-semibold text-[#4c1d95]">{email || 'your email'}</span>.
+          </p>
 
-        <form onSubmit={handleVerify} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">OTP Code</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="tap-safe w-full rounded border border-gray-300 px-3 py-2 text-center text-lg tracking-[0.3em] outline-none focus:border-blue-500"
-              placeholder="000000"
-              required
-            />
+          <div className="mb-5 rounded-xl bg-[#f2edff] px-4 py-3 text-sm text-[#4c1d95]">
+            This step protects your booking details before we show your appointments.
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="tap-safe w-full rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? 'Verifying...' : 'Verify OTP'}
-          </button>
-        </form>
+          <form onSubmit={handleVerify} className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#2d2d2d]">OTP Code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="tap-safe w-full rounded-[10px] border border-[#d8ccff] px-4 py-3 text-center text-xl tracking-[0.35em] text-[#2d2d2d] outline-none transition focus:border-[#7b5cf5] focus:ring-4 focus:ring-[#7b5cf522]"
+                placeholder="000000"
+                required
+              />
+            </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <button
-            type="button"
-            onClick={() => navigate('/manage-booking/start')}
-            className="tap-safe text-[#8f7a6f] hover:underline"
-          >
-            Change email
-          </button>
-          <button
-            type="button"
-            onClick={handleResend}
-            disabled={resending}
-            className="tap-safe text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {resending ? 'Resending...' : 'Resend OTP'}
-          </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="tap-safe w-full rounded-[10px] bg-gradient-to-r from-[#6d4de6] to-[#7b5cf5] px-4 py-3 font-semibold text-white transition hover:from-[#5b3cc4] hover:to-[#6846e8] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Verifying...' : 'Verify OTP'}
+            </button>
+          </form>
+
+          <div className="mt-5 flex items-center justify-between gap-3 text-sm">
+            <button
+              type="button"
+              onClick={() => navigate('/manage-booking/start')}
+              className="tap-safe font-medium text-[#6b6b6b] transition hover:text-[#4c1d95]"
+            >
+              Change email
+            </button>
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending}
+              className="tap-safe font-semibold text-[#6d4de6] transition hover:text-[#5b3cc4] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {resending ? 'Resending...' : 'Resend OTP'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

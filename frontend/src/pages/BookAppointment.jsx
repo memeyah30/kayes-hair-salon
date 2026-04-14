@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { QRCodeSVG } from 'qrcode.react'
 import api from '../utils/api'
-import {
+import manageBookingApi, {
   CUSTOMER_BOOKING_EMAIL_KEY,
   CUSTOMER_BOOKING_PENDING_EMAIL_KEY,
   CUSTOMER_BOOKING_TOKEN_KEY,
 } from '../utils/manageBookingApi'
+import returningBookingApi, {
+  RETURNING_BOOKING_EMAIL_KEY,
+  RETURNING_BOOKING_PENDING_EMAIL_KEY,
+  RETURNING_BOOKING_TOKEN_KEY,
+} from '../utils/returningBookingApi'
 import './BookAppointment.css'
 
 // Validation helpers
@@ -26,10 +31,12 @@ const validatePhone = (phone) => {
   const phoneRegex = /^(\+639|09)\d{9}$/
   const cleanPhone = phone.replace(/[\s-]/g, '')
   if (!phoneRegex.test(cleanPhone)) {
-    return { valid: false, message: 'Phone must be valid PH number (e.g., 09171234567 or +639171234567)' }
+    return { valid: false, message: 'Phone must be valid PH number (09XXXXXXXXX)' }
   }
   return { valid: true, message: '' }
 }
+
+const normalizeEmailValue = (email) => String(email || '').trim().toLowerCase()
 
 const resolveQrUrl = (url) => {
   if (!url) return null
@@ -55,7 +62,7 @@ const toManilaHHmm = (isoString) => {
 }
 
 const BOOK_APPOINTMENT_DRAFT_KEY = 'book_appointment_draft_v1'
-const BOOK_APPOINTMENT_RESTORE_KEY = 'book_appointment_restore_on_reload'
+const BOOK_APPOINTMENT_RESTORE_KEY = 'book_appointment_restore_once'
 const AUTO_STYLIST_VALUE = 'AUTO'
 
 const getTodayDateKey = () => {
@@ -64,6 +71,29 @@ const getTodayDateKey = () => {
   const year = today.getFullYear()
   const month = String(today.getMonth() + 1).padStart(2, '0')
   const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const formatDateKey = (value) => {
+  if (typeof value === 'string') {
+    const directDateMatch = value.trim().match(/^(\d{4}-\d{2}-\d{2})/)
+    if (directDateMatch) {
+      return directDateMatch[1]
+    }
+  }
+
+  const date = value instanceof Date
+    ? new Date(value.getTime())
+    : new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  date.setHours(0, 0, 0, 0)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
@@ -79,41 +109,47 @@ const readBookingDraft = () => {
   }
 }
 
-const wasPageReloaded = () => {
-  if (typeof window === 'undefined') return false
-  try {
-    const navEntries = window.performance?.getEntriesByType?.('navigation')
-    const navType = navEntries?.[0]?.type
-    if (navType === 'reload') return true
-
-    // Legacy fallback for older browsers.
-    if (window.performance?.navigation && typeof window.performance.navigation.type === 'number') {
-      return window.performance.navigation.type === 1
-    }
-  } catch {
-    // Ignore performance API errors
-  }
-  return false
-}
-
 const shouldRestoreBookingDraft = () => {
   if (typeof window === 'undefined') return false
   try {
-    // Primary behavior: restore state on actual browser refresh.
-    if (wasPageReloaded()) return true
+    const searchParams = new URLSearchParams(window.location.search)
+    const hasDirectedBookingEntry = searchParams.get('fresh') === '1'
+      || searchParams.has('services')
+      || searchParams.has('stylist')
+      || searchParams.has('variant')
+      || searchParams.has('variant_id')
+      || searchParams.has('reschedule')
+      || searchParams.has('appointment')
 
-    // Secondary fallback for environments where navigation type is unavailable.
-    const restoreKey = window.sessionStorage.getItem(BOOK_APPOINTMENT_RESTORE_KEY)
-    const currentPath = `${window.location.pathname}${window.location.search}`
-    return restoreKey === currentPath
+    if (hasDirectedBookingEntry) {
+      return false
+    }
+
+    const draft = readBookingDraft()
+    if (!draft) {
+      return false
+    }
+
+    // Keep the email-first step clean on refresh, but restore later booking steps.
+    if (normalizeStepValue(draft.step) <= 1) {
+      return false
+    }
+
+    const navigationEntry = typeof window.performance?.getEntriesByType === 'function'
+      ? window.performance.getEntriesByType('navigation')[0]
+      : null
+    const isReload = navigationEntry?.type === 'reload'
+      || window.performance?.navigation?.type === 1
+
+    return Boolean(isReload)
   } catch {
-    return wasPageReloaded()
+    return false
   }
 }
 
 const normalizeStepValue = (value) => {
   const num = Number(value)
-  if (num === 2 || num === 3) return num
+  if (num === 2 || num === 3 || num === 4) return num
   return 1
 }
 
@@ -171,7 +207,104 @@ const filterStylists = (list, search, filter) => {
   })
 }
 
-const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
+const mergeAvailabilitySlots = (availabilityGroups = []) => {
+  const slotMap = new Map()
+
+  availabilityGroups.forEach(({ stylistId, slots }) => {
+    ;(slots || []).forEach((slot) => {
+      const key = `${slot.start}|${slot.end}`
+      const isAvailable = slot.available !== false
+      const existing = slotMap.get(key)
+
+      if (!existing) {
+        slotMap.set(key, {
+          ...slot,
+          available: isAvailable,
+          stylistIds: isAvailable ? [stylistId] : [],
+        })
+        return
+      }
+
+      if (isAvailable) {
+        existing.available = true
+        existing.stylistIds = Array.from(new Set([...(existing.stylistIds || []), stylistId]))
+      }
+    })
+  })
+
+  return Array.from(slotMap.values()).sort(
+    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+  )
+}
+
+const pickAutoAssignedStylistId = (slot, preferredStylistId = '') => {
+  const candidateIds = Array.isArray(slot?.stylistIds)
+    ? slot.stylistIds.map((id) => String(id || '').trim()).filter(Boolean)
+    : []
+
+  if (candidateIds.length === 0) {
+    return ''
+  }
+
+  const normalizedPreferred = String(preferredStylistId || '').trim()
+  if (normalizedPreferred && candidateIds.includes(normalizedPreferred)) {
+    return normalizedPreferred
+  }
+
+  return candidateIds[Math.floor(Math.random() * candidateIds.length)]
+}
+
+const getRescheduleOriginalSlot = (appointment) => {
+  const start = appointment?.start_datetime_pht || appointment?.start_datetime
+  const end = appointment?.end_datetime_pht || appointment?.end_datetime
+
+  if (!start || !end) {
+    return null
+  }
+
+  return {
+    start,
+    end,
+    dateKey: formatDateKey(start),
+  }
+}
+
+const applyRescheduleSlotOccupancy = (slots = [], appointment, selectedDate) => {
+  const originalSlot = getRescheduleOriginalSlot(appointment)
+
+  if (!originalSlot || originalSlot.dateKey !== selectedDate) {
+    return slots
+  }
+
+  const originalStartTime = new Date(originalSlot.start).getTime()
+
+  return slots.map((slot) => {
+    if (new Date(slot.start).getTime() !== originalStartTime) {
+      return slot
+    }
+
+    const capacity = Math.max(1, Number(slot.capacity || 5))
+    const bookedCount = Math.min(capacity, Math.max(0, Number(slot.booked_count || 0)) + 1)
+
+    return {
+      ...slot,
+      available: true,
+      booked_count: bookedCount,
+      remaining_slots: Math.max(0, capacity - bookedCount),
+      capacity,
+    }
+  })
+}
+
+const Calendar = ({
+  month,
+  year,
+  selectedDate,
+  closedDateMap = {},
+  onSelect,
+  onClosedDateSelect,
+  onMonthChange,
+}) => {
   const start = new Date(year, month, 1)
   const end = new Date(year, month + 1, 0)
   const startDay = start.getDay()
@@ -233,19 +366,38 @@ const Calendar = ({ month, year, selectedDate, onSelect, onMonthChange }) => {
           const dayDate = new Date(day)
           dayDate.setHours(0, 0, 0, 0)
           const isPast = dayDate < today
-          const isDisabled = isPast
+          const closedDateInfo = closedDateMap[iso]
+          const isClosed = Boolean(closedDateInfo)
+          const isDisabled = isPast || isClosed
+
+          const handleDateClick = () => {
+            if (isPast) {
+              return
+            }
+
+            if (isClosed) {
+              onClosedDateSelect?.(iso, closedDateInfo)
+              return
+            }
+
+            onSelect(iso)
+          }
           
           return (
             <button
               key={iso}
-              onClick={() => !isDisabled && onSelect(iso)}
-              disabled={isDisabled}
+              onClick={handleDateClick}
+              disabled={isPast}
+              aria-disabled={isDisabled}
+              title={isClosed ? closedDateInfo.message : isPast ? 'Cannot book past dates' : undefined}
               className={`h-10 rounded flex items-center justify-center border ${
-                isDisabled 
+                isPast 
                   ? 'bg-[#f7f1ec] text-gray-400 cursor-not-allowed' 
+                  : isClosed
+                    ? 'border-red-200 bg-red-50 text-red-600 cursor-not-allowed'
                   : isSelected 
-                    ? 'bg-[#E75480] text-white border-[#E75480]' 
-                    : 'hover:border-[#e7bdd0]'
+                    ? 'bg-[#6d4de6] text-white border-[#6d4de6]' 
+                    : 'hover:border-[#c9bcf1] hover:bg-[#f3efff]'
               }`}
             >
               {day.getDate()}
@@ -294,10 +446,10 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
       {loading && !hasSlots && <div className="text-sm text-[#7c688f]">Loading slots...</div>}
       {loading && hasSlots && <div className="text-xs text-[#7c688f] mb-2">Refreshing slots...</div>}
       {!loading && !ready && (
-        <div className="text-sm text-[#7c688f]">Select a stylist and service to load time slots.</div>
+        <div className="text-sm text-[#7c688f]">Select a service to load time slots.</div>
       )}
       {!loading && ready && !hasSlots && (
-        <div className="text-sm text-red-500">No available slots for this date. Please choose another date or stylist.</div>
+        <div className="text-sm text-red-500">No available slots for this date. Please choose another date or time.</div>
       )}
       {ready && hasSlots && (
         <>
@@ -326,11 +478,24 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
               const selectedKey = selected?.start
               const isSelected = selectedKey && new Date(selectedKey).getTime() === slotDate.getTime()
               const isAvailable = slot.available !== false
+              const capacity = Number(slot.capacity || 5)
+              const bookedCount = Math.max(0, Number(slot.booked_count || 0))
+              const remainingSlots = Math.max(
+                0,
+                Number.isFinite(Number(slot.remaining_slots))
+                  ? Number(slot.remaining_slots)
+                  : capacity - bookedCount
+              )
               
               // Use the pre-calculated flags from filteredSlots
               const isPast = slot.isPast || false
               const isTooSoon = slot.isTooSoon || false
               const isDisabled = !isAvailable || isPast || isTooSoon
+              const slotAvailabilityLabel = !isAvailable || remainingSlots === 0
+                ? 'FULL'
+                : remainingSlots === 1
+                  ? '1 slot left'
+                  : `${bookedCount}/${capacity} slots booked`
               
               // Generate appropriate tooltip message
               let tooltipMessage = 'This time slot is not available'
@@ -344,9 +509,9 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
                   tooltipMessage = 'This time slot is too soon. Please book at least 30 minutes in advance.'
                 }
               } else if (!isAvailable) {
-                tooltipMessage = 'This time slot is not available'
+                tooltipMessage = 'This time slot is already fully booked. Please select another time.'
               } else {
-                tooltipMessage = `Book at ${label}`
+                tooltipMessage = `Book at ${label} (${slotAvailabilityLabel})`
               }
               
               return (
@@ -354,23 +519,26 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
                   key={idx}
                   onClick={() => isAvailable && !isPast && !isTooSoon && onSelect(slot)}
                   disabled={isDisabled}
-                  className={`border rounded px-3 py-2 text-sm transition ${
+                  className={`border rounded px-3 py-2 text-sm text-left transition ${
                     isDisabled
                       ? 'bg-[#f7f1ec] text-gray-400 border-gray-300 cursor-not-allowed line-through'
                       : isSelected
-                        ? 'bg-[#E75480] text-white border-[#E75480]'
-                        : 'hover:border-[#e7bdd0] hover:bg-[#fff4f9]'
+                        ? 'bg-[#6d4de6] text-white border-[#6d4de6]'
+                        : 'hover:border-[#c9bcf1] hover:bg-[#f3efff]'
                   }`}
                   title={tooltipMessage}
                 >
-                  {label}
+                  <span className="block font-semibold">{label}</span>
+                  <span className="block text-[11px] opacity-80">
+                    {slotAvailabilityLabel}
+                  </span>
                 </button>
               )
             })}
           </div>
           {availableSlots.length === 0 && (
             <div className="text-sm text-red-500 text-center py-2">
-              No available slots for this date. Please choose another date or stylist.
+              No available slots for this date. Please choose another date or time.
             </div>
           )}
           {availableSlots.length > 0 && (
@@ -384,7 +552,7 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
   )
 }
 
-const ReceiptModal = ({ appointment, onClose }) => {
+const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => {
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
   
   // Helper function to get service name (with variant if applicable)
@@ -426,7 +594,7 @@ const ReceiptModal = ({ appointment, onClose }) => {
     ? appointment.services 
     : (appointment.service ? [appointment.service] : [])
   
-  if (appointmentServices.length === 0 || !appointment.stylist) {
+  if (appointmentServices.length === 0) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-6 max-w-md">
@@ -441,8 +609,29 @@ const ReceiptModal = ({ appointment, onClose }) => {
   }
   
   // Calculate totals using helper function
-  const totalPrice = appointmentServices.reduce((sum, s) => sum + getServicePrice(s), 0)
-  
+  const totalPrice = Number.isFinite(Number(appointment.total_amount_cents))
+    ? Number(appointment.total_amount_cents)
+    : appointmentServices.reduce((sum, s) => sum + getServicePrice(s), 0)
+  const amountPaid = Number.isFinite(Number(appointment.amount_paid_cents))
+    ? Number(appointment.amount_paid_cents)
+    : Math.max(0, Number(appointment.downpayment_amount_cents || 0))
+  const remainingBalance = Number.isFinite(Number(appointment.remaining_balance_cents))
+    ? Number(appointment.remaining_balance_cents)
+    : Math.max(0, totalPrice - amountPaid)
+  const paymentMode = typeof appointment.mode_of_payment === 'string' && appointment.mode_of_payment
+    ? appointment.mode_of_payment
+    : (amountPaid >= totalPrice && totalPrice > 0 ? 'full' : 'downpayment')
+  const paymentMethodLabel = appointment.payment_method === 'online'
+    ? 'GCash'
+    : appointment.payment_method === 'on_hand'
+      ? 'Pay at Salon'
+      : 'N/A'
+  const hasAmountPaid = amountPaid > 0
+  const modalTitle = isRescheduleReceipt ? 'Reschedule Confirmation' : 'Appointment Receipt'
+  const documentTitle = isRescheduleReceipt ? 'Reschedule Confirmation' : 'Appointment Receipt'
+  const receiptHeading = isRescheduleReceipt ? 'Appointment Details' : 'Appointment Receipt'
+  const showFinancialDetails = !isRescheduleReceipt
+
   const handlePrint = () => {
     const printContent = document.getElementById('receipt-content')
     if (printContent) {
@@ -450,7 +639,7 @@ const ReceiptModal = ({ appointment, onClose }) => {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Receipt - ${appointment.id}</title>
+            <title>${documentTitle} - ${appointment.id}</title>
             <style>
               body { font-family: Arial, sans-serif; padding: 20px; }
               .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 20px; }
@@ -470,8 +659,10 @@ const ReceiptModal = ({ appointment, onClose }) => {
   }
 
   const handleDownload = () => {
-    const servicesList = appointmentServices.map(s => 
-      `  - ${getServiceName(s)}: ${currency(getServicePrice(s))}`
+    const servicesList = appointmentServices.map(s =>
+      isRescheduleReceipt
+        ? `  - ${getServiceName(s)}`
+        : `  - ${getServiceName(s)}: ${currency(getServicePrice(s))}`
     ).join('\n')
 
     const startSource = appointment.start_datetime_pht || appointment.start_datetime
@@ -494,15 +685,23 @@ APPOINTMENT DETAILS:
 --------------------
 Service${appointmentServices.length > 1 ? 's' : ''}:
 ${servicesList}
-Stylist: ${appointment.stylist?.name}
 Date: ${new Date(startSource).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
 Time: ${new Date(startSource).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - ${new Date(endSource).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} PHT
 
-PRICING:
+${showFinancialDetails ? `PRICING:
 --------
 ${appointmentServices.length > 1 ? servicesList + '\n' : ''}Total Price: ${currency(totalPrice)}
 Status: ${appointment.status.toUpperCase()}
 
+PAYMENT DETAILS:
+----------------
+Mode of Payment: ${paymentMethodLabel}
+Amount Paid: ${hasAmountPaid ? currency(amountPaid) : 'N/A'}
+${paymentMode === 'downpayment' ? `Remaining Balance: ${currency(remainingBalance)}` : ''}
+
+` : `Status: ${appointment.status.toUpperCase()}
+
+`}
 ====================================
 Thank you for choosing Kaye's Hair Salon and Spa!
     `.trim()
@@ -521,14 +720,14 @@ Thank you for choosing Kaye's Hair Salon and Spa!
       <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Appointment Receipt</h2>
+            <h2 className="text-2xl font-bold">{modalTitle}</h2>
             <button onClick={onClose} className="text-[#9b857a] hover:text-gray-700">&times;</button>
           </div>
           
           <div className="border-2 border-gray-300 p-6 space-y-4" id="receipt-content">
             <div className="text-center border-b pb-4">
               <h1 className="text-3xl font-bold">KAYE'S HAIR SALON AND SPA</h1>
-              <p className="text-[#8f7a6f]">Appointment Receipt</p>
+              <p className="text-[#8f7a6f]">{receiptHeading}</p>
             </div>
             
             <div>
@@ -554,11 +753,13 @@ Thank you for choosing Kaye's Hair Salon and Spa!
                   <span className="font-medium">Service{appointmentServices.length > 1 ? 's' : ''}:</span>
                   <ul className="list-disc list-inside ml-2 mt-1">
                     {appointmentServices.map((s, idx) => (
-                      <li key={idx}>{getServiceName(s)} - {currency(getServicePrice(s))}</li>
+                      <li key={idx}>
+                        {getServiceName(s)}
+                        {!isRescheduleReceipt && <> - {currency(getServicePrice(s))}</>}
+                      </li>
                     ))}
                   </ul>
                 </div>
-                <div><span className="font-medium">Stylist:</span> {appointment.stylist?.name}</div>
                 <div><span className="font-medium">Date:</span> {(() => {
                   const startSource = appointment.start_datetime_pht || appointment.start_datetime
                   const startDate = new Date(startSource)
@@ -592,28 +793,62 @@ Thank you for choosing Kaye's Hair Salon and Spa!
               </div>
             </div>
 
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-2">Pricing</h3>
-              {appointmentServices.length > 1 ? (
-                <div className="space-y-2">
-                  {appointmentServices.map((s, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-sm">
-                      <span>{getServiceName(s)}:</span>
-                      <span className="font-medium">{currency(getServicePrice(s))}</span>
+            {showFinancialDetails ? (
+              <>
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-2">Pricing</h3>
+                  {appointmentServices.length > 1 ? (
+                    <div className="space-y-2">
+                      {appointmentServices.map((s, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm">
+                          <span>{getServiceName(s)}:</span>
+                          <span className="font-medium">{currency(getServicePrice(s))}</span>
+                        </div>
+                      ))}
+                      <div className="border-t pt-2 flex justify-between items-center">
+                        <span className="font-semibold">Total:</span>
+                        <span className="font-bold text-lg text-green-600">{currency(totalPrice)}</span>
+                      </div>
                     </div>
-                  ))}
-                  <div className="border-t pt-2 flex justify-between items-center">
-                    <span className="font-semibold">Total:</span>
-                    <span className="font-bold text-lg text-green-600">{currency(totalPrice)}</span>
+                  ) : (
+                    <div className="flex justify-between items-center">
+                      <span>{getServiceName(appointmentServices[0])}:</span>
+                      <span className="font-bold text-lg text-green-600">{currency(totalPrice)}</span>
+                    </div>
+                  )}
+                  <div className="mt-2">
+                    <span className={`px-3 py-1 rounded text-sm ${
+                      appointment.status === 'booked' ? 'bg-blue-100 text-blue-800' :
+                      appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      'bg-[#f7f1ec] text-[#3b2f2a]'
+                    }`}>
+                      Status: {appointment.status.toUpperCase()}
+                    </span>
                   </div>
                 </div>
-              ) : (
-                <div className="flex justify-between items-center">
-                  <span>{getServiceName(appointmentServices[0])}:</span>
-                  <span className="font-bold text-lg text-green-600">{currency(totalPrice)}</span>
+
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-2">Payment Details</h3>
+                  <div className="space-y-2 rounded-lg border border-[#e8e0f4] bg-[#faf8fd] p-4 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="font-medium">Mode of Payment:</span>
+                      <span>{paymentMethodLabel}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="font-medium">Amount Paid:</span>
+                      <span>{hasAmountPaid ? currency(amountPaid) : 'N/A'}</span>
+                    </div>
+                    {paymentMode === 'downpayment' && (
+                      <div className="flex justify-between gap-4 border-t border-[#e8e0f4] pt-2">
+                        <span className="font-medium">Remaining Balance:</span>
+                        <span>{currency(remainingBalance)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-              <div className="mt-2">
+              </>
+            ) : (
+              <div className="border-t pt-4">
                 <span className={`px-3 py-1 rounded text-sm ${
                   appointment.status === 'booked' ? 'bg-blue-100 text-blue-800' :
                   appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
@@ -622,53 +857,54 @@ Thank you for choosing Kaye's Hair Salon and Spa!
                   Status: {appointment.status.toUpperCase()}
                 </span>
               </div>
-            </div>
+            )}
 
             <div className="border-t pt-4 text-center text-sm text-[#8f7a6f]">
               Thank you for choosing Kaye's Hair Salon and Spa!
             </div>
           </div>
 
-          {/* QR Code and Shareable Link Section */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold mb-3 text-center">Share Your Booking</h3>
-            <div className="flex flex-col md:flex-row items-center gap-4">
-              <div className="flex flex-col items-center">
-                <QRCodeSVG 
-                  value={`${window.location.origin}/book`}
-                  size={120}
-                  bgColor="#ffffff"
-                  fgColor="#1e40af"
-                  level="M"
-                  includeMargin={true}
-                />
-                <p className="text-xs text-[#9b857a] mt-1">Scan to book an appointment</p>
-              </div>
-              <div className="flex-1 space-y-2">
-                <p className="text-sm text-[#8f7a6f]">Share this link to book an appointment:</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
+          {!isRescheduleReceipt && (
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold mb-3 text-center">Share Your Booking</h3>
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                <div className="flex flex-col items-center">
+                  <QRCodeSVG
                     value={`${window.location.origin}/book`}
-                    className="flex-1 border rounded px-3 py-2 text-sm bg-white"
+                    size={120}
+                    bgColor="#ffffff"
+                    fgColor="#1e40af"
+                    level="M"
+                    includeMargin={true}
                   />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/book`)
-                      toast.success('Link copied to clipboard!')
-                    }}
-                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                  >
-                    Copy
-                  </button>
+                  <p className="text-xs text-[#9b857a] mt-1">Scan to book an appointment</p>
                 </div>
-                <p className="text-xs text-[#9b857a]">
-                  Your receipt number: {'APT-' + String(appointment.id).padStart(6, '0')}
-                </p>
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm text-[#8f7a6f]">Share this link to book an appointment:</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${window.location.origin}/book`}
+                      className="flex-1 border rounded px-3 py-2 text-sm bg-white"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/book`)
+                        toast.success('Link copied to clipboard!')
+                      }}
+                      className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#9b857a]">
+                    Your receipt number: {'APT-' + String(appointment.id).padStart(6, '0')}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
@@ -699,7 +935,11 @@ Thank you for choosing Kaye's Hair Salon and Spa!
 const BookAppointment = () => {
   const shouldRestoreDraft = shouldRestoreBookingDraft()
   const draft = shouldRestoreDraft ? readBookingDraft() : null
-  const [step, setStep] = useState(() => normalizeStepValue(draft?.step)) // 1: Customer Info, 2: Booking Details, 3: Payment
+  const initialPendingReturningEmail = ''
+  const initialVerifiedReturningEmail = ''
+  const draftBookingEmail = normalizeEmailValue(draft?.booking?.email)
+  const hasDraftCustomerFields = Boolean(draft?.booking?.name || draft?.booking?.phone || draft?.booking?.address)
+  const [step, setStep] = useState(() => normalizeStepValue(draft?.step)) // 1: Customer Info, 2: Select Service, 3: Date & Time, 4: Confirm Booking
   const [stylists, setStylists] = useState([])
   const [services, setServices] = useState([])
   const [paymentAccounts, setPaymentAccounts] = useState([])
@@ -716,13 +956,11 @@ const BookAppointment = () => {
     const year = Number(draft?.calendarYear)
     return Number.isInteger(year) && year >= 1900 ? year : new Date().getFullYear()
   })
+  const [closedDateMap, setClosedDateMap] = useState({})
+  const [holidayStatusMessage, setHolidayStatusMessage] = useState('')
   const [selectedStylist, setSelectedStylist] = useState(() => (draft?.selectedStylist ? String(draft.selectedStylist) : ''))
   const [stylistSearch, setStylistSearch] = useState('')
   const [stylistFilter, setStylistFilter] = useState('all')
-  const [specializedStylistIds, setSpecializedStylistIds] = useState(null)
-  const [stylistSpecializationNames, setStylistSpecializationNames] = useState({})
-  const [specializationFilterLoading, setSpecializationFilterLoading] = useState(false)
-  const [specializationFilterError, setSpecializationFilterError] = useState('')
   const [selectedService, setSelectedService] = useState(() => (draft?.selectedService ? String(draft.selectedService) : '')) // Keep for backward compatibility
   const [selectedServices, setSelectedServices] = useState(() => (
     Array.isArray(draft?.selectedServices)
@@ -745,15 +983,24 @@ const BookAppointment = () => {
         start: draft.selectedSlot.start,
         end: draft.selectedSlot.end,
         available: draft.selectedSlot.available !== false,
+        stylistIds: Array.isArray(draft.selectedSlot.stylistIds)
+          ? draft.selectedSlot.stylistIds.map((id) => String(id || '').trim()).filter(Boolean)
+          : [],
+        assignedStylistId: typeof draft.selectedSlot.assignedStylistId === 'string'
+          ? draft.selectedSlot.assignedStylistId
+          : '',
       }
     }
     return null
   })
   const [booking, setBooking] = useState(() => ({
     name: typeof draft?.booking?.name === 'string' ? draft.booking.name : '',
-    email: typeof draft?.booking?.email === 'string' ? draft.booking.email : '',
+    email: typeof draft?.booking?.email === 'string'
+      ? draft.booking.email
+      : initialPendingReturningEmail || initialVerifiedReturningEmail || '',
     phone: typeof draft?.booking?.phone === 'string' ? draft.booking.phone : '',
     address: typeof draft?.booking?.address === 'string' ? draft.booking.address : '',
+    privacyConsent: draft?.booking?.privacyConsent === true,
   }))
   const [payment, setPayment] = useState(() => ({
     method: draft?.payment?.method === 'online' ? 'online' : 'on_hand', // 'on_hand' or 'online'
@@ -763,7 +1010,29 @@ const BookAppointment = () => {
     proofFile: null,
     proofPreview: null,
   }))
-  const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '' })
+  const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '', privacy: '' })
+  // Returning customers must verify their email before we reuse any saved profile data.
+  const [customerLookupState, setCustomerLookupState] = useState(() => {
+    if (initialVerifiedReturningEmail && (!draftBookingEmail || draftBookingEmail === initialVerifiedReturningEmail)) {
+      return 'loading_profile'
+    }
+
+    if (initialPendingReturningEmail && (!draftBookingEmail || draftBookingEmail === initialPendingReturningEmail)) {
+      return 'verification_required'
+    }
+
+    if (hasDraftCustomerFields) {
+      return 'new_customer'
+    }
+
+    return 'idle'
+  })
+  const [customerLookupMessage, setCustomerLookupMessage] = useState('')
+  const [returningOtp, setReturningOtp] = useState('')
+  const [returningCustomerProfile, setReturningCustomerProfile] = useState(null)
+  const [returningCustomerMissingFields, setReturningCustomerMissingFields] = useState([])
+  const [returningCustomerEditMode, setReturningCustomerEditMode] = useState(false)
+  const [customerProfileSaving, setCustomerProfileSaving] = useState(false)
   const [rescheduling, setRescheduling] = useState(null)
   const [receipt, setReceipt] = useState(null)
   const [prefillServiceIds, setPrefillServiceIds] = useState([])
@@ -771,16 +1040,96 @@ const BookAppointment = () => {
   const [prefillVariantId, setPrefillVariantId] = useState('')
   const [hasAppliedServicePrefill, setHasAppliedServicePrefill] = useState(false)
   const navigate = useNavigate()
-  const selectedServiceIdsForStylistFilter = (selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : []))
-    .map((id) => String(id || '').trim())
-    .filter(Boolean)
-  const hasSelectedServicesForStylistFilter = selectedServiceIdsForStylistFilter.length > 0
-  const specializationIdSet = specializedStylistIds ? new Set(specializedStylistIds.map((id) => String(id))) : null
-  const specializationScopedStylists = specializationIdSet
-    ? stylists.filter((stylist) => specializationIdSet.has(String(stylist.id)))
-    : stylists
-  const selectedServiceFilterKey = selectedServiceIdsForStylistFilter.join(',')
-  const specializationScopedStylistKey = specializationScopedStylists.map((stylist) => String(stylist.id)).join(',')
+  const location = useLocation()
+  const activeStylists = stylists.filter((stylist) => stylist?.active !== false)
+  const activeStylistKey = activeStylists.map((stylist) => String(stylist.id)).join(',')
+  const isReturningCustomerVerified = customerLookupState === 'verified'
+  const isReturningCustomerPendingVerification = [
+    'checking_email',
+    'sending_otp',
+    'verification_required',
+    'verifying_otp',
+    'loading_profile',
+  ].includes(customerLookupState)
+  const hasIncompleteReturningProfile = isReturningCustomerVerified && returningCustomerMissingFields.length > 0
+  const shouldShowCustomerProfileInputs =
+    customerLookupState === 'new_customer'
+    || (isReturningCustomerVerified && (hasIncompleteReturningProfile || returningCustomerEditMode))
+  const isEmailLocked = customerLookupState !== 'idle' && customerLookupState !== 'checking_email'
+  const shouldShowLookupBanner = Boolean(customerLookupMessage) && ![
+    'verification_required',
+    'sending_otp',
+    'verifying_otp',
+  ].includes(customerLookupState)
+  const showNameField =
+    customerLookupState === 'new_customer'
+    || returningCustomerEditMode
+    || returningCustomerMissingFields.includes('name')
+  const showPhoneField =
+    customerLookupState === 'new_customer'
+    || returningCustomerEditMode
+    || returningCustomerMissingFields.includes('phone')
+  const showAddressField = customerLookupState === 'new_customer' || returningCustomerEditMode
+  const shouldShowPrivacyConsent = customerLookupState === 'new_customer'
+  const stepOneHeading = customerLookupState === 'new_customer'
+    ? 'Customer Information'
+    : isReturningCustomerVerified
+      ? (shouldShowCustomerProfileInputs ? 'Complete Your Information' : 'Email Verified')
+      : 'Verify Your Email'
+  const stepOneDescription = customerLookupState === 'new_customer'
+    ? 'No existing record was found. Please fill out your information to continue booking.'
+    : isReturningCustomerVerified
+      ? (shouldShowCustomerProfileInputs
+        ? 'Please complete or update your saved information before continuing to services.'
+        : 'Your email has been verified. You can continue booking with your saved information.')
+      : 'Enter your email first so we can securely check for an existing customer record before booking.'
+
+  const clearReturningBookingSession = () => {
+    localStorage.removeItem(RETURNING_BOOKING_TOKEN_KEY)
+    localStorage.removeItem(RETURNING_BOOKING_EMAIL_KEY)
+    localStorage.removeItem(RETURNING_BOOKING_PENDING_EMAIL_KEY)
+  }
+
+  const resetReturningCustomerState = ({ preserveEmail = '', keepLookupMessage = false } = {}) => {
+    clearReturningBookingSession()
+    setReturningOtp('')
+    setReturningCustomerProfile(null)
+    setReturningCustomerMissingFields([])
+    setReturningCustomerEditMode(false)
+    setCustomerLookupState('idle')
+    if (!keepLookupMessage) {
+      setCustomerLookupMessage('')
+    }
+    setBooking((previousBooking) => ({
+      ...previousBooking,
+      name: '',
+      email: preserveEmail,
+      phone: '',
+      address: '',
+      privacyConsent: false,
+    }))
+  }
+
+  const applyReturningCustomerProfile = (profile, options = {}) => {
+    const normalizedEmail = normalizeEmailValue(profile?.email || booking.email)
+    const nextMissingFields = Array.isArray(options.missingFields) ? options.missingFields : []
+
+    setReturningCustomerProfile(profile)
+    setReturningCustomerMissingFields(nextMissingFields)
+    setReturningCustomerEditMode(false)
+    setCustomerLookupState('verified')
+    setReturningOtp('')
+    setBooking((previousBooking) => ({
+      ...previousBooking,
+      name: profile?.name || '',
+      email: normalizedEmail,
+      phone: profile?.phone || '',
+      address: profile?.address || '',
+      privacyConsent: true,
+    }))
+    localStorage.setItem(RETURNING_BOOKING_EMAIL_KEY, normalizedEmail)
+    localStorage.removeItem(RETURNING_BOOKING_PENDING_EMAIL_KEY)
+  }
 
   const clearBookingDraft = () => {
     try {
@@ -790,11 +1139,67 @@ const BookAppointment = () => {
     }
   }
 
+  const loadReturningCustomerProfile = async ({ silent = false, advanceOnComplete = false } = {}) => {
+    const sessionToken = (localStorage.getItem(RETURNING_BOOKING_TOKEN_KEY) || '').trim()
+    const sessionEmail = normalizeEmailValue(localStorage.getItem(RETURNING_BOOKING_EMAIL_KEY))
+
+    if (!sessionToken || !sessionEmail || rescheduling) {
+      return false
+    }
+
+    try {
+      setCustomerLookupState('loading_profile')
+      setBooking((previousBooking) => ({
+        ...previousBooking,
+        email: sessionEmail,
+      }))
+
+      const { data } = await returningBookingApi.get('/returning-booking/profile')
+
+      applyReturningCustomerProfile(data.customer, {
+        missingFields: data.missing_fields || [],
+      })
+
+      const successMessage = data.is_complete
+        ? 'Verification successful. You may now continue booking.'
+        : 'Verification successful. Please complete the missing information to continue.'
+
+      setCustomerLookupMessage(successMessage)
+
+      if (!silent) {
+        toast.success(successMessage)
+      }
+
+      if (data.is_complete && (advanceOnComplete || step === 1)) {
+        setStep(2)
+      }
+
+      return true
+    } catch (error) {
+      clearReturningBookingSession()
+      setReturningOtp('')
+      setReturningCustomerProfile(null)
+      setReturningCustomerMissingFields([])
+      setReturningCustomerEditMode(false)
+      setCustomerLookupState(sessionEmail ? 'verification_required' : 'idle')
+      setCustomerLookupMessage('Invalid or expired verification code.')
+      setBooking((previousBooking) => ({
+        ...previousBooking,
+        email: sessionEmail || previousBooking.email,
+      }))
+
+      if (!silent) {
+        toast.error(error.response?.data?.message || 'Invalid or expired verification code.')
+      }
+
+      return false
+    }
+  }
+
   useEffect(() => {
     try {
-      if (shouldRestoreDraft) {
-        window.sessionStorage.removeItem(BOOK_APPOINTMENT_RESTORE_KEY)
-      } else {
+      window.sessionStorage.removeItem(BOOK_APPOINTMENT_RESTORE_KEY)
+      if (!shouldRestoreDraft) {
         clearBookingDraft()
       }
     } catch {
@@ -809,7 +1214,10 @@ const BookAppointment = () => {
       try {
         const currentPath = `${window.location.pathname}${window.location.search}`
         if (window.location.pathname === '/book') {
-          window.sessionStorage.setItem(BOOK_APPOINTMENT_RESTORE_KEY, currentPath)
+          window.sessionStorage.setItem(BOOK_APPOINTMENT_RESTORE_KEY, JSON.stringify({
+            path: currentPath,
+            ts: Date.now(),
+          }))
         }
       } catch {
         // Ignore session storage errors
@@ -823,12 +1231,29 @@ const BookAppointment = () => {
   }, [])
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const isReturningBookingReplay = params.has('reschedule') || params.has('appointment')
+
+    if (!isReturningBookingReplay) {
+      clearReturningBookingSession()
+    }
+  }, [location.search])
+
+  useEffect(() => {
+    if (rescheduling) {
+      return
+    }
+  }, [rescheduling])
+
+
+  useEffect(() => {
     refreshData()
-    const params = new URLSearchParams(window.location.search)
+    const params = new URLSearchParams(location.search)
     const appointmentId = params.get('reschedule') || params.get('appointment')
     const servicesParam = params.get('services')
     const stylistParam = params.get('stylist')
     const variantParam = params.get('variant_id') || params.get('variant')
+    const isFreshEntry = params.get('fresh') === '1'
     if (servicesParam) {
       const ids = servicesParam
         .split(',')
@@ -856,16 +1281,29 @@ const BookAppointment = () => {
     }
 
     const isServiceEntry = Boolean(servicesParam)
-    if (isServiceEntry && !shouldRestoreDraft) {
+    if ((isServiceEntry || isFreshEntry) && !shouldRestoreDraft) {
       setStep(1)
+      setSelectedStylist('')
+      setSelectedService('')
+      setSelectedServices([])
+      setSelectedVariants({})
       setSelectedSlot(null)
+      setAvailability([])
+      setAvailabilityLoading(false)
+      setReceipt(null)
+      setRescheduling(null)
+      const today = new Date()
+      setSelectedDate(getTodayDateKey())
+      setCalendarMonth(today.getMonth())
+      setCalendarYear(today.getFullYear())
       setBooking({
         name: '',
         email: '',
         phone: '',
         address: '',
+        privacyConsent: false,
       })
-      setFormErrors({ email: '', phone: '', payment: '' })
+      setFormErrors({ email: '', phone: '', payment: '', privacy: '' })
       setPayment({
         method: 'on_hand',
         paymentType: 'downpayment',
@@ -875,7 +1313,147 @@ const BookAppointment = () => {
         proofPreview: null,
       })
     }
-  }, [shouldRestoreDraft])
+
+    if (isFreshEntry) {
+      params.delete('fresh')
+      const cleanedSearch = params.toString()
+      navigate(
+        {
+          pathname: location.pathname,
+          search: cleanedSearch ? `?${cleanedSearch}` : '',
+        },
+        { replace: true }
+      )
+    }
+  }, [location.pathname, location.search, navigate, shouldRestoreDraft])
+
+  useEffect(() => {
+    let isCancelled = false
+
+    const loadClosedDates = async () => {
+      const monthStart = formatDateKey(new Date(calendarYear, calendarMonth, 1))
+      const monthEnd = formatDateKey(new Date(calendarYear, calendarMonth + 1, 0))
+
+      if (!monthStart || !monthEnd) {
+        setClosedDateMap({})
+        return
+      }
+
+      try {
+        const response = await api.get('/api/holidays/calendar', {
+          params: {
+            start: monthStart,
+            end: monthEnd,
+          },
+        })
+
+        if (isCancelled) {
+          return
+        }
+
+        const nextClosedDateMap = Array.isArray(response.data?.closed_dates)
+          ? response.data.closed_dates.reduce((accumulator, entry) => {
+            if (entry?.date) {
+              accumulator[String(entry.date)] = entry
+            }
+            return accumulator
+          }, {})
+          : {}
+
+        setClosedDateMap(nextClosedDateMap)
+      } catch (e) {
+        if (isCancelled) {
+          return
+        }
+
+        console.error('Failed to load closed holiday dates', e)
+        setClosedDateMap({})
+      }
+    }
+
+    loadClosedDates()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [calendarMonth, calendarYear])
+
+  useEffect(() => {
+    if (!selectedDate || closedDateMap[selectedDate]) {
+      return
+    }
+
+    const [selectedYear, selectedMonth] = String(selectedDate).split('-').map(Number)
+    const isSelectedDateInVisibleMonth =
+      Number.isFinite(selectedYear) &&
+      Number.isFinite(selectedMonth) &&
+      selectedYear === calendarYear &&
+      selectedMonth - 1 === calendarMonth
+
+    if (isSelectedDateInVisibleMonth) {
+      return
+    }
+
+    let isCancelled = false
+
+    const checkSelectedDate = async () => {
+      try {
+        const response = await api.get('/api/holidays/check', {
+          params: { date: selectedDate },
+        })
+
+        if (isCancelled || !response.data?.is_holiday) {
+          return
+        }
+
+        setClosedDateMap((previousMap) => {
+          if (previousMap[selectedDate]) {
+            return previousMap
+          }
+
+          return {
+            ...previousMap,
+            [selectedDate]: {
+              date: selectedDate,
+              name: response.data?.holiday?.name || 'Closed date',
+              message: response.data?.message || 'The salon is closed on this date. Please choose another date.',
+              holiday: response.data?.holiday || null,
+            },
+          }
+        })
+      } catch (e) {
+        if (import.meta.env.DEV) {
+          console.warn('Failed to check holiday status for selected date.', e)
+        }
+      }
+    }
+
+    checkSelectedDate()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [selectedDate, closedDateMap, calendarMonth, calendarYear])
+
+  useEffect(() => {
+    const closedDateInfo = selectedDate ? closedDateMap[selectedDate] : null
+
+    if (!closedDateInfo) {
+      if (holidayStatusMessage) {
+        setHolidayStatusMessage('')
+      }
+      return
+    }
+
+    setAvailabilityLoading(false)
+    setAvailability([])
+    setSelectedSlot(null)
+    setHolidayStatusMessage(closedDateInfo.message)
+
+    if (step > 2) {
+      setStep(3)
+    }
+  }, [closedDateMap, selectedDate, step, holidayStatusMessage])
 
   useEffect(() => {
     if (!prefillVariantId || services.length === 0) return
@@ -958,126 +1536,44 @@ const BookAppointment = () => {
   }, [services, prefillServiceIds, hasAppliedServicePrefill, rescheduling, selectedServices, selectedService, selectedVariants, selectedSlot])
 
   useEffect(() => {
-    if (!hasSelectedServicesForStylistFilter) {
-      setSpecializedStylistIds(null)
-      setStylistSpecializationNames({})
-      setSpecializationFilterError('')
-      setSpecializationFilterLoading(false)
+    const params = new URLSearchParams(location.search)
+    const servicesParam = params.get('services')
+    const stylistParam = params.get('stylist')
+    const variantParam = params.get('variant_id') || params.get('variant')
+
+    const hasPrefillParams = Boolean(servicesParam || stylistParam || variantParam)
+    if (!hasPrefillParams) {
       return
     }
 
-    let isCancelled = false
-
-    const loadStylistsByServices = async () => {
-      const serviceIds = selectedServiceFilterKey
-        .split(',')
-        .map((id) => id.trim())
-        .filter(Boolean)
-
-      try {
-        setSpecializationFilterLoading(true)
-        setSpecializationFilterError('')
-
-        const response = await api.get('/api/stylists/by-services', {
-          params: { services: serviceIds },
-        })
-
-        if (isCancelled) return
-
-        const payload = Array.isArray(response?.data?.data)
-          ? response.data.data
-          : (Array.isArray(response?.data) ? response.data : [])
-
-        const ids = payload
-          .map((item) => String(item?.id || '').trim())
-          .filter(Boolean)
-
-        const specializationMap = {}
-        payload.forEach((item) => {
-          const stylistId = String(item?.id || '').trim()
-          if (!stylistId) return
-          specializationMap[stylistId] = Array.isArray(item?.specialization_names)
-            ? item.specialization_names.filter(Boolean)
-            : []
-        })
-
-        // If no stylist matches selected services, fall back to full list so booking is not blocked.
-        if (ids.length === 0) {
-          setSpecializedStylistIds(null)
-          setStylistSpecializationNames({})
-          setSpecializationFilterError('No exact specialization match found. Showing all stylists.')
-          return
-        }
-
-        setSpecializedStylistIds(ids)
-        setStylistSpecializationNames(specializationMap)
-
-        if (!rescheduling) {
-          setSelectedStylist((previousValue) => {
-            const normalizedPrevious = String(previousValue || '')
-            if (!normalizedPrevious || normalizedPrevious.toUpperCase() === AUTO_STYLIST_VALUE) {
-              return previousValue
-            }
-            return ids.includes(normalizedPrevious) ? previousValue : AUTO_STYLIST_VALUE
-          })
-        }
-      } catch (error) {
-        if (isCancelled) return
-        console.error('Failed to filter stylists by selected services:', error)
-        setSpecializedStylistIds(null)
-        setStylistSpecializationNames({})
-        setSpecializationFilterError('Unable to load stylist specializations right now. Showing the full stylist list.')
-      } finally {
-        if (!isCancelled) {
-          setSpecializationFilterLoading(false)
-        }
-      }
+    if (servicesParam && !hasAppliedServicePrefill) {
+      return
     }
 
-    loadStylistsByServices()
-
-    return () => {
-      isCancelled = true
-    }
-  }, [hasSelectedServicesForStylistFilter, rescheduling, selectedServiceFilterKey])
+    params.delete('services')
+    params.delete('stylist')
+    params.delete('variant')
+    params.delete('variant_id')
+    const cleanedSearch = params.toString()
+    navigate(
+      {
+        pathname: location.pathname,
+        search: cleanedSearch ? `?${cleanedSearch}` : '',
+      },
+      { replace: true }
+    )
+  }, [hasAppliedServicePrefill, location.pathname, location.search, navigate])
 
   useEffect(() => {
-    if (rescheduling) {
-      return
-    }
-
-    if (stylists.length === 0) {
-      return
-    }
-
-    if (prefillStylistId) {
-      const stylistMatch = stylists.find(s => s.id.toString() === prefillStylistId)
-      if (stylistMatch) {
-        setSelectedStylist(String(stylistMatch.id))
-      }
-      return
-    }
-
-    if (String(selectedStylist || '').toUpperCase() === AUTO_STYLIST_VALUE) {
-      return
-    }
-
-    if (selectedStylist) {
-      const stylistMatch = stylists.find(s => s.id.toString() === String(selectedStylist))
-      if (stylistMatch) {
-        return
-      }
-    }
-
-    // No prefill stylist provided, keep stylist selection cleared
-    setSelectedStylist('')
-  }, [stylists, prefillStylistId, rescheduling, selectedStylist])
-
-  useEffect(() => {
-    if (step === 2 && (selectedStylist || specializationScopedStylists[0])) {
+    if (step === 3) {
+      const closedDateInfo = selectedDate ? closedDateMap[selectedDate] : null
       // Only fetch if we have at least one service selected
       const hasServices = selectedServices.length > 0 || selectedService
-      if (hasServices) {
+      if (closedDateInfo) {
+        setAvailabilityLoading(false)
+        setAvailability([])
+        setSelectedSlot(null)
+      } else if (hasServices) {
         fetchAvailability()
       } else {
         setAvailabilityLoading(false)
@@ -1085,7 +1581,7 @@ const BookAppointment = () => {
         setSelectedSlot(null)
       }
     }
-  }, [selectedDate, selectedStylist, selectedService, selectedServices, specializationScopedStylistKey, step])
+  }, [selectedDate, selectedService, selectedServices, step, closedDateMap])
 
   useEffect(() => {
     if (receipt) return
@@ -1104,6 +1600,12 @@ const BookAppointment = () => {
           start: selectedSlot.start,
           end: selectedSlot.end,
           available: selectedSlot.available !== false,
+          stylistIds: Array.isArray(selectedSlot.stylistIds)
+            ? selectedSlot.stylistIds.map((id) => String(id || '').trim()).filter(Boolean)
+            : [],
+          assignedStylistId: typeof selectedSlot.assignedStylistId === 'string'
+            ? selectedSlot.assignedStylistId
+            : '',
         }
         : null,
       booking: {
@@ -1111,6 +1613,7 @@ const BookAppointment = () => {
         email: booking.email || '',
         phone: booking.phone || '',
         address: booking.address || '',
+        privacyConsent: booking.privacyConsent === true,
       },
       payment: {
         method: payment.method === 'online' ? 'online' : 'on_hand',
@@ -1145,12 +1648,11 @@ const BookAppointment = () => {
 
   const refreshData = async () => {
     try {
-      const [sRes, svcRes, paymentRes] = await Promise.all([
-        api.get('/stylists'),
-        api.get('/services'),
+      const [svcRes, paymentRes] = await Promise.all([
+        api.get('/api/services'),
         api.get('/payment-accounts').catch(() => ({ data: [] })), // Don't fail if payment accounts fail
       ])
-      setStylists(sRes.data.filter(s => s.active))
+      setStylists([])
       // Show ALL services from all stylists
       setServices(svcRes.data)
       // Set payment accounts
@@ -1168,24 +1670,45 @@ const BookAppointment = () => {
     try {
       const res = await api.get(`/appointments/${id}`)
       const appt = res.data
+      const appointmentServices = Array.isArray(appt.services) && appt.services.length > 0
+        ? appt.services
+        : (appt.service ? [appt.service] : [])
+      const nextSelectedServices = appointmentServices
+        .map(service => String(service.id))
+        .filter(Boolean)
+      const nextSelectedVariants = appointmentServices.reduce((accumulator, service) => {
+        if (service?.pivot?.service_variant_id) {
+          accumulator[service.id] = service.pivot.service_variant_id
+        }
+        return accumulator
+      }, {})
+
       setRescheduling(appt)
       const startSource = appt.start_datetime_pht || appt.start_datetime
       const endSource = appt.end_datetime_pht || appt.end_datetime
       setSelectedDate(startSource.slice(0, 10))
       setSelectedStylist(appt.stylist_id ? String(appt.stylist_id) : '')
-      setSelectedService(appt.service_id)
+      setSelectedService(appt.service_id ? String(appt.service_id) : (nextSelectedServices[0] || ''))
+      setSelectedServices(nextSelectedServices)
+      setSelectedVariants(nextSelectedVariants)
       setSelectedSlot({
         start: startSource,
         end: endSource,
         available: true,
+        booked_count: 1,
+        remaining_slots: 4,
+        capacity: 5,
+        stylistIds: appt.stylist_id ? [String(appt.stylist_id)] : [],
+        assignedStylistId: appt.stylist_id ? String(appt.stylist_id) : '',
       })
       setBooking({
         name: appt.customer_name,
         email: appt.customer_email || '',
         phone: appt.customer_phone || '',
         address: appt.customer_address || '',
+        privacyConsent: true,
       })
-      setStep(2)
+      setStep(3)
     } catch (e) {
       console.error(e)
       toast.error('Failed to load appointment')
@@ -1193,40 +1716,49 @@ const BookAppointment = () => {
   }
 
   const fetchAvailability = async () => {
-    const selectedServiceId = selectedService || selectedServices[0] || ''
-    const stylistId = effectiveStylistId || specializationScopedStylists[0]?.id
-    if (!stylistId || !selectedServiceId) {
+    const closedDateInfo = selectedDate ? closedDateMap[selectedDate] : null
+    const serviceIds = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
+    const requestedDuration = Math.max(serviceIds.length, 1) * 30
+
+    if (serviceIds.length === 0) {
       setAvailabilityLoading(false)
       setAvailability([])
+      return
+    }
+
+    if (closedDateInfo) {
+      setAvailabilityLoading(false)
+      setAvailability([])
+      setSelectedSlot(null)
       return
     }
 
     try {
       setAvailabilityLoading(true)
       const availabilityParams = {
-        params: { date: selectedDate, service_id: selectedServiceId },
+        params: {
+          date: selectedDate,
+          service_duration: requestedDuration,
+          ...(rescheduling?.id ? { exclude_appointment_id: rescheduling.id } : {}),
+        },
         timeout: 15000,
       }
 
-      let res
-      try {
-        // Prefer stateless API route to avoid session-lock related pending requests.
-        res = await api.get(`/api/stylists/${stylistId}/availability`, availabilityParams)
-      } catch (primaryError) {
-        res = await api.get(`/stylists/${stylistId}/availability`, availabilityParams)
-        if (import.meta.env.DEV) {
-          // Keep primary error visible in development while fallback succeeds.
-          console.warn('Primary availability route failed, fallback route succeeded.', primaryError)
-        }
-      }
-      setAvailability(res.data || [])
-      // Clear selected slot if it's no longer available
+      const response = await api.get('/api/appointments/availability', availabilityParams)
+      const nextAvailability = applyRescheduleSlotOccupancy(
+        response.data || [],
+        rescheduling,
+        selectedDate
+      )
+
+      setAvailability(nextAvailability)
+
       if (selectedSlot) {
-        const slotStillAvailable = res.data?.some(slot => 
+        const matchingSlot = nextAvailability.find(slot =>
           new Date(slot.start).getTime() === new Date(selectedSlot.start).getTime() &&
           slot.available !== false
         )
-        if (!slotStillAvailable) {
+        if (!matchingSlot) {
           const currentRescheduleStart = rescheduling
             ? new Date(rescheduling.start_datetime_pht || rescheduling.start_datetime).getTime()
             : null
@@ -1237,6 +1769,24 @@ const BookAppointment = () => {
             setSelectedSlot(null)
             toast.warn('The selected time slot is no longer available. Please choose another time.')
           }
+        } else {
+          setSelectedSlot((previousSlot) => {
+            if (!previousSlot) return previousSlot
+
+            const isSameSlotState =
+              previousSlot.start === matchingSlot.start &&
+              previousSlot.end === matchingSlot.end &&
+              previousSlot.available === (matchingSlot.available !== false) &&
+              Number(previousSlot.booked_count || 0) === Number(matchingSlot.booked_count || 0) &&
+              Number(previousSlot.remaining_slots || 0) === Number(matchingSlot.remaining_slots || 0) &&
+              Number(previousSlot.capacity || 0) === Number(matchingSlot.capacity || 0)
+
+            if (isSameSlotState) {
+              return previousSlot
+            }
+
+            return matchingSlot
+          })
         }
       }
     } catch (e) {
@@ -1249,41 +1799,242 @@ const BookAppointment = () => {
     }
   }
 
+  const handleClosedDateSelect = (_date, closedDateInfo) => {
+    const message = closedDateInfo?.message || 'The salon is closed on this date. Please choose another date.'
+
+    setAvailabilityLoading(false)
+    setAvailability([])
+    setSelectedSlot(null)
+    setHolidayStatusMessage(message)
+    toast.warn(message)
+  }
+
+  const handleCheckCustomerEmail = async () => {
+    const normalizedEmail = normalizeEmailValue(booking.email)
+
+    if (!normalizedEmail) {
+      toast.warn('Please enter your email')
+      setFormErrors((previousErrors) => ({ ...previousErrors, email: 'Email is required' }))
+      return
+    }
+
+    const emailValidation = validateEmail(normalizedEmail)
+    setFormErrors((previousErrors) => ({
+      ...previousErrors,
+      email: emailValidation.message,
+    }))
+
+    if (!emailValidation.valid) {
+      toast.error('Please enter a valid email address')
+      return
+    }
+
+    try {
+      setCustomerLookupState('checking_email')
+      setCustomerLookupMessage('Checking email...')
+
+      const { data } = await returningBookingApi.post('/returning-booking/check-email', {
+        email: normalizedEmail,
+      })
+
+      if (data.exists) {
+        clearReturningBookingSession()
+        localStorage.setItem(RETURNING_BOOKING_PENDING_EMAIL_KEY, normalizedEmail)
+        setReturningOtp('')
+        setReturningCustomerProfile(null)
+        setReturningCustomerMissingFields([])
+        setReturningCustomerEditMode(false)
+        setCustomerLookupState('verification_required')
+        setCustomerLookupMessage(data.message || 'Existing record found. Verification code sent to your email.')
+        setBooking((previousBooking) => ({
+          ...previousBooking,
+          name: '',
+          email: normalizedEmail,
+          phone: '',
+          address: '',
+          privacyConsent: true,
+        }))
+        toast.success('Existing record found. Verification code sent to your email.')
+        return
+      }
+
+      clearReturningBookingSession()
+      setReturningOtp('')
+      setReturningCustomerProfile(null)
+      setReturningCustomerMissingFields([])
+      setReturningCustomerEditMode(false)
+      setCustomerLookupState('new_customer')
+      setCustomerLookupMessage(data.message || 'No existing record found. Please fill out your information.')
+      setBooking((previousBooking) => ({
+        ...previousBooking,
+        email: normalizedEmail,
+        privacyConsent: false,
+      }))
+      toast.info('No existing record found. Please fill out your information.')
+    } catch (error) {
+      setCustomerLookupState('idle')
+      setCustomerLookupMessage('')
+      toast.error(error.response?.data?.message || 'Failed to check your email. Please try again.')
+    }
+  }
+
+  const handleResendReturningOtp = async () => {
+    const normalizedEmail = normalizeEmailValue(booking.email)
+
+    if (!normalizedEmail) {
+      toast.warn('Please enter your email first.')
+      return
+    }
+
+    try {
+      setCustomerLookupState('sending_otp')
+      await returningBookingApi.post('/returning-booking/send-otp', {
+        email: normalizedEmail,
+      })
+      localStorage.setItem(RETURNING_BOOKING_PENDING_EMAIL_KEY, normalizedEmail)
+      setCustomerLookupState('verification_required')
+      setCustomerLookupMessage('Existing record found. Verification code sent to your email.')
+      toast.success('Verification code sent to your email.')
+    } catch (error) {
+      setCustomerLookupState('verification_required')
+      toast.error(error.response?.data?.message || 'Failed to send verification code.')
+    }
+  }
+
+  const handleVerifyReturningOtp = async () => {
+    const normalizedEmail = normalizeEmailValue(booking.email)
+    const code = returningOtp.replace(/\D/g, '').slice(0, 6)
+
+    if (!normalizedEmail) {
+      toast.warn('Please enter your email first.')
+      return
+    }
+
+    if (code.length !== 6) {
+      toast.warn('Enter the 6-digit verification code.')
+      return
+    }
+
+    try {
+      setCustomerLookupState('verifying_otp')
+      const { data } = await returningBookingApi.post('/returning-booking/verify-otp', {
+        email: normalizedEmail,
+        otp: code,
+      })
+
+      localStorage.setItem(RETURNING_BOOKING_TOKEN_KEY, data.token)
+      localStorage.setItem(RETURNING_BOOKING_EMAIL_KEY, data.email)
+      localStorage.removeItem(RETURNING_BOOKING_PENDING_EMAIL_KEY)
+
+      await loadReturningCustomerProfile({ silent: true, advanceOnComplete: true })
+    } catch (error) {
+      setCustomerLookupState('verification_required')
+      setCustomerLookupMessage(error.response?.data?.message || 'Invalid or expired verification code.')
+      toast.error(error.response?.data?.message || 'Invalid or expired verification code.')
+    }
+  }
+
+  const handleUseDifferentEmail = () => {
+    resetReturningCustomerState()
+    setFormErrors({ email: '', phone: '', payment: '', privacy: '' })
+  }
+
+  const saveReturningCustomerProfile = async () => {
+    if (!isReturningCustomerVerified || !shouldShowCustomerProfileInputs) {
+      return true
+    }
+
+    try {
+      setCustomerProfileSaving(true)
+      const { data } = await returningBookingApi.patch('/returning-booking/profile', {
+        name: booking.name.trim(),
+        phone: booking.phone,
+        address: booking.address,
+      })
+
+      applyReturningCustomerProfile(data.customer, {
+        missingFields: data.missing_fields || [],
+      })
+      setCustomerLookupMessage('Verification successful. You may now continue booking.')
+      setStep(2)
+      return true
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update your saved customer information.')
+      return false
+    } finally {
+      setCustomerProfileSaving(false)
+    }
+  }
+
   const handleNextStep = () => {
+    const privacyErrorMessage = 'You must agree to the Data Privacy Policy before continuing.'
+
+    if (customerLookupState === 'idle' || customerLookupState === 'checking_email') {
+      void handleCheckCustomerEmail()
+      return
+    }
+
+    if (isReturningCustomerPendingVerification) {
+      void handleVerifyReturningOtp()
+      return
+    }
+
+    const emailValidation = validateEmail(booking.email)
+    const phoneValidation = validatePhone(booking.phone)
+
+    setFormErrors({
+      email: emailValidation.message,
+      phone: phoneValidation.message,
+      payment: '',
+      privacy: booking.privacyConsent ? '' : privacyErrorMessage,
+    })
+
     if (!booking.name.trim()) {
       toast.warn('Please enter your name')
       return
     }
+
     if (!booking.email.trim()) {
       toast.warn('Please enter your email')
-      setFormErrors(prev => ({ ...prev, email: 'Email is required' }))
       return
     }
+
     if (!booking.phone.trim()) {
       toast.warn('Please enter your contact number')
       return
     }
-    
-    // Validate email
-    const emailValidation = validateEmail(booking.email)
 
-    // Validate phone
-    const phoneValidation = validatePhone(booking.phone)
-    
-    setFormErrors({
-      email: emailValidation.message,
-      phone: phoneValidation.message
-    })
-    
-    if (!emailValidation.valid || !phoneValidation.valid) {
+    if (!emailValidation.valid) {
+      toast.error('Please enter a valid email address')
+      return
+    }
+
+    if (!phoneValidation.valid) {
       toast.error('Please enter valid customer information')
       return
     }
-    
+
+    if (shouldShowPrivacyConsent && !booking.privacyConsent) {
+      toast.warn(privacyErrorMessage)
+      return
+    }
+
+    if (isReturningCustomerVerified && shouldShowCustomerProfileInputs) {
+      void saveReturningCustomerProfile()
+      return
+    }
+
     setStep(2)
   }
 
   const handleBook = async () => {
+    if (!booking.privacyConsent) {
+      const privacyErrorMessage = 'You must agree to the Data Privacy Policy before continuing.'
+      setFormErrors((prev) => ({ ...prev, privacy: privacyErrorMessage }))
+      setStep(1)
+      return
+    }
+
     if (!selectedSlot) {
       toast.warn('Please select a time slot')
       return
@@ -1323,11 +2074,6 @@ const BookAppointment = () => {
           return
         }
       }
-    }
-    
-    if (!effectiveStylistId) {
-      toast.warn('Please select a stylist')
-      return
     }
     
     // Double-check slot is still available before booking
@@ -1390,7 +2136,6 @@ const BookAppointment = () => {
           const minDepositCents = Math.round(totalAmountCents * 0.5)
           if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
             toast.warn(`Minimum GCash downpayment is ${currency(minDepositCents)}`)
-            setLoading(false)
             return
           }
         }
@@ -1404,7 +2149,6 @@ const BookAppointment = () => {
         const minDepositCents = Math.round(totalAmountCents * 0.5)
         if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
           toast.warn(`Minimum cash deposit is ${currency(minDepositCents)}`)
-          setLoading(false)
           return
         }
         paymentStatus = paymentAmountCents >= totalAmountCents ? 'paid' : 'downpayment'
@@ -1416,6 +2160,7 @@ const BookAppointment = () => {
       formData.append('customer_email', booking.email ? booking.email.trim().toLowerCase() : '')
       formData.append('customer_phone', booking.phone ? booking.phone.replace(/[\s-]/g, '') : '')
       formData.append('customer_address', booking.address || '')
+      formData.append('privacy_consent', booking.privacyConsent ? '1' : '0')
       formData.append('service_id', serviceIds[0])
       serviceIds.forEach(id => formData.append('service_ids[]', id))
       
@@ -1429,10 +2174,7 @@ const BookAppointment = () => {
       if (Object.keys(serviceVariantsMap).length > 0) {
         formData.append('service_variants', JSON.stringify(serviceVariantsMap))
       }
-      
-      if (effectiveStylistId) {
-        formData.append('stylist_id', effectiveStylistId)
-      }
+
       formData.append('date', bookingDate)
       formData.append('preferred_time', preferredTime)
       formData.append('payment_method', payment.method)
@@ -1474,7 +2216,7 @@ const BookAppointment = () => {
       // But let's fetch it again to be sure
       try {
         const receiptRes = await api.get(`/appointments/${res.data.id}`)
-        if (receiptRes.data && receiptRes.data.service && receiptRes.data.stylist) {
+        if (receiptRes.data && (receiptRes.data.service || receiptRes.data.services?.length)) {
           // #region agent log
           fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:878',message:'Receipt data fetched',data:{appointmentId:receiptRes.data?.id,start_datetime:receiptRes.data?.start_datetime,end_datetime:receiptRes.data?.end_datetime,start_datetime_pht:receiptRes.data?.start_datetime_pht,end_datetime_pht:receiptRes.data?.end_datetime_pht},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T5'})}).catch(()=>{});
           // #endregion
@@ -1533,40 +2275,62 @@ const BookAppointment = () => {
       toast.warn('Please select a time slot')
       return
     }
-    try {
-      // Extract time from slot start (HH:MM format) - use Asia/Manila timezone
-      const preferredTime = toManilaHHmm(selectedSlot.start)
 
-      
-      const res = await api.patch(`/appointments/${rescheduling.id}`, {
-        date: selectedDate,
-        preferred_time: preferredTime,
-      })
-      const updatedAppointment = res?.data?.appointment || res?.data || null
+    const currentUserType = (
+      sessionStorage.getItem('userType')
+      || localStorage.getItem('userType')
+      || ''
+    ).trim().toLowerCase()
+    const hasDashboardSession = ['admin', 'manager', 'stylist'].includes(currentUserType)
+    const manageBookingToken = (localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || '').trim()
+    const manageBookingEmail = (localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) || '').trim()
+    const hasManageBookingSession = !hasDashboardSession && Boolean(manageBookingToken && manageBookingEmail)
+
+    try {
+      const preferredTime = toManilaHHmm(selectedSlot.start)
+      let updatedAppointment = null
+
+      if (hasManageBookingSession) {
+        await manageBookingApi.post(`/manage-booking/appointments/${rescheduling.id}/reschedule`, {
+          appointment_date: selectedDate,
+          appointment_time: preferredTime,
+        })
+
+        const appointmentResponse = await api.get(`/appointments/${rescheduling.id}`)
+        updatedAppointment = appointmentResponse?.data || null
+      } else {
+        const res = await api.patch(`/appointments/${rescheduling.id}`, {
+          date: selectedDate,
+          preferred_time: preferredTime,
+        })
+        updatedAppointment = res?.data?.appointment || res?.data || null
+
+        if (!updatedAppointment?.id) {
+          const appointmentResponse = await api.get(`/appointments/${rescheduling.id}`)
+          updatedAppointment = appointmentResponse?.data || null
+        }
+      }
+
       if (updatedAppointment?.id) {
+        setRescheduling(updatedAppointment)
         setReceipt(updatedAppointment)
       }
       toast.success('Appointment rescheduled successfully!')
     } catch (e) {
+      if (hasManageBookingSession && e.response?.status === 401) {
+        toast.error('Session expired. Please verify OTP again.')
+        navigate('/manage-booking/start')
+        return
+      }
+
       toast.error(e.response?.data?.message || 'Reschedule failed')
     }
   }
 
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
+  const isRescheduleFlow = Boolean(rescheduling)
   const selectedServiceData = services.find(s => s.id === parseInt(selectedService)) // For backward compatibility
-  const isAutoStylistSelected = String(selectedStylist || '').toUpperCase() === AUTO_STYLIST_VALUE
-  const selectedStylistData = specializationScopedStylists.find((s) => s.id.toString() === String(selectedStylist))
-    || stylists.find((s) => s.id.toString() === String(selectedStylist))
-  const effectiveStylistData = isAutoStylistSelected ? (specializationScopedStylists[0] || null) : selectedStylistData
-  const effectiveStylistId = effectiveStylistData?.id ? String(effectiveStylistData.id) : ''
-  const visibleStylists = filterStylists(specializationScopedStylists, stylistSearch, stylistFilter)
-  const stylistFilterOptions = [
-    { key: 'all', label: 'All' },
-    { key: 'available', label: 'Available' },
-    { key: 'busy', label: 'Busy' },
-    { key: 'off', label: 'Off' },
-    { key: 'fully_booked', label: 'Fully Booked' },
-  ]
+  const selectedClosedDateInfo = selectedDate ? closedDateMap[selectedDate] || null : null
   const selectedDateLabel = selectedDate
     ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -1601,6 +2365,24 @@ const BookAppointment = () => {
       }
       return service.name
     })
+  const selectedServicesSummaryItems = selectedServicesForSummary.map((service) => {
+    if (service.variants && service.variants.length > 0 && selectedVariants[service.id]) {
+      const variant = service.variants.find(v => v.id === selectedVariants[service.id])
+      if (variant) {
+        return {
+          id: `${service.id}-${variant.id}`,
+          label: `${service.name} - ${variant.name}`,
+          priceCents: variant.price_cents,
+        }
+      }
+    }
+
+    return {
+      id: String(service.id),
+      label: service.name,
+      priceCents: service.price_cents,
+    }
+  })
   const totalPriceForSummary = selectedServicesForSummary.reduce((sum, service) => {
     if (service.variants && service.variants.length > 0 && selectedVariants[service.id]) {
       const variant = service.variants.find(v => v.id === selectedVariants[service.id])
@@ -1608,20 +2390,25 @@ const BookAppointment = () => {
     }
     return sum + service.price_cents
   }, 0)
-  const canContinueStepTwo = Boolean(selectedSlot && selectedServiceIdsForSummary.length > 0 && effectiveStylistId)
+  const canContinueStepTwo = Boolean(selectedServiceIdsForSummary.length > 0)
+  const canContinueStepThree = Boolean(selectedSlot && selectedServiceIdsForSummary.length > 0)
 
   const handleContinueFromStepTwo = () => {
     if (!canContinueStepTwo) {
-      toast.warn('Please complete all booking details')
+      toast.warn('Please select at least one service')
       return
     }
 
-    if (payment.method === 'online' || payment.method === 'on_hand') {
-      setStep(3)
+    setStep(3)
+  }
+
+  const handleContinueFromStepThree = () => {
+    if (!canContinueStepThree) {
+      toast.warn('Please select a date and time')
       return
     }
 
-    handleBook()
+    setStep(4)
   }
 
   return (
@@ -1646,7 +2433,6 @@ const BookAppointment = () => {
             <nav className="hidden md:flex items-center gap-2 text-sm">
               <button onClick={() => navigate('/')} className="booking-nav-link">Home</button>
               <button onClick={() => navigate('/services')} className="booking-nav-link">Services</button>
-              <button onClick={() => navigate('/stylists')} className="booking-nav-link">Stylists</button>
             </nav>
           </div>
           <div className="flex items-center gap-2">
@@ -1659,7 +2445,7 @@ const BookAppointment = () => {
               </button>
             )}
             <button
-              onClick={() => navigate('/book')}
+              onClick={() => navigate('/book?fresh=1')}
               className="tap-safe booking-cta-pill"
             >
               Book Appointment
@@ -1672,7 +2458,7 @@ const BookAppointment = () => {
         <div className="booking-hero rounded-3xl px-6 md:px-10 py-8 md:py-10 text-center md:text-left">
           <h1 className="booking-hero-title fluid-title-lg font-bold">Book Your Salon Appointment</h1>
           <p className="booking-hero-subtitle mt-2 text-base md:text-lg">
-            Schedule your visit with our professional stylists
+            Choose your services, date, and time for your salon visit
           </p>
         </div>
       </section>
@@ -1686,7 +2472,7 @@ const BookAppointment = () => {
             <div className={`booking-step-circle ${step >= 1 ? 'active' : ''}`}>
               1
             </div>
-            <div className="booking-step-label">Customer Information</div>
+            <div className="booking-step-label">Verify Email</div>
           </div>
           <div className={`booking-step-line ${step >= 2 ? 'active' : ''}`}></div>
           <div className="booking-step-item">
@@ -1700,16 +2486,309 @@ const BookAppointment = () => {
             <div className={`booking-step-circle ${step >= 3 ? 'active' : ''}`}>
               3
             </div>
+            <div className="booking-step-label">Select Date &amp; Time</div>
+          </div>
+          <div className={`booking-step-line ${step >= 4 ? 'active' : ''}`}></div>
+          <div className="booking-step-item">
+            <div className={`booking-step-circle ${step >= 4 ? 'active' : ''}`}>
+              4
+            </div>
             <div className="booking-step-label">Confirm Booking</div>
           </div>
         </div>
       </div>
 
-      {/* Step 1: Customer Information */}
+      {/* Step 1: Email-first customer identification for new and returning bookings */}
       {step === 1 && (
         <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">{stepOneHeading}</h2>
+          <p className="text-base md:text-lg text-gray-700 mb-7">
+            {stepOneDescription}
+          </p>
+
+          <div className="space-y-5">
+            <div>
+              <label className="block text-base font-medium mb-2 text-gray-900">Email *</label>
+              <div className="booking-input-wrap">
+                <input
+                  type="email"
+                  required
+                  disabled={isEmailLocked}
+                  className={`booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500 disabled:bg-[#f7f3fb] disabled:text-[#6f5b7e] ${formErrors.email ? 'border-red-500' : ''}`}
+                  placeholder="your@email.com"
+                  value={booking.email}
+                  onChange={e => {
+                    setBooking({ ...booking, email: e.target.value })
+                    const validation = validateEmail(e.target.value)
+                    setFormErrors(prev => ({ ...prev, email: validation.message }))
+                    if (!isEmailLocked && customerLookupMessage) {
+                      setCustomerLookupMessage('')
+                    }
+                  }}
+                />
+              </div>
+              {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
+            </div>
+
+            {shouldShowLookupBanner && (
+              <div
+                className={`rounded-2xl border px-4 py-3 text-sm ${
+                  isReturningCustomerVerified
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                    : isReturningCustomerPendingVerification
+                      ? 'border-[#d8ccff] bg-[#f6f1ff] text-[#4c1d95]'
+                      : customerLookupState === 'new_customer'
+                        ? 'border-sky-200 bg-sky-50 text-sky-800'
+                        : 'border-[#ece6f4] bg-[#faf8fd] text-[#4e3b5b]'
+                }`}
+              >
+                {customerLookupMessage}
+              </div>
+            )}
+
+            {['verification_required', 'sending_otp', 'verifying_otp'].includes(customerLookupState) && (
+              <div className="rounded-2xl border border-[#d8ccff] bg-[#faf7ff] p-4 text-sm text-[#4c1d95] space-y-3">
+                <p>
+                  Enter the 6-digit verification code sent to{' '}
+                  <span className="font-semibold">{booking.email}</span>.
+                </p>
+                <div>
+                  <label className="block text-base font-medium mb-2 text-gray-900">Verification Code *</label>
+                  <div className="booking-input-wrap">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      className="booking-input w-full border rounded-xl px-4 py-3.5 text-base tracking-[0.25em] text-gray-900 placeholder-gray-500"
+                      placeholder="000000"
+                      value={returningOtp}
+                      onChange={e => setReturningOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    type="button"
+                    onClick={handleVerifyReturningOtp}
+                    disabled={customerLookupState === 'sending_otp' || customerLookupState === 'verifying_otp'}
+                    className="booking-primary-btn flex-1 text-sm font-semibold px-5 py-3 rounded-xl disabled:opacity-60"
+                  >
+                    {customerLookupState === 'verifying_otp' ? 'Verifying...' : 'Verify Code'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendReturningOtp}
+                    disabled={customerLookupState === 'sending_otp' || customerLookupState === 'verifying_otp'}
+                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff] disabled:opacity-60"
+                  >
+                    {customerLookupState === 'sending_otp' ? 'Sending Code...' : 'Resend Code'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUseDifferentEmail}
+                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                  >
+                    Use a Different Email
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isReturningCustomerVerified && !shouldShowCustomerProfileInputs && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+                <div className="flex flex-col gap-1">
+                  <div className="text-sm font-semibold text-emerald-800">Verified Returning Customer</div>
+                  <div className="text-sm text-emerald-700">
+                    Your saved information is ready. You can continue directly to services or update it first.
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 text-sm text-[#2C1338]">
+                  <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3">
+                    <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Name</div>
+                    <div className="mt-1 font-semibold">{booking.name || 'Not provided'}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3">
+                    <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Phone</div>
+                    <div className="mt-1 font-semibold">{booking.phone || 'Not provided'}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3 sm:col-span-2">
+                    <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Address</div>
+                    <div className="mt-1 font-semibold">{booking.address || 'Not provided'}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReturningCustomerEditMode(true)}
+                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                  >
+                    Update My Information
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUseDifferentEmail}
+                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                  >
+                    Use a Different Email
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {shouldShowCustomerProfileInputs && showNameField && (
+              <div>
+                <label className="block text-base font-medium mb-2 text-gray-900">Full Name *</label>
+                <div className="booking-input-wrap">
+                  <input
+                    type="text"
+                    required
+                    className="booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
+                    placeholder="Enter your full name"
+                    value={booking.name}
+                    onChange={e => setBooking({ ...booking, name: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {shouldShowCustomerProfileInputs && showPhoneField && (
+              <div>
+                <label className="block text-base font-medium mb-2 text-gray-900">Contact Number *</label>
+                <div className="booking-input-wrap">
+                  <input
+                    type="tel"
+                    required
+                    className={`booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
+                    placeholder="09XXXXXXXXX"
+                    value={booking.phone}
+                    onChange={e => {
+                      setBooking({ ...booking, phone: e.target.value })
+                      const validation = validatePhone(e.target.value)
+                      setFormErrors(prev => ({ ...prev, phone: validation.message }))
+                    }}
+                  />
+                </div>
+                {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
+              </div>
+            )}
+
+            {shouldShowCustomerProfileInputs && showAddressField && (
+              <div>
+                <label className="block text-base font-medium mb-2 text-gray-900">Address</label>
+                <div className="booking-input-wrap">
+                  <input
+                    type="text"
+                    className="booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
+                    placeholder="Your address"
+                    value={booking.address}
+                    onChange={e => setBooking({ ...booking, address: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {isReturningCustomerVerified && shouldShowCustomerProfileInputs && (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReturningCustomerEditMode(false)
+                    if (returningCustomerProfile) {
+                      setBooking((previousBooking) => ({
+                        ...previousBooking,
+                        name: returningCustomerProfile.name || '',
+                        phone: returningCustomerProfile.phone || '',
+                        address: returningCustomerProfile.address || '',
+                      }))
+                    }
+                  }}
+                  className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                >
+                  Use Saved Information
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUseDifferentEmail}
+                  className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                >
+                  Use a Different Email
+                </button>
+              </div>
+            )}
+
+            {shouldShowPrivacyConsent && (
+              <div>
+                <div className={`rounded-2xl border p-4 ${formErrors.privacy ? 'border-red-300 bg-red-50' : 'border-[#ece6f4] bg-[#faf8fd]'}`}>
+                  <label className="flex items-start gap-3 text-sm leading-6 text-[#4e3b5b]">
+                    <input
+                      type="checkbox"
+                      name="privacy_consent"
+                      required
+                      checked={booking.privacyConsent}
+                      onChange={(e) => {
+                        setBooking({ ...booking, privacyConsent: e.target.checked })
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          privacy: e.target.checked ? '' : prev.privacy,
+                        }))
+                      }}
+                      className="mt-1 h-4 w-4 rounded border-[#c9bcf1] text-[#6d4de6] focus:ring-[#c9bcf1]"
+                    />
+                    <span>
+                      I agree to the{' '}
+                      <a
+                        href="/privacy-policy"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2"
+                      >
+                        Data Privacy Policy
+                      </a>{' '}
+                      and consent to the collection and processing of my personal information for appointment booking purposes.
+                    </span>
+                  </label>
+                </div>
+                {formErrors.privacy && <p className="text-red-500 text-xs mt-1">{formErrors.privacy}</p>}
+              </div>
+            )}
+
+            {!isReturningCustomerPendingVerification && (
+              <div className="flex flex-col sm:flex-row gap-2">
+                {isEmailLocked && (
+                  <button
+                    type="button"
+                    onClick={handleUseDifferentEmail}
+                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3.5 text-base font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                  >
+                    Use a Different Email
+                  </button>
+                )}
+                <button
+                  onClick={handleNextStep}
+                  disabled={customerProfileSaving || customerLookupState === 'checking_email'}
+                  className="booking-primary-btn flex-1 mt-0 text-base font-semibold px-5 py-3.5 rounded-xl disabled:opacity-60"
+                >
+                  {customerLookupState === 'idle' || customerLookupState === 'checking_email'
+                    ? 'Continue'
+                    : customerLookupState === 'new_customer'
+                      ? 'Continue to Services'
+                      : shouldShowCustomerProfileInputs
+                        ? (customerProfileSaving ? 'Saving...' : 'Save and Continue')
+                        : 'Continue to Services'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step 1: Customer Information */}
+      {false && step === 1 && (
+        <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
           <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Customer Information</h2>
-          <p className="text-base md:text-lg text-gray-700 mb-7">Please provide your information to proceed with booking</p>
+          <p className="text-base md:text-lg text-gray-700 mb-7">
+            Please provide your information to proceed with booking
+          </p>
           
           <div className="space-y-5">
             <div>
@@ -1780,6 +2859,40 @@ const BookAppointment = () => {
                 />
               </div>
             </div>
+
+            <div>
+              <div className={`rounded-2xl border p-4 ${formErrors.privacy ? 'border-red-300 bg-red-50' : 'border-[#ece6f4] bg-[#faf8fd]'}`}>
+                <label className="flex items-start gap-3 text-sm leading-6 text-[#4e3b5b]">
+                  <input
+                    type="checkbox"
+                    name="privacy_consent"
+                    required
+                    checked={booking.privacyConsent}
+                    onChange={(e) => {
+                      setBooking({ ...booking, privacyConsent: e.target.checked })
+                      setFormErrors((prev) => ({
+                        ...prev,
+                        privacy: e.target.checked ? '' : prev.privacy,
+                      }))
+                    }}
+                    className="mt-1 h-4 w-4 rounded border-[#c9bcf1] text-[#6d4de6] focus:ring-[#c9bcf1]"
+                  />
+                  <span>
+                    I agree to the{' '}
+                    <a
+                      href="/privacy-policy"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2"
+                    >
+                      Data Privacy Policy
+                    </a>{' '}
+                    and consent to the collection and processing of my personal information for appointment booking purposes.
+                  </span>
+                </label>
+              </div>
+              {formErrors.privacy && <p className="text-red-500 text-xs mt-1">{formErrors.privacy}</p>}
+            </div>
             
             <button
               onClick={handleNextStep}
@@ -1791,13 +2904,347 @@ const BookAppointment = () => {
         </div>
       )}
 
-      {/* Step 2: Booking Details */}
+      {/* Step 2: Select Service */}
       {step === 2 && (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)] items-start">
+          <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
+            <h2 className="text-2xl font-bold text-[#2C1338]">Select Service</h2>
+            <p className="mt-2 text-sm text-[#6f5b7e]">Choose one or more services before you pick an appointment schedule.</p>
+
+            <div className="booking-panel mt-5 max-h-[620px] overflow-y-auto border border-[#ece6f4] rounded-2xl p-4 space-y-3 bg-white shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
+              {services.map(s => {
+                const serviceIdStr = s.id.toString()
+                const isSelected = selectedServices.includes(serviceIdStr) || selectedService === serviceIdStr
+
+                return (
+                  <label
+                    key={s.id}
+                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
+                      isSelected ? 'bg-[#f3efff] border-[#6d4de6]' : 'border-[#ece6f4] hover:border-[#d8ccff] hover:bg-[#faf7ff]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const newServices = [...selectedServices, serviceIdStr]
+                          setSelectedServices(newServices)
+                          if (newServices.length === 1) {
+                            setSelectedService(serviceIdStr)
+                          }
+                        } else {
+                          const newServices = selectedServices.filter(id => id !== serviceIdStr)
+                          setSelectedServices(newServices)
+                          if (selectedService === serviceIdStr) {
+                            setSelectedService(newServices[0] || '')
+                          }
+                        }
+                        setSelectedSlot(null)
+                      }}
+                      className="w-5 h-5 text-[#6d4de6] rounded"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
+                      {s.variants && s.variants.length > 0 ? (
+                        <div className="text-sm text-[#5a4767] mt-1">
+                          <div className="font-medium text-[#6d4de6] mb-1.5">
+                            {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
+                          </div>
+                          {isSelected && (
+                            <div className="mt-2 space-y-1">
+                              {s.variants.map(variant => (
+                                <label
+                                  key={variant.id}
+                                  className="flex items-center gap-2 p-1.5 hover:bg-[#f7f2fb] rounded-lg cursor-pointer"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`variant-${s.id}`}
+                                    checked={selectedVariants[s.id] === variant.id}
+                                    onChange={() => {
+                                      setSelectedVariants({
+                                        ...selectedVariants,
+                                        [s.id]: variant.id,
+                                      })
+                                      setSelectedSlot(null)
+                                    }}
+                                    className="w-3 h-3 text-[#6d4de6]"
+                                  />
+                                  <span className="text-sm text-[#4a3756]">
+                                    {variant.name} - {currency(variant.price_cents)}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-[#5a4767]">
+                          {currency(s.price_cents)}
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+
+            {selectedServices.length > 0 && (
+              <div className="text-sm font-semibold text-[#6d4de6] mt-3">
+                {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected | Total: {currency(totalPriceForSummary)}
+              </div>
+            )}
+          </div>
+
+          <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
+            <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Booking Summary</label>
+            <div className="mt-3 space-y-3 text-sm">
+              <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
+                <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
+                <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
+                {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
+                {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
+              </div>
+
+              <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
+                {selectedServicesSummaryItems.length > 0 ? (
+                  <ul className="mt-1 space-y-1">
+                    {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
+                      <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
+                        <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
+                        {' - '}
+                        <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
+                      </li>
+                    ))}
+                    {selectedServicesSummaryItems.length > 3 && (
+                      <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
+                    )}
+                  </ul>
+                ) : (
+                  <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-[#f5d6e4] bg-[#fff6fa] px-3 py-2.5">
+                <div className="text-[11px] uppercase tracking-wide text-[#8f5170]">Total Price</div>
+                <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setStep(1)}
+                  className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                >
+                  Back to Customer Info
+                </button>
+                <button
+                  onClick={handleContinueFromStepTwo}
+                  disabled={!canContinueStepTwo}
+                  className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
+                >
+                  Continue to Date & Time
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Select Date & Time */}
+      {step === 3 && (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)] items-start">
+          <div className="space-y-4">
+            <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
+              <h2 className="text-2xl font-bold text-[#2C1338]">
+                {isRescheduleFlow ? 'Select New Date & Time' : 'Select Date & Time'}
+              </h2>
+              <p className="mt-2 text-sm text-[#6f5b7e]">
+                {isRescheduleFlow
+                  ? 'Your service details are locked for this reschedule. Choose a new date and time only.'
+                  : 'Pick a schedule with available slot capacity for your selected services.'}
+              </p>
+
+              <div className="booking-step2-schedule-grid grid xl:grid-cols-2 gap-4 mt-5">
+                <div className="space-y-3">
+                  <Calendar
+                    month={calendarMonth}
+                    year={calendarYear}
+                    selectedDate={selectedDate}
+                    closedDateMap={closedDateMap}
+                    onSelect={(date) => {
+                      const selected = new Date(date + 'T00:00:00')
+                      const today = new Date()
+                      today.setHours(0, 0, 0, 0)
+                      if (selected >= today) {
+                        setHolidayStatusMessage('')
+                        setSelectedDate(date)
+                        setSelectedSlot(null)
+                      }
+                    }}
+                    onClosedDateSelect={handleClosedDateSelect}
+                    onMonthChange={(month, year) => {
+                      setCalendarMonth(month)
+                      setCalendarYear(year)
+                    }}
+                  />
+                  {(holidayStatusMessage || selectedClosedDateInfo?.message) && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {holidayStatusMessage || selectedClosedDateInfo?.message}
+                    </div>
+                  )}
+                </div>
+
+                <SlotList
+                  slots={availability}
+                  selected={selectedSlot}
+                  loading={availabilityLoading}
+                  ready={Boolean((selectedService || selectedServices.length > 0) && !selectedClosedDateInfo)}
+                  onSelect={(slot) => {
+                    if (slot.available === false) {
+                      toast.error('This time slot is already fully booked. Please choose another time.')
+                      return
+                    }
+
+                    const now = new Date()
+                    const slotTime = new Date(slot.start)
+                    const minAdvanceTime = new Date(now.getTime() + 30 * 60000)
+
+                    if (slotTime < now) {
+                      toast.error('Cannot book appointments in the past. Please select a future time slot.')
+                      return
+                    }
+
+                    if (slotTime < minAdvanceTime) {
+                      const minutesUntilSlot = Math.ceil((slotTime.getTime() - now.getTime()) / 60000)
+                      toast.error(`Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`)
+                      return
+                    }
+
+                    const matchingSlot = availability.find(availSlot =>
+                      new Date(availSlot.start).getTime() === new Date(slot.start).getTime() &&
+                      availSlot.available !== false
+                    )
+
+                    if (matchingSlot) {
+                      setSelectedSlot(matchingSlot)
+                    } else {
+                      toast.error('This time slot is no longer available. Please refresh and choose another time.')
+                      fetchAvailability()
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4">
+              <h3 className="font-semibold mb-2 text-[#2C1338]">Selected Schedule</h3>
+              <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg bg-[#faf8fd] border border-[#efe8f5] px-3 py-2 text-[#4e3b5b]">
+                  <span className="font-medium">Date:</span> {selectedDateLabel}
+                </div>
+                <div className="rounded-lg bg-[#faf8fd] border border-[#efe8f5] px-3 py-2 text-[#4e3b5b]">
+                  <span className="font-medium">Time:</span> {selectedTimeLabel}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
+            <label className="text-sm text-[#2C1338] font-semibold tracking-wide">
+              {isRescheduleFlow ? 'Appointment Summary' : 'Booking Summary'}
+            </label>
+            <div className="mt-3 space-y-3 text-sm">
+              <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
+                <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
+                <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
+                {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
+                {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
+              </div>
+
+              <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
+                {selectedServicesSummaryItems.length > 0 ? (
+                  <ul className="mt-1 space-y-1">
+                    {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
+                      <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
+                        <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
+                        {!isRescheduleFlow && (
+                          <>
+                            {' - '}
+                            <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                    {selectedServicesSummaryItems.length > 3 && (
+                      <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
+                    )}
+                  </ul>
+                ) : (
+                  <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Date</div>
+                  <div className="text-xs font-medium text-[#2C1338]">{selectedDateLabel}</div>
+                </div>
+                <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Time</div>
+                  <div className="text-xs font-medium text-[#2C1338]">{selectedTimeLabel}</div>
+                </div>
+              </div>
+
+              {!isRescheduleFlow && (
+                <div className="rounded-xl border border-[#f5d6e4] bg-[#fff6fa] px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wide text-[#8f5170]">Total Price</div>
+                  <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2">
+                {isRescheduleFlow ? (
+                  <button
+                    onClick={() => navigate('/customer')}
+                    className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                  >
+                    Cancel Reschedule
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setStep(2)}
+                    className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                  >
+                    Back to Services
+                  </button>
+                )}
+                <button
+                  onClick={handleContinueFromStepThree}
+                  disabled={!canContinueStepThree}
+                  className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
+                >
+                  Continue to Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legacy combined booking step kept disabled to preserve old markup during transition */}
+      {false && step === 2 && (
         <>
           <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
             <div className="booking-step2-layout">
               <div className="booking-step2-column">
-                <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Stylist Selection *</label>
+                <div>
+                  <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Stylist Selection *</label>
+                  <div className="mt-1 text-xs font-medium text-[#6d4de6]">{stylistListHeading}</div>
+                </div>
                 {/* Keep select in DOM for compatibility with existing state shape and fallback behavior */}
                 <select
                   className="sr-only"
@@ -1808,7 +3255,7 @@ const BookAppointment = () => {
                 >
                   <option value="">Select Stylist</option>
                   <option value={AUTO_STYLIST_VALUE}>No Preference</option>
-                  {specializationScopedStylists.map(s => (
+                  {activeStylists.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
@@ -1819,7 +3266,7 @@ const BookAppointment = () => {
                     value={stylistSearch}
                     onChange={(e) => setStylistSearch(e.target.value)}
                     placeholder="Search stylist, role, specialty..."
-                    className="w-full border border-[#e7e1ef] rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#f8c8dc] focus:border-[#E75480]"
+                    className="w-full border border-[#e7e1ef] rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#d9ceff] focus:border-[#6d4de6]"
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
                     {stylistFilterOptions.map((option) => (
@@ -1829,7 +3276,7 @@ const BookAppointment = () => {
                         onClick={() => setStylistFilter(option.key)}
                         className={`px-3 py-1.5 rounded-full text-xs border transition ${
                           stylistFilter === option.key
-                            ? 'bg-[#E75480] text-white border-[#E75480]'
+                            ? 'bg-gradient-to-r from-[#6d4de6] to-[#7b5cf5] text-white border-[#6d4de6] shadow-[0_8px_18px_rgba(109,77,230,0.18)]'
                             : 'bg-[#faf8fd] text-[#5f4a70] border-[#e9e2f2] hover:bg-[#f3edf9]'
                         }`}
                       >
@@ -1838,38 +3285,18 @@ const BookAppointment = () => {
                     ))}
                   </div>
 
-                  {hasSelectedServicesForStylistFilter && (
-                    <div className="mt-3 space-y-2">
-                      {specializationFilterLoading && (
-                        <div className="rounded-lg border border-[#f3cade] bg-[#fff4f9] px-3 py-2 text-xs text-[#7e405a]">
-                          Filtering stylists based on selected services...
-                        </div>
-                      )}
-                      {!specializationFilterLoading && specializationFilterError && (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                          {specializationFilterError}
-                        </div>
-                      )}
-                      {!specializationFilterLoading && !specializationFilterError && specializationScopedStylists.length === 0 && (
-                        <div className="rounded-lg border border-dashed border-[#e9e2f2] bg-[#faf8fd] px-3 py-3 text-xs text-[#7c688f]">
-                          No stylists match the selected services. Try removing a service or choose No Preference.
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   <div className="mt-3 max-h-[560px] overflow-y-auto space-y-3 pr-1">
                     <button
                       type="button"
                       onClick={() => setSelectedStylist(AUTO_STYLIST_VALUE)}
                       className={`w-full rounded-lg border px-4 py-4 text-left transition ${
                         isAutoStylistSelected
-                          ? 'border-[#E75480] bg-[#fff4f9]'
+                          ? 'border-[#6d4de6] bg-[#f3efff]'
                           : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="h-12 w-12 rounded-full bg-[#fff1f7] text-[#b44d71] flex items-center justify-center text-lg">
+                        <div className="h-12 w-12 rounded-full bg-[#ede7ff] text-[#5b3cc4] flex items-center justify-center text-lg">
                           ⭐
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1877,14 +3304,14 @@ const BookAppointment = () => {
                           <div className="text-sm text-[#6f5b7e] mt-1">The system will choose an available stylist for your selected schedule.</div>
                         </div>
                         <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
-                          isAutoStylistSelected ? 'border-[#E75480] bg-[#E75480]' : 'border-[#d6c7ba]'
+                          isAutoStylistSelected ? 'border-[#6d4de6] bg-[#6d4de6]' : 'border-[#c9bcf1]'
                         }`}>
                           {isAutoStylistSelected && <span className="h-2 w-2 rounded-full bg-white" />}
                         </div>
                       </div>
                     </button>
 
-                    {visibleStylists.length === 0 && (!hasSelectedServicesForStylistFilter || specializationScopedStylists.length > 0) && (
+                    {visibleStylists.length === 0 && (
                       <div className="rounded-lg border border-dashed border-[#e9e2f2] bg-[#faf8fd] px-3 py-4 text-xs text-[#7c688f] text-center">
                         No stylists found for the current search/filter.
                       </div>
@@ -1907,11 +3334,10 @@ const BookAppointment = () => {
                       const specialty = Array.isArray(stylist?.specialties)
                         ? stylist.specialties.filter(Boolean).join(', ')
                         : (stylist?.specialties || '')
-                      const specializationNames = Array.isArray(stylistSpecializationNames[stylistId])
-                        ? stylistSpecializationNames[stylistId].filter(Boolean)
+                      const specializationNames = Array.isArray(stylist?.specialization_names)
+                        ? stylist.specialization_names.filter(Boolean)
                         : []
                       const metaLabel = specialty || specializationNames.join(', ') || stylist?.role || 'Stylist'
-                      const nextAvailable = stylist?.next_available || stylist?.nextAvailable || ''
                       const imageSrc = stylist?.image
                         ? (String(stylist.image).startsWith('http')
                           ? stylist.image
@@ -1929,7 +3355,7 @@ const BookAppointment = () => {
                             isDisabled
                               ? 'opacity-60 cursor-not-allowed bg-[#f8f4ef] border-[#eadfd5]'
                               : isSelected
-                                ? 'border-[#E75480] bg-[#fff4f9]'
+                                ? 'border-[#6d4de6] bg-[#f3efff]'
                                 : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
                           }`}
                         >
@@ -1940,7 +3366,7 @@ const BookAppointment = () => {
                                 <img
                                   src={imageSrc}
                                   alt={name}
-                                  className="absolute inset-0 h-full w-full object-cover"
+                                  className="absolute inset-0 h-full w-full object-contain bg-[#fff1f7] p-0.5"
                                   onError={(event) => {
                                     event.currentTarget.style.display = 'none'
                                   }}
@@ -1966,15 +3392,10 @@ const BookAppointment = () => {
                                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}`}>
                                   {statusLabel}
                                 </span>
-                                <span className="text-xs text-[#6f5b7e]">
-                                  {nextAvailable
-                                    ? `Next available: ${nextAvailable}`
-                                    : (status === 'off' || status === 'fully_booked' ? 'No slots today' : 'Next available: -')}
-                                </span>
                               </div>
                             </div>
                             <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
-                              isSelected ? 'border-[#E75480] bg-[#E75480]' : 'border-[#d6c7ba]'
+                              isSelected ? 'border-[#6d4de6] bg-[#6d4de6]' : 'border-[#c9bcf1]'
                             }`}>
                               {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
                             </div>
@@ -1996,7 +3417,7 @@ const BookAppointment = () => {
                       <label
                         key={s.id}
                         className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
-                          isSelected ? 'bg-[#fff4f9] border-[#E75480]' : 'border-[#ece6f4] hover:border-[#e7bdd0] hover:bg-[#fff9fc]'
+                          isSelected ? 'bg-[#f3efff] border-[#6d4de6]' : 'border-[#ece6f4] hover:border-[#d8ccff] hover:bg-[#faf7ff]'
                         }`}
                       >
                         <input
@@ -2022,13 +3443,13 @@ const BookAppointment = () => {
                             }
                             setSelectedSlot(null) // Reset slot when services change
                           }}
-                          className="w-5 h-5 text-[#E75480] rounded"
+                          className="w-5 h-5 text-[#6d4de6] rounded"
                         />
                         <div className="flex-1">
                           <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
                           {s.variants && s.variants.length > 0 ? (
                             <div className="text-sm text-[#5a4767] mt-1">
-                              <div className="font-medium text-[#E75480] mb-1.5">
+                              <div className="font-medium text-[#6d4de6] mb-1.5">
                                 {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
                               </div>
                               {isSelected && (
@@ -2050,7 +3471,7 @@ const BookAppointment = () => {
                                           })
                                           setSelectedSlot(null) // Reset slot when variant changes
                                         }}
-                                        className="w-3 h-3 text-[#E75480]"
+                                        className="w-3 h-3 text-[#6d4de6]"
                                       />
                                       <span className="text-sm text-[#4a3756]">
                                         {variant.name} - {currency(variant.price_cents)}
@@ -2081,7 +3502,7 @@ const BookAppointment = () => {
                     return sum + s.price_cents
                   }, 0)
                   return (
-                    <div className="text-sm font-semibold text-[#E75480] mt-3">
+                    <div className="text-sm font-semibold text-[#6d4de6] mt-3">
                       {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected |
                       Total: {currency(totalPrice)}
                     </div>
@@ -2101,24 +3522,22 @@ const BookAppointment = () => {
 
                     <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
                       <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Stylist</div>
-                      <div className="font-medium text-[#2C1338]">
-                        {isAutoStylistSelected
-                          ? (effectiveStylistData?.name
-                            ? `${effectiveStylistData.name} (Auto-assigned)`
-                            : 'No Preference (Auto-Assign)')
-                          : (selectedStylistData?.name || 'Not selected')}
-                      </div>
+                      <div className="font-medium text-[#2C1338]">{stylistSummaryLabel}</div>
                     </div>
 
                     <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
                       <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
-                      {selectedServicesLabel.length > 0 ? (
+                      {selectedServicesSummaryItems.length > 0 ? (
                         <ul className="mt-1 space-y-1">
-                          {selectedServicesLabel.slice(0, 3).map((serviceName) => (
-                            <li key={serviceName} className="text-xs text-[#4e3b5b]">{serviceName}</li>
+                          {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
+                            <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
+                              <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
+                              {' - '}
+                              <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
+                            </li>
                           ))}
-                          {selectedServicesLabel.length > 3 && (
-                            <li className="text-xs text-[#7c688f]">+{selectedServicesLabel.length - 3} more</li>
+                          {selectedServicesSummaryItems.length > 3 && (
+                            <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
                           )}
                         </ul>
                       ) : (
@@ -2174,30 +3593,40 @@ const BookAppointment = () => {
           </div>
 
           <div className="booking-step2-schedule-grid grid xl:grid-cols-2 gap-4">
-            <Calendar
-              month={calendarMonth}
-              year={calendarYear}
-              selectedDate={selectedDate}
-              onSelect={(date) => {
-                // date is already in YYYY-MM-DD format from Calendar component
-                const selected = new Date(date + 'T00:00:00')
-                const today = new Date()
-                today.setHours(0, 0, 0, 0)
-                if (selected >= today) {
-                  setSelectedDate(date)
-                  setSelectedSlot(null) // Reset slot when date changes
-                }
-              }}
-              onMonthChange={(month, year) => {
-                setCalendarMonth(month)
-                setCalendarYear(year)
-              }}
-            />
+            <div className="space-y-3">
+              <Calendar
+                month={calendarMonth}
+                year={calendarYear}
+                selectedDate={selectedDate}
+                closedDateMap={closedDateMap}
+                onSelect={(date) => {
+                  // date is already in YYYY-MM-DD format from Calendar component
+                  const selected = new Date(date + 'T00:00:00')
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
+                  if (selected >= today) {
+                    setHolidayStatusMessage('')
+                    setSelectedDate(date)
+                    setSelectedSlot(null) // Reset slot when date changes
+                  }
+                }}
+                onClosedDateSelect={handleClosedDateSelect}
+                onMonthChange={(month, year) => {
+                  setCalendarMonth(month)
+                  setCalendarYear(year)
+                }}
+              />
+              {(holidayStatusMessage || selectedClosedDateInfo?.message) && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {holidayStatusMessage || selectedClosedDateInfo?.message}
+                </div>
+              )}
+            </div>
             <SlotList 
               slots={availability} 
               selected={selectedSlot}
               loading={availabilityLoading}
-              ready={Boolean((effectiveStylistId || stylists[0]?.id) && (selectedService || selectedServices.length > 0))}
+              ready={Boolean(hasStylistSelectionContext && (selectedService || selectedServices.length > 0) && !selectedClosedDateInfo)}
               onSelect={(slot) => {
                 // Verify slot is available
                 if (slot.available === false) {
@@ -2227,12 +3656,29 @@ const BookAppointment = () => {
                   availSlot.available !== false
                 )
                 if (isAvailable) {
-                  setSelectedSlot(slot)
+                  if (isAutoStylistSelected) {
+                    const assignedStylistId = pickAutoAssignedStylistId(slot, selectedSlot?.assignedStylistId)
+                    if (!assignedStylistId) {
+                      toast.error('No stylist is available for that slot right now. Please choose another time.')
+                      return
+                    }
+
+                    setSelectedSlot({
+                      ...slot,
+                      assignedStylistId,
+                    })
+                    return
+                  }
+
+                  setSelectedSlot({
+                    ...slot,
+                    assignedStylistId: '',
+                  })
                 } else {
                   toast.error('This time slot is no longer available. Please refresh and choose another time.')
                   fetchAvailability()
                 }
-              }} 
+              }}
             />
           </div>
 
@@ -2276,8 +3722,41 @@ const BookAppointment = () => {
         </>
       )}
 
-      {/* Step 3: Payment */}
-      {step === 3 && (payment.method === 'online' || payment.method === 'on_hand') && (() => {
+      {step === 4 && rescheduling && (
+        <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold mb-4 text-gray-900">Confirm Reschedule</h2>
+          <div className="bg-blue-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold mb-2 text-gray-900">Appointment Details</h3>
+            <div className="text-sm space-y-1 text-gray-700">
+              <div><strong>Customer:</strong> {booking.name || 'Not provided'}</div>
+              {booking.email && <div><strong>Email:</strong> {booking.email}</div>}
+              {booking.phone && <div><strong>Phone:</strong> {booking.phone}</div>}
+              <div><strong>Services:</strong> {selectedServicesSummaryItems.map(item => item.label).join(', ') || 'Not selected'}</div>
+              <div><strong>Date:</strong> {selectedDateLabel}</div>
+              <div><strong>Time:</strong> {selectedTimeLabel}</div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => setStep(3)}
+              className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleReschedule}
+              disabled={!selectedSlot}
+              className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
+            >
+              Confirm Reschedule
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Confirm Booking */}
+      {step === 4 && !rescheduling && (payment.method === 'online' || payment.method === 'on_hand') && (() => {
         const serviceIdsForCalc = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
         const selectedServicesData = services.filter(s => serviceIdsForCalc.includes(s.id.toString()))
         // Calculate total: use variant price if selected, otherwise service price
@@ -2303,14 +3782,14 @@ const BookAppointment = () => {
         
         return (
           <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
-            <h2 className="text-xl font-bold mb-4 text-gray-900">Payment Details</h2>
+            <h2 className="text-xl font-bold mb-4 text-gray-900">Confirm Booking</h2>
 
             {/* Payment Method Selection (moved from Step 2) */}
             <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4 mb-4">
               <h3 className="font-semibold mb-3 text-[#2C1338]">Payment Method</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  payment.method === 'on_hand' ? 'border-[#E75480] bg-[#fff4f9]' : 'border-[#e4dced] hover:border-[#d4c7e2]'
+                  payment.method === 'on_hand' ? 'border-[#6d4de6] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
                 }`}>
                   <input
                     type="radio"
@@ -2333,7 +3812,7 @@ const BookAppointment = () => {
                   </div>
                 </label>
                 <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  payment.method === 'online' ? 'border-[#E75480] bg-[#fff4f9]' : 'border-[#e4dced] hover:border-[#d4c7e2]'
+                  payment.method === 'online' ? 'border-[#6d4de6] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
                 }`}>
                   <input
                     type="radio"
@@ -2373,18 +3852,10 @@ const BookAppointment = () => {
               <h3 className="font-semibold mb-2 text-gray-900">Booking Summary</h3>
               <div className="text-sm space-y-1 text-gray-700">
                 <div><strong>Total Amount:</strong> {currency(totalAmountCents)}</div>
-                <div><strong>Services:</strong> {selectedServicesData.map(s => s.name).join(', ')}</div>
-                <div>
-                  <strong>Stylist:</strong>{' '}
-                  {isAutoStylistSelected
-                    ? (effectiveStylistData?.name
-                      ? `${effectiveStylistData.name} (Auto-assigned from No Preference)`
-                      : 'Auto-assigning stylist')
-                    : (selectedStylistData?.name || 'Not selected')}
-                </div>
-                <div><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                <div><strong>Services:</strong> {selectedServicesSummaryItems.map(item => item.label).join(', ')}</div>
+                <div><strong>Date:</strong> {selectedDateLabel}</div>
                 {selectedSlot && (
-                  <div><strong>Time:</strong> {new Date(selectedSlot.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}</div>
+                  <div><strong>Time:</strong> {selectedTimeLabel}</div>
                 )}
               </div>
             </div>
@@ -2565,7 +4036,7 @@ const BookAppointment = () => {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
                 className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
               >
                 Back
@@ -2588,18 +4059,22 @@ const BookAppointment = () => {
 
       {receipt && receipt.id && (
         <ReceiptModal 
-          appointment={receipt} 
+          appointment={receipt}
+          isRescheduleReceipt={isRescheduleFlow}
           onClose={() => {
             clearBookingDraft()
-            localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
-            localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
-            localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+            if (!isRescheduleFlow) {
+              localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
+              localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
+              localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+            }
             setReceipt(null)
+            setRescheduling(null)
             setStep(1)
             setSelectedSlot(null)
             // Keep email/phone in form for easy re-booking, but clear other fields
-            setBooking({ name: '', email: booking.email, phone: booking.phone, address: '' })
-            setFormErrors({ email: '', phone: '', payment: '' })
+            setBooking({ name: '', email: booking.email, phone: booking.phone, address: '', privacyConsent: false })
+            setFormErrors({ email: '', phone: '', payment: '', privacy: '' })
             navigate('/customer', { replace: true })
           }} 
         />
@@ -2610,6 +4085,3 @@ const BookAppointment = () => {
 }
 
 export default BookAppointment
-
-
-

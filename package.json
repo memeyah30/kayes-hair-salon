@@ -2,7 +2,14 @@
   "name": "tholits-salon",
   "private": true,
   "scripts": {
-    "dev:all": "concurrently \"cd backend && php artisan serve\" \"cd frontend && npm run dev\""
+    "dev": "npm run dev:all",
+    "dev:all": "concurrently \"cd backend && php artisan serve\" \"cd frontend && npm run dev\"",
+    "dev:backend": "cd backend && php artisan serve",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "clear:laravel": "cd backend && php artisan view:clear && php artisan cache:clear && php artisan config:clear && php artisan route:clear",
+    "build:frontend": "npm --prefix frontend run build",
+    "sync:frontend": "node scripts/sync-frontend-to-backend.mjs",
+    "build:deploy": "npm run build:frontend && npm run sync:frontend"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
+import Pagination from '../../components/Pagination'
 
 const getManilaDateInput = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -50,6 +51,15 @@ const SalesMonitoring = () => {
   const [sales, setSales] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: 0,
+    to: 0,
+  })
   const [dateRange, setDateRange] = useState(() => getDateRangeFromSearch(location.search, manilaToday))
   const [filters, setFilters] = useState({
     transaction_type: '',
@@ -66,11 +76,18 @@ const SalesMonitoring = () => {
   }, [location.search, manilaToday])
 
   useEffect(() => {
-    loadSales()
     loadStats()
   }, [dateRange, filters])
 
-  const loadSales = async () => {
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [dateRange, filters])
+
+  useEffect(() => {
+    loadSales(currentPage)
+  }, [currentPage, dateRange, filters])
+
+  const loadSales = async (page = 1) => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -78,12 +95,32 @@ const SalesMonitoring = () => {
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
       if (filters.transaction_type) params.append('transaction_type', filters.transaction_type)
       if (filters.stylist_id) params.append('stylist_id', filters.stylist_id)
+      params.append('paginate', '1')
+      params.append('per_page', '10')
+      params.append('page', String(page))
 
       const res = await api.get(`/sales?${params.toString()}`)
-      setSales(res.data)
+      setSales(res.data?.data || [])
+      setPagination({
+        current_page: res.data?.current_page || 1,
+        last_page: res.data?.last_page || 1,
+        per_page: res.data?.per_page || 10,
+        total: res.data?.total || 0,
+        from: res.data?.from || 0,
+        to: res.data?.to || 0,
+      })
     } catch (e) {
       toast.error('Failed to load sales')
       console.error(e)
+      setSales([])
+      setPagination({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0,
+        from: 0,
+        to: 0,
+      })
     } finally {
       setLoading(false)
     }
@@ -342,6 +379,13 @@ const SalesMonitoring = () => {
                 </div>
                 {sales.length === 0 && (
                   <div className="py-8 text-center text-[#6B6B6B]">No sales found for the selected period</div>
+                )}
+                {sales.length > 0 && (
+                  <Pagination
+                    pagination={pagination}
+                    onPageChange={setCurrentPage}
+                    loading={loading}
+                  />
                 )}
               </>
             )}

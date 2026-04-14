@@ -1,15 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const backendOrigin = process.env.VITE_BACKEND_ORIGIN || 'http://127.0.0.1:8000'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: true,
+    hmr: {
+      host: '127.0.0.1',
+      port: 5173,
+    },
+    watch: {
+      // OneDrive + Windows can miss file events; polling keeps HMR reliable.
+      usePolling: true,
+      interval: 250,
+    },
     proxy: {
+      '^/(storage|uploads)': {
+        target: backendOrigin,
+        changeOrigin: true,
+        secure: false,
+      },
       // Proxy API calls to Laravel backend
       // Only proxy requests that are clearly API calls (POST/PUT/PATCH/DELETE or have JSON accept header)
       '^/(api|csrf-token|login|logout|me|services|stylists|appointments|dashboard|admin|manager|inventory|sales|ratings|holidays|payment-accounts|locations|managers)': {
-        target: 'http://localhost:8000',
+        target: backendOrigin,
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {

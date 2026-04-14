@@ -28,6 +28,28 @@ const StylistAppointments = () => {
     appointment.services && appointment.services.length > 0
       ? appointment.services
       : (appointment.service ? [appointment.service] : [])
+  const getServiceVariant = (service) => {
+    const variantId = service?.pivot?.service_variant_id
+    if (!variantId || !Array.isArray(service?.variants)) return null
+    return service.variants.find((variant) => String(variant.id) === String(variantId)) || null
+  }
+  const getServiceName = (service) => {
+    if (!service) return 'Service'
+    const variant = getServiceVariant(service)
+    if (variant?.name) return `${service.name || 'Service'} - ${variant.name}`
+    return service.name || 'Service'
+  }
+  const getServicePriceCents = (service) => {
+    const variant = getServiceVariant(service)
+    const price = variant?.price_cents ?? service?.price_cents ?? 0
+    const parsed = Number(price)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  const getAppointmentTotalPriceCents = (appointment) => {
+    const storedTotal = Number(appointment?.total_amount_cents)
+    if (Number.isFinite(storedTotal)) return storedTotal
+    return getAppointmentServices(appointment).reduce((sum, service) => sum + getServicePriceCents(service), 0)
+  }
 
   const toManilaDate = (value) => {
     try {
@@ -166,7 +188,7 @@ const StylistAppointments = () => {
       }
 
       if (normalizedSearch) {
-        const serviceNames = getAppointmentServices(apt).map((s) => s.name || '').join(' ').toLowerCase()
+        const serviceNames = getAppointmentServices(apt).map((service) => getServiceName(service)).join(' ').toLowerCase()
         const customerName = (apt.customer_name || '').toLowerCase()
         const customerPhone = (apt.customer_phone || '').toLowerCase()
         if (
@@ -328,8 +350,8 @@ const StylistAppointments = () => {
                 <tbody className="divide-y divide-[#ece2ff]">
                   {sortedAppointments.map((apt) => {
                     const appointmentServices = getAppointmentServices(apt)
-                    const totalPrice = appointmentServices.reduce((sum, service) => sum + (service?.price_cents || 0), 0)
-                    const primaryService = appointmentServices[0]?.name || 'Service'
+                    const totalPrice = getAppointmentTotalPriceCents(apt)
+                    const primaryService = getServiceName(appointmentServices[0])
                     const extraCount = Math.max(appointmentServices.length - 1, 0)
                     const startDate = new Date(getStart(apt))
                     const canModify = apt.status === 'booked'

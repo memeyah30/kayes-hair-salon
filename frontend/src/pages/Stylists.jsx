@@ -1,7 +1,13 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
+import { resolveAssetUrl } from '../utils/runtime'
+import './Stylists.css'
+
+const imageUrl = (path) => {
+  return resolveAssetUrl(path)
+}
 
 const Stylists = () => {
   const navigate = useNavigate()
@@ -16,7 +22,7 @@ const Stylists = () => {
     try {
       setLoading(true)
       const res = await api.get('/stylists')
-      setStylists(res.data)
+      setStylists(res.data || [])
     } catch (e) {
       console.error('API Error:', e)
       toast.error(`Failed to load data from API: ${e.message || 'Check console for details'}`)
@@ -25,72 +31,79 @@ const Stylists = () => {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-4 md:p-6">
-        <div className="text-center py-8">Loading...</div>
-      </div>
-    )
-  }
-
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => navigate('/')}
-          className="px-4 py-1 bg-transparent text-slate-700 hover:text-slate-900 text-4xl leading-none transition-all duration-300 ease-out hover:-translate-y-1 hover:drop-shadow"
-        >
-          {'<'}
-        </button>
-        <h1 className="text-2xl font-bold">Stylists</h1>
-      </div>
-      
-      <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {stylists.map(s => (
-            <div key={s.id} className="border rounded-lg p-4 transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:shadow-2xl hover:ring-2 hover:ring-blue-200">
-              {s.image ? (
-                <img
-                  src={`http://localhost:8000/${s.image}`}
-                  alt={s.name}
-                  className="w-full h-48 object-cover rounded-lg mb-3"
-                  onError={(e) => {
-                    e.target.style.display = 'none'
-                  }}
-                />
-              ) : (
-                <div className="w-full h-48 bg-gray-200 rounded-lg mb-3 flex items-center justify-center text-gray-400">
-                  No Image
-                </div>
-              )}
-              <div className="font-semibold text-lg mb-2">{s.name}</div>
-              <div className="text-sm text-[#8f7a6f] mb-1">
-                <span className="font-medium">Email:</span> {s.email}
-              </div>
-              <div className="text-sm text-[#8f7a6f] mb-2">
-                <span className="font-medium">Phone:</span> {s.phone}
-              </div>
-              <div className={`inline-block px-2 py-1 rounded text-xs ${s.active ? 'bg-green-100 text-green-800' : 'bg-[#f7f1ec] text-[#3b2f2a]'}`}>
-                {s.active ? 'Active' : 'Inactive'}
-              </div>
-              {s.active && (
-                <button
-                  onClick={() => navigate(`/book?stylist=${s.id}`)}
-                  className="w-full mt-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition"
-                >
-                  Book with {s.name.split(' ')[0]}
-                </button>
-              )}
-            </div>
-          ))}
+    <div className="stylists-page">
+      <section className="stylists-shell">
+        <div className="stylists-header">
+          <button
+            onClick={() => navigate('/')}
+            className="stylists-back"
+            aria-label="Back to home"
+          >
+            {'<'}
+          </button>
+          <h1 className="stylists-title">Stylists</h1>
         </div>
-        {stylists.length === 0 && (
-          <div className="text-center py-8 text-[#9b857a]">No stylists yet.</div>
+
+        {loading ? (
+          <div className="stylists-empty">Loading stylists...</div>
+        ) : stylists.length === 0 ? (
+          <div className="stylists-empty">No stylists yet.</div>
+        ) : (
+          <div className="stylist-grid">
+            {stylists.map((stylist) => (
+              <article key={stylist.id} className="stylist-card">
+                <div className="image-container">
+                  {stylist.image ? (
+                    <img
+                      src={imageUrl(stylist.image)}
+                      alt={stylist.name}
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none'
+                        const fallback = event.currentTarget.nextSibling
+                        if (fallback) fallback.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div className={`image-placeholder ${stylist.image ? 'hidden' : ''}`}>
+                    No Image Available
+                  </div>
+                </div>
+
+                <div className="stylist-card-body">
+                  <h2 className="stylist-name">{stylist.name}</h2>
+
+                  <div className="stylist-meta">
+                    <p>
+                      <span>Email:</span> {stylist.email || 'Not provided'}
+                    </p>
+                    <p>
+                      <span>Phone:</span> {stylist.phone || 'Not provided'}
+                    </p>
+                  </div>
+
+                  <div className="stylist-status-row">
+                    <span className={`status-badge ${stylist.active ? 'active' : 'inactive'}`}>
+                      {stylist.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  {stylist.active && (
+                    <button
+                      onClick={() => navigate(`/book?fresh=1&stylist=${stylist.id}`)}
+                      className="book-btn"
+                    >
+                      Book with {stylist.name}
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }
 
 export default Stylists
-

@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 
 class ManageBookingController extends Controller
 {
+    private const OTP_PURPOSE = 'manage_booking';
     private const OTP_EXPIRY_MINUTES = 10;
     private const OTP_MAX_ATTEMPTS = 5;
     private const TOKEN_EXPIRY_MINUTES = 60;
@@ -67,11 +68,13 @@ class ManageBookingController extends Controller
 
         CustomerOtp::query()
             ->where('email', $email)
+            ->where('purpose', self::OTP_PURPOSE)
             ->whereNull('used_at')
             ->update(['used_at' => now()]);
 
         CustomerOtp::create([
             'email' => $email,
+            'purpose' => self::OTP_PURPOSE,
             'otp_hash' => Hash::make($otp),
             'expires_at' => now()->addMinutes(self::OTP_EXPIRY_MINUTES),
             'attempts' => 0,
@@ -119,6 +122,7 @@ class ManageBookingController extends Controller
 
         $otpRow = CustomerOtp::query()
             ->where('email', $email)
+            ->where('purpose', self::OTP_PURPOSE)
             ->whereNull('used_at')
             ->latest('id')
             ->first();
@@ -235,6 +239,7 @@ class ManageBookingController extends Controller
 
         $response = $appointments->map(function (Appointment $appointment) use ($ratedIds, $appointmentRatingsById, $customerRatingsById) {
             $start = Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')->setTimezone('Asia/Manila');
+            $rescheduledAt = $appointment->getRawOriginal('rescheduled_at');
             $isOutsideLockWindow = $start->greaterThan(Carbon::now('Asia/Manila')->addHours(3));
             $isModifiableStatus = in_array($appointment->status, ['booked', 'pending', 'confirmed'], true);
             $hasRating = $ratedIds->has($appointment->id);
@@ -264,6 +269,12 @@ class ManageBookingController extends Controller
                 'appointment_time' => $start->format('H:i'),
                 'status' => $this->mapStatusForCustomer((string) $appointment->status),
                 'raw_status' => $appointment->status,
+                'is_rescheduled' => !is_null($rescheduledAt),
+                'rescheduled_at' => $rescheduledAt
+                    ? Carbon::parse($rescheduledAt, 'UTC')->setTimezone('Asia/Manila')->toIso8601String()
+                    : null,
+                'rescheduled_by_type' => $appointment->rescheduled_by_type,
+                'reschedule_reason' => $appointment->reschedule_reason,
                 'total_amount' => round($totalAmountCents / 100, 2),
                 'total_amount_cents' => $totalAmountCents,
                 'can_reschedule' => $isModifiableStatus && $isOutsideLockWindow,
@@ -442,6 +453,7 @@ class ManageBookingController extends Controller
         CustomerRating::query()->updateOrCreate(
             ['appointment_id' => $appointment->id],
             [
+                // Ratings should still work for completed appointments that remain unassigned.
                 'stylist_id' => $appointment->stylist_id,
                 'customer_name' => $appointment->customer_name,
                 'customer_email' => $email,

@@ -1,20 +1,35 @@
 import { NavLink } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
+const SIDEBAR_STATE_KEY = 'dashboard_sidebar_open'
+
+const getInitialSidebarState = () => {
+  if (typeof window === 'undefined') return false
+
+  const storedState = window.sessionStorage.getItem(SIDEBAR_STATE_KEY)
+  if (storedState !== 'true') return false
+
+  return window.matchMedia('(min-width: 768px)').matches
+}
+
+const isDesktopViewport = () => (
+  typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+)
+
 const Sidebar = ({ userType = 'customer', onLogout }) => {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(getInitialSidebarState)
+  const [showInventoryModal, setShowInventoryModal] = useState(false)
 
   const adminLinks = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/manage/services', label: 'Services', icon: 'services' },
-    { to: '/admin/manage/stylists', label: 'Staff', icon: 'staff' },
+    { to: '/admin/manage/stylists', label: 'Staff Profiles', icon: 'staff' },
     { to: '/admin/staff/pending', label: 'Approvals', icon: 'reviews' },
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
     { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },
     { to: '/admin/payment-accounts', label: 'Payments', icon: 'payments' },
-    { to: '/admin/inventory', label: 'Inventory', icon: 'inventory' },
     { to: '/admin/sales', label: 'Reports', icon: 'reports' },
   ]
 
@@ -28,17 +43,10 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },
   ]
 
-  const stylistLinks = [
-    { to: '/stylist/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/stylist/appointments', label: 'My Appointments', icon: 'appointments' },
-    { to: '/stylist/schedule', label: 'My Schedule', icon: 'calendar' },
-  ]
-
   const customerLinks = [
     { to: '/customer', label: 'Dashboard', icon: 'dashboard' },
     { to: '/book', label: 'Book Appointment', icon: 'appointments' },
     { to: '/manage-booking/start', label: 'Manage Booking', icon: 'calendar' },
-    { to: '/stylists', label: 'Stylists', icon: 'staff' },
     { to: '/services', label: 'Services', icon: 'services' },
   ]
 
@@ -46,9 +54,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     ? adminLinks
     : userType === 'manager'
       ? managerLinks
-      : userType === 'stylist'
-        ? stylistLinks
-        : customerLinks
+      : customerLinks
 
   const isAdminTheme = userType !== 'customer'
 
@@ -140,6 +146,8 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
   }
 
   useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
     const toggle = () => setIsOpen((prev) => !prev)
     const open = () => setIsOpen(true)
     const close = () => setIsOpen(false)
@@ -155,168 +163,287 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.sessionStorage.setItem(SIDEBAR_STATE_KEY, String(isOpen))
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || isDesktopViewport()) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isOpen])
+
+  const handleSidebarLinkClick = (event, link, shouldCloseMenu = false) => {
+    const shouldCloseSidebar = shouldCloseMenu && !isDesktopViewport()
+
+    if (link.comingSoon) {
+      event.preventDefault()
+      event.stopPropagation()
+      if (shouldCloseSidebar) {
+        setIsOpen(false)
+      }
+      setShowInventoryModal(true)
+      return
+    }
+
+    if (shouldCloseSidebar) {
+      setIsOpen(false)
+    }
+  }
+
+  const sidebarToggleButtonClass = isAdminTheme
+    ? 'bg-white/16 text-white border border-white/14 shadow-[0_12px_24px_rgba(28,10,72,0.16)] hover:bg-white/24'
+    : 'bg-slate-800 text-white border border-slate-700 hover:bg-slate-700'
+
   return (
     <>
+      {/* On desktop the layout keeps space for either the full drawer or the icon-only rail. */}
+      <div
+        aria-hidden="true"
+        className={`hidden md:block shrink-0 transition-[width] duration-300 ease-out ${
+          isOpen ? 'w-[var(--dashboard-sidebar-width)]' : 'w-[var(--dashboard-sidebar-collapsed-width)]'
+        }`}
+      />
+
+      {/* Closed desktop state keeps a slim rail so feature icons stay visible without covering content. */}
       <aside
-        className={`hidden md:flex w-20 shrink-0 flex-col border-r ${
+        aria-hidden={isOpen ? 'true' : undefined}
+        className={`hidden md:flex fixed left-0 top-0 z-40 h-screen w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center py-5 transition-[opacity,transform] duration-300 ease-out ${
+          isOpen ? 'pointer-events-none -translate-x-3 opacity-0' : 'translate-x-0 opacity-100'
+        } ${
           isAdminTheme
-            ? 'bg-gradient-to-b from-[#5e3eb3] via-[#5635aa] to-[#472a90] border-white/10 text-white shadow-[inset_-1px_0_0_rgba(255,255,255,0.08)]'
-            : 'bg-slate-900 border-slate-800'
+            ? 'bg-gradient-to-b from-[#5f3eb4] via-[#5635aa] to-[#472a90] text-white border-r border-white/10 shadow-[18px_0_38px_rgba(28,10,72,0.18)]'
+            : 'bg-slate-900 text-white shadow-[18px_0_38px_rgba(15,23,42,0.18)]'
         }`}
       >
-        <div className={`h-[74px] flex items-center justify-center border-b ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
+        <div className="pb-6">
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-              isAdminTheme
-                ? 'border border-white/40 bg-white/95 text-[#5d41b7] shadow-[0_12px_28px_rgba(33,10,86,0.22)] hover:bg-white'
-                : 'bg-slate-800 text-white'
-            }`}
-            aria-label="Open full side panel"
-            title="Open full side panel"
+            className={`flex h-12 w-12 items-center justify-center rounded-2xl transition ${sidebarToggleButtonClass}`}
+            aria-label="Open side panel"
+            title="Open side panel"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
         </div>
 
-        <nav className="flex-1 px-2 py-3 space-y-2">
+        <nav className="flex flex-1 flex-col items-center gap-3 px-2">
           {links.map((link) => (
             <NavLink
-              key={link.to}
+              key={`${link.to}-collapsed`}
               to={link.to}
               title={link.label}
+              aria-label={link.label}
+              aria-disabled={link.comingSoon ? 'true' : undefined}
               className={({ isActive }) => (
-                `h-12 w-12 mx-auto rounded-xl flex items-center justify-center transition ${
-                  isActive
-                    ? 'bg-white text-[#5437a9] shadow-[0_14px_30px_rgba(26,9,67,0.28)]'
-                    : 'text-white hover:bg-white/16 hover:text-white'
+                `flex h-12 w-12 items-center justify-center rounded-2xl transition ${
+                  link.comingSoon
+                    ? 'text-white/70 hover:bg-white/10 hover:text-white/85 opacity-65'
+                    : isActive
+                      ? 'bg-white text-[#5437a9] shadow-[0_14px_30px_rgba(26,9,67,0.24)]'
+                      : 'text-white hover:bg-white/16 hover:text-white'
                 }`
               )}
+              onClick={(event) => handleSidebarLinkClick(event, link)}
             >
               {renderIcon(link.icon)}
             </NavLink>
           ))}
         </nav>
 
-        {(userType === 'admin' || userType === 'manager' || userType === 'stylist') && onLogout && (
-          <div className={`px-2 pb-3 border-t ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
+        {(userType === 'admin' || userType === 'manager') && onLogout && (
+          <div className="px-2 pb-5">
             <button
               type="button"
               onClick={onLogout}
-              className={`h-12 w-12 mt-3 mx-auto rounded-xl flex items-center justify-center ${
-                isAdminTheme ? 'bg-[#d96c82] text-white hover:bg-[#c85f74]' : 'bg-red-600 text-white'
-              }`}
               title="Logout"
               aria-label="Logout"
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#d96c82] text-white transition hover:bg-[#c85f74] shadow-[0_12px_24px_rgba(44,12,80,0.18)]"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l5-5-5-5" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20 19V5a2 2 0 0 0-2-2h-4" />
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17l5-5-5-5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H9" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5" />
               </svg>
             </button>
           </div>
         )}
       </aside>
 
-      <div className={`fixed inset-0 z-40 ${isOpen ? '' : 'pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
         <div
-          className={`absolute inset-0 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'} ${
+          className={`absolute inset-0 ${
             isAdminTheme ? 'bg-[#120628]/52' : 'bg-black/40'
           }`}
           onClick={() => setIsOpen(false)}
           aria-hidden="true"
         />
+      </div>
 
-        <aside
-          className={`absolute left-0 top-0 h-full w-72 flex flex-col transform transition-transform ${
-            isOpen ? 'translate-x-0' : '-translate-x-full'
-          } ${
-            isAdminTheme
-              ? 'bg-gradient-to-b from-[#5f3eb4] via-[#5635aa] to-[#472a90] text-white border-r border-white/10'
-              : 'bg-slate-900 text-white'
+      <aside
+        id="dashboard-sidebar"
+        className={`fixed left-0 top-0 z-50 h-screen w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col transform transition-[transform,box-shadow] duration-300 ease-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${
+          isAdminTheme
+            ? 'bg-gradient-to-b from-[#5f3eb4] via-[#5635aa] to-[#472a90] text-white border-r border-white/10 shadow-[18px_0_38px_rgba(28,10,72,0.28)]'
+            : 'bg-slate-900 text-white shadow-[18px_0_38px_rgba(15,23,42,0.28)]'
+        }`}
+        role="dialog"
+        aria-modal={!isDesktopViewport()}
+      >
+        <div
+          className={`px-5 py-4 text-base font-semibold flex items-center justify-between ${
+            isAdminTheme ? 'border-b border-white/10' : 'border-b border-slate-800'
           }`}
-          role="dialog"
-          aria-modal="true"
         >
-          <div
-            className={`px-5 py-4 text-base font-semibold flex items-center justify-between ${
-              isAdminTheme ? 'border-b border-white/10' : 'border-b border-slate-800'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-2xl bg-white/22 border border-white/16 flex items-center justify-center overflow-hidden">
-                <img
-                  src="/logo.png"
-                  alt="Kaye's Hair Salon logo"
-                  className="h-10 w-10 object-contain"
-                />
-              </span>
-              <div className="leading-tight">
-                <div className="text-sm font-semibold">Kaye&apos;s Hair Salon</div>
-                <div className={`text-xs ${isAdminTheme ? 'text-white/68' : 'text-slate-300'}`}>and Spa</div>
-              </div>
+          <div className="flex items-center gap-3">
+            <span className="h-12 w-12 rounded-2xl bg-white/22 border border-white/16 flex items-center justify-center overflow-hidden">
+              <img
+                src="/logo.png"
+                alt="Kaye's Hair Salon logo"
+                className="h-10 w-10 object-contain"
+              />
+            </span>
+            <div className="leading-tight">
+              <div className="text-sm font-semibold">Kaye&apos;s Hair Salon</div>
+              <div className={`text-xs ${isAdminTheme ? 'text-white/68' : 'text-slate-300'}`}>and Spa</div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className={`text-sm ${isAdminTheme ? 'text-white/68 hover:text-white' : 'text-slate-300 hover:text-white'}`}
-              aria-label="Close menu"
-            >
-              Close
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className={`flex h-11 w-11 items-center justify-center rounded-2xl transition ${sidebarToggleButtonClass}`}
+            aria-label="Close side panel"
+            title="Close side panel"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
 
-          <nav className="flex-1 px-4 py-4 space-y-2 text-sm">
-            {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className={({ isActive }) => (
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
-                    isActive
+        <nav className="flex-1 px-4 py-4 space-y-2 text-sm">
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              aria-disabled={link.comingSoon ? 'true' : undefined}
+              className={({ isActive }) => (
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                  link.comingSoon
+                    ? 'text-white/70 hover:bg-white/10 hover:text-white/85 opacity-65'
+                    : isActive
                       ? 'bg-white text-[#5437a9] shadow-[0_14px_30px_rgba(26,9,67,0.24)]'
                       : 'text-white hover:bg-white/16 hover:text-white'
-                  }`
-                )}
-                onClick={() => setIsOpen(false)}
-              >
-                <span
-                  className={`h-9 w-9 rounded-xl flex items-center justify-center ${
-                    isAdminTheme
-                      ? 'bg-white/12 border border-white/20'
-                      : 'bg-slate-800 text-white'
-                  }`}
-                >
-                  {renderIcon(link.icon)}
-                </span>
-                <span className="font-medium">{link.label}</span>
-              </NavLink>
-            ))}
-          </nav>
-
-          {(userType === 'admin' || userType === 'manager' || userType === 'stylist') && onLogout && (
-            <div className={`px-5 py-4 border-t ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
-              <button
-                onClick={() => {
-                  setIsOpen(false)
-                  onLogout()
-                }}
-                className={`w-full px-3 py-2 rounded text-sm ${
+                }`
+              )}
+              onClick={(event) => handleSidebarLinkClick(event, link, true)}
+            >
+              <span
+                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
                   isAdminTheme
-                    ? 'bg-[#d96c82] hover:bg-[#c85f74] text-white'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
+                    ? 'bg-white/12 border border-white/20'
+                    : 'bg-slate-800 text-white'
                 }`}
               >
-                Logout
+                {renderIcon(link.icon)}
+              </span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="font-medium">{link.label}</span>
+                {link.comingSoon && (
+                  <span className="rounded-full border border-white/35 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/90">
+                    Coming Soon
+                  </span>
+                )}
+              </div>
+            </NavLink>
+          ))}
+        </nav>
+
+        {(userType === 'admin' || userType === 'manager') && onLogout && (
+          <div className={`px-5 py-4 border-t ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
+            <button
+              onClick={() => {
+                setIsOpen(false)
+                onLogout()
+              }}
+              className={`w-full px-3 py-2 rounded text-sm ${
+                isAdminTheme
+                  ? 'bg-[#d96c82] hover:bg-[#c85f74] text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+            >
+              Logout
+            </button>
+          </div>
+        )}
+      </aside>
+
+      {showInventoryModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[#120628]/55"
+            onClick={() => setShowInventoryModal(false)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inventory-coming-soon-title"
+            className="relative w-full max-w-md rounded-[22px] border border-[#DDD6FE] bg-white p-5 shadow-[0_22px_44px_rgba(27,18,55,0.22)] sm:p-6"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="inventory-coming-soon-title" className="text-xl font-semibold text-[#24173f]">
+                  Feature Not Available
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#6B6B6B]">
+                  The Inventory module is reserved for future enhancements and is not included in the current system scope.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInventoryModal(false)}
+                className="rounded-full border border-[#DDD6FE] px-3 py-1 text-sm text-[#6F4ED0] transition hover:bg-[#F6F2FF]"
+              >
+                Close
               </button>
             </div>
-          )}
-        </aside>
-      </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowInventoryModal(false)}
+                className="rounded-xl bg-gradient-to-r from-[#6f4ed0] to-[#8867df] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(43,20,97,0.24)] transition hover:from-[#6546c4] hover:to-[#7b5cd2]"
+              >
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

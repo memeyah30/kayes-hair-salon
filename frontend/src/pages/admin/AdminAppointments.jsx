@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
+import Pagination from '../../components/Pagination'
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MOBILE_TABS = [
@@ -51,6 +52,23 @@ const formatTimeKeyLabel = (timeKey) => {
   const suffix = hour >= 12 ? 'PM' : 'AM'
   const displayHour = ((hour + 11) % 12) + 1
   return `${displayHour}:${String(minute).padStart(2, '0')} ${suffix}`
+}
+
+const isRescheduledAppointment = (appointment) => Boolean(appointment?.is_rescheduled || appointment?.rescheduled_at)
+
+const formatRescheduledTimestampLabel = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString('en-US', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
 }
 
 const buildMonthGrid = (monthDate) => {
@@ -105,6 +123,7 @@ const statusPillClass = (status) => {
   if (status === 'booked') return 'bg-[#DBEAFE] text-[#1D4ED8]'
   if (status === 'completed') return 'bg-[#DCFCE7] text-[#15803D]'
   if (status === 'cancelled') return 'bg-[#FEE2E2] text-[#B91C1C]'
+  if (status === 'missed') return 'bg-[#FDE68A] text-[#92400E]'
   return 'bg-[#F2EDFF] text-[#6B6B6B]'
 }
 
@@ -131,7 +150,9 @@ const sortByFifo = (a, b) => {
 
 const AdminAppointments = () => {
   const [appointments, setAppointments] = useState([])
+  const [tableAppointments, setTableAppointments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [tableLoading, setTableLoading] = useState(false)
   const [filter, setFilter] = useState('all') // all, booked, completed, cancelled
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
   const [reschedulingAppointment, setReschedulingAppointment] = useState(null)
@@ -146,9 +167,10 @@ const AdminAppointments = () => {
   const [searchDate, setSearchDate] = useState('')
   const [searchServiceId, setSearchServiceId] = useState('')
   const [rangeFilter, setRangeFilter] = useState('')
-  const [completedDateScope, setCompletedDateScope] = useState('month') // day | month | year
+  const [statusDateScope, setStatusDateScope] = useState('month') // day | month | year
   const [openActionId, setOpenActionId] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [selectedProofLoadError, setSelectedProofLoadError] = useState(false)
   const [processingAppointmentId, setProcessingAppointmentId] = useState(null)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('')
@@ -157,6 +179,15 @@ const AdminAppointments = () => {
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
   const [mobileTab, setMobileTab] = useState('calendar')
+  const [tablePage, setTablePage] = useState(1)
+  const [tablePagination, setTablePagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: 0,
+    to: 0,
+  })
   const navigate = useNavigate()
   const location = useLocation()
   const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
@@ -168,6 +199,48 @@ const AdminAppointments = () => {
     appointment.services && appointment.services.length > 0
       ? appointment.services
       : (appointment.service ? [appointment.service] : [])
+  const getServiceVariant = (service) => {
+    const variantId = service?.pivot?.service_variant_id
+    if (!variantId || !Array.isArray(service?.variants)) return null
+    return service.variants.find((variant) => String(variant.id) === String(variantId)) || null
+  }
+  const getServiceName = (service) => {
+    if (!service) return 'Service'
+    const variant = getServiceVariant(service)
+    if (variant?.name) return `${service.name || 'Service'} - ${variant.name}`
+    return service.name || 'Service'
+  }
+  const getServicePriceCents = (service) => {
+    const variant = getServiceVariant(service)
+    const price = variant?.price_cents ?? service?.price_cents ?? 0
+    const parsed = Number(price)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  const getAppointmentTotalPriceCents = (appointment) => {
+    const storedTotal = Number(appointment?.total_amount_cents)
+    if (Number.isFinite(storedTotal)) return storedTotal
+    return getAppointmentServices(appointment).reduce((sum, service) => sum + getServicePriceCents(service), 0)
+  }
+  const getAppointmentAmountPaidCents = (appointment) => {
+    const storedAmountPaid = Number(appointment?.amount_paid_cents)
+    if (Number.isFinite(storedAmountPaid)) return Math.max(0, storedAmountPaid)
+
+    const totalAmountCents = getAppointmentTotalPriceCents(appointment)
+    const modeOfPayment = String(appointment?.mode_of_payment || '').toLowerCase().trim()
+    if (modeOfPayment === 'full') return totalAmountCents
+
+    const downpaymentAmountCents = Number(appointment?.downpayment_amount_cents)
+    if (Number.isFinite(downpaymentAmountCents)) return Math.max(0, downpaymentAmountCents)
+
+    return 0
+  }
+  const getAppointmentRemainingBalanceCents = (appointment) => {
+    const storedRemainingBalance = Number(appointment?.remaining_balance_cents)
+    if (Number.isFinite(storedRemainingBalance)) return Math.max(0, storedRemainingBalance)
+
+    const totalAmountCents = getAppointmentTotalPriceCents(appointment)
+    return Math.max(0, totalAmountCents - getAppointmentAmountPaidCents(appointment))
+  }
   const getServiceDurationMinutes = (service) =>
     Number(service?.duration_minutes || service?.duration || service?.estimated_duration_minutes || 0)
   const formatManilaDate = (value) => {
@@ -228,8 +301,12 @@ const AdminAppointments = () => {
     if (statusParam) {
       if (statusParam === 'pending') {
         setFilter('booked')
-      } else if (['all', 'booked', 'confirmed', 'completed', 'cancelled'].includes(statusParam)) {
+        setStatusDateScope('month')
+      } else if (['all', 'booked', 'confirmed', 'completed', 'cancelled', 'missed'].includes(statusParam)) {
         setFilter(statusParam)
+        if (statusParam === 'booked' || statusParam === 'completed') {
+          setStatusDateScope('month')
+        }
       }
     }
 
@@ -255,8 +332,8 @@ const AdminAppointments = () => {
     setSearchDate('')
     setSearchServiceId('')
     setRangeFilter('')
-    if (nextFilter === 'completed') {
-      setCompletedDateScope('month')
+    if (nextFilter === 'booked' || nextFilter === 'completed') {
+      setStatusDateScope('month')
     }
     setSelectedDate('')
     setSelectedTimeSlot('')
@@ -291,20 +368,22 @@ const AdminAppointments = () => {
     return null
   }, [rangeFilter])
 
-  const completedDateWindow = useMemo(() => {
-    if (filter !== 'completed') return null
+  const hasScopedStatusDateFilter = filter === 'booked' || filter === 'completed'
+
+  const scopedStatusDateWindow = useMemo(() => {
+    if (!hasScopedStatusDateFilter) return null
     const anchorDate = searchDate || formatManilaDate(new Date())
     const parsed = parseDateKey(anchorDate)
     if (!parsed) return null
 
-    if (completedDateScope === 'year') {
+    if (statusDateScope === 'year') {
       return {
         start: `${parsed.year}-01-01`,
         end: `${parsed.year}-12-31`,
       }
     }
 
-    if (completedDateScope === 'month') {
+    if (statusDateScope === 'month') {
       const lastDay = new Date(parsed.year, parsed.month, 0).getDate()
       return {
         start: `${parsed.year}-${String(parsed.month).padStart(2, '0')}-01`,
@@ -313,7 +392,20 @@ const AdminAppointments = () => {
     }
 
     return { start: anchorDate, end: anchorDate }
-  }, [filter, completedDateScope, searchDate])
+  }, [hasScopedStatusDateFilter, searchDate, statusDateScope])
+
+  const tableDateWindow = useMemo(() => {
+    if (hasScopedStatusDateFilter && scopedStatusDateWindow) {
+      return scopedStatusDateWindow
+    }
+    if (searchDate) {
+      return { start: searchDate, end: searchDate }
+    }
+    if (rangeDates) {
+      return rangeDates
+    }
+    return null
+  }, [hasScopedStatusDateFilter, scopedStatusDateWindow, searchDate, rangeDates])
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -328,6 +420,14 @@ const AdminAppointments = () => {
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    setTablePage(1)
+  }, [filter, searchTerm, searchDate, searchServiceId, rangeFilter, statusDateScope])
+
+  useEffect(() => {
+    loadTableData(tablePage)
+  }, [tablePage, filter, searchTerm, searchDate, searchServiceId, rangeFilter, statusDateScope, tableDateWindow])
 
   const loadData = async () => {
     try {
@@ -344,6 +444,58 @@ const AdminAppointments = () => {
       toast.error('Failed to load data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadTableData = async (page = 1) => {
+    try {
+      setTableLoading(true)
+
+      const params = {
+        paginate: 1,
+        per_page: 10,
+        page,
+      }
+
+      if (filter !== 'all') {
+        params.status = filter
+      }
+      if (searchServiceId) {
+        params.service_id = searchServiceId
+      }
+      if (normalizedSearch) {
+        params.q = searchTerm.trim()
+      }
+      if (tableDateWindow?.start) {
+        params.start_date = tableDateWindow.start
+      }
+      if (tableDateWindow?.end) {
+        params.end_date = tableDateWindow.end
+      }
+
+      const res = await api.get('/appointments', { params })
+      setTableAppointments(res.data?.data || [])
+      setTablePagination({
+        current_page: res.data?.current_page || 1,
+        last_page: res.data?.last_page || 1,
+        per_page: res.data?.per_page || 10,
+        total: res.data?.total || 0,
+        from: res.data?.from || 0,
+        to: res.data?.to || 0,
+      })
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to load appointments')
+      setTableAppointments([])
+      setTablePagination({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0,
+        from: 0,
+        to: 0,
+      })
+    } finally {
+      setTableLoading(false)
     }
   }
 
@@ -391,7 +543,8 @@ const AdminAppointments = () => {
         toast.success('Appointment deleted successfully')
       }
       setOpenActionId(null)
-      void loadData()
+      await loadData()
+      await loadTableData(tablePage)
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to update appointment')
     } finally {
@@ -434,7 +587,8 @@ const AdminAppointments = () => {
         preferred_time: '',
         reschedule_reason: '',
       })
-      loadData()
+      await loadData()
+      await loadTableData(tablePage)
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to reschedule appointment')
     }
@@ -444,7 +598,7 @@ const AdminAppointments = () => {
     const appointmentServices = getAppointmentServices(apt)
     const confirmMessage = `Are you sure you want to permanently delete this appointment?\n\n` +
       `Customer: ${apt.customer_name}\n` +
-      `Service: ${appointmentServices[0]?.name || 'N/A'}\n` +
+      `Service: ${getServiceName(appointmentServices[0])}\n` +
       `Date: ${new Date(getStart(apt)).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT\n\n` +
       `This action cannot be undone.`
     
@@ -466,8 +620,7 @@ const AdminAppointments = () => {
         total += 1
         if (apt.status === 'completed') {
           completed += 1
-          const appointmentServices = getAppointmentServices(apt)
-          revenueCents += appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
+          revenueCents += getAppointmentTotalPriceCents(apt)
         }
         if (apt.status === 'booked' || apt.status === 'confirmed') {
           pending += 1
@@ -498,21 +651,21 @@ const AdminAppointments = () => {
     }
 
     const aptDate = toManilaDate(getStart(apt))
-    if (filter === 'completed' && completedDateWindow) {
-      if (!aptDate || aptDate < completedDateWindow.start || aptDate > completedDateWindow.end) return false
+    if (hasScopedStatusDateFilter && scopedStatusDateWindow) {
+      if (!aptDate || aptDate < scopedStatusDateWindow.start || aptDate > scopedStatusDateWindow.end) return false
     } else if (searchDate) {
       if (aptDate !== searchDate) return false
     } else if (rangeDates) {
       if (!aptDate || aptDate < rangeDates.start || aptDate > rangeDates.end) return false
     }
 
-    if (normalizedSearch) {
-      const customerName = (apt.customer_name || '').toLowerCase()
-      const customerPhone = (apt.customer_phone || '').toLowerCase()
-      const serviceNames = appointmentServices.map(s => s.name || '').join(' ').toLowerCase()
-      if (
-        !customerName.includes(normalizedSearch) &&
-        !customerPhone.includes(normalizedSearch) &&
+      if (normalizedSearch) {
+        const customerName = (apt.customer_name || '').toLowerCase()
+        const customerPhone = (apt.customer_phone || '').toLowerCase()
+        const serviceNames = appointmentServices.map((service) => getServiceName(service)).join(' ').toLowerCase()
+        if (
+          !customerName.includes(normalizedSearch) &&
+          !customerPhone.includes(normalizedSearch) &&
         !serviceNames.includes(normalizedSearch)
       ) return false
     }
@@ -520,9 +673,9 @@ const AdminAppointments = () => {
     return true
   })
 
-  const sortedAppointments = useMemo(() => {
-    return [...filteredAppointments].sort(sortByFifo)
-  }, [filteredAppointments])
+  const paginatedAppointments = useMemo(() => {
+    return [...tableAppointments]
+  }, [tableAppointments])
 
   const calendarDateCounts = useMemo(() => {
     const counts = {}
@@ -701,6 +854,7 @@ const AdminAppointments = () => {
         if (response.status !== 405) {
           const contentType = (response.headers.get('content-type') || '').toLowerCase()
           if (!response.ok || contentType.includes('text/html')) {
+            setSelectedProofLoadError(true)
             toast.error('Payment proof file was not found.')
             return
           }
@@ -718,13 +872,23 @@ const AdminAppointments = () => {
   const selectedStartDate = selectedAppointment ? new Date(getStart(selectedAppointment)) : null
   const selectedStatus = normalizeStatus(selectedAppointment?.status)
   const selectedStatusLabel = titleCaseStatus(selectedStatus)
+  const selectedIsRescheduled = isRescheduledAppointment(selectedAppointment)
+  const selectedRescheduledAtLabel = formatRescheduledTimestampLabel(
+    selectedAppointment?.rescheduled_at_pht || selectedAppointment?.rescheduled_at
+  )
   const selectedDateLabel = selectedStartDate
     ? selectedStartDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium' })
     : 'N/A'
   const selectedTimeLabel = selectedStartDate
     ? selectedStartDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' })
     : 'N/A'
-  const selectedTotalPrice = selectedAppointmentServices.reduce((sum, service) => sum + (service.price_cents || 0), 0)
+  const selectedTotalPrice = selectedAppointment ? getAppointmentTotalPriceCents(selectedAppointment) : 0
+  const selectedAmountPaid = selectedAppointment ? getAppointmentAmountPaidCents(selectedAppointment) : 0
+  const selectedRemainingBalance = selectedAppointment ? getAppointmentRemainingBalanceCents(selectedAppointment) : 0
+
+  useEffect(() => {
+    setSelectedProofLoadError(false)
+  }, [selectedAppointment?.id, selectedProofUrl])
 
   if (loading) {
     return <div className="p-6 text-center">Loading...</div>
@@ -846,7 +1010,13 @@ const AdminAppointments = () => {
               <div className="flex flex-col lg:flex-row lg:items-center gap-3">
                 <select
                   value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
+                  onChange={(e) => {
+                    const nextFilter = e.target.value
+                    setFilter(nextFilter)
+                    if (nextFilter === 'booked' || nextFilter === 'completed') {
+                      setStatusDateScope('month')
+                    }
+                  }}
                   className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
                 >
                   <option value="all">All Status</option>
@@ -854,6 +1024,7 @@ const AdminAppointments = () => {
                   <option value="confirmed">Confirmed</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
+                  <option value="missed">Missed</option>
                 </select>
                 <select
                   value={searchServiceId}
@@ -879,12 +1050,12 @@ const AdminAppointments = () => {
                   }}
                   className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
                 />
-                {filter === 'completed' && (
+                {hasScopedStatusDateFilter && (
                   <select
-                    value={completedDateScope}
-                    onChange={(e) => setCompletedDateScope(e.target.value)}
+                    value={statusDateScope}
+                    onChange={(e) => setStatusDateScope(e.target.value)}
                     className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
-                    title="Completed date scope"
+                    title={filter === 'booked' ? 'Pending date scope' : 'Completed date scope'}
                   >
                     <option value="day">By Day</option>
                     <option value="month">By Month</option>
@@ -915,7 +1086,7 @@ const AdminAppointments = () => {
                     setSearchDate('')
                     setSearchServiceId('')
                     setRangeFilter('')
-                    setCompletedDateScope('month')
+                    setStatusDateScope('month')
                     setSelectedDate('')
                     setSelectedTimeSlot('')
                     setMobileTab('calendar')
@@ -1123,11 +1294,13 @@ const AdminAppointments = () => {
                   {slotAppointments.length > 0 ? (
                     slotAppointments.map((apt, index) => {
                       const appointmentServices = getAppointmentServices(apt)
-                      const totalPrice = appointmentServices.reduce((sum, service) => sum + (service.price_cents || 0), 0)
+                      const totalPrice = getAppointmentTotalPriceCents(apt)
                       const totalDuration = appointmentServices.reduce((sum, service) => sum + getServiceDurationMinutes(service), 0)
-                      const serviceNames = appointmentServices.map((service) => service.name || 'Service').join(', ')
+                      const serviceNames = appointmentServices.map((service) => getServiceName(service)).join(', ')
                       const proofUrl = resolveProofUrl(apt.payment_proof_url)
                       const normalizedStatus = normalizeStatus(apt.status)
+                      const isRescheduled = isRescheduledAppointment(apt)
+                      const rescheduledAtLabel = formatRescheduledTimestampLabel(apt.rescheduled_at_pht || apt.rescheduled_at)
                       const canModify = normalizedStatus === 'booked' || normalizedStatus === 'confirmed' || normalizedStatus === 'pending'
                       const canConfirm = normalizedStatus === 'booked' || normalizedStatus === 'pending'
                       const isProcessingAction = processingAppointmentId === apt.id
@@ -1148,10 +1321,23 @@ const AdminAppointments = () => {
                           <div className="mt-3 space-y-1 text-sm text-[#4a3a2f]">
                             <p><span className="text-[#8f7a6f]">Services:</span> {serviceNames || 'N/A'}</p>
                             <p><span className="text-[#8f7a6f]">Duration:</span> {totalDuration > 0 ? `${totalDuration} min` : 'N/A'}</p>
-                            <p><span className="text-[#8f7a6f]">Stylist:</span> {apt.stylist?.name || 'Unassigned'}</p>
+                            {apt.stylist?.name && (
+                              <p><span className="text-[#8f7a6f]">Stylist:</span> {apt.stylist.name}</p>
+                            )}
+                            {isRescheduled && (
+                              <p className="text-[#6d28d9]">
+                                <span className="font-medium">Rescheduled:</span>{' '}
+                                {rescheduledAtLabel ? `${rescheduledAtLabel} PHT` : 'Yes'}
+                              </p>
+                            )}
                           </div>
 
                           <div className="mt-3 flex flex-wrap items-center gap-2">
+                            {isRescheduled && (
+                              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#ede9fe] text-[#6d28d9]">
+                                Rescheduled
+                              </span>
+                            )}
                             <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
                               {paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)}
                             </span>
@@ -1328,11 +1514,11 @@ const AdminAppointments = () => {
           {showLegacyLayout && (
           <div className="overflow-hidden rounded-[14px] border border-[#DDD6FE] bg-white shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
             <div className="md:hidden space-y-3 p-3">
-              {sortedAppointments.map((apt) => {
+              {paginatedAppointments.map((apt) => {
                 const appointmentServices = getAppointmentServices(apt)
-                const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
+                const totalPrice = getAppointmentTotalPriceCents(apt)
                 const proofUrl = resolveProofUrl(apt.payment_proof_url)
-                const primaryService = appointmentServices[0]?.name || 'N/A'
+                const primaryService = getServiceName(appointmentServices[0])
                 const extraCount = Math.max(appointmentServices.length - 1, 0)
                 const startDate = new Date(getStart(apt))
                 const dateLabel = startDate.toLocaleDateString('en-US', {
@@ -1356,6 +1542,8 @@ const AdminAppointments = () => {
                 const paymentLabel = paymentStatusLabel(apt.payment_status, apt.status, apt.payment_method)
                 const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)
                 const statusBadgeClass = statusPillClass(normalizedStatus)
+                const isRescheduled = isRescheduledAppointment(apt)
+                const rescheduledAtLabel = formatRescheduledTimestampLabel(apt.rescheduled_at_pht || apt.rescheduled_at)
 
                 return (
                   <article
@@ -1377,7 +1565,21 @@ const AdminAppointments = () => {
                         </span>
                       </div>
                       <div className="mt-2 text-sm text-[#2D2D2D]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
-                      <div className="mt-1 text-xs text-[#6B6B6B]">Stylist: {apt.stylist?.name || 'Unassigned'}</div>
+                      {apt.stylist?.name && (
+                        <div className="mt-1 text-xs text-[#6B6B6B]">Stylist: {apt.stylist.name}</div>
+                      )}
+                      {isRescheduled && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#ede9fe] text-[#6d28d9]">
+                            Rescheduled
+                          </span>
+                          {rescheduledAtLabel && (
+                            <span className="text-xs text-[#6d28d9]">
+                              Updated on {rescheduledAtLabel} PHT
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="mt-1 text-xs text-[#6B6B6B]">{dateLabel} • {timeLabel}</div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
@@ -1473,8 +1675,11 @@ const AdminAppointments = () => {
                   </article>
                 )
               })}
-              {sortedAppointments.length === 0 && (
+              {paginatedAppointments.length === 0 && !tableLoading && (
                 <div className="py-8 text-center text-[#6B6B6B]">No appointments found</div>
+              )}
+              {tableLoading && (
+                <div className="py-8 text-center text-[#6B6B6B]">Loading appointments...</div>
               )}
             </div>
             <div className="hidden md:block overflow-x-auto">
@@ -1491,11 +1696,11 @@ const AdminAppointments = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#DDD6FE]">
-                  {sortedAppointments.map(apt => {
+                  {paginatedAppointments.map(apt => {
                     const appointmentServices = getAppointmentServices(apt)
-                    const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
+                    const totalPrice = getAppointmentTotalPriceCents(apt)
                     const proofUrl = resolveProofUrl(apt.payment_proof_url)
-                    const primaryService = appointmentServices[0]?.name || 'N/A'
+                    const primaryService = getServiceName(appointmentServices[0])
                     const extraCount = Math.max(appointmentServices.length - 1, 0)
                     const startDate = new Date(getStart(apt))
                     const dateLabel = startDate.toLocaleDateString('en-US', {
@@ -1518,6 +1723,8 @@ const AdminAppointments = () => {
                     const isProcessingAction = processingAppointmentId === apt.id
                     const paymentLabel = paymentStatusLabel(apt.payment_status, apt.status, apt.payment_method)
                     const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)
+                    const isRescheduled = isRescheduledAppointment(apt)
+                    const rescheduledAtLabel = formatRescheduledTimestampLabel(apt.rescheduled_at_pht || apt.rescheduled_at)
 
                     return (
                     <tr
@@ -1546,25 +1753,44 @@ const AdminAppointments = () => {
                       </td>
                       <td className="px-4 py-4">
                         <div className="font-medium text-[#2D2D2D]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
-                        <div className="mt-1 flex items-center gap-1 text-xs text-[#6B6B6B]">
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#F2EDFF] text-[#7B5CF5]">
-                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                              <circle cx="12" cy="8" r="3" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c1.5-3 5-5 7-5s5.5 2 7 5" />
-                            </svg>
-                          </span>
-                          <span>{apt.stylist?.name || 'Unassigned'}</span>
-                        </div>
+                        {apt.stylist?.name && (
+                          <div className="mt-1 flex items-center gap-1 text-xs text-[#6B6B6B]">
+                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#F2EDFF] text-[#7B5CF5]">
+                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                                <circle cx="12" cy="8" r="3" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c1.5-3 5-5 7-5s5.5 2 7 5" />
+                              </svg>
+                            </span>
+                            <span>{apt.stylist.name}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-4">
                         <div className="font-medium text-[#2D2D2D]">{dateLabel}</div>
                         <div className="mt-1 text-xs text-[#6B6B6B]">{timeLabel}</div>
+                        {isRescheduled && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-[11px] font-medium text-[#6d28d9]">
+                              Rescheduled
+                            </span>
+                            {rescheduledAtLabel && (
+                              <span className="text-[11px] text-[#6d28d9]">
+                                {rescheduledAtLabel} PHT
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex flex-col gap-1">
                           <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${statusPillClass(normalizedStatus)}`}>
                             {normalizedStatus === 'confirmed' ? 'Confirmed' : displayStatus}
                           </span>
+                          {isRescheduled && (
+                            <span className="w-fit rounded-full bg-[#ede9fe] px-3 py-1 text-xs font-medium text-[#6d28d9]">
+                              Rescheduled
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-4">
@@ -1710,10 +1936,20 @@ const AdminAppointments = () => {
                   })}
                 </tbody>
               </table>
-              {sortedAppointments.length === 0 && (
+              {paginatedAppointments.length === 0 && !tableLoading && (
                 <div className="py-8 text-center text-[#6B6B6B]">No appointments found</div>
               )}
+              {tableLoading && (
+                <div className="py-8 text-center text-[#6B6B6B]">Loading appointments...</div>
+              )}
             </div>
+            {paginatedAppointments.length > 0 && (
+              <Pagination
+                pagination={tablePagination}
+                onPageChange={setTablePage}
+                loading={tableLoading}
+              />
+            )}
           </div>
           )}
         </div>
@@ -1752,7 +1988,21 @@ const AdminAppointments = () => {
                   <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Schedule</p>
                   <p className="mt-2 font-semibold">{selectedDateLabel}</p>
                   <p className="mt-1 text-sm text-[#6B6B6B]">{selectedTimeLabel} PHT</p>
-                  <p className="mt-1 text-sm text-[#6B6B6B]">Stylist: {selectedAppointment.stylist?.name || 'Unassigned'}</p>
+                  {selectedIsRescheduled && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#6d28d9]">
+                        Rescheduled
+                      </span>
+                      {selectedRescheduledAtLabel && (
+                        <span className="text-xs text-[#6d28d9]">
+                          Updated on {selectedRescheduledAtLabel} PHT
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {selectedAppointment.stylist?.name && (
+                    <p className="mt-1 text-sm text-[#6B6B6B]">Stylist: {selectedAppointment.stylist.name}</p>
+                  )}
                 </div>
                 <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
                   <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Status</p>
@@ -1760,6 +2010,11 @@ const AdminAppointments = () => {
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusPillClass(selectedStatus)}`}>
                       {selectedStatusLabel}
                     </span>
+                    {selectedIsRescheduled && (
+                      <span className="rounded-full bg-[#ede9fe] px-3 py-1 text-xs font-medium text-[#6d28d9]">
+                        Rescheduled
+                      </span>
+                    )}
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(selectedAppointment.payment_method, selectedAppointment.payment_status, selectedAppointment.status)}`}>
                       {paymentChoiceLabel(selectedAppointment.payment_method, selectedAppointment.payment_status, selectedAppointment.status)}
                     </span>
@@ -1778,15 +2033,31 @@ const AdminAppointments = () => {
               </div>
 
               <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Payment Details</p>
+                <div className="mt-2 space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[#6B6B6B]">Amount Paid</span>
+                    <span className="font-medium text-[#2D2D2D]">{currency(selectedAmountPaid)}</span>
+                  </div>
+                  {selectedRemainingBalance > 0 && (
+                    <div className="flex items-center justify-between gap-3 border-t border-[#E9E2FF] pt-2">
+                      <span className="text-[#6B6B6B]">Remaining Balance</span>
+                      <span className="font-medium text-[#B45309]">{currency(selectedRemainingBalance)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Services</p>
                 <div className="mt-2 space-y-2">
-                  {selectedAppointmentServices.length > 0 ? (
-                    selectedAppointmentServices.map((service, index) => (
-                      <div key={`${service.id || service.name || 'service'}-${index}`} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="font-medium">{service.name || 'Service'}</span>
-                        <span className="text-[#6B6B6B]">{currency(service.price_cents || 0)}</span>
-                      </div>
-                    ))
+                    {selectedAppointmentServices.length > 0 ? (
+                      selectedAppointmentServices.map((service, index) => (
+                        <div key={`${service.id || service.name || 'service'}-${index}`} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="font-medium">{getServiceName(service)}</span>
+                          <span className="text-[#6B6B6B]">{currency(getServicePriceCents(service))}</span>
+                        </div>
+                      ))
                   ) : (
                     <p className="text-sm text-[#6B6B6B]">No service information available.</p>
                   )}
@@ -1797,18 +2068,27 @@ const AdminAppointments = () => {
                 <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Payment Proof</p>
                 {selectedProofUrl ? (
                   <div className="mt-2 space-y-3">
-                    <img
-                      src={selectedProofUrl}
-                      alt="Payment proof"
-                      className="w-full max-h-72 rounded-lg border border-[#DDD6FE] bg-white object-contain"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => openProofFile(selectedProofUrl)}
-                      className="tap-safe rounded-lg border border-[#7B5CF5] px-4 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
-                    >
-                      Open Full Image
-                    </button>
+                    {!selectedProofLoadError ? (
+                      <>
+                        <img
+                          src={selectedProofUrl}
+                          alt="Payment proof"
+                          className="w-full max-h-72 rounded-lg border border-[#DDD6FE] bg-white object-contain"
+                          onError={() => setSelectedProofLoadError(true)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => openProofFile(selectedProofUrl)}
+                          className="tap-safe rounded-lg border border-[#7B5CF5] px-4 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
+                        >
+                          Open Full Image
+                        </button>
+                      </>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-[#DDD6FE] bg-white px-4 py-6 text-sm text-[#6B6B6B]">
+                        Payment proof file was not found for this appointment.
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="mt-2 text-sm text-[#6B6B6B]">No payment proof uploaded.</p>

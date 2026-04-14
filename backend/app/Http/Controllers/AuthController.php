@@ -57,6 +57,12 @@ class AuthController extends Controller
             'type' => 'required|in:admin,manager,stylist',
         ]);
 
+        if ($request->type === 'stylist') {
+            return response()->json([
+                'message' => 'Staff login is no longer available.',
+            ], 403);
+        }
+
         $user = null;
         if ($request->type === 'admin') {
             // Allow login with 'admin' username or email

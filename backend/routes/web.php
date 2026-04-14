@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminCustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceVariantController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\CustomerRatingController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PasswordSetupController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ServiceInventoryRequirementController;
 use App\Http\Controllers\ManageBookingController;
@@ -71,6 +73,7 @@ Route::get('/stylists', function (Request $request) {
         : response()->json(['message' => 'Frontend not found'], 404);
 });
 Route::get('/stylists/{stylist}/availability', [StylistController::class, 'availability']);
+Route::get('/appointments/availability', [AppointmentController::class, 'availability']);
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
 Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
 Route::get('/appointments/{appointment}/receipt', [AppointmentController::class, 'receipt']); // Public receipt
@@ -95,7 +98,20 @@ Route::middleware(['auth.any', 'userType:manager'])->group(function () {
 
 // Admin staff approval routes (web/session auth)
 Route::middleware(['auth.any', 'userType:admin'])->group(function () {
-    Route::get('/admin/staff/pending', [StaffApprovalController::class, 'pendingIndex']);
+    Route::get('/admin/staff/pending', function (Request $request) {
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return app(StaffApprovalController::class)->pendingIndex($request);
+        }
+
+        return file_exists(public_path('index.html'))
+            ? response(file_get_contents(public_path('index.html')), 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ])
+            : response()->json(['message' => 'Frontend not found'], 404);
+    });
     Route::patch('/admin/staff/{id}/approve', [StaffApprovalController::class, 'approve']);
     Route::patch('/admin/staff/{id}/reject', [StaffApprovalController::class, 'reject']);
 });
@@ -174,6 +190,7 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
 Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
     Route::get('/ratings', [CustomerRatingController::class, 'index']);
+    Route::get('/customers', [AdminCustomerController::class, 'index']);
 });
 
 // Shared management routes
@@ -210,6 +227,9 @@ Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerSt
 
 // Public magic-link entry to manage booking dashboard
 Route::get('/a/{token}', [ManageBookingController::class, 'magicLink'])->name('customer.magic');
+// Public password setup routes for approved staff
+Route::get('/setup-password/{token}', [PasswordSetupController::class, 'show'])->name('password.setup.show');
+Route::post('/setup-password', [PasswordSetupController::class, 'store'])->name('password.setup.store');
 
 // Compatibility redirects for older frontend bundles / bookmarks
 Route::get('/customer/dashboard', function (Request $request) {
@@ -220,6 +240,8 @@ Route::get('/manage-booking/dashboard', function (Request $request) {
     $query = $request->getQueryString();
     return redirect('/customer' . ($query ? ('?' . $query) : ''));
 });
+
+Route::view('/privacy-policy', 'privacy-policy');
 
 // Catch-all route for React Router - must be last
 Route::get('/{any}', function () {

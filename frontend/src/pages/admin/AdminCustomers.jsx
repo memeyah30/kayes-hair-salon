@@ -4,73 +4,98 @@ import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
+import Pagination from '../../components/Pagination'
 
 const AdminCustomers = () => {
-  const [appointments, setAppointments] = useState([])
+  const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: 0,
+    to: 0,
+  })
   const navigate = useNavigate()
   const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
+  const getAppointmentServices = (appointment) => (
+    appointment.services && appointment.services.length > 0
+      ? appointment.services
+      : (appointment.service ? [appointment.service] : [])
+  )
+  const getServiceVariant = (service) => {
+    const variantId = service?.pivot?.service_variant_id
+    if (!variantId || !Array.isArray(service?.variants)) return null
+    return service.variants.find((variant) => String(variant.id) === String(variantId)) || null
+  }
+  const getServiceName = (service) => {
+    if (!service) return 'Service'
+    const variant = getServiceVariant(service)
+    if (variant?.name) return `${service.name || 'Service'} - ${variant.name}`
+    return service.name || 'Service'
+  }
+  const getServicePriceCents = (service) => {
+    const variant = getServiceVariant(service)
+    const price = variant?.price_cents ?? service?.price_cents ?? 0
+    const parsed = Number(price)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  const getAppointmentTotalPriceCents = (appointment) => {
+    const storedTotal = Number(appointment?.total_amount_cents)
+    if (Number.isFinite(storedTotal)) return storedTotal
+    return getAppointmentServices(appointment).reduce((sum, service) => sum + getServicePriceCents(service), 0)
+  }
 
   useEffect(() => {
-    loadData()
-  }, [])
+    loadData(currentPage)
+  }, [currentPage, searchTerm])
 
-  const loadData = async () => {
+  const loadData = async (page = 1) => {
     try {
       setLoading(true)
-      const res = await api.get('/appointments')
-      console.log('Loaded appointments:', res.data)
-      setAppointments(res.data || [])
+      const params = new URLSearchParams()
+      params.append('paginate', '1')
+      params.append('per_page', '10')
+      params.append('page', String(page))
+      if (searchTerm.trim()) params.append('q', searchTerm.trim())
+
+      const res = await api.get(`/customers?${params.toString()}`)
+      const nextCustomers = res.data?.data || []
+
+      setCustomers(nextCustomers)
+      setPagination({
+        current_page: res.data?.current_page || 1,
+        last_page: res.data?.last_page || 1,
+        per_page: res.data?.per_page || 10,
+        total: res.data?.total || 0,
+        from: res.data?.from || 0,
+        to: res.data?.to || 0,
+      })
+      setSelectedCustomer((prev) => {
+        if (!prev) return null
+        return nextCustomers.find((customer) => customer.customer_key === prev.customer_key) || null
+      })
     } catch (e) {
-      console.error('Error loading appointments:', e)
       toast.error('Failed to load data: ' + (e.response?.data?.message || e.message))
-      setAppointments([])
+      setCustomers([])
+      setPagination({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0,
+        from: 0,
+        to: 0,
+      })
     } finally {
       setLoading(false)
     }
   }
-
-  // Group appointments by customer (use email+phone combination for unique identification)
-  const customers = appointments.reduce((acc, apt) => {
-    if (!apt || !apt.customer_name) return acc // Skip invalid appointments
-    
-    // Create unique key from email and phone combination
-    // Use a more reliable key that handles null/undefined values
-    const emailKey = apt.customer_email || 'no-email'
-    const phoneKey = apt.customer_phone || 'no-phone'
-    const key = `${emailKey}_${phoneKey}_${apt.customer_name}`
-    
-    if (!acc[key]) {
-      acc[key] = {
-        name: apt.customer_name,
-        email: apt.customer_email || null,
-        phone: apt.customer_phone || null,
-        appointments: [],
-        totalSpent: 0,
-        totalAppointments: 0,
-      }
-    }
-    acc[key].appointments.push(apt)
-    acc[key].totalAppointments++
-    if (apt.status === 'completed' && apt.service?.price_cents) {
-      acc[key].totalSpent += apt.service.price_cents
-    }
-    return acc
-  }, {})
-
-  // Filter customers based on search term
-  let customerList = Object.values(customers)
-  if (searchTerm) {
-    const term = searchTerm.toLowerCase()
-    customerList = customerList.filter(customer => 
-      customer.name.toLowerCase().includes(term) ||
-      (customer.email && customer.email.toLowerCase().includes(term)) ||
-      (customer.phone && customer.phone.includes(term))
-    )
-  }
+  const customerList = customers
 
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
 
@@ -101,7 +126,7 @@ const AdminCustomers = () => {
               <div>
                 <h1 className="text-2xl font-bold">Customer Management</h1>
                 <p className="text-sm text-[#8f7a6f] mt-1">
-                  View all customers who have made appointments, their contact information, appointment history, and spending statistics.
+                  
                 </p>
               </div>
             </div>
@@ -115,19 +140,22 @@ const AdminCustomers = () => {
             <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
           <div className="p-4 border-b">
-            <h2 className="font-semibold mb-3">All Customers ({customerList.length})</h2>
+            <h2 className="font-semibold mb-3">All Customers ({pagination.total})</h2>
             <input
               type="text"
               placeholder="Search by name, email, or phone..."
               className="w-full border rounded px-3 py-2 text-sm"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
             />
           </div>
           <div className="divide-y max-h-96 overflow-y-auto">
             {customerList.length === 0 ? (
               <div className="p-8 text-center">
-                {appointments.length === 0 ? (
+                {!searchTerm.trim() ? (
                   <div className="space-y-3">
                     <div className="text-base font-semibold mb-2">No customer records</div>
                     <div className="text-[#8f7a6f] font-medium">No customers yet</div>
@@ -135,7 +163,7 @@ const AdminCustomers = () => {
                       Customers will appear here automatically after they make their first appointment booking.
                     </div>
                     <div className="text-xs text-gray-400 mt-4">
-                      Total Appointments: {appointments.length}
+                      Total Customers: {pagination.total}
                     </div>
                   </div>
                 ) : (
@@ -147,12 +175,10 @@ const AdminCustomers = () => {
             ) : (
               customerList.map((customer, idx) => (
                 <div
-                  key={idx}
+                  key={customer.customer_key || idx}
                   onClick={() => setSelectedCustomer(customer)}
                   className={`p-4 cursor-pointer hover:bg-gray-50 transition ${
-                    selectedCustomer?.name === customer.name && 
-                    selectedCustomer?.email === customer.email && 
-                    selectedCustomer?.phone === customer.phone ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                    selectedCustomer?.customer_key === customer.customer_key ? 'bg-blue-50 border-l-4 border-blue-500' : ''
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -174,23 +200,30 @@ const AdminCustomers = () => {
                       </div>
                     </div>
                     <div className="text-right ml-4">
-                      <div className="text-sm font-semibold text-blue-600">{customer.totalAppointments}</div>
+                      <div className="text-sm font-semibold text-blue-600">{customer.total_appointments}</div>
                       <div className="text-xs text-[#9b857a]">appointments</div>
                     </div>
                   </div>
                   <div className="mt-2 flex items-center gap-4 text-xs">
                     <span className="text-[#9b857a]">
-                      Total Spent: <span className="font-semibold text-green-600">{currency(customer.totalSpent)}</span>
+                      Total Spent: <span className="font-semibold text-green-600">{currency(customer.total_spent_cents)}</span>
                     </span>
                     <span className="text-gray-400">|</span>
                     <span className="text-[#9b857a]">
-                      Completed: {customer.appointments.filter(a => a.status === 'completed').length}
+                      Completed: {customer.completed_appointments}
                     </span>
                   </div>
                 </div>
               ))
             )}
           </div>
+          {customerList.length > 0 && (
+            <Pagination
+              pagination={pagination}
+              onPageChange={setCurrentPage}
+              loading={loading}
+            />
+          )}
         </div>
 
         {selectedCustomer ? (
@@ -232,11 +265,11 @@ const AdminCustomers = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-50 rounded-lg p-4">
                   <div className="text-sm text-[#8f7a6f] mb-1">Total Appointments</div>
-                  <div className="text-2xl font-bold text-blue-600">{selectedCustomer.totalAppointments}</div>
+                  <div className="text-2xl font-bold text-blue-600">{selectedCustomer.total_appointments}</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
                   <div className="text-sm text-[#8f7a6f] mb-1">Total Spent</div>
-                  <div className="text-2xl font-bold text-green-600">{currency(selectedCustomer.totalSpent)}</div>
+                  <div className="text-2xl font-bold text-green-600">{currency(selectedCustomer.total_spent_cents)}</div>
                 </div>
               </div>
 
@@ -272,11 +305,8 @@ const AdminCustomers = () => {
                   {selectedCustomer.appointments
                     .sort((a, b) => new Date(getStart(b)) - new Date(getStart(a)))
                     .map(apt => {
-                      // Get all services for this appointment
-                      const appointmentServices = apt.services && apt.services.length > 0 
-                        ? apt.services 
-                        : (apt.service ? [apt.service] : [])
-                      const totalPrice = appointmentServices.reduce((sum, s) => sum + (s.price_cents || 0), 0)
+                      const appointmentServices = getAppointmentServices(apt)
+                      const totalPrice = getAppointmentTotalPriceCents(apt)
                       
                       return (
                       <div key={apt.id} className="border rounded-lg p-3 hover:bg-gray-50 transition">
@@ -287,12 +317,12 @@ const AdminCustomers = () => {
                                 <div className="font-semibold text-lg mb-1">{appointmentServices.length} Services</div>
                                 <ul className="list-disc list-inside ml-2 text-sm text-[#8f7a6f] mb-1">
                                   {appointmentServices.map((s, idx) => (
-                                    <li key={idx}>{s.name} - {currency(s.price_cents || 0)}</li>
+                                    <li key={idx}>{getServiceName(s)} - {currency(getServicePriceCents(s))}</li>
                                   ))}
                                 </ul>
                               </div>
                             ) : (
-                              <div className="font-semibold text-lg mb-1">{appointmentServices[0]?.name || 'Service'}</div>
+                              <div className="font-semibold text-lg mb-1">{getServiceName(appointmentServices[0])}</div>
                             )}
                             <div className="text-sm text-[#8f7a6f] mb-1">
                               Date: {new Date(getStart(apt)).toLocaleDateString('en-US', {

@@ -18,6 +18,10 @@ class Appointment extends Model
     protected $appends = [
         'start_datetime_pht',
         'end_datetime_pht',
+        'rescheduled_at_pht',
+        'mode_of_payment',
+        'amount_paid_cents',
+        'remaining_balance_cents',
     ];
 
     protected $fillable = [
@@ -45,6 +49,8 @@ class Appointment extends Model
         'start_datetime' => 'datetime',
         'end_datetime' => 'datetime',
         'rescheduled_at' => 'datetime',
+        'downpayment_amount_cents' => 'integer',
+        'total_amount_cents' => 'integer',
     ];
 
     protected function serializeDate(DateTimeInterface $date)
@@ -74,6 +80,52 @@ class Appointment extends Model
         return Carbon::createFromFormat('Y-m-d H:i:s', $rawEnd, 'UTC')
             ->setTimezone('Asia/Manila')
             ->format('Y-m-d\TH:i:sP');
+    }
+
+    public function getRescheduledAtPhtAttribute()
+    {
+        $rawRescheduledAt = $this->getRawOriginal('rescheduled_at');
+        if (!$rawRescheduledAt) {
+            return null;
+        }
+
+        return Carbon::createFromFormat('Y-m-d H:i:s', $rawRescheduledAt, 'UTC')
+            ->setTimezone('Asia/Manila')
+            ->format('Y-m-d\TH:i:sP');
+    }
+
+    public function getAmountPaidCentsAttribute(): int
+    {
+        $totalAmountCents = max(0, (int) ($this->total_amount_cents ?? 0));
+        $recordedAmountCents = max(0, (int) ($this->downpayment_amount_cents ?? 0));
+
+        if ($recordedAmountCents > 0) {
+            return min($recordedAmountCents, $totalAmountCents ?: $recordedAmountCents);
+        }
+
+        if (strtolower((string) ($this->payment_status ?? '')) === 'paid' && $totalAmountCents > 0) {
+            return $totalAmountCents;
+        }
+
+        return 0;
+    }
+
+    public function getRemainingBalanceCentsAttribute(): int
+    {
+        $totalAmountCents = max(0, (int) ($this->total_amount_cents ?? 0));
+        return max(0, $totalAmountCents - $this->amount_paid_cents);
+    }
+
+    public function getModeOfPaymentAttribute(): ?string
+    {
+        $totalAmountCents = max(0, (int) ($this->total_amount_cents ?? 0));
+        $amountPaidCents = $this->amount_paid_cents;
+
+        if ($totalAmountCents <= 0 && $amountPaidCents <= 0) {
+            return null;
+        }
+
+        return $amountPaidCents >= $totalAmountCents ? 'full' : 'downpayment';
     }
 
     public function stylist(): BelongsTo
@@ -110,5 +162,3 @@ class Appointment extends Model
         return $this->hasMany(AppointmentLink::class);
     }
 }
-
-

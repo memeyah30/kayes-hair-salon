@@ -9,6 +9,7 @@ use App\Models\Inventory;
 use App\Models\Sale;
 use App\Models\Service;
 use App\Models\Stylist;
+use App\Services\MissedAppointmentService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -16,26 +17,47 @@ class DashboardController extends Controller
 {
     private function formatAppointmentForResponse($appointment)
     {
-        $timezone = 'Asia/Manila';
-
-        $rawStart = $appointment->getRawOriginal('start_datetime');
-        if ($rawStart) {
-            $startCarbon = Carbon::createFromFormat('Y-m-d H:i:s', $rawStart, 'UTC')->setTimezone($timezone);
-            $appointment->start_datetime = $startCarbon->format('Y-m-d\TH:i:sP');
-            $appointment->start_datetime_pht = $startCarbon->format('Y-m-d\TH:i:sP');
-        }
-
-        $rawEnd = $appointment->getRawOriginal('end_datetime');
-        if ($rawEnd) {
-            $endCarbon = Carbon::createFromFormat('Y-m-d H:i:s', $rawEnd, 'UTC')->setTimezone($timezone);
-            $appointment->end_datetime = $endCarbon->format('Y-m-d\TH:i:sP');
-            $appointment->end_datetime_pht = $endCarbon->format('Y-m-d\TH:i:sP');
-        }
+        // Keep the model-provided Asia/Manila datetime serialization intact.
+        // Reassigning casted datetime attributes here causes an extra 8-hour shift.
+        $appointment->is_rescheduled = !empty($appointment->getRawOriginal('rescheduled_at'));
 
         return $appointment;
     }
+
+    private function getAppointmentServicePriceCents($service): int
+    {
+        if (!$service) {
+            return 0;
+        }
+
+        $variantId = $service->pivot?->service_variant_id;
+        if ($variantId && $service->relationLoaded('variants') && $service->variants) {
+            $variant = $service->variants->firstWhere('id', $variantId);
+            if ($variant && isset($variant->price_cents)) {
+                return (int) $variant->price_cents;
+            }
+        }
+
+        return (int) ($service->price_cents ?? 0);
+    }
+
+    private function getAppointmentTotalAmountCents($appointment): int
+    {
+        if (isset($appointment->total_amount_cents) && is_numeric($appointment->total_amount_cents)) {
+            return (int) $appointment->total_amount_cents;
+        }
+
+        if ($appointment->relationLoaded('services') && $appointment->services && $appointment->services->count() > 0) {
+            return (int) $appointment->services->sum(fn ($service) => $this->getAppointmentServicePriceCents($service));
+        }
+
+        return $this->getAppointmentServicePriceCents($appointment->service);
+    }
+
     public function adminStats(Request $request)
     {
+        app(MissedAppointmentService::class)->markOverdueAppointmentsAsMissed();
+
         $user = $request->user();
         $requestedType = strtolower((string) ($request->header('X-User-Type') ?: $request->query('type', '')));
         $resolvedUserType = strtolower((string) $request->attributes->get('resolved_user_type', ''));
@@ -51,6 +73,7 @@ class DashboardController extends Controller
         $todayStart = $now->copy()->startOfDay();
         $todayEnd = $now->copy()->endOfDay();
         $weekStart = $now->copy()->startOfWeek();
+        $weekEnd = $weekStart->copy()->endOfWeek();
         $monthStart = $now->copy()->startOfMonth();
         $periodEnd = $todayEnd->copy();
         $toManila = function ($value) use ($timezone) {
@@ -60,7 +83,7 @@ class DashboardController extends Controller
             return Carbon::parse($value, 'UTC')->setTimezone($timezone);
         };
 
-        $appointments = Appointment::with(['stylist', 'service'])->get();
+        $appointments = Appointment::with(['stylist', 'service.variants', 'services.variants'])->get();
         
         $todayAppointments = $appointments->filter(function ($apt) use ($toManila, $todayStart) {
             return $toManila($apt->start_datetime)->isSameDay($todayStart);
@@ -78,10 +101,7 @@ class DashboardController extends Controller
 
         $sumAppointmentRevenue = function ($collection) {
             return (int) $collection->sum(function ($apt) {
-                if (!empty($apt->total_amount_cents)) {
-                    return (int) $apt->total_amount_cents;
-                }
-                return (int) ($apt->service->price_cents ?? 0);
+                return $this->getAppointmentTotalAmountCents($apt);
             });
         };
 
@@ -92,6 +112,15 @@ class DashboardController extends Controller
         $todayRevenue = 0;
         $weekRevenue = 0;
         $monthRevenue = 0;
+        $weekRevenueSeries = [];
+        for ($offset = 0; $offset < 7; $offset++) {
+            $day = $weekStart->copy()->addDays($offset);
+            $weekRevenueSeries[$day->toDateString()] = [
+                'date' => $day->toDateString(),
+                'label' => $day->format('D'),
+                'value' => 0,
+            ];
+        }
         if ($canViewSales) {
             $serviceSaleAppointmentIds = Sale::query()
                 ->whereNotNull('appointment_id')
@@ -109,6 +138,20 @@ class DashboardController extends Controller
                     ])
                     ->sum('total_amount_cents');
             };
+
+            $weekSales = Sale::query()
+                ->whereBetween('created_at', [
+                    $weekStart->copy()->setTimezone('UTC'),
+                    $weekEnd->copy()->setTimezone('UTC'),
+                ])
+                ->get(['created_at', 'total_amount_cents']);
+
+            foreach ($weekSales as $sale) {
+                $dateKey = Carbon::parse($sale->created_at, 'UTC')->setTimezone($timezone)->toDateString();
+                if (isset($weekRevenueSeries[$dateKey])) {
+                    $weekRevenueSeries[$dateKey]['value'] += (int) ($sale->total_amount_cents ?? 0);
+                }
+            }
 
             $unsyncedTodayRevenue = $sumAppointmentRevenue(
                 $completedTodayAppointments->filter(
@@ -129,6 +172,15 @@ class DashboardController extends Controller
             $todayRevenue = (int) $sumSalesForRange($todayStart, $todayEnd) + $unsyncedTodayRevenue;
             $weekRevenue = (int) $sumSalesForRange($weekStart, $periodEnd) + $unsyncedWeekRevenue;
             $monthRevenue = (int) $sumSalesForRange($monthStart, $periodEnd) + $unsyncedMonthRevenue;
+
+            foreach ($completedWeekAppointments->filter(
+                fn ($apt) => !$serviceSaleAppointmentIds->has((int) $apt->id)
+            ) as $appointment) {
+                $dateKey = $toManila($appointment->start_datetime)->toDateString();
+                if (isset($weekRevenueSeries[$dateKey])) {
+                    $weekRevenueSeries[$dateKey]['value'] += $this->getAppointmentTotalAmountCents($appointment);
+                }
+            }
         }
 
         // Count unique customers using email if present, otherwise phone
@@ -174,11 +226,13 @@ class DashboardController extends Controller
                     'today' => $todayRevenue,
                     'week' => $weekRevenue,
                     'month' => $monthRevenue,
+                    'week_series' => array_values($weekRevenueSeries),
                 ]
                 : [
                     'today' => 0,
                     'week' => 0,
                     'month' => 0,
+                    'week_series' => array_values($weekRevenueSeries),
                 ],
             'stylists' => [
                 'active' => Stylist::where('active', true)->count(),
@@ -193,6 +247,8 @@ class DashboardController extends Controller
 
     public function stylistStats(Request $request)
     {
+        app(MissedAppointmentService::class)->markOverdueAppointmentsAsMissed();
+
         $user = $request->user();
         if (!($user instanceof \App\Models\Stylist)) {
             $user = \Illuminate\Support\Facades\Auth::guard('stylist')->user();
@@ -257,6 +313,8 @@ class DashboardController extends Controller
 
     public function customerStats(Request $request)
     {
+        app(MissedAppointmentService::class)->markOverdueAppointmentsAsMissed();
+
         $email = $request->input('email');
         $phone = $request->input('phone');
 
@@ -307,15 +365,7 @@ class DashboardController extends Controller
         $totalSpent = $appointments
             ->where('status', 'completed')
             ->sum(function ($apt) {
-                if (!empty($apt->total_amount_cents)) {
-                    return (int) $apt->total_amount_cents;
-                }
-
-                if ($apt->relationLoaded('services') && $apt->services && $apt->services->count() > 0) {
-                    return (int) $apt->services->sum('price_cents');
-                }
-
-                return (int) ($apt->service->price_cents ?? 0);
+                return $this->getAppointmentTotalAmountCents($apt);
             });
 
         $ratings = $appointments

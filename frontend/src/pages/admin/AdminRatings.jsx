@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
+import Pagination from '../../components/Pagination'
 
 const AdminRatings = () => {
   const [ratings, setRatings] = useState([])
@@ -11,6 +12,20 @@ const AdminRatings = () => {
   const [loading, setLoading] = useState(true)
   const [filterStylist, setFilterStylist] = useState('all')
   const [filterRating, setFilterRating] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: 0,
+    to: 0,
+  })
+  const [summary, setSummary] = useState({
+    average_rating: 0,
+    total_ratings: 0,
+    rating_distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+  })
   const navigate = useNavigate()
   const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
@@ -18,46 +33,74 @@ const AdminRatings = () => {
   const getStart = (appointment) => appointment?.start_datetime_pht || appointment?.start_datetime
 
   useEffect(() => {
-    loadData()
+    loadStylists()
   }, [])
 
-  const loadData = async () => {
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterStylist, filterRating])
+
+  useEffect(() => {
+    loadData(currentPage)
+  }, [currentPage, filterStylist, filterRating])
+
+  const loadStylists = async () => {
     try {
-      setLoading(true)
       const requestUserType = sessionStorage.getItem('userType') || storedUserType || 'admin'
       const roleRequestConfig = {
         params: { type: requestUserType },
         headers: { 'X-User-Type': requestUserType },
       }
-      const [ratingsRes, stylistsRes] = await Promise.all([
-        api.get('/ratings', roleRequestConfig),
-        api.get('/stylists', roleRequestConfig),
-      ])
-      
-      // Load appointment and stylist data for each rating
-      const ratingsWithData = await Promise.all(
-        ratingsRes.data.map(async (rating) => {
-          try {
-            const appointmentRes = await api.get(`/appointments/${rating.appointment_id}`, roleRequestConfig)
-            return {
-              ...rating,
-              appointment: appointmentRes.data,
-              stylist: appointmentRes.data.stylist,
-            }
-          } catch (e) {
-            return {
-              ...rating,
-              appointment: null,
-              stylist: null,
-            }
-          }
-        })
-      )
-      
-      setRatings(ratingsWithData)
+      const stylistsRes = await api.get('/stylists', roleRequestConfig)
       setStylists(stylistsRes.data)
     } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to load stylists')
+    }
+  }
+
+  const loadData = async (page = 1) => {
+    try {
+      setLoading(true)
+      const requestUserType = sessionStorage.getItem('userType') || storedUserType || 'admin'
+      const params = {
+        type: requestUserType,
+        paginate: 1,
+        per_page: 10,
+        page,
+      }
+      if (filterStylist !== 'all') params.stylist_id = filterStylist
+      if (filterRating !== 'all') params.rating = filterRating
+      const roleRequestConfig = {
+        params,
+        headers: { 'X-User-Type': requestUserType },
+      }
+      const ratingsRes = await api.get('/ratings', roleRequestConfig)
+
+      setRatings(ratingsRes.data?.data || [])
+      setPagination({
+        current_page: ratingsRes.data?.current_page || 1,
+        last_page: ratingsRes.data?.last_page || 1,
+        per_page: ratingsRes.data?.per_page || 10,
+        total: ratingsRes.data?.total || 0,
+        from: ratingsRes.data?.from || 0,
+        to: ratingsRes.data?.to || 0,
+      })
+      setSummary(ratingsRes.data?.summary || {
+        average_rating: 0,
+        total_ratings: 0,
+        rating_distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      })
+    } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to load ratings')
+      setRatings([])
+      setPagination({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0,
+        from: 0,
+        to: 0,
+      })
     } finally {
       setLoading(false)
     }
@@ -71,32 +114,15 @@ const AdminRatings = () => {
     try {
       await api.delete(`/ratings/${ratingId}`)
       toast.success('Rating deleted successfully')
-      loadData()
+      const nextPage = ratings.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage
+      if (nextPage !== currentPage) {
+        setCurrentPage(nextPage)
+      } else {
+        loadData(nextPage)
+      }
     } catch (e) {
       toast.error('Failed to delete rating')
     }
-  }
-
-  const filteredRatings = ratings.filter(rating => {
-    if (filterStylist !== 'all' && rating.stylist?.id !== parseInt(filterStylist)) {
-      return false
-    }
-    if (filterRating !== 'all' && rating.rating !== parseInt(filterRating)) {
-      return false
-    }
-    return true
-  })
-
-  const averageRating = ratings.length > 0
-    ? (ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length).toFixed(1)
-    : '0.0'
-
-  const ratingDistribution = {
-    5: ratings.filter(r => r.rating === 5).length,
-    4: ratings.filter(r => r.rating === 4).length,
-    3: ratings.filter(r => r.rating === 3).length,
-    2: ratings.filter(r => r.rating === 2).length,
-    1: ratings.filter(r => r.rating === 1).length,
   }
 
   const handleLogout = () => {
@@ -140,20 +166,20 @@ const AdminRatings = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <div className="text-[#9b857a] text-sm font-semibold">Average Rating</div>
-              <div className="text-3xl font-bold mt-2 text-yellow-500">{averageRating}</div>
+              <div className="text-3xl font-bold mt-2 text-yellow-500">{Number(summary.average_rating || 0).toFixed(1)}</div>
               <div className="text-xs text-[#9b857a] mt-1">Out of 5.0</div>
             </div>
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <div className="text-[#9b857a] text-sm font-semibold">Total Ratings</div>
-              <div className="text-3xl font-bold mt-2">{ratings.length}</div>
+              <div className="text-3xl font-bold mt-2">{summary.total_ratings || 0}</div>
             </div>
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <div className="text-[#9b857a] text-sm font-semibold">5-Star Ratings</div>
-              <div className="text-3xl font-bold mt-2 text-green-600">{ratingDistribution[5]}</div>
+              <div className="text-3xl font-bold mt-2 text-green-600">{summary.rating_distribution?.[5] || 0}</div>
             </div>
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
               <div className="text-[#9b857a] text-sm font-semibold">1-Star Ratings</div>
-              <div className="text-3xl font-bold mt-2 text-red-600">{ratingDistribution[1]}</div>
+              <div className="text-3xl font-bold mt-2 text-red-600">{summary.rating_distribution?.[1] || 0}</div>
             </div>
           </div>
 
@@ -206,7 +232,7 @@ const AdminRatings = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {filteredRatings.map(rating => (
+                  {ratings.map(rating => (
                     <tr key={rating.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="font-medium">{rating.customer_name || rating.appointment?.customer_name || 'N/A'}</div>
@@ -261,10 +287,17 @@ const AdminRatings = () => {
                   ))}
                 </tbody>
               </table>
-              {filteredRatings.length === 0 && (
+              {ratings.length === 0 && (
                 <div className="text-center py-8 text-[#9b857a]">No ratings found</div>
               )}
             </div>
+            {ratings.length > 0 && (
+              <Pagination
+                pagination={pagination}
+                onPageChange={setCurrentPage}
+                loading={loading}
+              />
+            )}
           </div>
         </div>
       </main>

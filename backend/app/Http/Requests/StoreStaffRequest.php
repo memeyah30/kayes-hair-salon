@@ -14,6 +14,21 @@ class StoreStaffRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $specializationIds = $this->input('specialization_ids');
+        if (is_string($specializationIds) && $specializationIds !== '') {
+            $decoded = json_decode($specializationIds, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $this->merge(['specialization_ids' => $decoded]);
+            } else {
+                $values = collect(explode(',', $specializationIds))
+                    ->map(fn ($item) => (int) trim((string) $item))
+                    ->filter(fn ($item) => $item > 0)
+                    ->values()
+                    ->all();
+                $this->merge(['specialization_ids' => $values]);
+            }
+        }
+
         $specialization = $this->input('specialization');
 
         if (is_string($specialization) && $specialization !== '') {
@@ -36,13 +51,14 @@ class StoreStaffRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'email' => ['nullable', 'email', 'max:150'],
+            'email' => ['required', 'email', 'max:150'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'role' => ['nullable', Rule::in(['stylist', 'therapist', 'receptionist'])],
+            'role' => ['required', Rule::in(['stylist', 'manager'])],
+            'specialization_ids' => ['nullable', 'array'],
+            'specialization_ids.*' => ['integer', 'exists:services,id'],
             'specialization' => ['nullable', 'array'],
             'specialization.*' => ['string', 'max:100'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];
     }
 }
-

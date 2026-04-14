@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../utils/api'
+import { resolveAssetUrl } from '../utils/runtime'
 import heroMainImage from '../assets/landing-hero-main.jpg'
 import './HomeHero.css'
 
 const currency = (cents) => `PHP ${(Number(cents || 0) / 100).toFixed(2)}`
 
 const imageUrl = (path) => {
-  if (!path) return null
-  if (/^https?:\/\//i.test(path)) return path
-  const normalizedPath = String(path).replace(/^\/+/, '')
-  const origin = window.location.origin.includes(':5173')
-    ? 'http://localhost:8000'
-    : window.location.origin
-  return `${origin}/${normalizedPath}`
+  return resolveAssetUrl(path)
 }
 
 const parsePriceCents = (centsValue, pesoValue) => {
@@ -378,7 +373,7 @@ const Home = () => {
     if (service._pricing.variants.length <= 1) {
       const singleVariant = service._pricing.variants[0]
       const variantQuery = singleVariant ? `&variant_id=${singleVariant.id}` : ''
-      navigate(`/book?services=${service.id}${variantQuery}`)
+      navigate(`/book?fresh=1&services=${service.id}${variantQuery}`)
       return
     }
 
@@ -405,7 +400,7 @@ const Home = () => {
   const handleContinueBooking = () => {
     if (!optionsService) return
     const variantQuery = selectedModalVariant ? `&variant_id=${selectedModalVariant.id}` : ''
-    navigate(`/book?services=${optionsService.id}${variantQuery}`)
+    navigate(`/book?fresh=1&services=${optionsService.id}${variantQuery}`)
     closeServiceOptions()
   }
 
@@ -496,7 +491,7 @@ const Home = () => {
             </p>
             <div className="home-hero__actions flex flex-col sm:flex-row gap-4 justify-center">
               <button
-                onClick={() => navigate('/book')}
+                onClick={() => navigate('/book?fresh=1')}
                 className="home-hero__btn home-hero__btn--primary tap-safe"
               >
                 Book Appointment
@@ -713,74 +708,6 @@ const Home = () => {
           </div>
         )}
 
-        <section id="stylists" className="px-4 md:px-8 py-16 bg-[radial-gradient(circle_at_80%_10%,#ece3ff_0%,#f7f2ff_60%,#f4edff_100%)]">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-10 md:mb-12">
-              <h2 className="text-[clamp(1.85rem,7vw,3.75rem)] font-semibold mb-4 text-[#2f245a]">Our Expert Stylists</h2>
-              <p className="max-w-3xl mx-auto text-lg md:text-xl text-[#6b5b95]">
-                Meet our talented and professional stylists dedicated to bringing out your best look.
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="text-center py-16 text-[#6b5b95] text-lg">Loading stylists...</div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                  {stylists.slice(0, 4).map((stylist) => (
-                    <div
-                      key={stylist.id}
-                      className="rounded-2xl border border-[#dcd0ff] bg-white/90 shadow-[0_10px_24px_rgba(70,45,130,0.12)] p-4 transition hover:-translate-y-1 hover:shadow-[0_16px_28px_rgba(70,45,130,0.2)]"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="h-16 w-16 rounded-xl overflow-hidden bg-[#ece4ff]">
-                          {stylist.image ? (
-                            <img
-                              src={imageUrl(stylist.image)}
-                              alt={stylist.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none'
-                                e.target.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xs text-[#6b5b95]">No Image</div>'
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs text-[#6b5b95]">No Image</div>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-semibold text-[#2f245a] leading-tight">{stylist.name}</h3>
-                          <p className="text-sm text-[#7f6aa8]">Senior Stylist</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-[#6b5b95] mb-4 min-h-[3.3rem]">
-                        Professional and customer-focused service for your best style.
-                      </p>
-                    <button
-                      onClick={() => navigate('/book')}
-                      className="tap-safe w-full py-2.5 rounded-xl bg-gradient-to-r from-[#5f7dff] to-[#405ae1] text-white font-semibold hover:from-[#6b88ff] hover:to-[#4b66ea] transition"
-                    >
-                      Book with {stylist.name.split(' ')[0]}
-                    </button>
-                    </div>
-                  ))}
-                </div>
-
-                {stylists.length > 4 && (
-                  <div className="text-center mt-10">
-                    <button
-                      onClick={() => navigate('/stylists')}
-                      className="px-8 py-3 rounded-xl border border-[#bca8ff] text-[#4a3ba7] bg-white/70 hover:bg-white transition text-lg"
-                    >
-                      View All Stylists
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </section>
-
         <section id="about" className="px-4 md:px-8 py-14 bg-white">
           <div className="max-w-6xl mx-auto rounded-3xl border border-[#e8ddff] bg-[linear-gradient(135deg,#ffffff_0%,#f8f2ff_100%)] p-8 md:p-12">
             <h2 className="text-4xl md:text-5xl font-semibold text-[#2f245a] mb-4">About Us</h2>
@@ -811,7 +738,7 @@ const Home = () => {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#2f245a]/95 border-t border-[#6f5fd3] px-3 py-2 z-50 backdrop-blur-sm">
         <div className="flex items-center justify-around text-xs">
           <button onClick={() => navigate('/')} className="text-white px-2 py-1 rounded hover:bg-white/10">Home</button>
-          <button onClick={() => navigate('/book')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Book</button>
+          <button onClick={() => navigate('/book?fresh=1')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Book</button>
           <button onClick={() => navigate('/manage-booking/start')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Manage</button>
           <button onClick={() => navigate('/services')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Services</button>
           <button onClick={() => navigate('/stylists')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Stylists</button>

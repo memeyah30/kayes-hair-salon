@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'userType' => \App\Http\Middleware\EnsureUserType::class,
             'auth.any' => \App\Http\Middleware\AuthenticateAnyGuard::class,
             'customer.otp' => \App\Http\Middleware\CustomerOtpVerified::class,
+            'customer.booking' => \App\Http\Middleware\ReturningBookingVerified::class,
         ]);
         
         // Use custom CSRF middleware

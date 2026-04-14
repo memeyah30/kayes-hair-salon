@@ -45,9 +45,9 @@ class HolidayController extends Controller
         ]);
 
         $date = Carbon::parse($request->date)->format('Y-m-d');
-        $holiday = Holiday::where('date', $date)->first();
+        $holiday = Holiday::findClosedForDate($date);
 
-        if ($holiday && $holiday->is_closed) {
+        if ($holiday) {
             return response()->json([
                 'is_holiday' => true,
                 'holiday' => $holiday,
@@ -57,6 +57,45 @@ class HolidayController extends Controller
 
         return response()->json([
             'is_holiday' => false,
+        ]);
+    }
+
+    public function calendar(Request $request)
+    {
+        $request->validate([
+            'start' => 'required|date',
+            'end' => 'required|date|after_or_equal:start',
+        ]);
+
+        $startDate = Carbon::parse($request->query('start'))->startOfDay();
+        $endDate = Carbon::parse($request->query('end'))->startOfDay();
+        $closedDates = [];
+
+        for ($cursor = $startDate->copy(); $cursor->lte($endDate); $cursor->addDay()) {
+            $holiday = Holiday::findClosedForDate($cursor);
+
+            if (!$holiday) {
+                continue;
+            }
+
+            $closedDates[] = [
+                'date' => $cursor->format('Y-m-d'),
+                'name' => $holiday->name,
+                'message' => "The salon is closed on {$holiday->name}. Please choose another date.",
+                'holiday' => [
+                    'id' => $holiday->id,
+                    'name' => $holiday->name,
+                    'date' => optional($holiday->date)->format('Y-m-d'),
+                    'type' => $holiday->type,
+                    'description' => $holiday->description,
+                    'is_closed' => (bool) $holiday->is_closed,
+                    'recurring_yearly' => (bool) $holiday->recurring_yearly,
+                ],
+            ];
+        }
+
+        return response()->json([
+            'closed_dates' => $closedDates,
         ]);
     }
 

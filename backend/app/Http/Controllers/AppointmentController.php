@@ -3,60 +3,173 @@
 namespace App\Http\Controllers;
 
 use App\Mail\AppointmentMagicLinkMail;
+use App\Http\Controllers\Concerns\InteractsWithPagination;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\Stylist;
 use App\Models\Holiday;
 use App\Services\InventoryWorkflowService;
+use App\Services\MissedAppointmentService;
 use App\Services\Scheduler;
+use App\Services\CustomerProfileService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
+    use InteractsWithPagination;
+
+    private const SLOT_INTERVAL_MINUTES = 30;
+    private const MAX_SLOTS_PER_TIME = 5;
+    private const BUSINESS_OPEN_HOUR = 8;
+    private const BUSINESS_CLOSE_HOUR = 20;
+    private const ACTIVE_SLOT_STATUSES = ['booked', 'pending', 'confirmed'];
+
     /**
      * Format appointment datetime fields to Asia/Manila timezone for JSON response
      */
     private function formatAppointmentForResponse($appointment)
     {
-        $tz = 'Asia/Manila';
-    
-        // Use raw values from DB - these are stored in UTC
-        $rawStart = $appointment->getRawOriginal('start_datetime');
-        if ($rawStart) {
-            // Parse the raw datetime string from database (format: Y-m-d H:i:s, stored as UTC)
-            // Create Carbon instance explicitly in UTC timezone
-            $startCarbon = Carbon::createFromFormat('Y-m-d H:i:s', $rawStart, 'UTC')
-                ->setTimezone($tz);
-            // Return ISO 8601 string with timezone offset (e.g., "2026-02-05T16:00:00+08:00")
-            $appointment->start_datetime = $startCarbon->format('Y-m-d\TH:i:sP');
-            $appointment->start_datetime_pht = $startCarbon->format('Y-m-d\TH:i:sP');
-        }
-    
-        $rawEnd = $appointment->getRawOriginal('end_datetime');
-        if ($rawEnd) {
-            // Parse the raw datetime string from database (format: Y-m-d H:i:s, stored as UTC)
-            // Create Carbon instance explicitly in UTC timezone
-            $endCarbon = Carbon::createFromFormat('Y-m-d H:i:s', $rawEnd, 'UTC')
-                ->setTimezone($tz);
-            // Return ISO 8601 string with timezone offset (e.g., "2026-02-05T16:30:00+08:00")
-            $appointment->end_datetime = $endCarbon->format('Y-m-d\TH:i:sP');
-            $appointment->end_datetime_pht = $endCarbon->format('Y-m-d\TH:i:sP');
-        }
-    
+        // Let the Appointment model serialize its casted datetimes in Asia/Manila.
+        // We only add a lightweight flag here to avoid double-shifting timestamps.
+        $appointment->is_rescheduled = !empty($appointment->getRawOriginal('rescheduled_at'));
+
         return $appointment;
     }
-    
-    public function index()
+
+    public function availability(Request $request)
     {
-        $appointments = Appointment::with(['stylist', 'service', 'services.variants'])->latest('start_datetime')->get();
-        
-        // Format datetime fields to Asia/Manila timezone for JSON response
+        $data = $request->validate([
+            'date' => 'required|date',
+            'service_duration' => 'nullable|integer|min:30',
+            'exclude_appointment_id' => 'nullable|integer|exists:appointments,id',
+        ]);
+
+        $date = Carbon::parse($data['date'], 'Asia/Manila')->format('Y-m-d');
+        if (Holiday::findClosedForDate($date)) {
+            return response()->json([]);
+        }
+
+        $durationMinutes = $this->normalizeDurationMinutes($data['service_duration'] ?? self::SLOT_INTERVAL_MINUTES);
+        $appointments = $this->activeCapacityAppointments($date, $data['exclude_appointment_id'] ?? null);
+        $window = $this->businessWindow($date);
+        $cursor = $window['start']->copy();
+        $latestStart = $window['end']->copy()->subMinutes($durationMinutes);
+        $slots = [];
+
+        while ($cursor->lte($latestStart)) {
+            $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
+            $capacity = $this->summarizeSlotCapacity($appointments, $cursor, $slotEnd);
+
+            $slots[] = [
+                'start' => $cursor->copy()->toIso8601String(),
+                'end' => $slotEnd->copy()->toIso8601String(),
+                'available' => !$capacity['full'],
+                'booked_count' => $capacity['booked'],
+                'remaining_slots' => $capacity['remaining'],
+                'capacity' => self::MAX_SLOTS_PER_TIME,
+            ];
+
+            $cursor->addMinutes(self::SLOT_INTERVAL_MINUTES);
+        }
+
+        return response()->json($slots);
+    }
+    
+    public function index(Request $request)
+    {
+        $this->syncMissedAppointments();
+
+        $data = $request->validate([
+            'status' => 'nullable|string',
+            'service_id' => 'nullable|integer|exists:services,id',
+            'q' => 'nullable|string',
+            'start_date' => 'nullable|date_format:Y-m-d',
+            'end_date' => 'nullable|date_format:Y-m-d',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+            'paginate' => 'nullable',
+        ]);
+
+        $query = Appointment::with(['stylist', 'service', 'services.variants']);
+
+        if (!empty($data['status']) && $data['status'] !== 'all') {
+            $status = strtolower(trim((string) $data['status']));
+            if ($status === 'booked') {
+                $query->whereIn('status', ['booked', 'confirmed']);
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if (!empty($data['service_id'])) {
+            $serviceId = (int) $data['service_id'];
+            $query->where(function ($builder) use ($serviceId) {
+                $builder
+                    ->where('service_id', $serviceId)
+                    ->orWhereHas('services', function ($servicesQuery) use ($serviceId) {
+                        $servicesQuery->where('services.id', $serviceId);
+                    });
+            });
+        }
+
+        if (!empty($data['q'])) {
+            $search = strtolower(trim((string) $data['q']));
+            $like = '%' . $search . '%';
+
+            $query->where(function ($builder) use ($like) {
+                $builder
+                    ->whereRaw('LOWER(customer_name) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(COALESCE(customer_email, "")) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(COALESCE(customer_phone, "")) LIKE ?', [$like])
+                    ->orWhereHas('service', function ($serviceQuery) use ($like) {
+                        $serviceQuery->whereRaw('LOWER(name) LIKE ?', [$like]);
+                    })
+                    ->orWhereHas('services', function ($serviceQuery) use ($like) {
+                        $serviceQuery->whereRaw('LOWER(name) LIKE ?', [$like]);
+                    });
+            });
+        }
+
+        if (!empty($data['start_date']) || !empty($data['end_date'])) {
+            $timezone = 'Asia/Manila';
+            $startManila = !empty($data['start_date'])
+                ? Carbon::createFromFormat('Y-m-d', $data['start_date'], $timezone)->startOfDay()
+                : Carbon::createFromFormat('Y-m-d', $data['end_date'], $timezone)->startOfDay();
+            $endManila = !empty($data['end_date'])
+                ? Carbon::createFromFormat('Y-m-d', $data['end_date'], $timezone)->endOfDay()
+                : Carbon::createFromFormat('Y-m-d', $data['start_date'], $timezone)->endOfDay();
+
+            if ($endManila->lt($startManila)) {
+                [$startManila, $endManila] = [$endManila->copy()->startOfDay(), $startManila->copy()->endOfDay()];
+            }
+
+            $query->whereBetween('start_datetime', [
+                $startManila->copy()->setTimezone('UTC'),
+                $endManila->copy()->setTimezone('UTC'),
+            ]);
+        }
+
+        if ($this->shouldPaginate($request)) {
+            $paginator = $query
+                ->orderBy('created_at')
+                ->orderBy('id')
+                ->paginate($this->resolvePerPage($request));
+            $paginator->through(function ($appointment) {
+                return $this->formatAppointmentForResponse($appointment);
+            });
+
+            return response()->json($paginator);
+        }
+
+        $appointments = $query->latest('start_datetime')->get();
+
         return $appointments->map(function ($appointment) {
             return $this->formatAppointmentForResponse($appointment);
         });
@@ -64,11 +177,12 @@ class AppointmentController extends Controller
 
     public function show(Appointment $appointment)
     {
+        $appointment = $this->refreshMissedStatus($appointment);
         $appointment = $appointment->load(['stylist', 'service', 'services.variants']);
         return $this->formatAppointmentForResponse($appointment);
     }
 
-    public function store(Request $request, Scheduler $scheduler)
+    public function store(Request $request, Scheduler $scheduler, CustomerProfileService $customerProfiles)
     {
         $data = $request->validate([
             'customer_name' => 'required|string',
@@ -80,6 +194,7 @@ class AppointmentController extends Controller
             'service_ids.*' => 'exists:services,id',
             'service_variants' => 'nullable|string', // JSON string of service_id => variant_id mapping
             'stylist_id' => 'nullable|exists:stylists,id',
+            'auto_assigned_stylist_id' => 'nullable|exists:stylists,id',
             'date' => 'required|date',
             'preferred_time' => 'nullable|date_format:H:i',
             'payment_method' => 'nullable|in:on_hand,online',
@@ -88,6 +203,17 @@ class AppointmentController extends Controller
             'payment_proof_url' => 'nullable|url',
             'payment_proof' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
         ]);
+
+        // Persist a reusable customer profile for future verified bookings
+        // while keeping the existing appointment snapshot fields unchanged.
+        $customer = !empty(trim((string) ($data['customer_email'] ?? '')))
+            ? $customerProfiles->upsertCustomerFromBookingData([
+                'customer_name' => $data['customer_name'],
+                'customer_email' => $data['customer_email'],
+                'customer_phone' => $data['customer_phone'] ?? null,
+                'customer_address' => $data['customer_address'] ?? null,
+            ])
+            : null;
 
         // Validate date is today or future (use Asia/Manila timezone for Philippines)
         try {
@@ -121,7 +247,7 @@ class AppointmentController extends Controller
 
         // Check if date is a holiday
         $date = $selectedDate->format('Y-m-d');
-        $holiday = Holiday::where('date', $date)->where('is_closed', true)->first();
+        $holiday = Holiday::findClosedForDate($date);
         if ($holiday) {
             return response()->json([
                 'message' => "The salon is closed on {$holiday->name}. Please choose another date.",
@@ -194,6 +320,17 @@ class AppointmentController extends Controller
         $downpaymentAmountCents = $data['downpayment_amount_cents'] ?? null;
         $minDownpaymentCents = (int) round($totalAmountCents * 0.5);
 
+        if ($downpaymentAmountCents !== null && (int) $downpaymentAmountCents > $totalAmountCents) {
+            return response()->json([
+                'message' => 'Amount paid cannot be greater than the total amount.',
+                'errors' => [
+                    'downpayment_amount_cents' => [
+                        'Amount paid cannot be greater than the total amount.',
+                    ],
+                ],
+            ], 422);
+        }
+
         // Validate payment for online payments
         if ($paymentMethod === 'online') {
             if (empty($downpaymentAmountCents) || $downpaymentAmountCents <= 0) {
@@ -218,202 +355,37 @@ class AppointmentController extends Controller
             }
         }
 
-        $selectedStylistId = $data['stylist_id'] ?? null;
-        $stylist = $selectedStylistId
-            ? Stylist::findOrFail($selectedStylistId)
-            : Stylist::where('active', true)->firstOrFail();
-
-        // Use default duration of 30 minutes per service (since duration is removed)
-        $defaultDurationMinutes = 30;
-        $totalDuration = count($services) * $defaultDurationMinutes;
-
-        // If preferred_time is provided, use it exactly (customer's exact selection)
-        $timezone = 'Asia/Manila';
+        $totalDuration = $this->normalizeDurationMinutes($services->count() * self::SLOT_INTERVAL_MINUTES);
         $slot = null;
-        
-        if ($data['preferred_time']) {
-            // Use the preferred time exactly as the customer selected it
-            // Parse the time string (HH:MM format) - this is already in Asia/Manila timezone context
-            $timeParts = explode(':', $data['preferred_time']);
-            $hour = (int)$timeParts[0];
-            $minute = (int)($timeParts[1] ?? 0);
-            
-            // Create the datetime in Asia/Manila timezone
-            // First create in the specified timezone, then ensure it's set correctly
-            $selectedDate = Carbon::createFromFormat('Y-m-d', $data['date'], $timezone)->startOfDay();
-            // Create datetime in Asia/Manila timezone explicitly
-            $preferredDateTime = Carbon::createFromFormat(
-                'Y-m-d H:i:s',
-                sprintf('%s %02d:%02d:00', $data['date'], $hour, $minute),
-                $timezone
-            );
 
-            // #region agent log
-            $logData = json_encode([
-                'location' => 'AppointmentController.php:225',
-                'message' => 'Preferred time parsed',
-                'data' => [
-                    'date' => $data['date'],
-                    'preferred_time' => $data['preferred_time'],
-                    'preferredDateTime' => $preferredDateTime->format('Y-m-d H:i:s'),
-                    'preferredDateTimeTz' => $preferredDateTime->timezone->getName(),
-                ],
-                'timestamp' => time() * 1000,
-                'sessionId' => 'debug-session',
-                'runId' => 'run1',
-                'hypothesisId' => 'T1'
-            ]);
-            file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
-            // #endregion
-            
-            // Calculate end time based on number of services
-            $defaultDurationMinutes = 30;
-            $totalDuration = count($services) * $defaultDurationMinutes;
-            
-            $slot = [
-                'start' => $preferredDateTime,
-                'end' => $preferredDateTime->copy()->addMinutes($totalDuration)
-            ];
-            
-            // Verify the slot is available (check for conflicts)
-            $conflictingAppointment = Appointment::where('stylist_id', $stylist->id)
-                ->where('status', 'booked')
-                ->where(function($query) use ($slot) {
-                    $query->whereBetween('start_datetime', [$slot['start'], $slot['end']])
-                          ->orWhereBetween('end_datetime', [$slot['start'], $slot['end']])
-                          ->orWhere(function($q) use ($slot) {
-                              $q->where('start_datetime', '<=', $slot['start'])
-                                ->where('end_datetime', '>=', $slot['end']);
-                          });
-                })
-                ->first();
-            
-            if ($conflictingAppointment) {
-                $overlapStart = Carbon::parse($conflictingAppointment->start_datetime)->setTimezone($timezone);
-                $overlapEnd = Carbon::parse($conflictingAppointment->end_datetime)->setTimezone($timezone);
+        if (!empty($data['preferred_time'])) {
+            $slot = $this->validateCapacitySlot($data['date'], $data['preferred_time'], $totalDuration);
+
+            if (!$slot['available']) {
                 return response()->json([
-                    'message' => 'This time slot is already booked. The stylist has an appointment from ' . 
-                                $overlapStart->format('g:i A') . ' to ' . $overlapEnd->format('g:i A') . 
-                                '. Please choose a different time or stylist.',
-                    'overlapping_appointment' => [
-                        'start' => $conflictingAppointment->start_datetime,
-                        'end' => $conflictingAppointment->end_datetime,
-                    ]
+                    'message' => 'This time slot is already fully booked. Please select another time.',
+                    'errors' => [
+                        'time' => ['This time slot is already fully booked. Please select another time.'],
+                    ],
+                    'slot' => [
+                        'booked_count' => $slot['booked_count'],
+                        'remaining_slots' => $slot['remaining_slots'],
+                        'capacity' => $slot['capacity'],
+                    ],
                 ], 409);
             }
         } else {
-            // If no preferred time, use scheduler to find available slot
-            $slot = $scheduler->findSlotForServices($stylist, $services->all(), $data['date'], null);
+            $slot = $this->firstAvailableCapacitySlot($data['date'], $totalDuration);
         }
-        
+
         if (!$slot) {
-            // Calculate total duration for error message
-            $requestedStart = \Carbon\Carbon::parse($data['date'] . ' ' . ($data['preferred_time'] ?? '08:00'));
-            $requestedEnd = $requestedStart->copy()->addMinutes($totalDuration);
-            
-            $overlapping = Appointment::where('stylist_id', $stylist->id)
-                ->where('status', 'booked')
-                ->where(function($query) use ($requestedStart, $requestedEnd) {
-                    $query->whereBetween('start_datetime', [$requestedStart, $requestedEnd])
-                          ->orWhereBetween('end_datetime', [$requestedStart, $requestedEnd])
-                          ->orWhere(function($q) use ($requestedStart, $requestedEnd) {
-                              $q->where('start_datetime', '<=', $requestedStart)
-                                ->where('end_datetime', '>=', $requestedEnd);
-                          });
-                })
-                ->first();
-            
-            if ($overlapping) {
-                $overlapStart = \Carbon\Carbon::parse($overlapping->start_datetime);
-                $overlapEnd = \Carbon\Carbon::parse($overlapping->end_datetime);
-                return response()->json([
-                    'message' => 'This time slot is already booked. The stylist has an appointment from ' . 
-                                $overlapStart->format('g:i A') . ' to ' . $overlapEnd->format('g:i A') . 
-                                '. Please choose a different time or stylist.',
-                    'overlapping_appointment' => [
-                        'start' => $overlapping->start_datetime,
-                        'end' => $overlapping->end_datetime,
-                    ]
-                ], 409);
-            }
-            
             return response()->json([
-                'message' => 'No available time slots for this date and stylist. Please choose a different date, time, or stylist.'
+                'message' => 'No available time slots for this date. Please choose a different date or time.',
             ], 409);
         }
 
-        // The slot should already be a Carbon instance in Asia/Manila timezone
-        // from the preferred_time logic above (or from scheduler)
-        $timezone = 'Asia/Manila';
-        
-        // Get the Carbon instances - they should already be in Asia/Manila
-        if ($slot['start'] instanceof Carbon) {
-            $startDateTime = $slot['start']->copy();
-            // Ensure it's in Asia/Manila timezone (it should already be)
-            if ($startDateTime->timezone->getName() !== $timezone) {
-                $startDateTime->setTimezone($timezone);
-            }
-        } else {
-            // Parse as string and assume it's in Asia/Manila timezone
-            $startDateTime = Carbon::parse($slot['start'], $timezone);
-        }
-        
-        if ($slot['end'] instanceof Carbon) {
-            $endDateTime = $slot['end']->copy();
-            if ($endDateTime->timezone->getName() !== $timezone) {
-                $endDateTime->setTimezone($timezone);
-            }
-        } else {
-            $endDateTime = Carbon::parse($slot['end'], $timezone);
-        }
-
-        // #region agent log
-        $logData = json_encode([
-            'location' => 'AppointmentController.php:331',
-            'message' => 'Slot datetimes before storage conversion',
-            'data' => [
-                'startDateTime' => $startDateTime->format('Y-m-d H:i:s'),
-                'startDateTimeTz' => $startDateTime->timezone->getName(),
-                'endDateTime' => $endDateTime->format('Y-m-d H:i:s'),
-                'endDateTimeTz' => $endDateTime->timezone->getName(),
-            ],
-            'timestamp' => time() * 1000,
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'T2'
-        ]);
-        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
-        // #endregion
-        
-        // Convert to UTC for database storage (Laravel stores datetimes in UTC)
-        // This correctly converts the time: 4:00 PM Asia/Manila becomes 8:00 AM UTC
-        // When retrieved later, we convert back to get 4:00 PM Asia/Manila
-        // Ensure the datetime is in Manila timezone, then convert to UTC
-        if ($startDateTime->timezone->getName() !== $timezone) {
-            $startDateTime->setTimezone($timezone);
-        }
-        $startDateTimeForStorage = $startDateTime->copy()->setTimezone('UTC');
-        
-        if ($endDateTime->timezone->getName() !== $timezone) {
-            $endDateTime->setTimezone($timezone);
-        }
-        $endDateTimeForStorage = $endDateTime->copy()->setTimezone('UTC');
-
-        // #region agent log
-        $logData = json_encode([
-            'location' => 'AppointmentController.php:346',
-            'message' => 'Datetimes converted to UTC for storage',
-            'data' => [
-                'startDateTimeUtc' => $startDateTimeForStorage->format('Y-m-d H:i:s'),
-                'endDateTimeUtc' => $endDateTimeForStorage->format('Y-m-d H:i:s'),
-            ],
-            'timestamp' => time() * 1000,
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'T2'
-        ]);
-        file_put_contents('c:\\Users\\Ruffa Mae S. Sapan\\OneDrive\\Desktop\\THOLITS SALON\\.cursor\\debug.log', $logData . "\n", FILE_APPEND);
-        // #endregion
+        $startDateTimeForStorage = $slot['start']->copy()->setTimezone('UTC');
+        $endDateTimeForStorage = $slot['end']->copy()->setTimezone('UTC');
         
         // Create appointment with first service_id for backward compatibility
         $paymentStatus = 'unpaid';
@@ -424,12 +396,12 @@ class AppointmentController extends Controller
         }
 
         $appointment = Appointment::create([
-            'stylist_id' => $stylist->id,
+            'stylist_id' => null,
             'service_id' => $services->first()->id, // Keep for backward compatibility
-            'customer_name' => $data['customer_name'],
-            'customer_email' => $data['customer_email'] ?? null,
-            'customer_phone' => $data['customer_phone'] ?? null,
-            'customer_address' => $data['customer_address'] ?? null,
+            'customer_name' => $customer->name ?? $data['customer_name'],
+            'customer_email' => $customer->email ?? ($data['customer_email'] ?? null),
+            'customer_phone' => $customer->phone ?? ($data['customer_phone'] ?? null),
+            'customer_address' => $customer->address ?? ($data['customer_address'] ?? null),
             'payment_method' => $paymentMethod,
             'payment_status' => $paymentStatus,
             'downpayment_amount_cents' => $downpaymentAmountCents ?? null,
@@ -457,8 +429,15 @@ class AppointmentController extends Controller
         return response()->json($appointment);
     }
 
-    public function update(Request $request, Appointment $appointment, Scheduler $scheduler)
+    public function update(Request $request, Appointment $appointment, Scheduler $scheduler, CustomerProfileService $customerProfiles)
     {
+        $appointment = $this->refreshMissedStatus($appointment);
+        if ($this->isMissed($appointment)) {
+            return response()->json([
+                'message' => 'Missed appointments are closed and can no longer be modified.',
+            ], 422);
+        }
+
         $data = $request->validate([
             'date' => 'sometimes|date|after_or_equal:today',
             'preferred_time' => 'nullable|date_format:H:i',
@@ -484,7 +463,7 @@ class AppointmentController extends Controller
 
             // Check if date is a holiday
             $date = $targetDate;
-            $holiday = Holiday::where('date', $date)->where('is_closed', true)->first();
+            $holiday = Holiday::findClosedForDate($date);
             if ($holiday) {
                 return response()->json([
                     'message' => "The salon is closed on {$holiday->name}. Please choose another date.",
@@ -510,32 +489,49 @@ class AppointmentController extends Controller
                 $services = collect([$appointment->service]);
             }
             $stylist = $appointment->stylist;
+            $durationMinutes = max(
+                15,
+                Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')
+                    ->diffInMinutes(Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC'))
+            );
+            if ($durationMinutes < 15) {
+                $durationMinutes = $this->normalizeDurationMinutes($services->count() * self::SLOT_INTERVAL_MINUTES);
+            }
 
             if (isset($data['date']) && isset($data['preferred_time'])) {
-                $durationMinutes = max(15, Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')
-                    ->diffInMinutes(Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC')));
-                if ($durationMinutes < 15) {
-                    $durationMinutes = max(30, $services->count() * 30);
-                }
-
                 $newStartManila = Carbon::createFromFormat('Y-m-d H:i', "{$targetDate} {$targetTime}", $timezone);
                 $newEndManila = $newStartManila->copy()->addMinutes($durationMinutes);
 
                 $newStartUtc = $newStartManila->copy()->setTimezone('UTC');
                 $newEndUtc = $newEndManila->copy()->setTimezone('UTC');
 
-                $hasConflict = Appointment::query()
-                    ->where('id', '!=', $appointment->id)
-                    ->where('stylist_id', $stylist->id)
-                    ->whereIn('status', ['booked', 'pending', 'confirmed'])
-                    ->where(function ($query) use ($newStartUtc, $newEndUtc) {
-                        $query->where('start_datetime', '<', $newEndUtc)
-                            ->where('end_datetime', '>', $newStartUtc);
-                    })
-                    ->exists();
+                if ($stylist) {
+                    $hasConflict = Appointment::query()
+                        ->where('id', '!=', $appointment->id)
+                        ->where('stylist_id', $stylist->id)
+                        ->whereIn('status', self::ACTIVE_SLOT_STATUSES)
+                        ->where(function ($query) use ($newStartUtc, $newEndUtc) {
+                            $query->where('start_datetime', '<', $newEndUtc)
+                                ->where('end_datetime', '>', $newStartUtc);
+                        })
+                        ->exists();
 
-                if ($hasConflict) {
-                    return response()->json(['message' => 'Selected time is unavailable. Please choose another time.'], 409);
+                    if ($hasConflict) {
+                        return response()->json(['message' => 'Selected time is unavailable. Please choose another time.'], 409);
+                    }
+                } else {
+                    $capacitySlot = $this->validateCapacitySlot(
+                        $targetDate,
+                        $targetTime,
+                        $durationMinutes,
+                        $appointment->id
+                    );
+
+                    if (!$capacitySlot['available']) {
+                        return response()->json([
+                            'message' => 'This time slot is already fully booked. Please select another time.',
+                        ], 409);
+                    }
                 }
 
                 $updateData = [
@@ -548,13 +544,22 @@ class AppointmentController extends Controller
                     'reschedule_reason' => $data['reschedule_reason'] ?? null,
                 ];
             } else {
-                $slot = $scheduler->findSlotForServices($stylist, $services->all(), $targetDate, $targetTime);
+                $slot = $stylist
+                    ? $scheduler->findSlotForServices($stylist, $services->all(), $targetDate, $targetTime)
+                    : $this->firstAvailableCapacitySlot($targetDate, $durationMinutes, $appointment->id);
+
                 if (!$slot) {
                     return response()->json(['message' => 'No slots available'], 409);
                 }
 
-                $slotStartUtc = Carbon::parse($slot['start'], $timezone)->setTimezone('UTC');
-                $slotEndUtc = Carbon::parse($slot['end'], $timezone)->setTimezone('UTC');
+                $slotStartUtc = ($slot['start'] instanceof Carbon
+                    ? $slot['start']->copy()
+                    : Carbon::parse($slot['start'], $timezone))
+                    ->setTimezone('UTC');
+                $slotEndUtc = ($slot['end'] instanceof Carbon
+                    ? $slot['end']->copy()
+                    : Carbon::parse($slot['end'], $timezone))
+                    ->setTimezone('UTC');
 
                 $updateData = [
                     'start_datetime' => $slotStartUtc,
@@ -570,11 +575,36 @@ class AppointmentController extends Controller
             $updateData = [];
         }
 
-        // Update other fields if provided
-        if (isset($data['customer_name'])) $updateData['customer_name'] = $data['customer_name'];
-        if (isset($data['customer_email'])) $updateData['customer_email'] = $data['customer_email'];
-        if (isset($data['customer_phone'])) $updateData['customer_phone'] = $data['customer_phone'];
-        if (isset($data['customer_address'])) $updateData['customer_address'] = $data['customer_address'];
+        $hasCustomerProfileChanges = isset($data['customer_name'])
+            || isset($data['customer_email'])
+            || isset($data['customer_phone'])
+            || array_key_exists('customer_address', $data);
+
+        if ($hasCustomerProfileChanges) {
+            $resolvedEmail = trim((string) ($data['customer_email'] ?? $appointment->customer_email));
+
+            if ($resolvedEmail !== '') {
+                $customer = $customerProfiles->upsertCustomerFromBookingData([
+                    'customer_name' => $data['customer_name'] ?? $appointment->customer_name,
+                    'customer_email' => $resolvedEmail,
+                    'customer_phone' => $data['customer_phone'] ?? $appointment->customer_phone,
+                    'customer_address' => array_key_exists('customer_address', $data)
+                        ? $data['customer_address']
+                        : $appointment->customer_address,
+                ]);
+
+                $updateData['customer_name'] = $customer->name ?? ($data['customer_name'] ?? $appointment->customer_name);
+                $updateData['customer_email'] = $customer->email;
+                $updateData['customer_phone'] = $customer->phone;
+                $updateData['customer_address'] = $customer->address;
+            } else {
+                if (isset($data['customer_name'])) $updateData['customer_name'] = $data['customer_name'];
+                if (isset($data['customer_email'])) $updateData['customer_email'] = $data['customer_email'];
+                if (isset($data['customer_phone'])) $updateData['customer_phone'] = $data['customer_phone'];
+                if (array_key_exists('customer_address', $data)) $updateData['customer_address'] = $data['customer_address'];
+            }
+        }
+
         if (isset($data['payment_status'])) $updateData['payment_status'] = $data['payment_status'];
 
         $appointment->update($updateData);
@@ -585,12 +615,26 @@ class AppointmentController extends Controller
 
     public function cancel(Appointment $appointment)
     {
+        $appointment = $this->refreshMissedStatus($appointment);
+        if ($this->isMissed($appointment)) {
+            return response()->json([
+                'message' => 'Missed appointments are closed and can no longer be cancelled.',
+            ], 422);
+        }
+
         $appointment->update(['status' => 'cancelled']);
         return response()->json(['message' => 'Cancelled']);
     }
 
     public function complete(Appointment $appointment, Request $request, InventoryWorkflowService $inventoryWorkflowService)
     {
+        $appointment = $this->refreshMissedStatus($appointment);
+        if ($this->isMissed($appointment)) {
+            return response()->json([
+                'message' => 'Missed appointments are closed and can no longer be completed.',
+            ], 422);
+        }
+
         // Check if appointment is already completed to avoid duplicate sales or stock deduction.
         if ($appointment->status === 'completed') {
             $appointment = $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
@@ -755,6 +799,13 @@ class AppointmentController extends Controller
 
     public function confirm(Appointment $appointment)
     {
+        $appointment = $this->refreshMissedStatus($appointment);
+        if ($this->isMissed($appointment)) {
+            return response()->json([
+                'message' => 'Missed appointments are closed and can no longer be confirmed.',
+            ], 422);
+        }
+
         if ($appointment->payment_method === 'on_hand') {
             $total = (int) ($appointment->total_amount_cents ?? 0);
             $minDeposit = (int) round($total * 0.5);
@@ -788,6 +839,7 @@ class AppointmentController extends Controller
 
     public function receipt(Appointment $appointment)
     {
+        $appointment = $this->refreshMissedStatus($appointment);
         $appointment->load(['stylist', 'service', 'services.variants']);
         $appointment = $this->formatAppointmentForResponse($appointment);
     
@@ -801,6 +853,13 @@ class AppointmentController extends Controller
 
     public function reschedule(Request $request, Appointment $appointment, Scheduler $scheduler)
     {
+        $appointment = $this->refreshMissedStatus($appointment);
+        if ($this->isMissed($appointment)) {
+            return response()->json([
+                'message' => 'Missed appointments are closed and can no longer be rescheduled.',
+            ], 422);
+        }
+
         $data = $request->validate([
             'date' => 'required|date|after_or_equal:today',
             'preferred_time' => 'nullable|date_format:H:i',
@@ -811,7 +870,7 @@ class AppointmentController extends Controller
 
         // Check if date is a holiday
         $date = Carbon::parse($data['date'], $timezone)->format('Y-m-d');
-        $holiday = Holiday::where('date', $date)->where('is_closed', true)->first();
+        $holiday = Holiday::findClosedForDate($date);
         if ($holiday) {
             return response()->json([
                 'message' => "The salon is closed on {$holiday->name}. Please choose another date.",
@@ -834,31 +893,48 @@ class AppointmentController extends Controller
         }
         $stylist = $appointment->stylist;
         $user = $request->user();
+        $durationMinutes = max(
+            15,
+            Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')
+                ->diffInMinutes(Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC'))
+        );
+        if ($durationMinutes < 15) {
+            $durationMinutes = $this->normalizeDurationMinutes($services->count() * self::SLOT_INTERVAL_MINUTES);
+        }
 
         if (!empty($data['preferred_time'])) {
-            $durationMinutes = max(15, Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')
-                ->diffInMinutes(Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC')));
-            if ($durationMinutes < 15) {
-                $durationMinutes = max(30, $services->count() * 30);
-            }
-
             $newStartManila = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$data['preferred_time']}", $timezone);
             $newEndManila = $newStartManila->copy()->addMinutes($durationMinutes);
             $newStartUtc = $newStartManila->copy()->setTimezone('UTC');
             $newEndUtc = $newEndManila->copy()->setTimezone('UTC');
 
-            $hasConflict = Appointment::query()
-                ->where('id', '!=', $appointment->id)
-                ->where('stylist_id', $stylist->id)
-                ->whereIn('status', ['booked', 'pending', 'confirmed'])
-                ->where(function ($query) use ($newStartUtc, $newEndUtc) {
-                    $query->where('start_datetime', '<', $newEndUtc)
-                        ->where('end_datetime', '>', $newStartUtc);
-                })
-                ->exists();
+            if ($stylist) {
+                $hasConflict = Appointment::query()
+                    ->where('id', '!=', $appointment->id)
+                    ->where('stylist_id', $stylist->id)
+                    ->whereIn('status', self::ACTIVE_SLOT_STATUSES)
+                    ->where(function ($query) use ($newStartUtc, $newEndUtc) {
+                        $query->where('start_datetime', '<', $newEndUtc)
+                            ->where('end_datetime', '>', $newStartUtc);
+                    })
+                    ->exists();
 
-            if ($hasConflict) {
-                return response()->json(['message' => 'Selected time is unavailable. Please choose another time.'], 409);
+                if ($hasConflict) {
+                    return response()->json(['message' => 'Selected time is unavailable. Please choose another time.'], 409);
+                }
+            } else {
+                $capacitySlot = $this->validateCapacitySlot(
+                    $date,
+                    $data['preferred_time'],
+                    $durationMinutes,
+                    $appointment->id
+                );
+
+                if (!$capacitySlot['available']) {
+                    return response()->json([
+                        'message' => 'This time slot is already fully booked. Please select another time.',
+                    ], 409);
+                }
             }
 
             $updatePayload = [
@@ -871,14 +947,21 @@ class AppointmentController extends Controller
                 'reschedule_reason' => $data['reschedule_reason'] ?? null,
             ];
         } else {
-            $slot = $scheduler->findSlotForServices($stylist, $services->all(), $date, $data['preferred_time'] ?? null);
+            $slot = $stylist
+                ? $scheduler->findSlotForServices($stylist, $services->all(), $date, $data['preferred_time'] ?? null)
+                : $this->firstAvailableCapacitySlot($date, $durationMinutes, $appointment->id);
+
             if (!$slot) {
                 return response()->json(['message' => 'No slots available'], 409);
             }
 
             $updatePayload = [
-                'start_datetime' => Carbon::parse($slot['start'], $timezone)->setTimezone('UTC'),
-                'end_datetime' => Carbon::parse($slot['end'], $timezone)->setTimezone('UTC'),
+                'start_datetime' => ($slot['start'] instanceof Carbon
+                    ? $slot['start']->copy()
+                    : Carbon::parse($slot['start'], $timezone))->setTimezone('UTC'),
+                'end_datetime' => ($slot['end'] instanceof Carbon
+                    ? $slot['end']->copy()
+                    : Carbon::parse($slot['end'], $timezone))->setTimezone('UTC'),
                 'status' => 'booked',
                 'rescheduled_at' => now(),
                 'rescheduled_by_id' => $user ? $user->id : null,
@@ -899,12 +982,20 @@ class AppointmentController extends Controller
 
     public function markMissed(Appointment $appointment)
     {
+        $appointment = $this->refreshMissedStatus($appointment);
+        if (in_array($appointment->status, ['completed', 'cancelled'], true)) {
+            return response()->json([
+                'message' => 'Completed or cancelled appointments cannot be marked as missed.',
+            ], 422);
+        }
+
         $appointment->update(['status' => 'missed']);
         return response()->json(['message' => 'Appointment marked as missed']);
     }
 
     public function history(Request $request)
     {
+        $this->syncMissedAppointments();
         $query = Appointment::with(['stylist', 'service', 'services']);
 
         // Filter by status if provided
@@ -930,5 +1021,264 @@ class AppointmentController extends Controller
     {
         $appointment->delete();
         return response()->json(['message' => 'Appointment deleted successfully']);
+    }
+
+    private function normalizeDurationMinutes(int $durationMinutes): int
+    {
+        $normalized = max(self::SLOT_INTERVAL_MINUTES, $durationMinutes);
+
+        if ($normalized % self::SLOT_INTERVAL_MINUTES !== 0) {
+            $normalized = (int) (ceil($normalized / self::SLOT_INTERVAL_MINUTES) * self::SLOT_INTERVAL_MINUTES);
+        }
+
+        return $normalized;
+    }
+
+    private function syncMissedAppointments(): void
+    {
+        app(MissedAppointmentService::class)->markOverdueAppointmentsAsMissed();
+    }
+
+    private function refreshMissedStatus(Appointment $appointment): Appointment
+    {
+        return app(MissedAppointmentService::class)->refreshAppointmentStatus($appointment);
+    }
+
+    private function isMissed(Appointment $appointment): bool
+    {
+        return app(MissedAppointmentService::class)->isMissed($appointment);
+    }
+
+    private function businessWindow(string $date): array
+    {
+        $targetDate = Carbon::createFromFormat('Y-m-d', $date, 'Asia/Manila')->startOfDay();
+
+        return [
+            'start' => $targetDate->copy()->setTime(self::BUSINESS_OPEN_HOUR, 0, 0),
+            'end' => $targetDate->copy()->setTime(self::BUSINESS_CLOSE_HOUR, 0, 0),
+        ];
+    }
+
+    private function activeCapacityAppointments(string $date, ?int $ignoreAppointmentId = null): Collection
+    {
+        $window = $this->businessWindow($date);
+        $businessStartUtc = $window['start']->copy()->setTimezone('UTC');
+        $businessEndUtc = $window['end']->copy()->setTimezone('UTC');
+
+        $query = Appointment::query()
+            ->select(['id', 'start_datetime', 'end_datetime', 'status'])
+            ->whereIn('status', self::ACTIVE_SLOT_STATUSES)
+            ->where('start_datetime', '<', $businessEndUtc)
+            ->where('end_datetime', '>', $businessStartUtc);
+
+        if ($ignoreAppointmentId) {
+            $query->where('id', '!=', $ignoreAppointmentId);
+        }
+
+        return $query->get()->map(function (Appointment $appointment) {
+            return [
+                'id' => $appointment->id,
+                'start' => Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC'),
+                'end' => Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC'),
+            ];
+        });
+    }
+
+    private function summarizeSlotCapacity(Collection $appointments, Carbon $slotStart, Carbon $slotEnd): array
+    {
+        $blockStartUtc = $slotStart->copy()->setTimezone('UTC');
+        $blockEndUtc = $slotStart->copy()->addMinutes(self::SLOT_INTERVAL_MINUTES)->setTimezone('UTC');
+
+        // Slot occupancy is based only on the exact start slot the customer chose,
+        // not on later blocks covered by the appointment duration.
+        $bookedCount = $appointments->filter(function (array $appointment) use ($blockStartUtc, $blockEndUtc) {
+            return $appointment['start']->gte($blockStartUtc) && $appointment['start']->lt($blockEndUtc);
+        })->count();
+
+        return [
+            'booked' => $bookedCount,
+            'remaining' => max(0, self::MAX_SLOTS_PER_TIME - $bookedCount),
+            'full' => $bookedCount >= self::MAX_SLOTS_PER_TIME,
+        ];
+    }
+
+    private function firstAvailableCapacitySlot(
+        string $date,
+        int $durationMinutes,
+        ?int $ignoreAppointmentId = null
+    ): ?array {
+        $appointments = $this->activeCapacityAppointments($date, $ignoreAppointmentId);
+        $window = $this->businessWindow($date);
+        $cursor = $window['start']->copy();
+        $latestStart = $window['end']->copy()->subMinutes($durationMinutes);
+
+        while ($cursor->lte($latestStart)) {
+            $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
+            $capacity = $this->summarizeSlotCapacity($appointments, $cursor, $slotEnd);
+
+            if (!$capacity['full']) {
+                return [
+                    'start' => $cursor->copy(),
+                    'end' => $slotEnd->copy(),
+                    'booked_count' => $capacity['booked'],
+                    'remaining_slots' => $capacity['remaining'],
+                    'capacity' => self::MAX_SLOTS_PER_TIME,
+                ];
+            }
+
+            $cursor->addMinutes(self::SLOT_INTERVAL_MINUTES);
+        }
+
+        return null;
+    }
+
+    private function validateCapacitySlot(
+        string $date,
+        string $preferredTime,
+        int $durationMinutes,
+        ?int $ignoreAppointmentId = null
+    ): array {
+        $slotStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$preferredTime}", 'Asia/Manila');
+        $slotEnd = $slotStart->copy()->addMinutes($durationMinutes);
+        $window = $this->businessWindow($date);
+
+        if ($slotStart->lt($window['start']) || $slotEnd->gt($window['end'])) {
+            return [
+                'available' => false,
+                'start' => $slotStart,
+                'end' => $slotEnd,
+                'booked_count' => self::MAX_SLOTS_PER_TIME,
+                'remaining_slots' => 0,
+                'capacity' => self::MAX_SLOTS_PER_TIME,
+            ];
+        }
+
+        $appointments = $this->activeCapacityAppointments($date, $ignoreAppointmentId);
+        $capacity = $this->summarizeSlotCapacity($appointments, $slotStart, $slotEnd);
+
+        return [
+            'available' => !$capacity['full'],
+            'start' => $slotStart,
+            'end' => $slotEnd,
+            'booked_count' => $capacity['booked'],
+            'remaining_slots' => $capacity['remaining'],
+            'capacity' => self::MAX_SLOTS_PER_TIME,
+        ];
+    }
+
+    private function resolveBookingStylist(
+        ?int $selectedStylistId,
+        ?int $preferredAutoAssignedStylistId,
+        $services,
+        string $date,
+        ?string $preferredTime,
+        int $totalDurationMinutes,
+        Scheduler $scheduler
+    ): ?Stylist {
+        if ($selectedStylistId) {
+            return Stylist::findOrFail($selectedStylistId);
+        }
+
+        $candidateStylists = $this->resolveAutoAssignCandidates();
+        if ($candidateStylists->isEmpty()) {
+            return null;
+        }
+
+        if ($preferredTime) {
+            $candidateStylists = $candidateStylists
+                ->filter(fn (Stylist $stylist) => $this->stylistCanTakeRequestedSlot(
+                    $stylist,
+                    $date,
+                    $preferredTime,
+                    $totalDurationMinutes,
+                    $scheduler
+                ))
+                ->values();
+        } else {
+            $candidateStylists = $candidateStylists
+                ->filter(fn (Stylist $stylist) => (bool) $scheduler->findSlotForServices(
+                    $stylist,
+                    $services->all(),
+                    $date,
+                    null
+                ))
+                ->values();
+        }
+
+        if ($candidateStylists->isEmpty()) {
+            return null;
+        }
+
+        if ($preferredAutoAssignedStylistId) {
+            $preferredStylist = $candidateStylists->firstWhere('id', $preferredAutoAssignedStylistId);
+            if ($preferredStylist) {
+                return $preferredStylist;
+            }
+        }
+
+        return $this->pickAutoAssignedStylist($candidateStylists, $date);
+    }
+
+    private function resolveAutoAssignCandidates()
+    {
+        return Stylist::query()
+            ->where('active', true)
+            ->where(function ($query) {
+                $query->where('role', 'stylist')
+                    ->orWhereNull('role');
+            })
+            ->get()
+            ->values();
+    }
+
+    private function stylistCanTakeRequestedSlot(
+        Stylist $stylist,
+        string $date,
+        string $preferredTime,
+        int $totalDurationMinutes,
+        Scheduler $scheduler
+    ): bool {
+        $timezone = 'Asia/Manila';
+        $requestedStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$preferredTime}", $timezone);
+        $requestedEnd = $requestedStart->copy()->addMinutes($totalDurationMinutes);
+
+        return $scheduler->freeBlocksForDate($stylist, $date)->contains(function ($block) use ($requestedStart, $requestedEnd) {
+            return $requestedStart->greaterThanOrEqualTo($block['start'])
+                && $requestedEnd->lessThanOrEqualTo($block['end']);
+        });
+    }
+
+    private function pickAutoAssignedStylist($stylists, string $date): Stylist
+    {
+        if ($stylists->count() === 1) {
+            return $stylists->first();
+        }
+
+        $timezone = 'Asia/Manila';
+        $dayStartUtc = Carbon::createFromFormat('Y-m-d', $date, $timezone)->startOfDay()->setTimezone('UTC');
+        $dayEndUtc = Carbon::createFromFormat('Y-m-d', $date, $timezone)->endOfDay()->setTimezone('UTC');
+
+        $bookingCounts = Appointment::query()
+            ->selectRaw('stylist_id, COUNT(*) as total')
+            ->whereIn('stylist_id', $stylists->pluck('id'))
+            ->where('status', 'booked')
+            ->whereBetween('start_datetime', [$dayStartUtc, $dayEndUtc])
+            ->groupBy('stylist_id')
+            ->pluck('total', 'stylist_id');
+
+        $lowestCount = $stylists->map(fn (Stylist $stylist) => (int) ($bookingCounts[$stylist->id] ?? 0))->min();
+
+        // Rotate auto-assigned bookings among currently available stylists instead of
+        // repeatedly defaulting to the same first stylist. Stylists within one booking
+        // of the lightest load join the rotation pool, then one is picked at random.
+        $rotationPool = $stylists
+            ->filter(fn (Stylist $stylist) => (int) ($bookingCounts[$stylist->id] ?? 0) <= ($lowestCount + 1))
+            ->values();
+
+        if ($rotationPool->isEmpty()) {
+            $rotationPool = $stylists->values();
+        }
+
+        return $rotationPool->shuffle()->first();
     }
 }

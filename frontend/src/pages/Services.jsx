@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
+import { resolveAssetUrl } from '../utils/runtime'
 
 const AUDIENCE_OPTIONS = [
   { key: 'all', label: 'All' },
@@ -12,13 +13,7 @@ const AUDIENCE_OPTIONS = [
 const currency = (cents) => `PHP ${(Number(cents || 0) / 100).toFixed(2)}`
 
 const imageUrl = (path) => {
-  if (!path) return null
-  if (/^https?:\/\//i.test(path)) return path
-  const normalizedPath = String(path).replace(/^\/+/, '')
-  const origin = window.location.origin.includes(':5173')
-    ? 'http://localhost:8000'
-    : window.location.origin
-  return `${origin}/${normalizedPath}`
+  return resolveAssetUrl(path)
 }
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase()
@@ -360,7 +355,7 @@ const Services = () => {
     if (service._pricing.variants.length <= 1) {
       const singleVariant = service._pricing.variants[0]
       const variantQuery = singleVariant ? `&variant_id=${singleVariant.id}` : ''
-      navigate(`/book?services=${service.id}${variantQuery}`)
+      navigate(`/book?fresh=1&services=${service.id}${variantQuery}`)
       return
     }
 
@@ -390,7 +385,7 @@ const Services = () => {
   const continueBooking = () => {
     if (!optionsService) return
     const variantQuery = selectedModalVariant ? `&variant_id=${selectedModalVariant.id}` : ''
-    navigate(`/book?services=${optionsService.id}${variantQuery}`)
+    navigate(`/book?fresh=1&services=${optionsService.id}${variantQuery}`)
     closeOptions()
   }
 
@@ -403,7 +398,7 @@ const Services = () => {
             className="h-10 w-10 rounded-full border border-[#d8cbff] bg-white text-[#4f3ec0] hover:bg-[#f2ecff] transition"
             aria-label="Back to home"
           >
-            ←
+            {'<'}
           </button>
           <h1 className="text-3xl md:text-4xl font-semibold text-[#2f245a]">All Services</h1>
         </div>

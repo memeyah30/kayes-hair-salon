@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import api from '../utils/api'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
+import { resolveAssetUrl } from '../utils/runtime'
 
 const ManageServices = () => {
   const [services, setServices] = useState([])
@@ -59,7 +60,7 @@ const ManageServices = () => {
     } else {
       // If no file selected, keep existing image if editing
       if (editing && editing.image) {
-        setImagePreview(`http://localhost:8000/${editing.image}`)
+        setImagePreview(resolveAssetUrl(editing.image))
       }
     }
   }
@@ -197,7 +198,7 @@ const ManageServices = () => {
       image: null, // Reset to null - user must select new image to update
     })
     // Show existing image as preview when editing
-    setImagePreview(service.image ? `http://localhost:8000/${service.image}?t=${Date.now()}` : null)
+    setImagePreview(service.image ? `${resolveAssetUrl(service.image)}?t=${Date.now()}` : null)
     
     // Load variants for this service
     try {
@@ -644,7 +645,7 @@ const ManageServices = () => {
                     {s.image ? (
                       <img
                         key={`${s.id}-${s.image}`}
-                        src={`http://localhost:8000/${s.image}?v=${Date.now()}`}
+                        src={`${resolveAssetUrl(s.image)}?v=${Date.now()}`}
                         alt={s.name}
                         className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
                         loading="lazy"
