@@ -25,7 +25,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/manage/services', label: 'Services', icon: 'services' },
     { to: '/admin/manage/stylists', label: 'Staff Profiles', icon: 'staff' },
-    { to: '/admin/staff/pending', label: 'Approvals', icon: 'reviews' },
+    { to: '/admin/staff/pending', label: 'Approvals', icon: 'staff-add' },
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
     { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },
@@ -56,7 +56,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       ? managerLinks
       : customerLinks
 
-  const isAdminTheme = userType !== 'customer'
+  const isAdminTheme = true
 
   const renderIcon = (name) => {
     const base = 'h-5 w-5'
@@ -87,6 +87,16 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
             <circle cx="8" cy="8" r="3" />
             <circle cx="16" cy="10" r="2.5" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 18c0-2.2 1.8-4 4-4h1c2.2 0 4 1.8 4 4" />
+          </svg>
+        )
+      case 'staff-add':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <circle cx="8" cy="8" r="3" />
+            <circle cx="16" cy="10" r="2.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 18c0-2.2 1.8-4 4-4h1c2.2 0 4 1.8 4 4" />
+            <circle cx="18.25" cy="5.75" r="4" fill="white" stroke="currentColor" strokeWidth="1.1" />
+            <path strokeLinecap="round" strokeLinejoin="round" stroke="#5f3eb4" strokeWidth="2.2" d="M18.25 3.7v4.1M16.2 5.75h4.1" />
           </svg>
         )
       case 'appointments':
@@ -224,10 +234,19 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         }`}
       />
 
+      {/* This top filler keeps the header and sidebar visually aligned on desktop. */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none fixed left-0 top-0 z-20 hidden border-b border-white/10 bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] shadow-[0_14px_34px_rgba(35,12,88,0.14)] transition-[width] duration-300 ease-out md:block ${
+          isOpen ? 'w-[var(--dashboard-sidebar-width)]' : 'w-[var(--dashboard-sidebar-collapsed-width)]'
+        }`}
+        style={{ height: 'var(--dashboard-navbar-height)' }}
+      />
+
       {/* Closed desktop state keeps a slim rail so feature icons stay visible without covering content. */}
       <aside
         aria-hidden={isOpen ? 'true' : undefined}
-        className={`hidden md:flex fixed left-0 top-0 z-40 h-screen w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center py-5 transition-[opacity,transform] duration-300 ease-out ${
+        className={`hidden md:flex fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100vh-var(--dashboard-navbar-height))] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center py-5 transition-[opacity,transform] duration-300 ease-out ${
           isOpen ? 'pointer-events-none -translate-x-3 opacity-0' : 'translate-x-0 opacity-100'
         } ${
           isAdminTheme
@@ -292,7 +311,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         )}
       </aside>
 
-      <div className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
+      <div className={`fixed inset-x-0 bottom-0 top-[var(--dashboard-navbar-height)] z-20 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
         <div
           className={`absolute inset-0 ${
             isAdminTheme ? 'bg-[#120628]/52' : 'bg-black/40'
@@ -304,7 +323,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
       <aside
         id="dashboard-sidebar"
-        className={`fixed left-0 top-0 z-50 h-screen w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col transform transition-[transform,box-shadow] duration-300 ease-out ${
+        className={`fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100vh-var(--dashboard-navbar-height))] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col transform transition-[transform,box-shadow] duration-300 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
           isAdminTheme
@@ -315,23 +334,10 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         aria-modal={!isDesktopViewport()}
       >
         <div
-          className={`px-5 py-4 text-base font-semibold flex items-center justify-between ${
+          className={`px-5 py-4 flex items-center justify-end ${
             isAdminTheme ? 'border-b border-white/10' : 'border-b border-slate-800'
           }`}
         >
-          <div className="flex items-center gap-3">
-            <span className="h-12 w-12 rounded-2xl bg-white/22 border border-white/16 flex items-center justify-center overflow-hidden">
-              <img
-                src="/logo.png"
-                alt="Kaye's Hair Salon logo"
-                className="h-10 w-10 object-contain"
-              />
-            </span>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold">Kaye&apos;s Hair Salon</div>
-              <div className={`text-xs ${isAdminTheme ? 'text-white/68' : 'text-slate-300'}`}>and Spa</div>
-            </div>
-          </div>
           <button
             type="button"
             onClick={() => setIsOpen(false)}

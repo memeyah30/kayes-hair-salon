@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import api from '../utils/api'
 import { resolveAssetUrl } from '../utils/runtime'
 import heroMainImage from '../assets/landing-hero-main.jpg'
+import HowToBookSection from '../components/HowToBookSection'
+import LandingFooter from '../components/LandingFooter'
 import './HomeHero.css'
 
 const currency = (cents) => `PHP ${(Number(cents || 0) / 100).toFixed(2)}`
@@ -431,13 +433,6 @@ const Home = () => {
               <button onClick={() => scrollToSection('services')} className="home-hero__link transition">Our Services</button>
               <button onClick={() => scrollToSection('about')} className="home-hero__link transition">About Us</button>
               <button onClick={() => scrollToSection('contact')} className="home-hero__link transition">Contact</button>
-              <button
-                onClick={() => navigate('/manage-booking/start')}
-                className="home-hero__manage-btn px-4 py-2 rounded-2xl border border-white/40 bg-white/10 hover:bg-white/20 transition"
-                title="Manage My Booking"
-              >
-                Manage
-              </button>
             </div>
 
             <button
@@ -508,9 +503,14 @@ const Home = () => {
       </header>
 
       <main className="relative z-10 -mt-4">
-        <section id="services" className="px-4 md:px-8 py-14 md:py-20 bg-[radial-gradient(circle_at_20%_10%,#efe7ff_0%,#f6f1ff_55%,#f3ecff_100%)]">
+        <HowToBookSection />
+
+        <section
+          id="services"
+          className="home-section home-section--services px-4 md:px-8 py-14 md:py-20 bg-[radial-gradient(circle_at_20%_10%,#efe7ff_0%,#f6f1ff_55%,#f3ecff_100%)]"
+        >
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-8 md:mb-10">
+            <div className="home-section__intro text-center mb-8 md:mb-10">
               <h2 className="text-[clamp(1.85rem,7vw,3.75rem)] font-semibold mb-4 text-[#2f245a]">Our Services</h2>
               <p className="max-w-3xl mx-auto text-lg md:text-xl text-[#6b5b95]">
                 Discover premium salon services with clear pricing and quick options tailored to your needs.
@@ -530,7 +530,7 @@ const Home = () => {
                   return (
                     <article
                       key={service.id}
-                      className="group h-full rounded-3xl border border-[#d8cbff] bg-white shadow-[0_12px_28px_rgba(70,45,130,0.12)] overflow-hidden transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_34px_rgba(70,45,130,0.2)]"
+                      className="home-service-card group h-full rounded-3xl border border-[#d8cbff] bg-white shadow-[0_12px_28px_rgba(70,45,130,0.12)] overflow-hidden transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_34px_rgba(70,45,130,0.2)]"
                     >
                       {serviceImage ? (
                         <img
@@ -708,7 +708,7 @@ const Home = () => {
           </div>
         )}
 
-        <section id="about" className="px-4 md:px-8 py-14 bg-white">
+        <section id="about" className="home-section px-4 md:px-8 py-14 bg-white">
           <div className="max-w-6xl mx-auto rounded-3xl border border-[#e8ddff] bg-[linear-gradient(135deg,#ffffff_0%,#f8f2ff_100%)] p-8 md:p-12">
             <h2 className="text-4xl md:text-5xl font-semibold text-[#2f245a] mb-4">About Us</h2>
             <p className="text-lg md:text-xl text-[#5f4f8f] leading-relaxed">
@@ -718,7 +718,7 @@ const Home = () => {
           </div>
         </section>
 
-        <section id="contact" className="px-4 md:px-8 py-14 bg-white">
+        <section id="contact" className="home-section px-4 md:px-8 py-14 bg-white">
           <div className="max-w-6xl mx-auto rounded-3xl border border-[#e8ddff] bg-[#f8f3ff] p-8 md:p-12 text-center">
             <h2 className="text-4xl md:text-5xl font-semibold text-[#2f245a] mb-3">Contact</h2>
             <p className="text-lg md:text-xl text-[#5f4f8f] mb-6">
@@ -728,12 +728,7 @@ const Home = () => {
         </section>
       </main>
 
-      <footer className="bg-[#2f245a] text-[#ddd2ff] py-6 px-4 pb-24 md:pb-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2 text-sm">
-          <div>Kaye&apos;s Hair Salon and Spa</div>
-          <div>(c) 2024 All rights reserved.</div>
-        </div>
-      </footer>
+      <LandingFooter onScrollToSection={scrollToSection} />
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#2f245a]/95 border-t border-[#6f5fd3] px-3 py-2 z-50 backdrop-blur-sm">
         <div className="flex items-center justify-around text-xs">

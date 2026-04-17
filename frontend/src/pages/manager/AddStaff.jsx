@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
+import AdminLayout from '../../components/AdminLayout'
 import api from '../../utils/api'
 import { createStaff } from '../../api/staff'
 
@@ -83,11 +82,12 @@ const AddStaff = () => {
   }
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2d1f4f]">
-      <Sidebar userType="manager" onLogout={handleLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
-        <div className="app-mobile-shell space-y-6">
+    <AdminLayout
+      userType="manager"
+      onLogout={handleLogout}
+      title="Add Staff Request"
+    >
+      <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-3">
             <button
               onClick={() => navigate('/admin/dashboard')}
@@ -250,9 +250,8 @@ const AddStaff = () => {
               </button>
             </div>
           </form>
-        </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 

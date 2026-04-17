@@ -8,6 +8,15 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthenticateAnyGuard
 {
+    private function unauthenticatedResponse(Request $request)
+    {
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        return redirect('/login');
+    }
+
     /**
      * Handle an incoming request.
      * Checks if user is authenticated via any guard (admin, manager, stylist, web)
@@ -27,7 +36,7 @@ class AuthenticateAnyGuard
                 return $next($request);
             }
 
-            return response()->json(['message' => 'Unauthenticated'], 401);
+            return $this->unauthenticatedResponse($request);
         }
 
         // Prefer the active guard from session, then fall back.
@@ -52,6 +61,6 @@ class AuthenticateAnyGuard
         }
 
         // No user authenticated via any guard
-        return response()->json(['message' => 'Unauthenticated'], 401);
+        return $this->unauthenticatedResponse($request);
     }
 }

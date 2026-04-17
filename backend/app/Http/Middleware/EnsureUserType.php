@@ -11,6 +11,24 @@ use Illuminate\Support\Facades\Auth;
 
 class EnsureUserType
 {
+    private function unauthenticatedResponse(Request $request)
+    {
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        return redirect('/login');
+    }
+
+    private function forbiddenResponse(Request $request)
+    {
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        abort(403);
+    }
+
     /**
      * @param  array<int, string>  ...$types  Allowed types: admin, manager, stylist
      */
@@ -24,7 +42,7 @@ class EnsureUserType
         // If a tab explicitly requests a user type, enforce it first.
         if ($hintGuard) {
             if (!Auth::guard($hintGuard)->check()) {
-                return response()->json(['message' => 'Unauthorized'], 401);
+                return $this->unauthenticatedResponse($request);
             }
 
             $user = Auth::guard($hintGuard)->user();
@@ -37,7 +55,7 @@ class EnsureUserType
             $request->attributes->set('resolved_guard', $hintGuard);
 
             if (count($types) > 0 && !in_array($userType, $types, true)) {
-                return response()->json(['message' => 'Forbidden'], 403);
+                return $this->forbiddenResponse($request);
             }
 
             return $next($request);
@@ -78,11 +96,11 @@ class EnsureUserType
         }
 
         if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+            return $this->unauthenticatedResponse($request);
         }
 
         if (count($types) > 0 && !in_array($userType, $types, true)) {
-            return response()->json(['message' => 'Forbidden'], 403);
+            return $this->forbiddenResponse($request);
         }
 
         return $next($request);

@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
-import Sidebar from '../components/Sidebar'
-import Navbar from '../components/Navbar'
+import AdminLayout from '../components/AdminLayout'
 
 const toRgba = (hex, alpha) => {
   if (!hex) return `rgba(0,0,0,${alpha})`
@@ -107,14 +106,24 @@ const getStatusBadgeStyle = (status) => {
   }
 }
 
-const GradientMetricCard = ({ title, value, note, icon, start, end, onClick }) => {
+const GradientMetricCard = ({ title, value, note, icon, start, end, onClick, delay = 0 }) => {
   const Wrapper = onClick ? 'button' : 'div'
+  const delayClass = {
+    0: '',
+    100: 'animation-delay-100',
+    200: 'animation-delay-200',
+    300: 'animation-delay-300',
+    400: 'animation-delay-400',
+    500: 'animation-delay-500',
+    600: 'animation-delay-600',
+  }[delay] || ''
+  
   return (
     <Wrapper
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-[28px] border border-white/18 p-4 text-left text-white shadow-[0_18px_34px_rgba(39,19,88,0.24)] transition duration-200 ${
-        onClick ? 'hover:-translate-y-0.5 hover:shadow-[0_24px_40px_rgba(39,19,88,0.28)]' : ''
+      className={`relative overflow-hidden rounded-[28px] border border-white/18 p-4 text-left text-white shadow-[0_18px_34px_rgba(39,19,88,0.24)] transition duration-200 animate-fadeInUp ${delayClass} ${
+        onClick ? 'hover:-translate-y-1 hover:shadow-[0_24px_40px_rgba(39,19,88,0.28)]' : ''
       }`}
       style={{ background: `linear-gradient(135deg, ${start}, ${end})` }}
     >
@@ -134,13 +143,23 @@ const GradientMetricCard = ({ title, value, note, icon, start, end, onClick }) =
   )
 }
 
-const StatusSummaryCard = ({ title, value, accent, icon, total, onClick }) => {
+const StatusSummaryCard = ({ title, value, accent, icon, total, onClick, delay = 0 }) => {
   const percent = total > 0 ? Math.round((value / total) * 100) : 0
+  const delayClass = {
+    0: '',
+    100: 'animation-delay-100',
+    200: 'animation-delay-200',
+    300: 'animation-delay-300',
+    400: 'animation-delay-400',
+    500: 'animation-delay-500',
+    600: 'animation-delay-600',
+  }[delay] || ''
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-[26px] border border-white/40 bg-white/78 p-4 text-left shadow-[0_14px_32px_rgba(59,31,114,0.12)] backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(59,31,114,0.16)]"
+      className={`w-full rounded-[26px] border border-white/40 bg-white/78 p-4 text-left shadow-[0_14px_32px_rgba(59,31,114,0.12)] backdrop-blur-md transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(59,31,114,0.16)] animate-fadeInUp ${delayClass}`}
     >
       <div className="flex items-center gap-3">
         <div
@@ -358,8 +377,8 @@ const AdminDashboard = () => {
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
   const canAccessSales = storedUserType === 'admin'
   const canAccessServiceManagement = storedUserType === 'admin'
-  const glassPanelClass = 'rounded-[30px] border border-white/32 bg-white/76 p-4 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md'
-  const statCardClass = 'rounded-[24px] border border-white/32 bg-white/76 p-4 shadow-[0_16px_34px_rgba(59,31,114,0.12)] backdrop-blur-md'
+  const glassPanelClass = 'rounded-[30px] border border-white/32 bg-white/76 p-4 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md animate-fadeInUp'
+  const statCardClass = 'rounded-[24px] border border-white/32 bg-white/76 p-4 shadow-[0_16px_34px_rgba(59,31,114,0.12)] backdrop-blur-md animate-fadeInUp'
   const lightChartShellClass = 'mt-4 h-44 rounded-[24px] border border-white/36 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,236,255,0.82))] p-2'
   const darkChartShellClass = 'mt-4 h-44 rounded-[24px] border border-white/12 bg-gradient-to-br from-[#7050d3] via-[#5d3fbd] to-[#43257f] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
   const accentNoteClass = 'mt-3 rounded-full bg-[#f2e9ff]/90 px-4 py-2 text-sm text-[#644fa0]'
@@ -512,19 +531,20 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2d1f4f]">
-      <Sidebar userType={storedUserType} onLogout={handleLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar title="Dashboard" />
-        <div className="app-mobile-shell space-y-6">
-          <div>
+    <AdminLayout
+      userType={storedUserType}
+      onLogout={handleLogout}
+      title={canAccessSales ? 'Dashboard Overview' : 'Manager Overview'}
+    >
+      <div className="app-mobile-shell space-y-6">
+          <div className="animate-slideUpStagger">
             <h1 className="fluid-title-lg font-semibold text-[#24173f]">
               {canAccessSales ? 'Admin Dashboard' : 'Manager Dashboard'}
             </h1>
            
           </div>
 
-          <div className={`grid gap-4 md:grid-cols-2 ${canAccessSales ? 'xl:grid-cols-7' : 'xl:grid-cols-5'}`}>
+          <div className={`grid gap-4 md:grid-cols-2 ${canAccessSales ? 'xl:grid-cols-7' : 'xl:grid-cols-5'} animate-slideUpStagger animation-delay-100`}>
             {canAccessSales ? (
               <>
                 <GradientMetricCard
@@ -533,6 +553,7 @@ const AdminDashboard = () => {
                   note="This month"
                   start="#7f63e8"
                   end="#5a3dbd"
+                  delay={0}
                   onClick={() => navigate('/admin/sales')}
                   icon={
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -547,6 +568,7 @@ const AdminDashboard = () => {
                   note="Today"
                   start="#6f62e0"
                   end="#5349c8"
+                  delay={100}
                   onClick={goToTodaySales}
                   icon={
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -561,6 +583,7 @@ const AdminDashboard = () => {
                   note="Today"
                   start="#e88fa7"
                   end="#cf6d91"
+                  delay={200}
                   onClick={() => navigate('/admin/appointments?range=today')}
                   icon={
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -577,6 +600,7 @@ const AdminDashboard = () => {
                 note="This month"
                 start="#7f63e8"
                 end="#5a3dbd"
+                delay={0}
                 onClick={() => navigate('/admin/appointments?range=month')}
                 icon={
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -591,6 +615,7 @@ const AdminDashboard = () => {
               note="Awaiting service"
               start="#f0a160"
               end="#d9874d"
+              delay={canAccessSales ? 300 : 100}
               onClick={() => navigate('/admin/appointments?status=booked')}
               icon={
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -604,6 +629,7 @@ const AdminDashboard = () => {
               note="Completed"
               start="#74a0ae"
               end="#547f91"
+              delay={canAccessSales ? 400 : 200}
               onClick={() => navigate('/admin/appointments?status=completed')}
               icon={
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -617,6 +643,7 @@ const AdminDashboard = () => {
               note="Active service menu"
               start="#8c79e8"
               end="#6a57cf"
+              delay={canAccessSales ? 500 : 300}
               onClick={canAccessServiceManagement ? () => navigate('/admin/manage/services') : undefined}
               icon={
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -631,6 +658,7 @@ const AdminDashboard = () => {
               note="Returning and new"
               start="#958bf4"
               end="#6f67d7"
+              delay={canAccessSales ? 600 : 400}
               onClick={() => navigate('/admin/customers')}
               icon={
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -641,7 +669,7 @@ const AdminDashboard = () => {
             />
           </div>
 
-          <section className={glassPanelClass}>
+          <section className={`${glassPanelClass} animation-delay-100 animate-slideUpStagger animation-delay-200`}>
             <h2 className="text-xl font-semibold text-[#2f2252]">Appointment Status Summary</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <StatusSummaryCard
@@ -649,6 +677,7 @@ const AdminDashboard = () => {
                 value={stats.status_summary.booked}
                 total={statusTotal}
                 accent="#df9a57"
+                delay={0}
                 onClick={() => navigate('/admin/appointments?status=booked')}
                 icon={
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -662,6 +691,7 @@ const AdminDashboard = () => {
                 value={stats.status_summary.completed}
                 total={statusTotal}
                 accent="#6ea499"
+                delay={100}
                 onClick={() => navigate('/admin/appointments?status=completed')}
                 icon={
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -674,6 +704,7 @@ const AdminDashboard = () => {
                 value={stats.status_summary.cancelled}
                 total={statusTotal}
                 accent="#cc6b84"
+                delay={200}
                 onClick={() => navigate('/admin/appointments?status=cancelled')}
                 icon={
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -684,34 +715,34 @@ const AdminDashboard = () => {
             </div>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+          <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr] animate-slideUpStagger animation-delay-300">
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 animate-slideUpStagger animation-delay-100">
                 {canAccessSales ? (
                   <button
                     type="button"
                     onClick={goToTodaySales}
-                    className={`${statCardClass} text-left transition hover:-translate-y-0.5 hover:shadow-[0_20px_36px_rgba(59,31,114,0.16)]`}
+                    className={`${statCardClass} animation-delay-200 text-left transition hover:-translate-y-1 hover:shadow-[0_20px_36px_rgba(59,31,114,0.16)]`}
                   >
                     <div className="text-sm text-[#7b67a9]">Daily Revenue</div>
                     <div className="mt-1 text-3xl font-semibold">{formatCurrency(stats.revenue.today)}</div>
                     <div className="mt-3 text-sm text-[#7b67a9]">Today&apos;s bookings: {stats.appointments.today}</div>
                   </button>
                 ) : (
-                  <div className={statCardClass}>
+                  <div className={`${statCardClass} animation-delay-200`}>
                     <div className="text-sm text-[#7b67a9]">Today Appointments</div>
                     <div className="mt-1 text-3xl font-semibold">{stats.appointments.today}</div>
                     <div className="mt-3 text-sm text-[#7b67a9]">Week total: {stats.appointments.week}</div>
                   </div>
                 )}
-                <div className={statCardClass}>
+                <div className={`${statCardClass} animation-delay-300`}>
                   <div className="text-sm text-[#7b67a9]">Week Appointments</div>
                   <div className="mt-1 text-3xl font-semibold">{stats.appointments.week}</div>
                   <div className="mt-3 text-sm text-[#7b67a9]">Total services: {stats.services}</div>
                 </div>
               </div>
 
-              <div className={glassPanelClass}>
+              <div className={`${glassPanelClass} animation-delay-400 animate-slideUpStagger animation-delay-400`}>
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-semibold text-[#2f2252]">Monthly Appointments</h3>
                   <span className="text-xs text-[#806caf]">Last 6 months</span>
@@ -731,7 +762,7 @@ const AdminDashboard = () => {
 
             <div className="space-y-4">
               {canAccessSales ? (
-                <div className={glassPanelClass}>
+                <div className={`${glassPanelClass} animation-delay-500 animate-slideUpStagger animation-delay-500`}>
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl font-semibold text-[#2f2252]">Revenue This Week</h3>
                     <span className="text-xs text-[#806caf]">Mon-Sun</span>
@@ -749,7 +780,7 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className={glassPanelClass}>
+                <div className={`${glassPanelClass} animation-delay-500 animate-slideUpStagger animation-delay-500`}>
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl font-semibold text-[#2f2252]">Appointments This Week</h3>
                     <span className="text-xs text-[#806caf]">Mon-Sun</span>
@@ -839,14 +870,11 @@ const AdminDashboard = () => {
               </div>
             </div>
           </section>
-        </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 
 export default AdminDashboard
-
-
 
 

@@ -2,3 +2,7 @@ body {
   background: var(--app-panel-bg, #f4edff);
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
+
+.Toastify__toast-container {
+  z-index: 11050 !important;
+}

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import Sidebar from '../components/Sidebar'
-import Navbar from '../components/Navbar'
+import AdminLayout from '../components/AdminLayout'
 import RatingModal from '../components/RatingModal'
+import LandingFooter from '../components/LandingFooter'
 import api from '../utils/api'
 import manageBookingApi, {
   CUSTOMER_BOOKING_EMAIL_KEY,
@@ -331,11 +331,8 @@ const CustomerDashboard = () => {
 
   if (showProfile && !isOtpSession) {
     return (
-      <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
-        <Sidebar userType="customer" />
-        <main className="flex-1 min-w-0 flex flex-col">
-          <Navbar hideUserBadge />
-          <div className="app-mobile-shell">
+      <AdminLayout userType="customer" title="Dashboard" hideUserBadge>
+          <div className="app-mobile-shell flex-1">
             <div className="max-w-md mx-auto bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6">
               <h2 className="text-xl font-bold mb-4">Customer Profile</h2>
               <p className="text-sm text-[#6f5b7e] mb-4">
@@ -373,31 +370,26 @@ const CustomerDashboard = () => {
               </div>
             </div>
           </div>
-        </main>
-      </div>
+          <LandingFooter />
+      </AdminLayout>
     )
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
-        <Sidebar userType="customer" />
-        <main className="flex-1 min-w-0 flex flex-col">
-          <Navbar hideUserBadge />
-          <div className="flex items-center justify-center min-h-screen">
+      <AdminLayout userType="customer" title="Dashboard" hideUserBadge>
+          <div className="flex flex-1 items-center justify-center min-h-screen">
             <div>Loading your appointments...</div>
           </div>
-        </main>
-      </div>
+          <LandingFooter />
+      </AdminLayout>
     )
   }
 
   return (
-    <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
-      <Sidebar userType="customer" />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar hideUserBadge />
-        <div className="app-mobile-shell space-y-6">
+    <>
+      <AdminLayout userType="customer" title="Dashboard" hideUserBadge>
+        <div className="app-mobile-shell flex-1 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
@@ -801,8 +793,8 @@ const CustomerDashboard = () => {
             </div>
           )}
         </div>
-      </main>
-
+        <LandingFooter />
+      </AdminLayout>
       {ratingAppointment && (
         <RatingModal
           open={Boolean(ratingAppointment)}
@@ -812,7 +804,7 @@ const CustomerDashboard = () => {
           submitting={submittingRating}
         />
       )}
-    </div>
+    </>
   )
 }
 

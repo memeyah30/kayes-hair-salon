@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
+import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
 
 const AdminRatings = () => {
   const [ratings, setRatings] = useState([])
-  const [stylists, setStylists] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filterStylist, setFilterStylist] = useState('all')
   const [filterRating, setFilterRating] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState({
@@ -33,30 +30,12 @@ const AdminRatings = () => {
   const getStart = (appointment) => appointment?.start_datetime_pht || appointment?.start_datetime
 
   useEffect(() => {
-    loadStylists()
-  }, [])
-
-  useEffect(() => {
     setCurrentPage(1)
-  }, [filterStylist, filterRating])
+  }, [filterRating])
 
   useEffect(() => {
     loadData(currentPage)
-  }, [currentPage, filterStylist, filterRating])
-
-  const loadStylists = async () => {
-    try {
-      const requestUserType = sessionStorage.getItem('userType') || storedUserType || 'admin'
-      const roleRequestConfig = {
-        params: { type: requestUserType },
-        headers: { 'X-User-Type': requestUserType },
-      }
-      const stylistsRes = await api.get('/stylists', roleRequestConfig)
-      setStylists(stylistsRes.data)
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'Failed to load stylists')
-    }
-  }
+  }, [currentPage, filterRating])
 
   const loadData = async (page = 1) => {
     try {
@@ -68,7 +47,6 @@ const AdminRatings = () => {
         per_page: 10,
         page,
       }
-      if (filterStylist !== 'all') params.stylist_id = filterStylist
       if (filterRating !== 'all') params.rating = filterRating
       const roleRequestConfig = {
         params,
@@ -145,11 +123,12 @@ const AdminRatings = () => {
   }
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#3b2f2a]">
-      <Sidebar userType={storedUserType} onLogout={handleLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
-        <div className="p-4 md:p-6 space-y-6">
+    <AdminLayout
+      userType={storedUserType}
+      onLogout={handleLogout}
+      title="Customer Reviews"
+    >
+      <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
@@ -187,19 +166,6 @@ const AdminRatings = () => {
           <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-4">
             <div className="flex gap-4 flex-wrap">
               <div>
-                <label className="block text-sm font-medium mb-1">Filter by Stylist</label>
-                <select
-                  value={filterStylist}
-                  onChange={(e) => setFilterStylist(e.target.value)}
-                  className="border rounded px-3 py-2"
-                >
-                  <option value="all">All Stylists</option>
-                  {stylists.map(stylist => (
-                    <option key={stylist.id} value={stylist.id}>{stylist.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="block text-sm font-medium mb-1">Filter by Rating</label>
                 <select
                   value={filterRating}
@@ -224,7 +190,6 @@ const AdminRatings = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Stylist</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Rating</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Comment</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#9b857a] uppercase">Appointment Date</th>
@@ -239,9 +204,6 @@ const AdminRatings = () => {
                         {rating.customer_email && (
                           <div className="text-xs text-[#9b857a]">{rating.customer_email}</div>
                         )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {rating.stylist?.name || rating.appointment?.stylist?.name || 'N/A'}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -299,9 +261,8 @@ const AdminRatings = () => {
               />
             )}
           </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
+import AdminLayout from '../../components/AdminLayout'
 import api from '../../utils/api'
 import { getManagerStaff } from '../../api/staff'
 
@@ -44,11 +43,12 @@ const StaffRequests = () => {
   }, [])
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2d1f4f]">
-      <Sidebar userType="manager" onLogout={handleLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
-        <div className="app-mobile-shell space-y-6">
+    <AdminLayout
+      userType="manager"
+      onLogout={handleLogout}
+      title="Staff Requests"
+    >
+      <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-3">
             <button
               onClick={() => navigate('/admin/dashboard')}
@@ -59,9 +59,7 @@ const StaffRequests = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-[#24173f]">My Staff Requests</h1>
-              <p className="mt-1 text-sm text-[#7b67a9]">
-                Track approval status for staff you submitted.
-              </p>
+             
             </div>
             <div className="sm:ml-auto">
               <button
@@ -149,9 +147,8 @@ const StaffRequests = () => {
               </tbody>
             </table>
           </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 

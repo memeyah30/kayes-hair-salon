@@ -21,9 +21,8 @@ use App\Http\Controllers\Admin\StaffApprovalController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
-// Root route - serve frontend
-Route::get('/', function () {
-    return file_exists(public_path('index.html')) 
+$serveFrontend = function () {
+    return file_exists(public_path('index.html'))
         ? response(file_get_contents(public_path('index.html')), 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
@@ -31,12 +30,12 @@ Route::get('/', function () {
             'Expires' => '0',
         ])
         : response()->json([
-            'message' => 'THOLITS SALON API',
-            'status' => 'running',
-            'version' => '1.0.0',
-            'note' => 'Frontend not found. Please build the frontend and copy to public directory.'
-        ]);
-});
+            'message' => 'Frontend not found',
+        ], 404);
+};
+
+// Root route - serve frontend
+Route::get('/', $serveFrontend);
 
 // CSRF token route (for SPA)
 Route::get('/csrf-token', function () {
@@ -44,39 +43,26 @@ Route::get('/csrf-token', function () {
 });
 
 // Public routes
-Route::get('/services', function (Request $request) {
+Route::get('/services', function (Request $request) use ($serveFrontend) {
     if ($request->expectsJson() || $request->wantsJson()) {
         return app(ServiceController::class)->index($request);
     }
 
-    return file_exists(public_path('index.html'))
-        ? response(file_get_contents(public_path('index.html')), 200, [
-            'Content-Type' => 'text/html; charset=UTF-8',
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ])
-        : response()->json(['message' => 'Frontend not found'], 404);
+    return $serveFrontend();
 });
-Route::get('/stylists', function (Request $request) {
+Route::get('/stylists', function (Request $request) use ($serveFrontend) {
     if ($request->expectsJson() || $request->wantsJson()) {
         return app(StylistController::class)->index($request);
     }
 
-    return file_exists(public_path('index.html'))
-        ? response(file_get_contents(public_path('index.html')), 200, [
-            'Content-Type' => 'text/html; charset=UTF-8',
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ])
-        : response()->json(['message' => 'Frontend not found'], 404);
+    return $serveFrontend();
 });
 Route::get('/stylists/{stylist}/availability', [StylistController::class, 'availability']);
 Route::get('/appointments/availability', [AppointmentController::class, 'availability']);
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
 Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
 Route::get('/appointments/{appointment}/receipt', [AppointmentController::class, 'receipt']); // Public receipt
+Route::get('/holidays/calendar', [HolidayController::class, 'calendar']); // Closed dates for booking calendar
 Route::get('/holidays/check', [HolidayController::class, 'checkDate']); // Check if date is holiday
 Route::get('/payment-accounts', [PaymentAccountController::class, 'index']); // Public payment accounts
 Route::get('/locations', [LocationController::class, 'index']); // Public locations
@@ -97,23 +83,37 @@ Route::middleware(['auth.any', 'userType:manager'])->group(function () {
 });
 
 // Admin staff approval routes (web/session auth)
-Route::middleware(['auth.any', 'userType:admin'])->group(function () {
-    Route::get('/admin/staff/pending', function (Request $request) {
+Route::middleware(['auth.any', 'userType:admin'])->group(function () use ($serveFrontend) {
+    Route::get('/admin/staff/pending', function (Request $request) use ($serveFrontend) {
         if ($request->expectsJson() || $request->wantsJson()) {
             return app(StaffApprovalController::class)->pendingIndex($request);
         }
 
-        return file_exists(public_path('index.html'))
-            ? response(file_get_contents(public_path('index.html')), 200, [
-                'Content-Type' => 'text/html; charset=UTF-8',
-                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-                'Pragma' => 'no-cache',
-                'Expires' => '0',
-            ])
-            : response()->json(['message' => 'Frontend not found'], 404);
+        return $serveFrontend();
     });
     Route::patch('/admin/staff/{id}/approve', [StaffApprovalController::class, 'approve']);
     Route::patch('/admin/staff/{id}/reject', [StaffApprovalController::class, 'reject']);
+});
+
+// Protected SPA entry routes so direct URL access is blocked unless the session is authenticated.
+Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () use ($serveFrontend) {
+    Route::get('/admin/dashboard', $serveFrontend);
+    Route::get('/admin/appointments', $serveFrontend);
+    Route::get('/admin/customers', $serveFrontend);
+    Route::get('/admin/ratings', $serveFrontend);
+    Route::get('/admin/holidays', $serveFrontend);
+});
+
+Route::middleware(['auth.any', 'userType:admin'])->group(function () use ($serveFrontend) {
+    Route::get('/admin/manage/stylists', $serveFrontend);
+    Route::get('/admin/manage/services', $serveFrontend);
+    Route::get('/admin/payment-accounts', $serveFrontend);
+    Route::get('/admin/sales', $serveFrontend);
+});
+
+Route::middleware(['auth.any', 'userType:manager'])->group(function () use ($serveFrontend) {
+    Route::get('/manager/staff/add', $serveFrontend);
+    Route::get('/manager/staff/requests', $serveFrontend);
 });
 
 // Admin-only routes
@@ -244,13 +244,4 @@ Route::get('/manage-booking/dashboard', function (Request $request) {
 Route::view('/privacy-policy', 'privacy-policy');
 
 // Catch-all route for React Router - must be last
-Route::get('/{any}', function () {
-    return file_exists(public_path('index.html')) 
-        ? response(file_get_contents(public_path('index.html')), 200, [
-            'Content-Type' => 'text/html; charset=UTF-8',
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ])
-        : response()->json(['message' => 'Not found'], 404);
-})->where('any', '^(?!storage/|assets/).*$');
+Route::get('/{any}', $serveFrontend)->where('any', '^(?!storage/|assets/).*$');

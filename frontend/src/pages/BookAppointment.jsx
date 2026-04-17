@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { QRCodeSVG } from 'qrcode.react'
 import api from '../utils/api'
+import LandingFooter from '../components/LandingFooter'
 import manageBookingApi, {
   CUSTOMER_BOOKING_EMAIL_KEY,
   CUSTOMER_BOOKING_PENDING_EMAIL_KEY,
@@ -554,6 +556,17 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
 
 const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => {
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  const renderModal = (content) => createPortal(content, document.body)
   
   // Helper function to get service name (with variant if applicable)
   const getServiceName = (service) => {
@@ -580,8 +593,8 @@ const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => 
   }
   
   if (!appointment || !appointment.id) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    return renderModal(
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[1px]">
         <div className="bg-white rounded-xl p-6">
           <p>Loading receipt data...</p>
         </div>
@@ -595,8 +608,8 @@ const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => 
     : (appointment.service ? [appointment.service] : [])
   
   if (appointmentServices.length === 0) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    return renderModal(
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[1px]">
         <div className="bg-white rounded-xl p-6 max-w-md">
           <h3 className="font-bold text-lg mb-2">Receipt Data Incomplete</h3>
           <p className="text-[#8f7a6f] mb-4">Some appointment details are missing. Your booking was successful, but we couldn't load the full receipt.</p>
@@ -715,8 +728,8 @@ Thank you for choosing Kaye's Hair Salon and Spa!
     URL.revokeObjectURL(url)
   }
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  return renderModal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[1px]">
       <div className="bg-white/90 rounded-2xl border border-[#eadfd5] shadow-[0_16px_32px_rgba(92,64,51,0.12)] max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
@@ -4080,6 +4093,7 @@ const BookAppointment = () => {
         />
       )}
       </div>
+      <LandingFooter />
     </div>
   )
 }

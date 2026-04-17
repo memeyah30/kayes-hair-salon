@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
+import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
 
 const AdminCustomers = () => {
@@ -110,11 +109,12 @@ const AdminCustomers = () => {
   }
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#3b2f2a]">
-      <Sidebar userType={storedUserType} onLogout={handleLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
-        <div className="p-4 md:p-6 space-y-6">
+    <AdminLayout
+      userType={storedUserType}
+      onLogout={handleLogout}
+      title="Customer Records"
+    >
+      <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <button
@@ -390,14 +390,12 @@ const AdminCustomers = () => {
         )}
             </div>
           )}
-        </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 
 export default AdminCustomers
-
 
 
 

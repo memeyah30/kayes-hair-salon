@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
+import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -909,11 +908,12 @@ const AdminAppointments = () => {
   const showLegacyLayout = true
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2D2D2D]">
-      <Sidebar userType={storedUserType} onLogout={handleLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
-        <div className="app-mobile-shell space-y-6">
+    <AdminLayout
+      userType={storedUserType}
+      onLogout={handleLogout}
+      title="Appointments"
+    >
+      <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -2171,9 +2171,8 @@ const AdminAppointments = () => {
               </form>
             </div>
           </div>
-        )}
-      </main>
-    </div>
+      )}
+    </AdminLayout>
   )
 }
 

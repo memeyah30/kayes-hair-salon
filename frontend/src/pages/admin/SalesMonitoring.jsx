@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
+import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
 
 const getManilaDateInput = (date = new Date()) => {
@@ -152,11 +151,8 @@ const SalesMonitoring = () => {
   }
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2D2D2D]">
-      <Sidebar userType="admin" />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
-        <div className="app-mobile-shell space-y-6">
+    <AdminLayout userType="admin" title="Sales Reports">
+      <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
@@ -390,9 +386,8 @@ const SalesMonitoring = () => {
               </>
             )}
           </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 

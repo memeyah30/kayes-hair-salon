@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
+import AdminLayout from '../../components/AdminLayout'
 import api from '../../utils/api'
 import { approveStaff, getPendingStaff, rejectStaff } from '../../api/staff'
 
@@ -74,10 +73,12 @@ const PendingStaffApprovals = () => {
   }
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#3b2f2a]">
-      <Sidebar userType="admin" onLogout={handleLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
+    <AdminLayout
+      userType="admin"
+      onLogout={handleLogout}
+      title="Staff Approvals"
+    >
+      <>
         <div className="app-mobile-shell space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-3">
             <button
@@ -201,44 +202,44 @@ const PendingStaffApprovals = () => {
             </table>
           </div>
         </div>
-      </main>
 
-      {rejecting && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white p-5">
-            <h2 className="text-lg font-semibold mb-2">Reject Staff Request</h2>
-            <p className="text-sm text-[#8f7a6f] mb-3">
-              Provide a reason for rejecting {rejecting.first_name} {rejecting.last_name}.
-            </p>
-            <textarea
-              className="w-full border rounded px-3 py-2 min-h-[120px]"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              maxLength={500}
-              placeholder="Reason for rejection..."
-            />
-            <div className="mt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
-              <button
-                onClick={() => {
-                  setRejecting(null)
-                  setRejectReason('')
-                }}
-                className="tap-safe px-4 py-2 border rounded hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitReject}
-                disabled={processingId === rejecting.id}
-                className="tap-safe px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
-              >
-                {processingId === rejecting.id ? 'Submitting...' : 'Confirm Reject'}
-              </button>
+        {rejecting && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white p-5">
+              <h2 className="text-lg font-semibold mb-2">Reject Staff Request</h2>
+              <p className="text-sm text-[#8f7a6f] mb-3">
+                Provide a reason for rejecting {rejecting.first_name} {rejecting.last_name}.
+              </p>
+              <textarea
+                className="w-full border rounded px-3 py-2 min-h-[120px]"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                maxLength={500}
+                placeholder="Reason for rejection..."
+              />
+              <div className="mt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setRejecting(null)
+                    setRejectReason('')
+                  }}
+                  className="tap-safe px-4 py-2 border rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitReject}
+                  disabled={processingId === rejecting.id}
+                  className="tap-safe px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                >
+                  {processingId === rejecting.id ? 'Submitting...' : 'Confirm Reject'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </>
+    </AdminLayout>
   )
 }
 

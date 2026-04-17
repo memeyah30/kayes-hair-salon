@@ -41,9 +41,16 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
   const [user, setUser] = useState(parseStoredUser)
   const [menuOpen, setMenuOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const headerRef = useRef(null)
   const fileInputRef = useRef(null)
   const menuRef = useRef(null)
-  const isAdminTheme = userType !== 'customer'
+  const isAdminTheme = true
+  const roleLabel = ROLE_LABELS[userType] || 'User'
+  const displayName = user?.name || roleLabel
+  const initials = getInitials(displayName)
+  const profileImageUrl = resolveImageUrl(user?.image)
+  const salonLogoUrl = resolveAssetUrl('logo.png')
+  const canManagePhoto = userType === 'manager' || userType === 'stylist'
 
   useEffect(() => {
     const syncUserState = () => {
@@ -70,11 +77,34 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
     return () => window.removeEventListener('mousedown', handleOutsideClick)
   }, [menuOpen])
 
-  const roleLabel = ROLE_LABELS[userType] || 'User'
-  const displayName = user?.name || roleLabel
-  const initials = getInitials(displayName)
-  const profileImageUrl = resolveImageUrl(user?.image)
-  const canManagePhoto = userType === 'manager' || userType === 'stylist'
+  useEffect(() => {
+    if (typeof window === 'undefined' || !headerRef.current) return undefined
+
+    const root = document.documentElement
+    const syncNavbarHeight = () => {
+      const nextHeight = headerRef.current?.offsetHeight
+      if (nextHeight) {
+        root.style.setProperty('--dashboard-navbar-height', `${nextHeight}px`)
+      }
+    }
+
+    syncNavbarHeight()
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(syncNavbarHeight)
+      : null
+
+    if (resizeObserver && headerRef.current) {
+      resizeObserver.observe(headerRef.current)
+    }
+
+    window.addEventListener('resize', syncNavbarHeight)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', syncNavbarHeight)
+    }
+  }, [title, displayName, roleLabel, profileImageUrl, hideUserBadge, menuOpen, uploading, userType])
 
   const handleToggleSidebar = () => {
     if (typeof onMenuClick === 'function') {
@@ -147,31 +177,45 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
 
   return (
     <header
-      className={`px-3 md:px-6 py-3 flex items-center justify-between border-b transition-[padding,transform] duration-300 ease-out ${
+      ref={headerRef}
+      className={`sticky top-0 z-30 w-full px-3 md:px-6 py-3 flex items-center justify-between border-b transition-[padding,transform] duration-300 ease-out ${
         isAdminTheme
-          ? 'bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] border-white/10 shadow-[0_14px_34px_rgba(35,12,88,0.18)]'
-          : 'bg-white shadow'
+          ? 'bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] border-white/10 shadow-[0_14px_34px_rgba(35,12,88,0.18)] supports-[backdrop-filter]:backdrop-blur-md'
+          : 'bg-white/95 shadow supports-[backdrop-filter]:backdrop-blur-md'
       }`}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={handleToggleSidebar}
-            className={`tap-safe p-2.5 rounded-xl transition md:hidden ${
-              isAdminTheme ? 'hover:bg-white/16 text-white' : 'hover:bg-[#f4edff] text-gray-700'
-            }`}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={handleToggleSidebar}
+          className={`tap-safe p-2.5 rounded-xl transition md:hidden ${
+            isAdminTheme ? 'hover:bg-white/16 text-white' : 'hover:bg-[#f4edff] text-gray-700'
+          }`}
           aria-label="Toggle side panel"
           title="Toggle side panel"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border ${
+            isAdminTheme
+              ? 'border-white/16 bg-white/18 shadow-[0_10px_24px_rgba(33,10,86,0.14)]'
+              : 'border-[#e6dcff] bg-white'
+          }`}>
+            <img
+              src={salonLogoUrl}
+              alt="Kaye's Hair Salon logo"
+              className="h-8 w-8 object-contain"
+            />
+          </span>
           <div className="flex flex-col leading-tight min-w-0">
-            <div className={`font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`truncate font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
               Kaye&apos;s Hair Salon and Spa
             </div>
-          <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-white/68' : 'text-[#7f6aa8]'}`}>{title}</div>
+            <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-white/68' : 'text-[#7f6aa8]'}`}>{title}</div>
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-3">
@@ -191,20 +235,6 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
             className={`bg-transparent outline-none w-32 ${isAdminTheme ? 'placeholder:text-white/72' : 'placeholder:text-gray-400'}`}
           />
         </div>
-        <button
-          type="button"
-          className={`h-10 w-10 rounded-full flex items-center justify-center ${
-            isAdminTheme
-              ? 'bg-white/20 text-white border border-white/16 shadow-[0_10px_24px_rgba(33,10,86,0.14)] hover:bg-white/28'
-              : 'bg-blue-100 text-blue-700'
-          }`}
-          aria-label="Notifications"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 18a3 3 0 0 0 6 0" />
-          </svg>
-        </button>
         {!hideUserBadge && (
           <div className="relative" ref={menuRef}>
             <button

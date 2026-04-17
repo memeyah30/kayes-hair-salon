@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
-import Sidebar from '../../components/Sidebar'
-import Navbar from '../../components/Navbar'
+import AdminLayout from '../../components/AdminLayout'
 
 const ManagePaymentAccounts = () => {
   const [accounts, setAccounts] = useState([])
@@ -152,11 +151,12 @@ const ManagePaymentAccounts = () => {
   }
 
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#3b2f2a]">
-      <Sidebar userType="admin" onLogout={handleLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar />
-        <div className="p-4 md:p-6 space-y-6">
+    <AdminLayout
+      userType="admin"
+      onLogout={handleLogout}
+      title="Payments"
+    >
+      <div className="p-4 md:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
@@ -418,9 +418,8 @@ const ManagePaymentAccounts = () => {
               </div>
             </div>
           )}
-        </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 
