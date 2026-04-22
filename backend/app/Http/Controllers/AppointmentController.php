@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Mail\AppointmentMagicLinkMail;
 use App\Http\Controllers\Concerns\InteractsWithPagination;
+use App\Models\Admin;
 use App\Models\Appointment;
+use App\Models\Manager;
+use App\Models\Notification;
 use App\Models\Service;
 use App\Models\Stylist;
 use App\Models\Holiday;
@@ -14,6 +17,7 @@ use App\Services\Scheduler;
 use App\Services\CustomerProfileService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -30,6 +34,8 @@ class AppointmentController extends Controller
     private const BUSINESS_OPEN_HOUR = 8;
     private const BUSINESS_CLOSE_HOUR = 20;
     private const ACTIVE_SLOT_STATUSES = ['booked', 'pending', 'confirmed'];
+    private const BOOKING_SUBMISSION_PROCESSING_TTL_SECONDS = 45;
+    private const BOOKING_SUBMISSION_RESULT_TTL_SECONDS = 90;
 
     /**
      * Format appointment datetime fields to Asia/Manila timezone for JSON response
@@ -265,6 +271,9 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'At least one service is required'], 422);
         }
 
+        $serviceIds = array_values(array_map('intval', $serviceIds));
+        sort($serviceIds);
+
         // Validate time is between 8 AM and 7:59 PM (business hours: 8 AM - 8 PM)
         if ($data['preferred_time']) {
             $time = \Carbon\Carbon::createFromFormat('H:i', $data['preferred_time']);
@@ -290,143 +299,191 @@ class AppointmentController extends Controller
                 $serviceVariants = $data['service_variants'];
             }
         }
-        
-        // Calculate total amount using variant prices if selected, otherwise service prices
-        $totalAmountCents = 0;
-        $servicesWithVariants = [];
-        foreach ($services as $service) {
-            $variantId = $serviceVariants[$service->id] ?? null;
-            if ($variantId && $service->variants) {
-                $variant = $service->variants->find($variantId);
-                if ($variant) {
-                    $totalAmountCents += $variant->price_cents;
-                    $servicesWithVariants[$service->id] = $variant->id;
-                } else {
-                    $totalAmountCents += $service->price_cents;
-                }
-            } else {
-                $totalAmountCents += $service->price_cents;
+
+        $submissionCacheKey = $this->resolveBookingSubmissionCacheKey($request, $data, $serviceIds, $serviceVariants);
+        $processedSubmissionKey = $submissionCacheKey ? "{$submissionCacheKey}:appointment" : null;
+        $processingSubmissionKey = $submissionCacheKey ? "{$submissionCacheKey}:processing" : null;
+
+        if ($duplicateAppointment = $this->findProcessedAppointmentFromCache($processedSubmissionKey)) {
+            return $this->bookingStoreResponse($duplicateAppointment);
+        }
+
+        if ($processingSubmissionKey && !Cache::add(
+            $processingSubmissionKey,
+            true,
+            now()->addSeconds(self::BOOKING_SUBMISSION_PROCESSING_TTL_SECONDS)
+        )) {
+            if ($duplicateAppointment = $this->findProcessedAppointmentFromCache($processedSubmissionKey)) {
+                return $this->bookingStoreResponse($duplicateAppointment);
             }
-        }
-        
-        // Handle payment proof file upload
-        $paymentProofUrl = $data['payment_proof_url'] ?? null;
-        if ($request->hasFile('payment_proof')) {
-            $path = $request->file('payment_proof')->store('payment-proofs', 'public');
-            $paymentProofUrl = Storage::url($path); // e.g. /storage/payment-proofs/filename.jpg
-        }
 
-        $paymentMethod = $data['payment_method'] ?? 'on_hand';
-        $downpaymentAmountCents = $data['downpayment_amount_cents'] ?? null;
-        $minDownpaymentCents = (int) round($totalAmountCents * 0.5);
-
-        if ($downpaymentAmountCents !== null && (int) $downpaymentAmountCents > $totalAmountCents) {
             return response()->json([
-                'message' => 'Amount paid cannot be greater than the total amount.',
-                'errors' => [
-                    'downpayment_amount_cents' => [
-                        'Amount paid cannot be greater than the total amount.',
-                    ],
-                ],
-            ], 422);
-        }
-
-        // Validate payment for online payments
-        if ($paymentMethod === 'online') {
-            if (empty($downpaymentAmountCents) || $downpaymentAmountCents <= 0) {
-                return response()->json(['message' => 'Payment amount is required for online payments'], 422);
-            }
-            if (empty($paymentProofUrl)) {
-                return response()->json(['message' => 'Payment proof is required for online payments'], 422);
-            }
-        }
-
-        // Validate deposit for pay-on-hand payments
-        if ($paymentMethod === 'on_hand') {
-            if (empty($downpaymentAmountCents) || $downpaymentAmountCents < $minDownpaymentCents) {
-                return response()->json([
-                    'message' => 'A cash deposit is required to confirm this appointment.',
-                    'errors' => [
-                        'downpayment_amount_cents' => [
-                            'Minimum deposit is 50% of the total amount.'
-                        ]
-                    ]
-                ], 422);
-            }
-        }
-
-        $totalDuration = $this->normalizeDurationMinutes($services->count() * self::SLOT_INTERVAL_MINUTES);
-        $slot = null;
-
-        if (!empty($data['preferred_time'])) {
-            $slot = $this->validateCapacitySlot($data['date'], $data['preferred_time'], $totalDuration);
-
-            if (!$slot['available']) {
-                return response()->json([
-                    'message' => 'This time slot is already fully booked. Please select another time.',
-                    'errors' => [
-                        'time' => ['This time slot is already fully booked. Please select another time.'],
-                    ],
-                    'slot' => [
-                        'booked_count' => $slot['booked_count'],
-                        'remaining_slots' => $slot['remaining_slots'],
-                        'capacity' => $slot['capacity'],
-                    ],
-                ], 409);
-            }
-        } else {
-            $slot = $this->firstAvailableCapacitySlot($data['date'], $totalDuration);
-        }
-
-        if (!$slot) {
-            return response()->json([
-                'message' => 'No available time slots for this date. Please choose a different date or time.',
+                'message' => 'This booking is already being processed. Please wait a moment.',
             ], 409);
         }
 
-        $startDateTimeForStorage = $slot['start']->copy()->setTimezone('UTC');
-        $endDateTimeForStorage = $slot['end']->copy()->setTimezone('UTC');
-        
-        // Create appointment with first service_id for backward compatibility
-        $paymentStatus = 'unpaid';
-        if ($paymentMethod === 'online') {
-            $paymentStatus = 'pending';
-        } elseif (!empty($downpaymentAmountCents)) {
-            $paymentStatus = $downpaymentAmountCents >= $totalAmountCents ? 'paid' : 'downpayment';
+        try {
+            // Calculate total amount using variant prices if selected, otherwise service prices
+            $totalAmountCents = 0;
+            $servicesWithVariants = [];
+            foreach ($services as $service) {
+                $variantId = $serviceVariants[$service->id] ?? null;
+                if ($variantId && $service->variants) {
+                    $variant = $service->variants->find($variantId);
+                    if ($variant) {
+                        $totalAmountCents += $variant->price_cents;
+                        $servicesWithVariants[$service->id] = $variant->id;
+                    } else {
+                        $totalAmountCents += $service->price_cents;
+                    }
+                } else {
+                    $totalAmountCents += $service->price_cents;
+                }
+            }
+
+            // Handle payment proof file upload
+            $paymentProofUrl = $data['payment_proof_url'] ?? null;
+            if ($request->hasFile('payment_proof')) {
+                $path = $request->file('payment_proof')->store('payment-proofs', 'public');
+                $paymentProofUrl = Storage::url($path); // e.g. /storage/payment-proofs/filename.jpg
+            }
+
+            $paymentMethod = $data['payment_method'] ?? 'on_hand';
+            $downpaymentAmountCents = $data['downpayment_amount_cents'] ?? null;
+            $minDownpaymentCents = (int) round($totalAmountCents * 0.5);
+
+            if ($downpaymentAmountCents !== null && (int) $downpaymentAmountCents > $totalAmountCents) {
+                return response()->json([
+                    'message' => 'Amount paid cannot be greater than the total amount.',
+                    'errors' => [
+                        'downpayment_amount_cents' => [
+                            'Amount paid cannot be greater than the total amount.',
+                        ],
+                    ],
+                ], 422);
+            }
+
+            // Validate payment for online payments
+            if ($paymentMethod === 'online') {
+                if (empty($downpaymentAmountCents) || $downpaymentAmountCents <= 0) {
+                    return response()->json(['message' => 'Payment amount is required for online payments'], 422);
+                }
+                if (empty($paymentProofUrl)) {
+                    return response()->json(['message' => 'Payment proof is required for online payments'], 422);
+                }
+            }
+
+            // Validate deposit for pay-on-hand payments
+            if ($paymentMethod === 'on_hand') {
+                if (empty($downpaymentAmountCents) || $downpaymentAmountCents < $minDownpaymentCents) {
+                    return response()->json([
+                        'message' => 'A cash deposit is required to confirm this appointment.',
+                        'errors' => [
+                            'downpayment_amount_cents' => [
+                                'Minimum deposit is 50% of the total amount.'
+                            ]
+                        ]
+                    ], 422);
+                }
+            }
+
+            $totalDuration = $this->normalizeDurationMinutes($services->count() * self::SLOT_INTERVAL_MINUTES);
+            $slot = null;
+
+            if (!empty($data['preferred_time'])) {
+                $slot = $this->validateCapacitySlot($data['date'], $data['preferred_time'], $totalDuration);
+
+                if (!$slot['available']) {
+                    return response()->json([
+                        'message' => 'This time slot is already fully booked. Please select another time.',
+                        'errors' => [
+                            'time' => ['This time slot is already fully booked. Please select another time.'],
+                        ],
+                        'slot' => [
+                            'booked_count' => $slot['booked_count'],
+                            'remaining_slots' => $slot['remaining_slots'],
+                            'capacity' => $slot['capacity'],
+                        ],
+                    ], 409);
+                }
+            } else {
+                $slot = $this->firstAvailableCapacitySlot($data['date'], $totalDuration);
+            }
+
+            if (!$slot) {
+                return response()->json([
+                    'message' => 'No available time slots for this date. Please choose a different date or time.',
+                ], 409);
+            }
+
+            $startDateTimeForStorage = $slot['start']->copy()->setTimezone('UTC');
+            $endDateTimeForStorage = $slot['end']->copy()->setTimezone('UTC');
+
+            // Create appointment with first service_id for backward compatibility
+            $paymentStatus = 'unpaid';
+            if ($paymentMethod === 'online') {
+                $paymentStatus = 'pending';
+            } elseif (!empty($downpaymentAmountCents)) {
+                $paymentStatus = $downpaymentAmountCents >= $totalAmountCents ? 'paid' : 'downpayment';
+            }
+
+            $appointment = DB::transaction(function () use (
+                $customer,
+                $data,
+                $services,
+                $paymentMethod,
+                $paymentStatus,
+                $downpaymentAmountCents,
+                $totalAmountCents,
+                $paymentProofUrl,
+                $startDateTimeForStorage,
+                $endDateTimeForStorage,
+                $serviceIds,
+                $servicesWithVariants
+            ) {
+                $appointment = Appointment::create([
+                    'stylist_id' => null,
+                    'service_id' => $services->first()->id, // Keep for backward compatibility
+                    'customer_name' => $customer->name ?? $data['customer_name'],
+                    'customer_email' => $customer->email ?? ($data['customer_email'] ?? null),
+                    'customer_phone' => $customer->phone ?? ($data['customer_phone'] ?? null),
+                    'customer_address' => $customer->address ?? ($data['customer_address'] ?? null),
+                    'payment_method' => $paymentMethod,
+                    'payment_status' => $paymentStatus,
+                    'downpayment_amount_cents' => $downpaymentAmountCents ?? null,
+                    'total_amount_cents' => $totalAmountCents,
+                    'payment_proof_url' => $paymentProofUrl,
+                    'start_datetime' => $startDateTimeForStorage,
+                    'end_datetime' => $endDateTimeForStorage,
+                ]);
+
+                // Attach all services to the appointment with variant information.
+                foreach ($serviceIds as $serviceId) {
+                    $variantId = $servicesWithVariants[$serviceId] ?? null;
+                    $appointment->services()->attach($serviceId, [
+                        'service_variant_id' => $variantId,
+                    ]);
+                }
+
+                return $appointment;
+            });
+
+            if ($processedSubmissionKey) {
+                Cache::put(
+                    $processedSubmissionKey,
+                    $appointment->id,
+                    now()->addSeconds(self::BOOKING_SUBMISSION_RESULT_TTL_SECONDS)
+                );
+            }
+
+            $this->createNewAppointmentNotifications($appointment);
+
+            return $this->bookingStoreResponse($appointment);
+        } finally {
+            if ($processingSubmissionKey) {
+                Cache::forget($processingSubmissionKey);
+            }
         }
-
-        $appointment = Appointment::create([
-            'stylist_id' => null,
-            'service_id' => $services->first()->id, // Keep for backward compatibility
-            'customer_name' => $customer->name ?? $data['customer_name'],
-            'customer_email' => $customer->email ?? ($data['customer_email'] ?? null),
-            'customer_phone' => $customer->phone ?? ($data['customer_phone'] ?? null),
-            'customer_address' => $customer->address ?? ($data['customer_address'] ?? null),
-            'payment_method' => $paymentMethod,
-            'payment_status' => $paymentStatus,
-            'downpayment_amount_cents' => $downpaymentAmountCents ?? null,
-            'total_amount_cents' => $totalAmountCents,
-            'payment_proof_url' => $paymentProofUrl,
-            'start_datetime' => $startDateTimeForStorage,
-            'end_datetime' => $endDateTimeForStorage,
-        ]);
-
-        // Attach all services to the appointment with variant information
-        // Always include service_variant_id (even if null) to ensure consistent column structure
-        foreach ($serviceIds as $serviceId) {
-            $variantId = $servicesWithVariants[$serviceId] ?? null;
-            $appointment->services()->attach($serviceId, [
-                'service_variant_id' => $variantId
-            ]);
-        }
-
-        // Load relationships
-        $appointment->load(['stylist', 'service', 'services.variants']);
-        
-        // Format datetime fields to Asia/Manila timezone for JSON response
-        $appointment = $this->formatAppointmentForResponse($appointment);
-        
-        return response()->json($appointment);
     }
 
     public function update(Request $request, Appointment $appointment, Scheduler $scheduler, CustomerProfileService $customerProfiles)
@@ -615,15 +672,9 @@ class AppointmentController extends Controller
 
     public function cancel(Appointment $appointment)
     {
-        $appointment = $this->refreshMissedStatus($appointment);
-        if ($this->isMissed($appointment)) {
-            return response()->json([
-                'message' => 'Missed appointments are closed and can no longer be cancelled.',
-            ], 422);
-        }
-
-        $appointment->update(['status' => 'cancelled']);
-        return response()->json(['message' => 'Cancelled']);
+        return response()->json([
+            'message' => 'Only customers can cancel appointments through the Manage Booking verification flow.',
+        ], 403);
     }
 
     public function complete(Appointment $appointment, Request $request, InventoryWorkflowService $inventoryWorkflowService)
@@ -1032,6 +1083,123 @@ class AppointmentController extends Controller
         }
 
         return $normalized;
+    }
+
+    private function resolveBookingSubmissionCacheKey(
+        Request $request,
+        array $data,
+        array $serviceIds,
+        array $serviceVariants
+    ): string {
+        $requestId = trim((string) $request->header('X-Booking-Request-Id', ''));
+        if ($requestId !== '') {
+            return 'appointment_submission:' . hash('sha256', $requestId);
+        }
+
+        ksort($serviceVariants);
+
+        $fingerprint = [
+            'customer_name' => strtolower(trim((string) ($data['customer_name'] ?? ''))),
+            'customer_email' => strtolower(trim((string) ($data['customer_email'] ?? ''))),
+            'customer_phone' => preg_replace('/[\s-]+/', '', (string) ($data['customer_phone'] ?? '')),
+            'date' => (string) ($data['date'] ?? ''),
+            'preferred_time' => (string) ($data['preferred_time'] ?? ''),
+            'payment_method' => (string) ($data['payment_method'] ?? ''),
+            'downpayment_amount_cents' => (int) ($data['downpayment_amount_cents'] ?? 0),
+            'service_ids' => array_values($serviceIds),
+            'service_variants' => $serviceVariants,
+        ];
+
+        return 'appointment_submission:fingerprint:' . hash('sha256', json_encode($fingerprint));
+    }
+
+    private function findProcessedAppointmentFromCache(?string $processedSubmissionKey): ?Appointment
+    {
+        if (!$processedSubmissionKey) {
+            return null;
+        }
+
+        $appointmentId = Cache::get($processedSubmissionKey);
+        if (!$appointmentId) {
+            return null;
+        }
+
+        $appointment = Appointment::query()->find($appointmentId);
+        if (!$appointment) {
+            Cache::forget($processedSubmissionKey);
+            return null;
+        }
+
+        return $appointment;
+    }
+
+    private function bookingStoreResponse(Appointment $appointment)
+    {
+        $appointment->loadMissing(['stylist', 'service', 'services.variants']);
+        $appointment = $this->formatAppointmentForResponse($appointment);
+
+        return response()->json($appointment);
+    }
+
+    private function createNewAppointmentNotifications(Appointment $appointment): void
+    {
+        try {
+            $admins = Admin::query()
+                ->select(['id'])
+                ->get()
+                ->map(fn (Admin $admin) => [
+                    'recipient_type' => Admin::class,
+                    'recipient_id' => $admin->id,
+                ]);
+
+            $managers = Manager::query()
+                ->where('active', true)
+                ->select(['id'])
+                ->get()
+                ->map(fn (Manager $manager) => [
+                    'recipient_type' => Manager::class,
+                    'recipient_id' => $manager->id,
+                ]);
+
+            $recipients = $admins->merge($managers)->values();
+            if ($recipients->isEmpty()) {
+                return;
+            }
+
+            $startDateTime = $appointment->getRawOriginal('start_datetime')
+                ? Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')->setTimezone('Asia/Manila')
+                : null;
+
+            $scheduleLabel = $startDateTime
+                ? $startDateTime->format('M j, Y \a\t g:i A') . ' PHT'
+                : 'the selected schedule';
+
+            $message = sprintf(
+                '%s booked a new appointment for %s.',
+                $appointment->customer_name ?: 'A customer',
+                $scheduleLabel
+            );
+
+            $timestamp = now();
+
+            Notification::query()->insert(
+                $recipients->map(fn (array $recipient) => [
+                    'recipient_type' => $recipient['recipient_type'],
+                    'recipient_id' => $recipient['recipient_id'],
+                    'appointment_id' => $appointment->id,
+                    'title' => 'New Appointment Booked',
+                    'message' => $message,
+                    'is_read' => false,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ])->all()
+            );
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to create new appointment notifications.', [
+                'appointment_id' => $appointment->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function syncMissedAppointments(): void

@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
 const SIDEBAR_STATE_KEY = 'dashboard_sidebar_open'
+const DESKTOP_SIDEBAR_QUERY = '(min-width: 1024px)'
 
 const getInitialSidebarState = () => {
   if (typeof window === 'undefined') return false
@@ -9,11 +10,11 @@ const getInitialSidebarState = () => {
   const storedState = window.sessionStorage.getItem(SIDEBAR_STATE_KEY)
   if (storedState !== 'true') return false
 
-  return window.matchMedia('(min-width: 768px)').matches
+  return window.matchMedia(DESKTOP_SIDEBAR_QUERY).matches
 }
 
 const isDesktopViewport = () => (
-  typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  typeof window !== 'undefined' && window.matchMedia(DESKTOP_SIDEBAR_QUERY).matches
 )
 
 const Sidebar = ({ userType = 'customer', onLogout }) => {
@@ -202,6 +203,20 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [isOpen])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const mediaQuery = window.matchMedia(DESKTOP_SIDEBAR_QUERY)
+    const handleViewportChange = (event) => {
+      if (!event.matches) {
+        setIsOpen(false)
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleViewportChange)
+    return () => mediaQuery.removeEventListener('change', handleViewportChange)
+  }, [])
+
   const handleSidebarLinkClick = (event, link, shouldCloseMenu = false) => {
     const shouldCloseSidebar = shouldCloseMenu && !isDesktopViewport()
 
@@ -220,16 +235,12 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     }
   }
 
-  const sidebarToggleButtonClass = isAdminTheme
-    ? 'bg-white/16 text-white border border-white/14 shadow-[0_12px_24px_rgba(28,10,72,0.16)] hover:bg-white/24'
-    : 'bg-slate-800 text-white border border-slate-700 hover:bg-slate-700'
-
   return (
     <>
       {/* On desktop the layout keeps space for either the full drawer or the icon-only rail. */}
       <div
         aria-hidden="true"
-        className={`hidden md:block shrink-0 transition-[width] duration-300 ease-out ${
+        className={`hidden lg:block shrink-0 transition-[width] duration-300 ease-out ${
           isOpen ? 'w-[var(--dashboard-sidebar-width)]' : 'w-[var(--dashboard-sidebar-collapsed-width)]'
         }`}
       />
@@ -237,7 +248,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       {/* This top filler keeps the header and sidebar visually aligned on desktop. */}
       <div
         aria-hidden="true"
-        className={`pointer-events-none fixed left-0 top-0 z-20 hidden border-b border-white/10 bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] shadow-[0_14px_34px_rgba(35,12,88,0.14)] transition-[width] duration-300 ease-out md:block ${
+        className={`pointer-events-none fixed left-0 top-0 z-20 hidden border-b border-white/10 bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] shadow-[0_14px_34px_rgba(35,12,88,0.14)] transition-[width] duration-300 ease-out lg:block ${
           isOpen ? 'w-[var(--dashboard-sidebar-width)]' : 'w-[var(--dashboard-sidebar-collapsed-width)]'
         }`}
         style={{ height: 'var(--dashboard-navbar-height)' }}
@@ -246,7 +257,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       {/* Closed desktop state keeps a slim rail so feature icons stay visible without covering content. */}
       <aside
         aria-hidden={isOpen ? 'true' : undefined}
-        className={`hidden md:flex fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100vh-var(--dashboard-navbar-height))] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center py-5 transition-[opacity,transform] duration-300 ease-out ${
+        className={`hidden lg:flex fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100vh-var(--dashboard-navbar-height))] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-4 transition-[opacity,transform] duration-300 ease-out xl:py-5 ${
           isOpen ? 'pointer-events-none -translate-x-3 opacity-0' : 'translate-x-0 opacity-100'
         } ${
           isAdminTheme
@@ -254,21 +265,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
             : 'bg-slate-900 text-white shadow-[18px_0_38px_rgba(15,23,42,0.18)]'
         }`}
       >
-        <div className="pb-6">
-          <button
-            type="button"
-            onClick={() => setIsOpen(true)}
-            className={`flex h-12 w-12 items-center justify-center rounded-2xl transition ${sidebarToggleButtonClass}`}
-            aria-label="Open side panel"
-            title="Open side panel"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </div>
-
-        <nav className="flex flex-1 flex-col items-center gap-3 px-2">
+        <nav className="flex w-full flex-1 flex-col items-center gap-2 pt-1 xl:gap-2.5">
           {links.map((link) => (
             <NavLink
               key={`${link.to}-collapsed`}
@@ -277,7 +274,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
               aria-label={link.label}
               aria-disabled={link.comingSoon ? 'true' : undefined}
               className={({ isActive }) => (
-                `flex h-12 w-12 items-center justify-center rounded-2xl transition ${
+                `flex h-10 w-10 items-center justify-center rounded-2xl transition xl:h-11 xl:w-11 ${
                   link.comingSoon
                     ? 'text-white/70 hover:bg-white/10 hover:text-white/85 opacity-65'
                     : isActive
@@ -293,13 +290,13 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         </nav>
 
         {(userType === 'admin' || userType === 'manager') && onLogout && (
-          <div className="px-2 pb-5">
+          <div className="pb-2 pt-3 xl:pb-4">
             <button
               type="button"
               onClick={onLogout}
               title="Logout"
               aria-label="Logout"
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#d96c82] text-white transition hover:bg-[#c85f74] shadow-[0_12px_24px_rgba(44,12,80,0.18)]"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#d96c82] text-white transition hover:bg-[#c85f74] shadow-[0_12px_24px_rgba(44,12,80,0.18)] xl:h-11 xl:w-11"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 17l5-5-5-5" />
@@ -311,7 +308,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         )}
       </aside>
 
-      <div className={`fixed inset-x-0 bottom-0 top-[var(--dashboard-navbar-height)] z-20 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
+      <div className={`fixed inset-x-0 bottom-0 top-[var(--dashboard-navbar-height)] z-20 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
         <div
           className={`absolute inset-0 ${
             isAdminTheme ? 'bg-[#120628]/52' : 'bg-black/40'
@@ -323,7 +320,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
       <aside
         id="dashboard-sidebar"
-        className={`fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100vh-var(--dashboard-navbar-height))] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col transform transition-[transform,box-shadow] duration-300 ease-out ${
+        className={`fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100vh-var(--dashboard-navbar-height))] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col overflow-x-hidden overflow-y-auto overscroll-contain transform transition-[transform,box-shadow] duration-300 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
           isAdminTheme
@@ -333,32 +330,14 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         role="dialog"
         aria-modal={!isDesktopViewport()}
       >
-        <div
-          className={`px-5 py-4 flex items-center justify-end ${
-            isAdminTheme ? 'border-b border-white/10' : 'border-b border-slate-800'
-          }`}
-        >
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className={`flex h-11 w-11 items-center justify-center rounded-2xl transition ${sidebarToggleButtonClass}`}
-            aria-label="Close side panel"
-            title="Close side panel"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4 py-4 space-y-2 text-sm">
+        <nav className="flex-1 space-y-1.5 px-3 py-4 text-sm md:px-4 md:py-4">
           {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
               aria-disabled={link.comingSoon ? 'true' : undefined}
               className={({ isActive }) => (
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                `flex items-center gap-3 rounded-xl px-3 py-2 transition ${
                   link.comingSoon
                     ? 'text-white/70 hover:bg-white/10 hover:text-white/85 opacity-65'
                     : isActive
@@ -369,7 +348,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
               onClick={(event) => handleSidebarLinkClick(event, link, true)}
             >
               <span
-                className={`h-9 w-9 rounded-xl flex items-center justify-center ${
+                className={`flex h-8 w-8 items-center justify-center rounded-xl ${
                   isAdminTheme
                     ? 'bg-white/12 border border-white/20'
                     : 'bg-slate-800 text-white'
@@ -390,7 +369,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         </nav>
 
         {(userType === 'admin' || userType === 'manager') && onLogout && (
-          <div className={`px-5 py-4 border-t ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
+          <div className={`border-t px-4 py-3 md:px-5 md:py-3 ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
             <button
               onClick={() => {
                 setIsOpen(false)

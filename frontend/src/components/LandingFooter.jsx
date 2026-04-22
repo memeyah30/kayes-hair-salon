@@ -103,7 +103,7 @@ const LandingFooter = ({ onScrollToSection }) => {
             </div>
           </div>
 
-          <div>
+          <div id="contact">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#d9ccff]">Contact Info</p>
             <div className="mt-4 space-y-4 text-sm leading-7 text-[#efe9ff]">
               <div className="flex items-start gap-3">

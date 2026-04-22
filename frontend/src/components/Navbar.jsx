@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
+import NotificationsBell from './NotificationsBell'
 import { resolveAssetUrl } from '../utils/runtime'
 
 const ROLE_LABELS = {
@@ -178,17 +179,17 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
   return (
     <header
       ref={headerRef}
-      className={`sticky top-0 z-30 w-full px-3 md:px-6 py-3 flex items-center justify-between border-b transition-[padding,transform] duration-300 ease-out ${
+      className={`sticky top-0 z-30 flex w-full items-center justify-between border-b px-3 py-3 transition-[padding,transform] duration-300 ease-out sm:px-4 lg:px-6 ${
         isAdminTheme
           ? 'bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] border-white/10 shadow-[0_14px_34px_rgba(35,12,88,0.18)] supports-[backdrop-filter]:backdrop-blur-md'
           : 'bg-white/95 shadow supports-[backdrop-filter]:backdrop-blur-md'
       }`}
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={handleToggleSidebar}
-          className={`tap-safe p-2.5 rounded-xl transition md:hidden ${
+          className={`tap-safe shrink-0 rounded-xl p-2.5 transition ${
             isAdminTheme ? 'hover:bg-white/16 text-white' : 'hover:bg-[#f4edff] text-gray-700'
           }`}
           aria-label="Toggle side panel"
@@ -198,8 +199,8 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <div className="flex items-center gap-3 min-w-0">
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border ${
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:h-10 sm:w-10 ${
             isAdminTheme
               ? 'border-white/16 bg-white/18 shadow-[0_10px_24px_rgba(33,10,86,0.14)]'
               : 'border-[#e6dcff] bg-white'
@@ -207,20 +208,20 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
             <img
               src={salonLogoUrl}
               alt="Kaye's Hair Salon logo"
-              className="h-8 w-8 object-contain"
+              className="h-7 w-7 object-contain sm:h-8 sm:w-8"
             />
           </span>
-          <div className="flex flex-col leading-tight min-w-0">
-            <div className={`truncate font-semibold text-sm md:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
+          <div className="flex min-w-0 max-w-[12rem] flex-col leading-tight sm:max-w-[16rem] lg:max-w-[24rem]">
+            <div className={`truncate font-semibold text-sm sm:text-base lg:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
               Kaye&apos;s Hair Salon and Spa
             </div>
-            <div className={`text-xs md:text-sm ${isAdminTheme ? 'text-white/68' : 'text-[#7f6aa8]'}`}>{title}</div>
+            <div className={`truncate text-[11px] sm:text-xs lg:text-sm ${isAdminTheme ? 'text-white/68' : 'text-[#7f6aa8]'}`}>{title}</div>
           </div>
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-3">
         <div
-          className={`hidden md:flex items-center gap-2 rounded-full px-3 py-2 text-sm border ${
+          className={`hidden lg:flex items-center gap-2 rounded-full border px-3 py-2 text-sm ${
             isAdminTheme
               ? 'bg-white/18 border-white/16 text-white shadow-[0_10px_24px_rgba(33,10,86,0.16)]'
               : 'bg-white border-gray-200'
@@ -235,6 +236,7 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
             className={`bg-transparent outline-none w-32 ${isAdminTheme ? 'placeholder:text-white/72' : 'placeholder:text-gray-400'}`}
           />
         </div>
+        <NotificationsBell userType={userType} isAdminTheme={isAdminTheme} />
         {!hideUserBadge && (
           <div className="relative" ref={menuRef}>
             <button

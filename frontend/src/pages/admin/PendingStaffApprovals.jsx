@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import AdminLayout from '../../components/AdminLayout'
 import api from '../../utils/api'
 import { approveStaff, getPendingStaff, rejectStaff } from '../../api/staff'
+import ActionButton, { ActionGroup } from '../../components/ActionButton'
 
 const PendingStaffApprovals = () => {
   const navigate = useNavigate()
@@ -120,22 +121,24 @@ const PendingStaffApprovals = () => {
                   <div><span className="font-medium text-[#5f4f8f]">Submitted by:</span> {item.created_by_manager?.name || item.createdByManager?.name || '-'}</div>
                   <div><span className="font-medium text-[#5f4f8f]">Submitted at:</span> {item.created_at ? new Date(item.created_at).toLocaleString() : '-'}</div>
                 </div>
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <button
+                <ActionGroup stack className="mt-4 sm:grid sm:grid-cols-2 sm:gap-2 sm:items-stretch sm:[&>*]:w-full">
+                  <ActionButton
                     onClick={() => handleApprove(item.id)}
                     disabled={processingId === item.id}
-                    className="tap-safe px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                    tone="success"
+                    block
                   >
                     Approve
-                  </button>
-                  <button
+                  </ActionButton>
+                  <ActionButton
                     onClick={() => setRejecting(item)}
                     disabled={processingId === item.id}
-                    className="tap-safe px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                    tone="danger"
+                    block
                   >
                     Reject
-                  </button>
-                </div>
+                  </ActionButton>
+                </ActionGroup>
               </div>
             ))}
           </div>
@@ -178,22 +181,24 @@ const PendingStaffApprovals = () => {
                         {item.created_at ? new Date(item.created_at).toLocaleString() : '-'}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
+                        <ActionGroup className="min-w-[12rem]">
+                          <ActionButton
                             onClick={() => handleApprove(item.id)}
                             disabled={processingId === item.id}
-                            className="tap-safe px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                            tone="success"
+                            size="compact"
                           >
                             Approve
-                          </button>
-                          <button
+                          </ActionButton>
+                          <ActionButton
                             onClick={() => setRejecting(item)}
                             disabled={processingId === item.id}
-                            className="tap-safe px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                            tone="danger"
+                            size="compact"
                           >
                             Reject
-                          </button>
-                        </div>
+                          </ActionButton>
+                        </ActionGroup>
                       </td>
                     </tr>
                   ))

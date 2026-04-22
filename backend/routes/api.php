@@ -13,6 +13,7 @@ use App\Http\Controllers\CustomerRatingController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ServiceInventoryRequirementController;
 use App\Http\Controllers\ManageBookingController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\ReturningBookingController;
 use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
 use App\Http\Controllers\Admin\StaffApprovalController;
 use App\Http\Controllers\Public\StylistController as PublicStylistController;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -38,25 +40,28 @@ Route::get('/locations', [LocationController::class, 'index']); // Public locati
 
 Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public - customers can rate
 
-// Customer manage-booking OTP routes
-Route::post('/manage-booking/send-otp', [ManageBookingController::class, 'sendOtp']);
-Route::post('/manage-booking/verify-otp', [ManageBookingController::class, 'verifyOtp']);
+Route::middleware(StartSession::class)->group(function () {
+    // Customer manage-booking OTP routes
+    Route::post('/manage-booking/send-otp', [ManageBookingController::class, 'sendOtp']);
+    Route::post('/manage-booking/verify-otp', [ManageBookingController::class, 'verifyOtp']);
+    Route::post('/manage-booking/logout', [ManageBookingController::class, 'logout']);
 
-// Email-first returning-customer booking routes.
-Route::post('/returning-booking/check-email', [ReturningBookingController::class, 'checkEmail']);
-Route::post('/returning-booking/send-otp', [ReturningBookingController::class, 'sendOtp']);
-Route::post('/returning-booking/verify-otp', [ReturningBookingController::class, 'verifyOtp']);
+    // Email-first returning-customer booking routes.
+    Route::post('/returning-booking/check-email', [ReturningBookingController::class, 'checkEmail']);
+    Route::post('/returning-booking/send-otp', [ReturningBookingController::class, 'sendOtp']);
+    Route::post('/returning-booking/verify-otp', [ReturningBookingController::class, 'verifyOtp']);
 
-Route::middleware('customer.booking')->group(function () {
-    Route::get('/returning-booking/profile', [ReturningBookingController::class, 'profile']);
-    Route::patch('/returning-booking/profile', [ReturningBookingController::class, 'updateProfile']);
-});
+    Route::middleware('customer.booking')->group(function () {
+        Route::get('/returning-booking/profile', [ReturningBookingController::class, 'profile']);
+        Route::patch('/returning-booking/profile', [ReturningBookingController::class, 'updateProfile']);
+    });
 
-Route::middleware('customer.otp')->group(function () {
-    Route::get('/manage-booking/appointments', [ManageBookingController::class, 'appointments']);
-    Route::post('/manage-booking/appointments/{id}/reschedule', [ManageBookingController::class, 'reschedule']);
-    Route::post('/manage-booking/appointments/{id}/cancel', [ManageBookingController::class, 'cancel']);
-    Route::post('/manage-booking/appointments/{id}/rate', [ManageBookingController::class, 'rate']);
+    Route::middleware('customer.otp')->group(function () {
+        Route::get('/manage-booking/appointments', [ManageBookingController::class, 'appointments']);
+        Route::post('/manage-booking/appointments/{id}/reschedule', [ManageBookingController::class, 'reschedule']);
+        Route::post('/manage-booking/appointments/{id}/cancel', [ManageBookingController::class, 'cancel']);
+        Route::post('/manage-booking/appointments/{id}/rate', [ManageBookingController::class, 'rate']);
+    });
 });
 
 // Auth routes
@@ -154,6 +159,8 @@ Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
     Route::get('/ratings', [CustomerRatingController::class, 'index']);
     Route::get('/customers', [AdminCustomerController::class, 'index']);
+    Route::get('/admin/notifications', [NotificationController::class, 'index']);
+    Route::patch('/admin/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
 });
 
 // Admin + Manager routes (shared management permissions)
@@ -185,5 +192,5 @@ Route::middleware(['auth:sanctum', 'userType:stylist'])->group(function () {
     Route::get('/stylist/ratings', [CustomerRatingController::class, 'index']); // View own ratings
 });
 
-// Public customer stats (no auth required)
-Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerStats']);
+// Verified customer stats
+Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerStats'])->middleware('customer.otp');

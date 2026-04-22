@@ -315,20 +315,14 @@ class DashboardController extends Controller
     {
         app(MissedAppointmentService::class)->markOverdueAppointmentsAsMissed();
 
-        $email = $request->input('email');
-        $phone = $request->input('phone');
+        $email = strtolower(trim((string) $request->attributes->get('customer_verified_email', '')));
 
-        $email = $email ? strtolower(trim($email)) : null;
-        $phone = $phone ? preg_replace('/[\s\-]/', '', trim($phone)) : null;
-
-        // Require both fields and match both values to avoid cross-customer leakage.
-        if (!$email || !$phone) {
-            return response()->json(['message' => 'Email and phone are required'], 400);
+        if (!$email) {
+            return response()->json(['message' => 'Customer OTP authentication is required.'], 401);
         }
 
         $query = Appointment::with(['stylist', 'service', 'services.variants'])
-            ->whereRaw('LOWER(TRIM(customer_email)) = ?', [$email])
-            ->whereRaw("REPLACE(REPLACE(TRIM(COALESCE(customer_phone, '')), ' ', ''), '-', '') = ?", [$phone]);
+            ->whereRaw('LOWER(TRIM(customer_email)) = ?', [$email]);
 
         $appointments = $query->orderBy('start_datetime', 'asc')->get();
         $appointmentIds = $appointments->pluck('id');

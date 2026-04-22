@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\ReturningBookingOtpMail;
 use App\Models\CustomerOtp;
+use App\Services\CustomerOtpSessionService;
 use App\Services\CustomerProfileService;
 use App\Services\ReturningBookingSessionService;
 use Carbon\Carbon;
@@ -121,6 +122,7 @@ class ReturningBookingController extends Controller
             'used_at' => now(),
         ]);
 
+        app(CustomerOtpSessionService::class)->store($request, $email, self::OTP_PURPOSE);
         [$token, $expiresAt] = $bookingSessions->issueToken($email, self::TOKEN_EXPIRY_MINUTES);
 
         return response()->json([

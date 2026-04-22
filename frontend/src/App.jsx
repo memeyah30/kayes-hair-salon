@@ -3,9 +3,9 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import './App.css'
 import ProtectedRoute from './components/ProtectedRoute'
+import ScrollToTop from './components/ScrollToTop'
 import Login from './pages/Login'
 import Home from './pages/Home'
-import Dashboard from './pages/Dashboard'
 import BookAppointment from './pages/BookAppointment'
 import Stylists from './pages/Stylists'
 import Services from './pages/Services'
@@ -30,6 +30,7 @@ import StaffRequests from './pages/manager/StaffRequests'
 const App = () => {
   return (
     <>
+      <ScrollToTop />
       <Routes>
         {/* Public landing page */}
         <Route path="/" element={<Home />} />

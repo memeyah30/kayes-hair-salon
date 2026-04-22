@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import manageBookingApi, {
-  CUSTOMER_BOOKING_EMAIL_KEY,
   CUSTOMER_BOOKING_PENDING_EMAIL_KEY,
-  CUSTOMER_BOOKING_TOKEN_KEY,
 } from '../utils/manageBookingApi'
+import {
+  isManageBookingVerified,
+  persistManageBookingVerification,
+} from '../utils/customerVerification'
 
 const VerifyOtp = () => {
   const location = useLocation()
@@ -18,6 +20,12 @@ const VerifyOtp = () => {
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
+
+  useEffect(() => {
+    if (isManageBookingVerified()) {
+      navigate('/customer/manage', { replace: true })
+    }
+  }, [navigate])
 
   const handleVerify = async (e) => {
     e.preventDefault()
@@ -40,12 +48,12 @@ const VerifyOtp = () => {
         otp: code,
       })
 
-      localStorage.setItem(CUSTOMER_BOOKING_TOKEN_KEY, data.token)
-      localStorage.setItem(CUSTOMER_BOOKING_EMAIL_KEY, data.email)
-      localStorage.setItem('customer_email', data.email)
-      localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+      persistManageBookingVerification({
+        email: data.email,
+        token: data.token,
+      })
       toast.success('Verified successfully.')
-      window.location.assign('/customer')
+      window.location.assign('/customer/manage')
     } catch (error) {
       const message = error.response?.data?.message || 'OTP verification failed.'
       toast.error(message)

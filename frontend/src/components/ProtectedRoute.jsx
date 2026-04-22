@@ -28,7 +28,6 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
         const preferredType =
           sessionType
           || routeCompatibleStoredType
-          || allowedTypes[0]
           || ''
 
         const requestConfig = preferredType

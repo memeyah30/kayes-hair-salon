@@ -12,6 +12,7 @@ use App\Http\Controllers\CustomerRatingController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordSetupController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ServiceInventoryRequirementController;
@@ -191,6 +192,8 @@ Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
     Route::get('/ratings', [CustomerRatingController::class, 'index']);
     Route::get('/customers', [AdminCustomerController::class, 'index']);
+    Route::get('/admin/notifications', [NotificationController::class, 'index']);
+    Route::patch('/admin/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
 });
 
 // Shared management routes
@@ -222,8 +225,11 @@ Route::middleware(['auth.any', 'userType:stylist'])->group(function () {
     Route::get('/stylist/ratings', [CustomerRatingController::class, 'index']); // View own ratings
 });
 
-// Public customer stats (no auth required)
-Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerStats']);
+// Verified customer stats
+Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerStats'])->middleware('customer.otp');
+
+// Customer manage-booking SPA route requires an OTP-verified session.
+Route::get('/customer/manage', $serveFrontend)->middleware('customer.otp.web');
 
 // Public magic-link entry to manage booking dashboard
 Route::get('/a/{token}', [ManageBookingController::class, 'magicLink'])->name('customer.magic');

@@ -8,8 +8,8 @@
   --app-admin-bg: #e4d6fd;
   --app-admin-text: #2d1f4f;
   --dashboard-navbar-height: 4.75rem;
-  --dashboard-sidebar-width: 18rem;
-  --dashboard-sidebar-collapsed-width: 5.5rem;
+  --dashboard-sidebar-width: clamp(16rem, 22vw, 18rem);
+  --dashboard-sidebar-collapsed-width: clamp(4.75rem, 6vw, 5.5rem);
 }
 
 .active hr{

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { toPng } from 'html-to-image'
 import { QRCodeSVG } from 'qrcode.react'
 import api from '../utils/api'
 import LandingFooter from '../components/LandingFooter'
@@ -12,9 +13,15 @@ import manageBookingApi, {
 } from '../utils/manageBookingApi'
 import returningBookingApi, {
   RETURNING_BOOKING_EMAIL_KEY,
-  RETURNING_BOOKING_PENDING_EMAIL_KEY,
   RETURNING_BOOKING_TOKEN_KEY,
 } from '../utils/returningBookingApi'
+import {
+  clearReturningBookingVerification,
+  getReturningBookingPendingEmail,
+  getReturningBookingVerifiedEmail,
+  persistReturningBookingVerification,
+  setReturningBookingPendingEmail,
+} from '../utils/customerVerification'
 import './BookAppointment.css'
 
 // Validation helpers
@@ -646,7 +653,7 @@ const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => 
   const showFinancialDetails = !isRescheduleReceipt
 
   const handlePrint = () => {
-    const printContent = document.getElementById('receipt-content')
+    const printContent = document.getElementById('receipt') || document.getElementById('receipt-content')
     if (printContent) {
       const printWindow = window.open('', '_blank')
       printWindow.document.write(`
@@ -671,61 +678,29 @@ const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => 
     }
   }
 
-  const handleDownload = () => {
-    const servicesList = appointmentServices.map(s =>
-      isRescheduleReceipt
-        ? `  - ${getServiceName(s)}`
-        : `  - ${getServiceName(s)}: ${currency(getServicePrice(s))}`
-    ).join('\n')
+  const handleDownload = async () => {
+    const receiptNode = document.getElementById('receipt')
 
-    const startSource = appointment.start_datetime_pht || appointment.start_datetime
-    const endSource = appointment.end_datetime_pht || appointment.end_datetime
-    
-    const receiptContent = `
-KAYE'S HAIR SALON AND SPA - APPOINTMENT RECEIPT
-====================================
-Receipt #: ${'APT-' + String(appointment.id).padStart(6, '0')}
-Date: ${new Date(appointment.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT
+    if (!receiptNode) {
+      toast.error('Receipt preview is not ready yet. Please try again.')
+      return
+    }
 
-CUSTOMER INFORMATION:
---------------------
-Name: ${appointment.customer_name}
-Email: ${appointment.customer_email || 'N/A'}
-Phone: ${appointment.customer_phone || 'N/A'}
-Address: ${appointment.customer_address || 'N/A'}
+    try {
+      const dataUrl = await toPng(receiptNode, {
+        cacheBust: true,
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+      })
 
-APPOINTMENT DETAILS:
---------------------
-Service${appointmentServices.length > 1 ? 's' : ''}:
-${servicesList}
-Date: ${new Date(startSource).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-Time: ${new Date(startSource).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - ${new Date(endSource).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} PHT
-
-${showFinancialDetails ? `PRICING:
---------
-${appointmentServices.length > 1 ? servicesList + '\n' : ''}Total Price: ${currency(totalPrice)}
-Status: ${appointment.status.toUpperCase()}
-
-PAYMENT DETAILS:
-----------------
-Mode of Payment: ${paymentMethodLabel}
-Amount Paid: ${hasAmountPaid ? currency(amountPaid) : 'N/A'}
-${paymentMode === 'downpayment' ? `Remaining Balance: ${currency(remainingBalance)}` : ''}
-
-` : `Status: ${appointment.status.toUpperCase()}
-
-`}
-====================================
-Thank you for choosing Kaye's Hair Salon and Spa!
-    `.trim()
-
-    const blob = new Blob([receiptContent], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `receipt-${appointment.id}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+      const link = document.createElement('a')
+      link.href = dataUrl
+      link.download = `receipt-${appointment.id}.png`
+      link.click()
+    } catch (error) {
+      console.error('Failed to download receipt as PNG:', error)
+      toast.error('Unable to download receipt image right now. Please try again.')
+    }
   }
 
   return renderModal(
@@ -737,143 +712,145 @@ Thank you for choosing Kaye's Hair Salon and Spa!
             <button onClick={onClose} className="text-[#9b857a] hover:text-gray-700">&times;</button>
           </div>
           
-          <div className="border-2 border-gray-300 p-6 space-y-4" id="receipt-content">
-            <div className="text-center border-b pb-4">
-              <h1 className="text-3xl font-bold">KAYE'S HAIR SALON AND SPA</h1>
-              <p className="text-[#8f7a6f]">{receiptHeading}</p>
-            </div>
-            
-            <div>
-              <div className="text-sm text-[#9b857a]">Receipt #</div>
-              <div className="font-bold text-lg">{'APT-' + String(appointment.id).padStart(6, '0')}</div>
-              <div className="text-sm text-[#9b857a] mt-1">Booking Date: {new Date(appointment.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT</div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-2">Customer Information</h3>
-              <div className="space-y-1 text-sm">
-                <div><span className="font-medium">Name:</span> {appointment.customer_name}</div>
-                <div><span className="font-medium">Email:</span> {appointment.customer_email || 'N/A'}</div>
-                <div><span className="font-medium">Phone:</span> {appointment.customer_phone || 'N/A'}</div>
-                <div><span className="font-medium">Address:</span> {appointment.customer_address || 'N/A'}</div>
+          <div id="receipt" className="bg-white">
+            <div className="border-2 border-gray-300 p-6 space-y-4" id="receipt-content">
+              <div className="text-center border-b pb-4">
+                <h1 className="text-3xl font-bold">KAYE'S HAIR SALON AND SPA</h1>
+                <p className="text-[#8f7a6f]">{receiptHeading}</p>
               </div>
-            </div>
+              
+              <div>
+                <div className="text-sm text-[#9b857a]">Receipt #</div>
+                <div className="font-bold text-lg">{'APT-' + String(appointment.id).padStart(6, '0')}</div>
+                <div className="text-sm text-[#9b857a] mt-1">Booking Date: {new Date(appointment.created_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT</div>
+              </div>
 
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-2">Appointment Details</h3>
-              <div className="space-y-1 text-sm">
-                <div>
-                  <span className="font-medium">Service{appointmentServices.length > 1 ? 's' : ''}:</span>
-                  <ul className="list-disc list-inside ml-2 mt-1">
-                    {appointmentServices.map((s, idx) => (
-                      <li key={idx}>
-                        {getServiceName(s)}
-                        {!isRescheduleReceipt && <> - {currency(getServicePrice(s))}</>}
-                      </li>
-                    ))}
-                  </ul>
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-2">Customer Information</h3>
+                <div className="space-y-1 text-sm">
+                  <div><span className="font-medium">Name:</span> {appointment.customer_name}</div>
+                  <div><span className="font-medium">Email:</span> {appointment.customer_email || 'N/A'}</div>
+                  <div><span className="font-medium">Phone:</span> {appointment.customer_phone || 'N/A'}</div>
+                  <div><span className="font-medium">Address:</span> {appointment.customer_address || 'N/A'}</div>
                 </div>
-                <div><span className="font-medium">Date:</span> {(() => {
-                  const startSource = appointment.start_datetime_pht || appointment.start_datetime
-                  const startDate = new Date(startSource)
-                  return startDate.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    timeZone: 'Asia/Manila'
-                  })
-                })()}</div>
-                <div><span className="font-medium">Time:</span> {(() => {
-                  const startSource = appointment.start_datetime_pht || appointment.start_datetime
-                  const endSource = appointment.end_datetime_pht || appointment.end_datetime
-                  const startDate = new Date(startSource)
-                  const endDate = new Date(endSource)
-                  const startTime = startDate.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    timeZone: 'Asia/Manila',
-                    hour12: true 
-                  })
-                  const endTime = endDate.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    timeZone: 'Asia/Manila',
-                    hour12: true 
-                  })
-                  return `${startTime} - ${endTime} PHT`
-                })()}</div>
               </div>
-            </div>
 
-            {showFinancialDetails ? (
-              <>
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold mb-2">Pricing</h3>
-                  {appointmentServices.length > 1 ? (
-                    <div className="space-y-2">
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-2">Appointment Details</h3>
+                <div className="space-y-1 text-sm">
+                  <div>
+                    <span className="font-medium">Service{appointmentServices.length > 1 ? 's' : ''}:</span>
+                    <ul className="list-disc list-inside ml-2 mt-1">
                       {appointmentServices.map((s, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm">
-                          <span>{getServiceName(s)}:</span>
-                          <span className="font-medium">{currency(getServicePrice(s))}</span>
-                        </div>
+                        <li key={idx}>
+                          {getServiceName(s)}
+                          {!isRescheduleReceipt && <> - {currency(getServicePrice(s))}</>}
+                        </li>
                       ))}
-                      <div className="border-t pt-2 flex justify-between items-center">
-                        <span className="font-semibold">Total:</span>
+                    </ul>
+                  </div>
+                  <div><span className="font-medium">Date:</span> {(() => {
+                    const startSource = appointment.start_datetime_pht || appointment.start_datetime
+                    const startDate = new Date(startSource)
+                    return startDate.toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      timeZone: 'Asia/Manila'
+                    })
+                  })()}</div>
+                  <div><span className="font-medium">Time:</span> {(() => {
+                    const startSource = appointment.start_datetime_pht || appointment.start_datetime
+                    const endSource = appointment.end_datetime_pht || appointment.end_datetime
+                    const startDate = new Date(startSource)
+                    const endDate = new Date(endSource)
+                    const startTime = startDate.toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit', 
+                      timeZone: 'Asia/Manila',
+                      hour12: true 
+                    })
+                    const endTime = endDate.toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit', 
+                      timeZone: 'Asia/Manila',
+                      hour12: true 
+                    })
+                    return `${startTime} - ${endTime} PHT`
+                  })()}</div>
+                </div>
+              </div>
+
+              {showFinancialDetails ? (
+                <>
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-2">Pricing</h3>
+                    {appointmentServices.length > 1 ? (
+                      <div className="space-y-2">
+                        {appointmentServices.map((s, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-sm">
+                            <span>{getServiceName(s)}:</span>
+                            <span className="font-medium">{currency(getServicePrice(s))}</span>
+                          </div>
+                        ))}
+                        <div className="border-t pt-2 flex justify-between items-center">
+                          <span className="font-semibold">Total:</span>
+                          <span className="font-bold text-lg text-green-600">{currency(totalPrice)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <span>{getServiceName(appointmentServices[0])}:</span>
                         <span className="font-bold text-lg text-green-600">{currency(totalPrice)}</span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex justify-between items-center">
-                      <span>{getServiceName(appointmentServices[0])}:</span>
-                      <span className="font-bold text-lg text-green-600">{currency(totalPrice)}</span>
-                    </div>
-                  )}
-                  <div className="mt-2">
-                    <span className={`px-3 py-1 rounded text-sm ${
-                      appointment.status === 'booked' ? 'bg-blue-100 text-blue-800' :
-                      appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      'bg-[#f7f1ec] text-[#3b2f2a]'
-                    }`}>
-                      Status: {appointment.status.toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold mb-2">Payment Details</h3>
-                  <div className="space-y-2 rounded-lg border border-[#e8e0f4] bg-[#faf8fd] p-4 text-sm">
-                    <div className="flex justify-between gap-4">
-                      <span className="font-medium">Mode of Payment:</span>
-                      <span>{paymentMethodLabel}</span>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                      <span className="font-medium">Amount Paid:</span>
-                      <span>{hasAmountPaid ? currency(amountPaid) : 'N/A'}</span>
-                    </div>
-                    {paymentMode === 'downpayment' && (
-                      <div className="flex justify-between gap-4 border-t border-[#e8e0f4] pt-2">
-                        <span className="font-medium">Remaining Balance:</span>
-                        <span>{currency(remainingBalance)}</span>
-                      </div>
                     )}
+                    <div className="mt-2">
+                      <span className={`px-3 py-1 rounded text-sm ${
+                        appointment.status === 'booked' ? 'bg-blue-100 text-blue-800' :
+                        appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        'bg-[#f7f1ec] text-[#3b2f2a]'
+                      }`}>
+                        Status: {appointment.status.toUpperCase()}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </>
-            ) : (
-              <div className="border-t pt-4">
-                <span className={`px-3 py-1 rounded text-sm ${
-                  appointment.status === 'booked' ? 'bg-blue-100 text-blue-800' :
-                  appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  'bg-[#f7f1ec] text-[#3b2f2a]'
-                }`}>
-                  Status: {appointment.status.toUpperCase()}
-                </span>
-              </div>
-            )}
 
-            <div className="border-t pt-4 text-center text-sm text-[#8f7a6f]">
-              Thank you for choosing Kaye's Hair Salon and Spa!
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-2">Payment Details</h3>
+                    <div className="space-y-2 rounded-lg border border-[#e8e0f4] bg-[#faf8fd] p-4 text-sm">
+                      <div className="flex justify-between gap-4">
+                        <span className="font-medium">Mode of Payment:</span>
+                        <span>{paymentMethodLabel}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="font-medium">Amount Paid:</span>
+                        <span>{hasAmountPaid ? currency(amountPaid) : 'N/A'}</span>
+                      </div>
+                      {paymentMode === 'downpayment' && (
+                        <div className="flex justify-between gap-4 border-t border-[#e8e0f4] pt-2">
+                          <span className="font-medium">Remaining Balance:</span>
+                          <span>{currency(remainingBalance)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="border-t pt-4">
+                  <span className={`px-3 py-1 rounded text-sm ${
+                    appointment.status === 'booked' ? 'bg-blue-100 text-blue-800' :
+                    appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    'bg-[#f7f1ec] text-[#3b2f2a]'
+                  }`}>
+                    Status: {appointment.status.toUpperCase()}
+                  </span>
+                </div>
+              )}
+
+              <div className="border-t pt-4 text-center text-sm text-[#8f7a6f]">
+                Thank you for choosing Kaye's Hair Salon and Spa!
+              </div>
             </div>
           </div>
 
@@ -946,10 +923,14 @@ Thank you for choosing Kaye's Hair Salon and Spa!
 }
 
 const BookAppointment = () => {
+  const bookingFlowRef = useRef(null)
+  const previousStepRef = useRef(null)
+  const bookingSubmitLockRef = useRef(false)
+  const bookingRequestIdRef = useRef(null)
   const shouldRestoreDraft = shouldRestoreBookingDraft()
   const draft = shouldRestoreDraft ? readBookingDraft() : null
-  const initialPendingReturningEmail = ''
-  const initialVerifiedReturningEmail = ''
+  const initialPendingReturningEmail = getReturningBookingPendingEmail()
+  const initialVerifiedReturningEmail = getReturningBookingVerifiedEmail()
   const draftBookingEmail = normalizeEmailValue(draft?.booking?.email)
   const hasDraftCustomerFields = Boolean(draft?.booking?.name || draft?.booking?.phone || draft?.booking?.address)
   const [step, setStep] = useState(() => normalizeStepValue(draft?.step)) // 1: Customer Info, 2: Select Service, 3: Date & Time, 4: Confirm Booking
@@ -1052,6 +1033,7 @@ const BookAppointment = () => {
   const [prefillStylistId, setPrefillStylistId] = useState('')
   const [prefillVariantId, setPrefillVariantId] = useState('')
   const [hasAppliedServicePrefill, setHasAppliedServicePrefill] = useState(false)
+  const [bookingInProgress, setBookingInProgress] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const activeStylists = stylists.filter((stylist) => stylist?.active !== false)
@@ -1098,9 +1080,7 @@ const BookAppointment = () => {
       : 'Enter your email first so we can securely check for an existing customer record before booking.'
 
   const clearReturningBookingSession = () => {
-    localStorage.removeItem(RETURNING_BOOKING_TOKEN_KEY)
-    localStorage.removeItem(RETURNING_BOOKING_EMAIL_KEY)
-    localStorage.removeItem(RETURNING_BOOKING_PENDING_EMAIL_KEY)
+    clearReturningBookingVerification()
   }
 
   const resetReturningCustomerState = ({ preserveEmail = '', keepLookupMessage = false } = {}) => {
@@ -1140,8 +1120,7 @@ const BookAppointment = () => {
       address: profile?.address || '',
       privacyConsent: true,
     }))
-    localStorage.setItem(RETURNING_BOOKING_EMAIL_KEY, normalizedEmail)
-    localStorage.removeItem(RETURNING_BOOKING_PENDING_EMAIL_KEY)
+    persistReturningBookingVerification({ email: normalizedEmail })
   }
 
   const clearBookingDraft = () => {
@@ -1244,13 +1223,15 @@ const BookAppointment = () => {
   }, [])
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const isReturningBookingReplay = params.has('reschedule') || params.has('appointment')
-
-    if (!isReturningBookingReplay) {
-      clearReturningBookingSession()
+    if (!initialVerifiedReturningEmail || rescheduling || customerLookupState !== 'loading_profile') {
+      return
     }
-  }, [location.search])
+
+    void loadReturningCustomerProfile({
+      silent: true,
+      advanceOnComplete: normalizeStepValue(draft?.step) > 1,
+    })
+  }, [customerLookupState, draft?.step, initialVerifiedReturningEmail, rescheduling]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (rescheduling) {
@@ -1659,6 +1640,42 @@ const BookAppointment = () => {
     receipt,
   ])
 
+  const scrollBookingFlowToTop = (behavior = 'smooth') => {
+    const bookingFlowNode = bookingFlowRef.current
+    if (!bookingFlowNode || typeof window === 'undefined') {
+      return
+    }
+
+    const targetTop = Math.max(
+      0,
+      bookingFlowNode.getBoundingClientRect().top + window.scrollY - 12
+    )
+
+    window.scrollTo({
+      top: targetTop,
+      left: 0,
+      behavior,
+    })
+  }
+
+  useEffect(() => {
+    if (previousStepRef.current === null) {
+      previousStepRef.current = step
+      return undefined
+    }
+
+    if (previousStepRef.current === step) {
+      return undefined
+    }
+
+    previousStepRef.current = step
+    const animationFrameId = window.requestAnimationFrame(() => {
+      scrollBookingFlowToTop('smooth')
+    })
+
+    return () => window.cancelAnimationFrame(animationFrameId)
+  }, [step])
+
   const refreshData = async () => {
     try {
       const [svcRes, paymentRes] = await Promise.all([
@@ -1852,7 +1869,7 @@ const BookAppointment = () => {
 
       if (data.exists) {
         clearReturningBookingSession()
-        localStorage.setItem(RETURNING_BOOKING_PENDING_EMAIL_KEY, normalizedEmail)
+        setReturningBookingPendingEmail(normalizedEmail)
         setReturningOtp('')
         setReturningCustomerProfile(null)
         setReturningCustomerMissingFields([])
@@ -1904,7 +1921,7 @@ const BookAppointment = () => {
       await returningBookingApi.post('/returning-booking/send-otp', {
         email: normalizedEmail,
       })
-      localStorage.setItem(RETURNING_BOOKING_PENDING_EMAIL_KEY, normalizedEmail)
+      setReturningBookingPendingEmail(normalizedEmail)
       setCustomerLookupState('verification_required')
       setCustomerLookupMessage('Existing record found. Verification code sent to your email.')
       toast.success('Verification code sent to your email.')
@@ -1935,9 +1952,10 @@ const BookAppointment = () => {
         otp: code,
       })
 
-      localStorage.setItem(RETURNING_BOOKING_TOKEN_KEY, data.token)
-      localStorage.setItem(RETURNING_BOOKING_EMAIL_KEY, data.email)
-      localStorage.removeItem(RETURNING_BOOKING_PENDING_EMAIL_KEY)
+      persistReturningBookingVerification({
+        email: data.email,
+        token: data.token,
+      })
 
       await loadReturningCustomerProfile({ silent: true, advanceOnComplete: true })
     } catch (error) {
@@ -2094,8 +2112,20 @@ const BookAppointment = () => {
       toast.error('Please select a valid time slot')
       return
     }
+
+    if (bookingSubmitLockRef.current) {
+      return
+    }
     
     try {
+      bookingSubmitLockRef.current = true
+      setBookingInProgress(true)
+      bookingRequestIdRef.current = bookingRequestIdRef.current || (
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `booking-${Date.now()}-${Math.random().toString(16).slice(2)}`
+      )
+
       // Extract time from slot start (HH:MM format) - treat as Philippine Time (Asia/Manila)
       // Use the helper function to convert to HH:MM format
       const preferredTime = toManilaHHmm(selectedSlot.start)
@@ -2210,19 +2240,20 @@ const BookAppointment = () => {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:870',message:'Submitting appointment booking',data:{date:bookingDate,preferred_time:preferredTime,selectedSlotStart:selectedSlot?.start,selectedSlotEnd:selectedSlot?.end,selectedServicesCount:selectedServicesData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T4'})}).catch(()=>{});
       // #endregion
-      const res = await api.post('/appointments', formData)
+      const res = await api.post('/appointments', formData, {
+        headers: {
+          'X-Booking-Request-Id': bookingRequestIdRef.current,
+        },
+      })
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:872',message:'Booking response received',data:{appointmentId:res.data?.id,start_datetime:res.data?.start_datetime,end_datetime:res.data?.end_datetime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T4'})}).catch(()=>{});
       // #endregion
       
       toast.success('Appointment booked successfully!')
 
-      // Keep customer identity for dashboard lookup after booking confirmation.
+      // Keep the booking email handy for the OTP flow without exposing history publicly.
       if (booking.email) {
-        localStorage.setItem('customer_email', booking.email.trim().toLowerCase())
-      }
-      if (booking.phone) {
-        localStorage.setItem('customer_phone', booking.phone.replace(/[\s-]/g, ''))
+        localStorage.setItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY, booking.email.trim().toLowerCase())
       }
       
       // The response should already have stylist and service loaded
@@ -2280,6 +2311,10 @@ const BookAppointment = () => {
       }
       
       console.error('Booking error:', e.response?.data || e)
+    } finally {
+      bookingSubmitLockRef.current = false
+      bookingRequestIdRef.current = null
+      setBookingInProgress(false)
     }
   }
 
@@ -2476,7 +2511,7 @@ const BookAppointment = () => {
         </div>
       </section>
 
-      <div className="app-mobile-shell space-y-6 max-w-[1700px] mx-auto w-full">
+      <div ref={bookingFlowRef} className="app-mobile-shell space-y-6 max-w-[1700px] mx-auto w-full">
       
       {/* Step Indicator */}
       <div className="flex items-center justify-center mb-4">
@@ -4057,13 +4092,16 @@ const BookAppointment = () => {
               <button
                 onClick={handleBook}
                 disabled={(
+                  bookingInProgress ||
                   !payment.proofFile ||
                   (payment.method === 'online' && !payment.selectedAccount) ||
                   (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
                 )}
                 className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
               >
-                {payment.method === 'online' ? 'Confirm Booking & Pay' : 'Confirm Booking'}
+                {bookingInProgress
+                  ? 'Processing Booking...'
+                  : (payment.method === 'online' ? 'Confirm Booking & Pay' : 'Confirm Booking')}
               </button>
             </div>
           </div>
@@ -4080,6 +4118,8 @@ const BookAppointment = () => {
               localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
               localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
               localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+              localStorage.removeItem('customer_email')
+              localStorage.removeItem('customer_phone')
             }
             setReceipt(null)
             setRescheduling(null)
@@ -4088,6 +4128,7 @@ const BookAppointment = () => {
             // Keep email/phone in form for easy re-booking, but clear other fields
             setBooking({ name: '', email: booking.email, phone: booking.phone, address: '', privacyConsent: false })
             setFormErrors({ email: '', phone: '', payment: '', privacy: '' })
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
             navigate('/customer', { replace: true })
           }} 
         />

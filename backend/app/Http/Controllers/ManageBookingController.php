@@ -8,6 +8,7 @@ use App\Models\AppointmentLink;
 use App\Models\AppointmentRating;
 use App\Models\CustomerRating;
 use App\Models\CustomerOtp;
+use App\Services\CustomerOtpSessionService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -163,6 +164,8 @@ class ManageBookingController extends Controller
             'used_at' => now(),
         ]);
 
+        app(CustomerOtpSessionService::class)->store($request, $email, self::OTP_PURPOSE);
+
         [$token, $expiresAt] = $this->issueManageBookingToken($email);
 
         return response()->json([
@@ -199,6 +202,7 @@ class ManageBookingController extends Controller
         $email = $this->normalizeEmail((string) $link->appointment->customer_email);
         [$sessionToken] = $this->issueManageBookingToken($email);
 
+        app(CustomerOtpSessionService::class)->store($request, $email, self::OTP_PURPOSE);
         $request->session()->put('customer_appointment_id', $link->appointment_id);
         $request->session()->put('customer_manage_booking_email', $email);
 
@@ -208,6 +212,15 @@ class ManageBookingController extends Controller
         ]);
 
         return redirect('/customer?' . $query);
+    }
+
+    public function logout(Request $request)
+    {
+        app(CustomerOtpSessionService::class)->clear($request);
+
+        return response()->json([
+            'message' => 'Customer OTP session cleared successfully.',
+        ]);
     }
 
     public function appointments(Request $request)

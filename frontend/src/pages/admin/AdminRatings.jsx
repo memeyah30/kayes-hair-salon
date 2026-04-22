@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
+import ActionButton, { ActionGroup } from '../../components/ActionButton'
 
 const AdminRatings = () => {
   const [ratings, setRatings] = useState([])
@@ -237,13 +238,16 @@ const AdminRatings = () => {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleDelete(rating.id)}
-                          className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
-                          title="Delete rating"
-                        >
-                          Delete
-                        </button>
+                        <ActionGroup>
+                          <ActionButton
+                            onClick={() => handleDelete(rating.id)}
+                            tone="danger"
+                            size="compact"
+                            title="Delete rating"
+                          >
+                            Delete
+                          </ActionButton>
+                        </ActionGroup>
                       </td>
                     </tr>
                   ))}

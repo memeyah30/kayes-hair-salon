@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../utils/api'
 import { resolveAssetUrl } from '../utils/runtime'
-import heroMainImage from '../assets/landing-hero-main.jpg'
 import HowToBookSection from '../components/HowToBookSection'
 import LandingFooter from '../components/LandingFooter'
 import './HomeHero.css'
@@ -12,6 +11,8 @@ const currency = (cents) => `PHP ${(Number(cents || 0) / 100).toFixed(2)}`
 const imageUrl = (path) => {
   return resolveAssetUrl(path)
 }
+
+const asArray = (value) => (Array.isArray(value) ? value : [])
 
 const parsePriceCents = (centsValue, pesoValue) => {
   if (centsValue !== null && typeof centsValue !== 'undefined' && centsValue !== '') {
@@ -246,8 +247,8 @@ const Home = () => {
         api.get('/services'),
         api.get('/stylists'),
       ])
-      setServices(servicesRes.data || [])
-      setStylists((stylistsRes.data || []).filter((s) => s.active))
+      setServices(asArray(servicesRes?.data))
+      setStylists(asArray(stylistsRes?.data).filter((s) => s?.active))
     } catch (e) {
       console.error('Failed to load data:', e)
     } finally {
@@ -264,7 +265,7 @@ const Home = () => {
   }
 
   const preparedServices = useMemo(() => {
-    return (services || []).map((service) => {
+    return asArray(services).map((service) => {
       const pricing = summarizeServicePricing(service, service?.variants || [])
       return {
         ...service,
@@ -406,7 +407,7 @@ const Home = () => {
     closeServiceOptions()
   }
 
-  const heroBackgroundImage = `url('/hero-salon-interior.png'), url(${heroMainImage})`
+  const heroBackgroundImage = `url(${imageUrl('hero-salon-interior.png')})`
 
   return (
     <div className="min-h-screen bg-[#f4edff] text-[#2f245a]">
@@ -711,19 +712,20 @@ const Home = () => {
         <section id="about" className="home-section px-4 md:px-8 py-14 bg-white">
           <div className="max-w-6xl mx-auto rounded-3xl border border-[#e8ddff] bg-[linear-gradient(135deg,#ffffff_0%,#f8f2ff_100%)] p-8 md:p-12">
             <h2 className="text-4xl md:text-5xl font-semibold text-[#2f245a] mb-4">About Us</h2>
-            <p className="text-lg md:text-xl text-[#5f4f8f] leading-relaxed">
-              Kaye&apos;s Hair Salon and Spa delivers modern beauty services with professional care. We focus on clean styling,
-              quality products, and a comfortable experience for every customer.
-            </p>
-          </div>
-        </section>
-
-        <section id="contact" className="home-section px-4 md:px-8 py-14 bg-white">
-          <div className="max-w-6xl mx-auto rounded-3xl border border-[#e8ddff] bg-[#f8f3ff] p-8 md:p-12 text-center">
-            <h2 className="text-4xl md:text-5xl font-semibold text-[#2f245a] mb-3">Contact</h2>
-            <p className="text-lg md:text-xl text-[#5f4f8f] mb-6">
-              2nd Floor, Governor Perdices Street, Dumaguete City, Philippines, 6200
-            </p>
+            <div className="space-y-4 text-lg md:text-xl text-[#5f4f8f] leading-relaxed">
+              <p>
+                Kaye&apos;s Hair Salon and Spa is dedicated to helping every client feel confident, refreshed, and cared for
+                through modern beauty services delivered with consistency and professionalism. From hair styling and color
+                treatments to nail care and personalized salon services, we focus on creating results that match your
+                lifestyle while making each visit comfortable, clean, and relaxing from start to finish.
+              </p>
+              <p>
+                Our team values quality products, attentive service, and a welcoming experience for every customer who
+                walks through our doors. Whether you are preparing for a special occasion or simply taking time for routine
+                self-care, we aim to provide reliable salon care, thoughtful recommendations, and a smooth booking
+                experience that makes it easy to return with confidence.
+              </p>
+            </div>
           </div>
         </section>
       </main>

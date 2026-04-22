@@ -2,21 +2,46 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import RatingModal from '../components/RatingModal'
-import manageBookingApi, {
-  CUSTOMER_BOOKING_EMAIL_KEY,
-  CUSTOMER_BOOKING_PENDING_EMAIL_KEY,
-  CUSTOMER_BOOKING_TOKEN_KEY,
-} from '../utils/manageBookingApi'
+import Sidebar from '../components/Sidebar'
+import Navbar from '../components/Navbar'
+import { actionButtonClasses } from '../components/ActionButton'
+import manageBookingApi from '../utils/manageBookingApi'
+import {
+  clearManageBookingVerification,
+  getManageBookingVerifiedEmail,
+  isManageBookingVerified,
+  persistManageBookingVerification,
+} from '../utils/customerVerification'
 
 const statusClasses = {
   pending: 'bg-amber-100 text-amber-800',
-  confirmed: 'bg-blue-100 text-blue-800',
+  confirmed: 'bg-[#fce7f1] text-[#9b2f64]',
   completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
   missed: 'bg-gray-200 text-gray-700',
+  booked: 'bg-[#fce7f1] text-[#9b2f64]',
 }
 
 const formatCurrency = (amount) => `PHP ${Number(amount || 0).toFixed(2)}`
+const primaryActionButtonClass = 'tap-safe rounded-[30px] bg-[#7b5cf5] px-5 py-2.5 text-white font-semibold shadow-[0_14px_30px_rgba(40,28,110,0.3)] transition hover:-translate-y-px hover:bg-[#8a6cf8] disabled:opacity-60'
+const secondaryActionButtonClass = 'tap-safe rounded-xl border border-[#e2d7ea] bg-white px-4 py-2 text-sm text-[#5c4b68] shadow-[0_8px_24px_rgba(44,19,56,0.05)] transition hover:bg-[#faf6fd]'
+
+const wasRescheduled = (appointment) => Boolean(appointment?.is_rescheduled || appointment?.rescheduled_at)
+
+const formatRescheduledAtLabel = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString('en-US', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
 
 const ManageBookingDashboard = () => {
   const navigate = useNavigate()
@@ -27,13 +52,13 @@ const ManageBookingDashboard = () => {
   const queryEmail = (params.get('email') || '').trim().toLowerCase()
 
   if (queryToken && queryEmail) {
-    localStorage.setItem(CUSTOMER_BOOKING_TOKEN_KEY, queryToken)
-    localStorage.setItem(CUSTOMER_BOOKING_EMAIL_KEY, queryEmail)
-    localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+    persistManageBookingVerification({
+      email: queryEmail,
+      token: queryToken,
+    })
   }
 
-  const customerEmail = queryEmail || localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) || ''
-  const customerToken = queryToken || localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || ''
+  const customerEmail = queryEmail || getManageBookingVerifiedEmail()
 
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -46,15 +71,28 @@ const ManageBookingDashboard = () => {
   const [submittingRating, setSubmittingRating] = useState(false)
 
   const hasSession = useMemo(
-    () => Boolean(customerEmail && customerToken),
-    [customerEmail, customerToken]
+    () => Boolean(queryToken && queryEmail) || isManageBookingVerified(),
+    [queryEmail, queryToken]
   )
 
-  const clearSessionAndGoToStart = () => {
-    localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
-    localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
-    localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
+  const upcomingCount = useMemo(
+    () => appointments.filter((appointment) => ['pending', 'confirmed', 'booked'].includes(appointment.status)).length,
+    [appointments]
+  )
+
+  const clearLocalSessionAndGoToStart = () => {
+    clearManageBookingVerification()
     navigate('/manage-booking/start')
+  }
+
+  const clearSessionAndGoToStart = async () => {
+    try {
+      await manageBookingApi.post('/manage-booking/logout')
+    } catch {
+      // Best-effort logout; local cleanup still runs below.
+    } finally {
+      clearLocalSessionAndGoToStart()
+    }
   }
 
   const loadAppointments = async () => {
@@ -65,11 +103,12 @@ const ManageBookingDashboard = () => {
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please verify OTP again.')
-        clearSessionAndGoToStart()
+        void clearSessionAndGoToStart()
         return
       }
       const message = error.response?.data?.message || 'Failed to load appointments.'
       toast.error(message)
+      setAppointments([])
     } finally {
       setLoading(false)
     }
@@ -85,13 +124,13 @@ const ManageBookingDashboard = () => {
 
   useEffect(() => {
     if (queryToken && queryEmail) {
-      navigate('/customer', { replace: true })
+      navigate('/customer/manage', { replace: true })
     }
   }, [navigate, queryEmail, queryToken])
 
   useEffect(() => {
     if (pathname === '/customer/dashboard') {
-      navigate('/customer', { replace: true })
+      navigate('/customer/manage', { replace: true })
     }
   }, [navigate, pathname])
 
@@ -119,7 +158,7 @@ const ManageBookingDashboard = () => {
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please verify OTP again.')
-        clearSessionAndGoToStart()
+        void clearSessionAndGoToStart()
         return
       }
       const message = error.response?.data?.message || 'Failed to reschedule appointment.'
@@ -140,7 +179,7 @@ const ManageBookingDashboard = () => {
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please verify OTP again.')
-        clearSessionAndGoToStart()
+        void clearSessionAndGoToStart()
         return
       }
       const message = error.response?.data?.message || 'Failed to cancel appointment.'
@@ -162,7 +201,7 @@ const ManageBookingDashboard = () => {
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please verify OTP again.')
-        clearSessionAndGoToStart()
+        void clearSessionAndGoToStart()
         return
       }
       const message = error.response?.data?.message || 'Failed to submit rating.'
@@ -172,141 +211,205 @@ const ManageBookingDashboard = () => {
     }
   }
 
-  return (
-    <div className="min-h-screen app-panel-bg px-4 py-4 sm:py-6">
-      <div className="mx-auto w-full max-w-4xl">
-        <div className="mb-5 rounded-2xl border border-[#eadfd5] bg-white/90 p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-[#3b2f2a]">Manage My Booking</h1>
-              <p className="text-sm text-[#8f7a6f]">Verified as {customerEmail}</p>
-            </div>
-            <button
-              onClick={clearSessionAndGoToStart}
-              className="tap-safe rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              End Session
-            </button>
+  if (loading) {
+    return (
+      <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
+        <Sidebar userType="customer" />
+        <main className="flex-1 min-w-0 flex flex-col">
+          <Navbar hideUserBadge />
+          <div className="flex items-center justify-center min-h-screen">
+            <div>Loading your appointments...</div>
           </div>
-        </div>
-
-        {loading ? (
-          <div className="rounded-2xl border border-[#eadfd5] bg-white/90 p-6 text-center text-[#8f7a6f] shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
-            Loading appointments...
-          </div>
-        ) : appointments.length === 0 ? (
-          <div className="rounded-2xl border border-[#eadfd5] bg-white/90 p-6 text-center shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
-            <h2 className="mb-2 text-lg font-semibold text-[#3b2f2a]">No appointments found</h2>
-            <p className="text-sm text-[#8f7a6f]">No bookings are linked to this verified email yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {appointments.map((appointment) => {
-              const hasCanRateFlag = Object.prototype.hasOwnProperty.call(appointment, 'can_rate')
-              const normalizedStatus = String(appointment.raw_status || appointment.status || '').toLowerCase()
-              const canRate = hasCanRateFlag ? Boolean(appointment.can_rate) : normalizedStatus === 'completed'
-
-              return (
-              <div
-                key={appointment.id}
-                className="rounded-2xl border border-[#eadfd5] bg-white/90 p-4 shadow-[0_8px_24px_rgba(92,64,51,0.08)]"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <div className="text-lg font-semibold text-[#3b2f2a]">{appointment.service_name}</div>
-                    <div className="text-sm text-[#8f7a6f]">Stylist: {appointment.stylist_name}</div>
-                    <div className="text-sm text-[#8f7a6f]">
-                      {appointment.appointment_date} at {appointment.appointment_time}
-                    </div>
-                    <div className="text-sm font-medium text-[#5a463c]">
-                      Total: {formatCurrency(appointment.total_amount)}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        statusClasses[appointment.status] || 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {appointment.status}
-                    </span>
-
-                    {appointment.can_reschedule && (
-                      <button
-                        onClick={() => openReschedule(appointment)}
-                        className="tap-safe rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-                      >
-                        Reschedule
-                      </button>
-                    )}
-
-                    {appointment.can_cancel && (
-                      <button
-                        onClick={() => handleCancel(appointment.id)}
-                        disabled={submittingCancelId === appointment.id}
-                        className="tap-safe rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
-                      >
-                        {submittingCancelId === appointment.id ? 'Cancelling...' : 'Cancel'}
-                      </button>
-                    )}
-
-                    {canRate && (
-                      <button
-                        onClick={() => setRatingAppointment(appointment)}
-                        className="tap-safe rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
-                      >
-                        Rate
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {rescheduleForId === appointment.id && (
-                  <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-700">New Date</label>
-                        <input
-                          type="date"
-                          value={rescheduleDate}
-                          onChange={(e) => setRescheduleDate(e.target.value)}
-                          className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-700">New Time</label>
-                        <input
-                          type="time"
-                          value={rescheduleTime}
-                          onChange={(e) => setRescheduleTime(e.target.value)}
-                          className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <button
-                        onClick={() => handleReschedule(appointment.id)}
-                        disabled={submittingReschedule}
-                        className="tap-safe rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-                      >
-                        {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
-                      </button>
-                      <button
-                        onClick={() => setRescheduleForId(null)}
-                        className="tap-safe rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              )
-            })}
-          </div>
-        )}
+        </main>
       </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
+      <Sidebar userType="customer" />
+      <main className="flex-1 min-w-0 flex flex-col">
+        <Navbar hideUserBadge />
+        <div className="app-mobile-shell space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/home')}
+                className="tap-safe px-3 py-2 bg-[#2C1338] text-white rounded hover:brightness-110 text-lg font-bold"
+                aria-label="Back to Home"
+                title="Back to Home"
+              >
+                &larr;
+              </button>
+              <h1 className="text-2xl font-bold">Manage My Booking</h1>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => navigate('/book?fresh=1')}
+                className={`${primaryActionButtonClass} w-full sm:w-auto text-sm`}
+              >
+                Book New
+              </button>
+              <button
+                onClick={() => { void clearSessionAndGoToStart() }}
+                className={`${secondaryActionButtonClass} w-full sm:w-auto`}
+              >
+                End Session
+              </button>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+              <div className="text-[#7c688f] text-sm">Upcoming Appointments</div>
+              <div className="text-2xl font-bold text-[#E75480]">{upcomingCount}</div>
+              <div className="text-sm text-[#6f5b7e] mt-2">Verified booking access is active for this session.</div>
+            </div>
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+              <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
+              <div className="text-2xl font-bold text-emerald-700">{appointments.length}</div>
+              <div className="text-sm text-[#6f5b7e] mt-2 break-all">Verified as {customerEmail || 'your booking email'}</div>
+            </div>
+          </div>
+
+          {appointments.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6 text-center">
+              <div className="text-sm font-semibold text-[#6f5b7e] mb-4">No appointments found</div>
+              <h2 className="text-xl font-semibold mb-2">No bookings are linked to this verified email yet</h2>
+              <p className="text-[#6f5b7e] mb-4">You can create a new appointment anytime.</p>
+              <button
+                onClick={() => navigate('/book?fresh=1')}
+                className={primaryActionButtonClass}
+              >
+                Book Appointment Now
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+              <h2 className="font-semibold text-lg mb-4">My Appointments</h2>
+              <div className="space-y-3">
+                {appointments.map((appointment) => {
+                  const hasCanRateFlag = Object.prototype.hasOwnProperty.call(appointment, 'can_rate')
+                  const normalizedStatus = String(appointment.raw_status || appointment.status || '').toLowerCase()
+                  const canRate = hasCanRateFlag ? Boolean(appointment.can_rate) : normalizedStatus === 'completed'
+                  const statusLabel = appointment.status === 'pending' ? 'booked' : appointment.status
+                  const isRescheduled = wasRescheduled(appointment)
+                  const rescheduledAtLabel = formatRescheduledAtLabel(appointment.rescheduled_at)
+
+                  return (
+                    <div key={appointment.id} className="border rounded-lg p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="font-semibold text-lg">{appointment.service_name}</div>
+                          <div className="text-sm text-[#6f5b7e] mt-1">
+                            {appointment.appointment_date} at {appointment.appointment_time}
+                          </div>
+                          {isRescheduled && (
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#6d28d9]">
+                                Rescheduled
+                              </span>
+                              {rescheduledAtLabel && (
+                                <span className="text-xs text-[#7c688f]">
+                                  Updated on {rescheduledAtLabel} PHT
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div className="text-sm text-[#7c688f] mt-1">with {appointment.stylist_name}</div>
+                          <div className="text-sm font-medium text-green-600 mt-2">
+                            {formatCurrency(appointment.total_amount)}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:ml-4">
+                          {appointment.can_reschedule && (
+                            <button
+                              onClick={() => openReschedule(appointment)}
+                              className={actionButtonClasses({ tone: 'primary', size: 'compact' })}
+                            >
+                              Reschedule
+                            </button>
+                          )}
+
+                          {appointment.can_cancel && (
+                            <button
+                              onClick={() => handleCancel(appointment.id)}
+                              disabled={submittingCancelId === appointment.id}
+                              className={actionButtonClasses({ tone: 'danger', size: 'compact' })}
+                            >
+                              {submittingCancelId === appointment.id ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          )}
+
+                          {canRate && (
+                            <button
+                              onClick={() => setRatingAppointment(appointment)}
+                              className={actionButtonClasses({ tone: 'success', size: 'compact' })}
+                            >
+                              Rate Appointment
+                            </button>
+                          )}
+
+                          {!canRate && appointment.rating && (
+                            <span className="px-2 py-1 rounded text-xs self-center bg-emerald-100 text-emerald-700">
+                              Rated {Number(appointment.rating.overall_rating) || 0}/5
+                            </span>
+                          )}
+
+                          <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appointment.status] || 'bg-gray-100 text-gray-700'}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                      </div>
+
+                      {rescheduleForId === appointment.id && (
+                        <div className="mt-4 rounded-xl border border-[#f3cade] bg-[#fff4f9] p-3">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-700">New Date</label>
+                              <input
+                                type="date"
+                                value={rescheduleDate}
+                                onChange={(e) => setRescheduleDate(e.target.value)}
+                                className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#E75480]"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-700">New Time</label>
+                              <input
+                                type="time"
+                                value={rescheduleTime}
+                                onChange={(e) => setRescheduleTime(e.target.value)}
+                                className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#E75480]"
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <button
+                              onClick={() => handleReschedule(appointment.id)}
+                              disabled={submittingReschedule}
+                              className={`${primaryActionButtonClass} px-4 py-1.5 text-xs`}
+                            >
+                              {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
+                            </button>
+                            <button
+                              onClick={() => setRescheduleForId(null)}
+                              className="tap-safe rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
 
       {ratingAppointment && (
         <RatingModal

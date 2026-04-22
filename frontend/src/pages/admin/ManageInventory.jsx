@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import AdminLayout from '../../components/AdminLayout'
+import ActionButton, { ActionGroup } from '../../components/ActionButton'
 
 const ManageInventory = () => {
   const [inventory, setInventory] = useState([])
@@ -382,20 +383,22 @@ const ManageInventory = () => {
                         )}
                       </td>
                       <td className="p-2">
-                        <div className="flex gap-2">
-                          <button
+                        <ActionGroup className="min-w-[11rem]">
+                          <ActionButton
                             onClick={() => handleEdit(item)}
-                            className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                            tone="primary"
+                            size="compact"
                           >
                             Edit
-                          </button>
-                          <button
+                          </ActionButton>
+                          <ActionButton
                             onClick={() => handleDelete(item.id)}
-                            className="text-sm bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                            tone="danger"
+                            size="compact"
                           >
                             Delete
-                          </button>
-                        </div>
+                          </ActionButton>
+                        </ActionGroup>
                       </td>
                     </tr>
                   ))}

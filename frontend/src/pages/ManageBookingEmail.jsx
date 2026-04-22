@@ -1,12 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import manageBookingApi, { CUSTOMER_BOOKING_PENDING_EMAIL_KEY } from '../utils/manageBookingApi'
+import {
+  isManageBookingVerified,
+  setManageBookingPendingEmail,
+} from '../utils/customerVerification'
 
 const ManageBookingEmail = () => {
   const navigate = useNavigate()
   const [email, setEmail] = useState(localStorage.getItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY) || '')
   const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    if (isManageBookingVerified()) {
+      navigate('/customer/manage', { replace: true })
+    }
+  }, [navigate])
 
   const handleSendOtp = async (e) => {
     e.preventDefault()
@@ -20,7 +30,7 @@ const ManageBookingEmail = () => {
     try {
       setSending(true)
       await manageBookingApi.post('/manage-booking/send-otp', { email: normalizedEmail })
-      localStorage.setItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY, normalizedEmail)
+      setManageBookingPendingEmail(normalizedEmail)
       toast.success('OTP sent to your email.')
       navigate('/manage-booking/verify', { state: { email: normalizedEmail } })
     } catch (error) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\CustomerOtpSessionService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -11,8 +12,23 @@ class CustomerOtpVerified
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $sessionService = app(CustomerOtpSessionService::class);
+        $headerEmail = $this->normalizeEmail($request->header('X-Customer-Email', ''));
+
+        if ($sessionService->isVerified($request)) {
+            $sessionEmail = $sessionService->email($request);
+
+            if ($headerEmail && $sessionEmail !== $headerEmail) {
+                return response()->json(['message' => 'Customer session does not match email.'], 401);
+            }
+
+            $request->attributes->set('customer_verified_email', $sessionEmail);
+
+            return $next($request);
+        }
+
         $token = $request->bearerToken() ?: $request->header('X-Customer-Token');
-        $email = $this->normalizeEmail($request->header('X-Customer-Email', ''));
+        $email = $headerEmail;
 
         if (!$token || !$email) {
             return response()->json(['message' => 'Customer OTP authentication is required.'], 401);
@@ -45,4 +61,3 @@ class CustomerOtpVerified
         return 'manage_booking_token:' . hash('sha256', $token);
     }
 }
-

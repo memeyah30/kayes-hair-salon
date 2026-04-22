@@ -1,8 +1,16 @@
+import { motion, useReducedMotion } from 'framer-motion'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
 import { resolveBackendOrigin } from '../utils/runtime'
+
+const easeOut = [0.22, 1, 0.36, 1]
+
+const roleOptions = [
+  { value: 'admin', label: 'Owner' },
+  { value: 'manager', label: 'Manager' },
+]
 
 const Login = ({ userType: propUserType }) => {
   const initialType = propUserType === 'manager' ? 'manager' : 'admin'
@@ -12,6 +20,70 @@ const Login = ({ userType: propUserType }) => {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const shouldReduceMotion = useReducedMotion()
+
+  const shellReveal = {
+    hidden: {
+      opacity: 0,
+      y: shouldReduceMotion ? 0 : 28,
+      scale: shouldReduceMotion ? 1 : 0.985,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.65,
+        ease: easeOut,
+      },
+    },
+  }
+
+  const panelReveal = {
+    hidden: { opacity: 0, x: shouldReduceMotion ? 0 : 34 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.62,
+        ease: easeOut,
+      },
+    },
+  }
+
+  const leftPanelReveal = {
+    hidden: { opacity: 0, x: shouldReduceMotion ? 0 : -34 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.62,
+        ease: easeOut,
+      },
+    },
+  }
+
+  const staggerChildren = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.09,
+        delayChildren: 0.12,
+      },
+    },
+  }
+
+  const fadeUp = {
+    hidden: { opacity: 0, y: shouldReduceMotion ? 0 : 18 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.48,
+        ease: easeOut,
+      },
+    },
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -99,77 +171,137 @@ const Login = ({ userType: propUserType }) => {
     : ''
 
   return (
-    <div className="min-h-screen bg-[#dfe4f3] p-3 sm:p-4 md:p-8 flex items-center justify-center">
-      <div className="w-full max-w-6xl overflow-hidden rounded-2xl md:rounded-[30px] border border-[#d3daee] bg-[#eef2fb] shadow-[0_22px_60px_rgba(58,79,133,0.2)]">
+    <motion.div
+      className="flex min-h-screen items-center justify-center bg-[#dfe4f3] p-3 sm:p-4 md:p-8"
+      initial="hidden"
+      animate="visible"
+      variants={shellReveal}
+    >
+      <motion.div
+        className="w-full max-w-6xl overflow-hidden rounded-2xl border border-[#d3daee] bg-[#eef2fb] shadow-[0_22px_60px_rgba(58,79,133,0.2)] md:rounded-[30px]"
+        variants={shellReveal}
+      >
         <div className="grid lg:grid-cols-[1fr_1fr]">
-          <section className="bg-gradient-to-br from-[#8ea3f1] via-[#7d95e8] to-[#6c84dc] px-5 sm:px-8 py-8 sm:py-10 text-white lg:min-h-[700px] lg:rounded-r-[220px] lg:px-12 lg:py-14">
-            <div className="flex h-full flex-col justify-between gap-12">
-              <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-white/75">Management Portal</p>
-                <h1 className="mt-6 text-[clamp(2rem,8vw,3.25rem)] font-semibold leading-none">Welcome!</h1>
-                <p className="mt-6 max-w-md text-sm sm:text-base md:text-lg text-white/90">
-                  Manage appointments, services, and salon operations from one secure dashboard.
-                </p>
-              </div>
-              <div>
+          <motion.section
+            className="relative overflow-hidden bg-gradient-to-br from-[#8ea3f1] via-[#7d95e8] to-[#6c84dc] px-5 py-8 text-white sm:px-8 sm:py-10 lg:min-h-[700px] lg:rounded-r-[220px] lg:px-12 lg:py-14"
+            variants={leftPanelReveal}
+          >
+            <motion.div
+              aria-hidden="true"
+              className="absolute -right-14 top-8 h-44 w-44 rounded-full bg-white/12 blur-sm"
+              animate={
+                shouldReduceMotion
+                  ? undefined
+                  : { x: [0, -20, 0], y: [0, 18, 0], scale: [1, 1.08, 1] }
+              }
+              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <motion.div
+              aria-hidden="true"
+              className="absolute bottom-[-3.5rem] left-[-2rem] h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0)_70%)]"
+              animate={
+                shouldReduceMotion
+                  ? undefined
+                  : { x: [0, 18, 0], y: [0, -16, 0], scale: [1, 1.1, 1] }
+              }
+              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 0.35 }}
+            />
+
+            <motion.div
+              className="relative flex h-full flex-col justify-between gap-12"
+              variants={staggerChildren}
+            >
+              <motion.div variants={fadeUp}>
+               
+                <motion.h1
+                  className="mt-6 text-[clamp(2rem,8vw,3.25rem)] font-semibold leading-none"
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+                  animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                  transition={{ duration: 0.58, ease: easeOut, delay: 0.16 }}
+                >
+                  Welcome!
+                </motion.h1>
+                
+                <motion.div
+                  className="mt-8 flex flex-wrap gap-3"
+                  variants={staggerChildren}
+                >
+                  {['Secure access', 'Fast scheduling', 'Live updates'].map((label) => (
+                    <motion.span
+                      key={label}
+                      variants={fadeUp}
+                      className="inline-flex items-center rounded-full border border-white/20 bg-white/12 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-sm"
+                    >
+                      {label}
+                    </motion.span>
+                  ))}
+                </motion.div>
+              </motion.div>
+
+              <motion.div variants={fadeUp}>
                 <p className="mb-4 text-sm md:text-base text-white/90">Need customer booking instead?</p>
-                <button
+                <motion.button
                   type="button"
                   onClick={() => navigate('/')}
                   className="tap-safe rounded-xl border border-white/70 px-6 py-3 text-sm font-semibold text-white hover:bg-white hover:text-[#5f74d0]"
+                  whileHover={shouldReduceMotion ? undefined : { y: -3, scale: 1.02 }}
+                  whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
                 >
                   Back to Home
-                </button>
-              </div>
-            </div>
-          </section>
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          </motion.section>
 
-          <section className="px-4 sm:px-6 py-7 sm:py-8 lg:px-12 lg:py-14">
-            <div className="mx-auto w-full max-w-md">
-              <div className="flex items-start justify-between gap-3">
+          <motion.section
+            className="px-4 py-7 sm:px-6 sm:py-8 lg:px-12 lg:py-14"
+            variants={panelReveal}
+          >
+            <motion.div
+              className="mx-auto w-full max-w-md"
+              variants={staggerChildren}
+            >
+              <motion.div className="flex items-start gap-3" variants={fadeUp}>
                 <div>
                   <h2 className="text-[clamp(2rem,8vw,3rem)] font-semibold text-[#394667]">Sign in</h2>
                   <p className="mt-2 text-sm text-[#6f7ea5]">Kaye&apos;s Hair Salon and Spa</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => !loading && navigate('/')}
-                  className="tap-safe rounded-xl border border-[#c7d2f0] px-4 py-2 text-xs font-semibold text-[#5e74cb] hover:bg-[#e8edfb]"
-                >
-                  Close
-                </button>
-              </div>
+              </motion.div>
 
-              <div className="mt-8">
+              <motion.div className="mt-8" variants={fadeUp}>
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-[#7784aa]">Role</label>
                 <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#dde5f7] p-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedType('admin')}
-                    className={`tap-safe rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold ${
-                      selectedType === 'admin'
-                        ? 'bg-white text-[#5670ca]'
-                        : 'text-[#6f7ca3] hover:bg-white/80'
-                    }`}
-                  >
-                    Owner
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedType('manager')}
-                    className={`tap-safe rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold ${
-                      selectedType === 'manager'
-                        ? 'bg-white text-[#5670ca]'
-                        : 'text-[#6f7ca3] hover:bg-white/80'
-                    }`}
-                  >
-                    Manager
-                  </button>
-                </div>
-              </div>
+                  {roleOptions.map((role) => {
+                    const isSelected = selectedType === role.value
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                <div>
+                    return (
+                      <motion.button
+                        key={role.value}
+                        type="button"
+                        onClick={() => setSelectedType(role.value)}
+                        className={`tap-safe relative rounded-lg px-2 py-2 text-xs font-semibold sm:px-3 sm:text-sm ${
+                          isSelected
+                            ? 'text-[#5670ca]'
+                            : 'text-[#6f7ca3] hover:bg-white/80'
+                        }`}
+                        whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
+                      >
+                        {isSelected ? (
+                          <motion.span
+                            layoutId="login-role-pill"
+                            className="absolute inset-0 rounded-lg bg-white shadow-[0_10px_18px_rgba(91,115,199,0.18)]"
+                            transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+                          />
+                        ) : null}
+                        <span className="relative z-10">{role.label}</span>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </motion.div>
+
+              <motion.form onSubmit={handleSubmit} className="mt-6 space-y-4" variants={staggerChildren}>
+                <motion.div variants={fadeUp}>
                   <label className="mb-1 block text-sm font-medium text-[#5d698f]">{loginLabel}</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#90a0c8]">
@@ -187,9 +319,9 @@ const Login = ({ userType: propUserType }) => {
                       placeholder={loginPlaceholder}
                     />
                   </div>
-                </div>
+                </motion.div>
 
-                <div>
+                <motion.div variants={fadeUp}>
                   <label className="mb-1 block text-sm font-medium text-[#5d698f]">Password</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#90a0c8]">
@@ -224,21 +356,24 @@ const Login = ({ userType: propUserType }) => {
                       )}
                     </button>
                   </div>
-                </div>
+                </motion.div>
 
-                <button
+                <motion.button
                   type="submit"
                   disabled={loading}
                   className="tap-safe mt-2 w-full rounded-xl bg-gradient-to-r from-[#6f86da] to-[#5672d0] px-4 py-3 text-lg font-semibold text-white shadow-[0_12px_24px_rgba(72,97,185,0.34)] hover:from-[#617ad6] hover:to-[#4f69c8] disabled:cursor-not-allowed disabled:opacity-55"
+                  variants={fadeUp}
+                  whileHover={loading || shouldReduceMotion ? undefined : { y: -3, scale: 1.01 }}
+                  whileTap={loading || shouldReduceMotion ? undefined : { scale: 0.985 }}
                 >
                   {loading ? 'Logging in...' : 'Login'}
-                </button>
-              </form>
-            </div>
-          </section>
+                </motion.button>
+              </motion.form>
+            </motion.div>
+          </motion.section>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\CustomerOtpSessionService;
 use App\Services\ReturningBookingSessionService;
 use Closure;
 use Illuminate\Http\Request;
@@ -11,8 +12,23 @@ class ReturningBookingVerified
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $customerOtpSessions = app(CustomerOtpSessionService::class);
+        $headerEmail = $this->normalizeEmail($request->header('X-Customer-Email', ''));
+
+        if ($customerOtpSessions->isVerified($request)) {
+            $sessionEmail = $customerOtpSessions->email($request);
+
+            if ($headerEmail && $sessionEmail !== $headerEmail) {
+                return response()->json(['message' => 'Returning booking session does not match email.'], 401);
+            }
+
+            $request->attributes->set('customer_booking_verified_email', $sessionEmail);
+
+            return $next($request);
+        }
+
         $token = $request->bearerToken() ?: $request->header('X-Returning-Booking-Token');
-        $email = $this->normalizeEmail($request->header('X-Customer-Email', ''));
+        $email = $headerEmail;
 
         if (!$token || !$email) {
             return response()->json(['message' => 'Returning customer verification is required.'], 401);

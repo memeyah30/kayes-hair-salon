@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import AdminLayout from '../../components/AdminLayout'
+import ActionButton, { ActionGroup } from '../../components/ActionButton'
 
 const LOCKED_HOLIDAY_TYPE = 'closed'
 const LOCKED_HOLIDAY_TYPE_LABEL = 'Closed Day'
@@ -336,20 +337,22 @@ const ManageHolidays = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button
+                          <ActionGroup className="min-w-[11rem]">
+                            <ActionButton
                               onClick={() => handleEdit(holiday)}
-                              className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                              tone="primary"
+                              size="compact"
                             >
                               Edit
-                            </button>
-                            <button
+                            </ActionButton>
+                            <ActionButton
                               onClick={() => handleDelete(holiday.id)}
-                              className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                              tone="danger"
+                              size="compact"
                             >
                               Delete
-                            </button>
-                          </div>
+                            </ActionButton>
+                          </ActionGroup>
                         </td>
                       </tr>
                     ))}

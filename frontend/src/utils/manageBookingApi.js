@@ -22,7 +22,7 @@ const resolveBaseUrl = () => {
 
 const manageBookingApi = axios.create({
   baseURL: resolveBaseUrl(),
-  withCredentials: false,
+  withCredentials: true,
 })
 
 manageBookingApi.interceptors.request.use((config) => {
@@ -41,4 +41,3 @@ manageBookingApi.interceptors.request.use((config) => {
 })
 
 export default manageBookingApi
-

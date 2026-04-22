@@ -511,11 +511,7 @@ const AdminAppointments = () => {
     if (processingAppointmentId === id) return
     try {
       setProcessingAppointmentId(id)
-      if (action === 'cancel') {
-        await api.post(`/appointments/${id}/cancel`)
-        updateAppointmentInState(id, (apt) => ({ ...apt, status: 'cancelled' }))
-        toast.success('Appointment cancelled')
-      } else if (action === 'complete') {
+      if (action === 'complete') {
         const response = await api.post(`/appointments/${id}/complete`)
         if (response?.data?.id) {
           updateAppointmentInState(id, () => response.data)
@@ -1398,19 +1394,6 @@ const AdminAppointments = () => {
                             >
                               Reschedule
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'cancel')}
-                              disabled={!canModify || isProcessingAction}
-                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
-                                canModify && !isProcessingAction
-                                  ? 'bg-amber-500 text-white hover:bg-amber-600'
-                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
-                              }`}
-                            >
-                              Cancel
-                            </button>
-
                             <div className="relative apt-actions ml-auto">
                               <button
                                 type="button"
@@ -1626,14 +1609,6 @@ const AdminAppointments = () => {
                         className={`tap-safe rounded-lg border px-3 py-2 text-sm transition ${canModify && !isProcessingAction ? 'border-[#7B5CF5] bg-transparent text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed border-[#E5E7EB] bg-[#E5E7EB] text-[#9CA3AF]'}`}
                       >
                         Reschedule
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'cancel')}
-                        disabled={!canModify || isProcessingAction}
-                        className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${canModify && !isProcessingAction ? 'bg-[#FEF3C7] text-[#B45309] hover:bg-[#FDE68A]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
-                      >
-                        Cancel
                       </button>
                       <button
                         type="button"
@@ -1896,16 +1871,6 @@ const AdminAppointments = () => {
                                   </button>
                                 </>
                               )}
-                              <button
-                                onClick={() => {
-                                  if (!canModify || isProcessingAction) return
-                                  setOpenActionId(null)
-                                  handleAction(apt.id, 'cancel')
-                                }}
-                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canModify && !isProcessingAction ? 'text-[#B45309] hover:bg-[#FEF3C7]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
-                              >
-                                Cancel
-                              </button>
                               <button
                                 onClick={() => {
                                   if (!canModify || isProcessingAction) return
