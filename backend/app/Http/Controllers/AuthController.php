@@ -120,9 +120,6 @@ class AuthController extends Controller
         
         // Regenerate session ID for security
         $request->session()->regenerate();
-        
-        // Ensure session is saved
-        $request->session()->save();
 
         return response()->json([
             'user' => $user,
