@@ -31,6 +31,13 @@ Route::get('/test', function () {
     ]);
 });
 
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Laravel API is running'
+    ]);
+});
+
 // Public routes
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/stylists', [PublicStylistController::class, 'index']);
