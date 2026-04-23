@@ -4,13 +4,11 @@ return [
 
     'paths' => [
         'api/*',
+        'login',
+        'logout',
+        'me',
+        'csrf-token',
         'sanctum/csrf-cookie',
-        'services',
-        'stylists',
-        'payment-accounts',
-        'services/*',
-        'stylists/*',
-        'payment-accounts/*',
     ],
 
     'allowed_methods' => ['*'],
