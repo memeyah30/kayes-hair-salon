@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Keep overdue active appointments aligned with the admin panel status rules.
 Schedule::command('appointments:mark-missed')->everyMinute();
+Schedule::command('appointments:send-reminders')
+    ->dailyAt('08:00')
+    ->timezone('Asia/Manila');

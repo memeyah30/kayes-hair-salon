@@ -63,6 +63,7 @@ Route::get('/appointments/availability', [AppointmentController::class, 'availab
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
 Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
 Route::get('/appointments/{appointment}/receipt', [AppointmentController::class, 'receipt']); // Public receipt
+Route::get('/appointments/{appointment}/qr-code', [AppointmentController::class, 'qrCode']); // Public receipt QR
 Route::get('/holidays/calendar', [HolidayController::class, 'calendar']); // Closed dates for booking calendar
 Route::get('/holidays/check', [HolidayController::class, 'checkDate']); // Check if date is holiday
 Route::get('/payment-accounts', [PaymentAccountController::class, 'index']); // Public payment accounts

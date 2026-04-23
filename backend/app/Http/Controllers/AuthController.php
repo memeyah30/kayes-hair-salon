@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Admin;
 use App\Models\Manager;
 use App\Models\Stylist;
+use App\Support\PasswordHash;
 use App\Support\UploadStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
@@ -97,11 +97,13 @@ class AuthController extends Controller
                 ->first();
         }
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !PasswordHash::matches($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
+
+        PasswordHash::upgradeIfNeeded($user, $request->password);
 
         // Use session-based authentication
         // Determine the guard based on user type

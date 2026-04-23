@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PasswordHash;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
@@ -23,8 +24,7 @@ class Admin extends Authenticatable
 
     public function setPasswordAttribute($value)
     {
-        // Only hash if not already hashed (check if it starts with $2y$ which is bcrypt)
-        if (!empty($value) && !str_starts_with($value, '$2y$')) {
+        if (!empty($value) && !PasswordHash::isHashed($value)) {
             $this->attributes['password'] = Hash::make($value);
         } else {
             $this->attributes['password'] = $value;

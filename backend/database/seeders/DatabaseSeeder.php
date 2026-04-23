@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Admin;
 use App\Models\Service;
+use App\Models\User;
 use App\Models\Stylist;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -25,17 +26,27 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        User::firstOrCreate(
+            ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'Admin',
+                'password' => Hash::make('admin123'),
+                'role' => 'admin',
+                'status' => 'active',
+            ]
+        );
+
         // Remove default stylist - stylists will be registered through admin panel
         // $stylist = Stylist::firstOrCreate(...) - REMOVED
 
         Service::firstOrCreate(
             ['name' => 'Haircut'],
-            ['duration_minutes' => 45, 'price_cents' => 80000]
+            ['price_cents' => 80000]
         );
 
         Service::firstOrCreate(
             ['name' => 'Coloring'],
-            ['duration_minutes' => 90, 'price_cents' => 150000]
+            ['price_cents' => 150000]
         );
     }
 }

@@ -43,12 +43,16 @@ class Appointment extends Model
         'rescheduled_by_id',
         'rescheduled_by_type',
         'reschedule_reason',
+        'approval_email_sent_at',
+        'reminder_sent_at',
     ];
 
     protected $casts = [
         'start_datetime' => 'datetime',
         'end_datetime' => 'datetime',
         'rescheduled_at' => 'datetime',
+        'approval_email_sent_at' => 'datetime',
+        'reminder_sent_at' => 'datetime',
         'downpayment_amount_cents' => 'integer',
         'total_amount_cents' => 'integer',
     ];

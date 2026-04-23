@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PasswordHash;
 use App\Support\UploadStorage;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -34,7 +35,7 @@ class Manager extends Authenticatable
 
     public function setPasswordAttribute($value)
     {
-        if (!empty($value) && !preg_match('/^\$2[ayb]\$.{56}$/', $value)) {
+        if (!empty($value) && !PasswordHash::isHashed($value)) {
             $this->attributes['password'] = Hash::make($value);
         } else {
             $this->attributes['password'] = $value;
@@ -46,4 +47,3 @@ class Manager extends Authenticatable
         return UploadStorage::url($this->getRawOriginal('image'));
     }
 }
-

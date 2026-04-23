@@ -15,6 +15,7 @@ use App\Services\InventoryWorkflowService;
 use App\Services\MissedAppointmentService;
 use App\Services\Scheduler;
 use App\Services\CustomerProfileService;
+use App\Services\AppointmentNotificationService;
 use App\Support\UploadStorage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -47,6 +48,18 @@ class AppointmentController extends Controller
         $appointment->is_rescheduled = !empty($appointment->getRawOriginal('rescheduled_at'));
 
         return $appointment;
+    }
+
+    private function resetNotificationStateOnRebooking(array $payload): array
+    {
+        if (($payload['status'] ?? null) !== 'booked') {
+            return $payload;
+        }
+
+        $payload['approval_email_sent_at'] = null;
+        $payload['reminder_sent_at'] = null;
+
+        return $payload;
     }
 
     public function availability(Request $request)
@@ -591,7 +604,7 @@ class AppointmentController extends Controller
                     }
                 }
 
-                $updateData = [
+                $updateData = $this->resetNotificationStateOnRebooking([
                     'start_datetime' => $newStartUtc,
                     'end_datetime' => $newEndUtc,
                     'status' => 'booked',
@@ -599,7 +612,7 @@ class AppointmentController extends Controller
                     'rescheduled_by_id' => $user ? $user->id : null,
                     'rescheduled_by_type' => $user ? get_class($user) : null,
                     'reschedule_reason' => $data['reschedule_reason'] ?? null,
-                ];
+                ]);
             } else {
                 $slot = $stylist
                     ? $scheduler->findSlotForServices($stylist, $services->all(), $targetDate, $targetTime)
@@ -618,7 +631,7 @@ class AppointmentController extends Controller
                     : Carbon::parse($slot['end'], $timezone))
                     ->setTimezone('UTC');
 
-                $updateData = [
+                $updateData = $this->resetNotificationStateOnRebooking([
                     'start_datetime' => $slotStartUtc,
                     'end_datetime' => $slotEndUtc,
                     'status' => 'booked',
@@ -626,7 +639,7 @@ class AppointmentController extends Controller
                     'rescheduled_by_id' => $user ? $user->id : null,
                     'rescheduled_by_type' => $user ? get_class($user) : null,
                     'reschedule_reason' => $data['reschedule_reason'] ?? null,
-                ];
+                ]);
             }
         } else {
             $updateData = [];
@@ -848,7 +861,7 @@ class AppointmentController extends Controller
         );
     }
 
-    public function confirm(Appointment $appointment)
+    public function confirm(Appointment $appointment, AppointmentNotificationService $appointmentNotifications)
     {
         $appointment = $this->refreshMissedStatus($appointment);
         if ($this->isMissed($appointment)) {
@@ -868,6 +881,7 @@ class AppointmentController extends Controller
             }
         }
 
+        $wasConfirmed = strtolower((string) ($appointment->status ?? '')) === 'confirmed';
         $updateData = ['status' => 'confirmed'];
 
         // Confirmation means payment proof/deposit has been validated, so do not keep "pending".
@@ -885,7 +899,22 @@ class AppointmentController extends Controller
         }
 
         $appointment->update($updateData);
-        return $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
+        $appointment = $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
+
+        if (!$wasConfirmed || !$appointment->approval_email_sent_at) {
+            try {
+                $appointmentNotifications->sendApprovalEmail($appointment);
+                $appointment->refresh();
+            } catch (\Throwable $e) {
+                Log::error('Failed to send appointment approval email', [
+                    'appointment_id' => $appointment->id,
+                    'customer_email' => $appointment->customer_email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $appointment->load(['stylist', 'service', 'services.variants']);
     }
 
     public function receipt(Appointment $appointment)
@@ -898,6 +927,17 @@ class AppointmentController extends Controller
             'appointment' => $appointment,
             'receipt_number' => 'APT-' . str_pad($appointment->id, 6, '0', STR_PAD_LEFT),
             'booking_date' => $appointment->created_at->copy()->timezone('Asia/Manila')->format('Y-m-d h:i:s A'),
+        ]);
+    }
+
+    public function qrCode(Appointment $appointment, AppointmentNotificationService $appointmentNotifications)
+    {
+        $svg = $appointmentNotifications->qrCodeSvg($appointment);
+
+        return response($svg, 200, [
+            'Content-Type' => 'image/svg+xml; charset=UTF-8',
+            'Cache-Control' => 'public, max-age=3600',
+            'Content-Disposition' => 'inline; filename="appointment-' . $appointment->id . '-qr.svg"',
         ]);
     }
     
@@ -988,7 +1028,7 @@ class AppointmentController extends Controller
                 }
             }
 
-            $updatePayload = [
+            $updatePayload = $this->resetNotificationStateOnRebooking([
                 'start_datetime' => $newStartUtc,
                 'end_datetime' => $newEndUtc,
                 'status' => 'booked',
@@ -996,7 +1036,7 @@ class AppointmentController extends Controller
                 'rescheduled_by_id' => $user ? $user->id : null,
                 'rescheduled_by_type' => $user ? get_class($user) : null,
                 'reschedule_reason' => $data['reschedule_reason'] ?? null,
-            ];
+            ]);
         } else {
             $slot = $stylist
                 ? $scheduler->findSlotForServices($stylist, $services->all(), $date, $data['preferred_time'] ?? null)
@@ -1006,7 +1046,7 @@ class AppointmentController extends Controller
                 return response()->json(['message' => 'No slots available'], 409);
             }
 
-            $updatePayload = [
+            $updatePayload = $this->resetNotificationStateOnRebooking([
                 'start_datetime' => ($slot['start'] instanceof Carbon
                     ? $slot['start']->copy()
                     : Carbon::parse($slot['start'], $timezone))->setTimezone('UTC'),
@@ -1018,7 +1058,7 @@ class AppointmentController extends Controller
                 'rescheduled_by_id' => $user ? $user->id : null,
                 'rescheduled_by_type' => $user ? get_class($user) : null,
                 'reschedule_reason' => $data['reschedule_reason'] ?? null,
-            ];
+            ]);
         }
 
         $appointment->update($updatePayload);

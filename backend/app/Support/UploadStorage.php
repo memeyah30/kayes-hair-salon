@@ -30,7 +30,7 @@ class UploadStorage
 
         $normalized = ltrim((string) $path, '/');
 
-        if (self::isLegacyPublicPath($normalized)) {
+        if (self::usesLegacyPublicFile($normalized)) {
             return url($normalized);
         }
 
@@ -47,9 +47,17 @@ class UploadStorage
 
         if (self::isLegacyPublicPath($normalized)) {
             $absolutePath = public_path($normalized);
+            $deletedLegacyFile = false;
 
             if (is_file($absolutePath)) {
                 @unlink($absolutePath);
+                $deletedLegacyFile = true;
+            }
+
+            // Many newer uploads are stored on the "public" disk under
+            // storage/app/public/uploads/... while keeping the same relative path.
+            if (!$deletedLegacyFile || Storage::disk(self::diskName())->exists($normalized)) {
+                Storage::disk(self::diskName())->delete($normalized);
             }
 
             return;
@@ -99,5 +107,10 @@ class UploadStorage
     private static function isLegacyPublicPath(string $path): bool
     {
         return Str::startsWith($path, 'uploads/');
+    }
+
+    private static function usesLegacyPublicFile(string $path): bool
+    {
+        return self::isLegacyPublicPath($path) && is_file(public_path($path));
     }
 }

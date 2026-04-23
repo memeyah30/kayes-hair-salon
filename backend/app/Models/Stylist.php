@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PasswordHash;
 use App\Support\UploadStorage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -38,8 +39,7 @@ class Stylist extends Authenticatable
 
     public function setPasswordAttribute($value)
     {
-        // Only hash if the value is not already hashed
-        if (!empty($value) && !preg_match('/^\$2[ayb]\$.{56}$/', $value)) {
+        if (!empty($value) && !PasswordHash::isHashed($value)) {
             $this->attributes['password'] = \Illuminate\Support\Facades\Hash::make($value);
         } else {
             $this->attributes['password'] = $value;
