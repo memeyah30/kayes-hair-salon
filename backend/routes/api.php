@@ -24,6 +24,13 @@ use App\Http\Controllers\Public\StylistController as PublicStylistController;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/test', function () {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Laravel API is working'
+    ]);
+});
+
 // Public routes
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/stylists', [PublicStylistController::class, 'index']);
