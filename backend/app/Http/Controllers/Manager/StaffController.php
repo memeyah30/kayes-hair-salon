@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreStaffRequest;
 use App\Models\Service;
 use App\Models\Staff;
+use App\Support\UploadStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class StaffController extends Controller
 {
@@ -56,7 +56,7 @@ class StaffController extends Controller
 
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $photoPath = Storage::disk('public')->putFile('staff', $request->file('photo'));
+            $photoPath = UploadStorage::store($request->file('photo'), 'staff');
         }
 
         $staff = Staff::create([

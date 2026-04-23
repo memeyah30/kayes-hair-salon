@@ -14,7 +14,7 @@ const ManageBookingEmail = () => {
 
   useEffect(() => {
     if (isManageBookingVerified()) {
-      navigate('/customer/manage', { replace: true })
+      navigate('/customer', { replace: true })
     }
   }, [navigate])
 

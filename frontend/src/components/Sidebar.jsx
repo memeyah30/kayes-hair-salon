@@ -46,7 +46,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
   const customerLinks = [
     { to: '/customer', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/book', label: 'Book Appointment', icon: 'appointments' },
+    { to: '/book?fresh=1&source=customer-dashboard', label: 'Book Appointment', icon: 'appointments' },
     { to: '/manage-booking/start', label: 'Manage Booking', icon: 'calendar' },
     { to: '/services', label: 'Services', icon: 'services' },
   ]

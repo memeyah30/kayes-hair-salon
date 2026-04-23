@@ -41,8 +41,8 @@ class StaffApprovalController extends Controller
                 if (!empty($staff->photo_path)) {
                     $normalized = ltrim((string) $staff->photo_path, '/');
                     $photoPath = str_starts_with($normalized, 'storage/')
-                        ? $normalized
-                        : 'storage/' . $normalized;
+                        ? substr($normalized, 8)
+                        : $normalized;
                 }
 
                 $stylist = null;

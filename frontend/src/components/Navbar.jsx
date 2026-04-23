@@ -49,7 +49,7 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
   const roleLabel = ROLE_LABELS[userType] || 'User'
   const displayName = user?.name || roleLabel
   const initials = getInitials(displayName)
-  const profileImageUrl = resolveImageUrl(user?.image)
+  const profileImageUrl = resolveImageUrl(user?.image_url || user?.image)
   const salonLogoUrl = resolveAssetUrl('logo.png')
   const canManagePhoto = userType === 'manager' || userType === 'stylist'
 

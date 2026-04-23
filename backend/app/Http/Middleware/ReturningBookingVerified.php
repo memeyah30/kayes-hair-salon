@@ -6,6 +6,7 @@ use App\Services\CustomerOtpSessionService;
 use App\Services\ReturningBookingSessionService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class ReturningBookingVerified
@@ -36,6 +37,10 @@ class ReturningBookingVerified
 
         $payload = app(ReturningBookingSessionService::class)->getPayload($token);
 
+        if ((!$payload || empty($payload['email'])) && $email) {
+            $payload = Cache::get($this->manageBookingTokenCacheKey($token));
+        }
+
         if (!$payload || empty($payload['email'])) {
             return response()->json(['message' => 'Returning booking session is invalid or expired.'], 401);
         }
@@ -54,5 +59,10 @@ class ReturningBookingVerified
     private function normalizeEmail(string $email): string
     {
         return strtolower(trim($email));
+    }
+
+    private function manageBookingTokenCacheKey(string $token): string
+    {
+        return 'manage_booking_token:' . hash('sha256', $token);
     }
 }

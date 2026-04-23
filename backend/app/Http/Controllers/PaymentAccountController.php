@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\PaymentAccount;
+use App\Support\UploadStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class PaymentAccountController extends Controller
 {
@@ -59,7 +59,7 @@ class PaymentAccountController extends Controller
     public function destroy(PaymentAccount $paymentAccount)
     {
         if ($paymentAccount->qr_code_path) {
-            Storage::disk('public')->delete($paymentAccount->qr_code_path);
+            UploadStorage::delete($paymentAccount->getRawOriginal('qr_code_path'));
         }
         $paymentAccount->delete();
         return response()->json(['message' => 'Payment account deleted successfully']);
@@ -76,12 +76,12 @@ class PaymentAccountController extends Controller
     {
         // If a new QR file is uploaded, store it and delete the old one
         if ($request->hasFile('qr_code_file')) {
-            $path = $request->file('qr_code_file')->store('payment-accounts', 'public');
+            $path = UploadStorage::store($request->file('qr_code_file'), 'payment-accounts');
             $data['qr_code_path'] = $path;
-            $data['qr_code_url'] = Storage::url($path);
+            $data['qr_code_url'] = UploadStorage::url($path);
 
             if ($existing && $existing->qr_code_path) {
-                Storage::disk('public')->delete($existing->qr_code_path);
+                UploadStorage::delete($existing->getRawOriginal('qr_code_path'));
             }
             return;
         }
@@ -92,14 +92,14 @@ class PaymentAccountController extends Controller
             if ($url) {
                 // User-supplied URL replaces stored file
                 if ($existing && $existing->qr_code_path) {
-                    Storage::disk('public')->delete($existing->qr_code_path);
+                    UploadStorage::delete($existing->getRawOriginal('qr_code_path'));
                 }
                 $data['qr_code_path'] = null;
                 $data['qr_code_url'] = $url;
             } else {
                 // Clear QR entirely
                 if ($existing && $existing->qr_code_path) {
-                    Storage::disk('public')->delete($existing->qr_code_path);
+                    UploadStorage::delete($existing->getRawOriginal('qr_code_path'));
                 }
                 $data['qr_code_path'] = null;
                 $data['qr_code_url'] = null;

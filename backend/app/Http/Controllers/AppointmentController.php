@@ -15,13 +15,13 @@ use App\Services\InventoryWorkflowService;
 use App\Services\MissedAppointmentService;
 use App\Services\Scheduler;
 use App\Services\CustomerProfileService;
+use App\Support\UploadStorage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -344,8 +344,8 @@ class AppointmentController extends Controller
             // Handle payment proof file upload
             $paymentProofUrl = $data['payment_proof_url'] ?? null;
             if ($request->hasFile('payment_proof')) {
-                $path = $request->file('payment_proof')->store('payment-proofs', 'public');
-                $paymentProofUrl = Storage::url($path); // e.g. /storage/payment-proofs/filename.jpg
+                $path = UploadStorage::store($request->file('payment_proof'), 'payment-proofs');
+                $paymentProofUrl = UploadStorage::url($path);
             }
 
             $paymentMethod = $data['payment_method'] ?? 'on_hand';
@@ -1138,7 +1138,42 @@ class AppointmentController extends Controller
         $appointment->loadMissing(['stylist', 'service', 'services.variants']);
         $appointment = $this->formatAppointmentForResponse($appointment);
 
-        return response()->json($appointment);
+        $response = $appointment->toArray();
+        $customerEmail = strtolower(trim((string) ($appointment->customer_email ?? '')));
+
+        if ($customerEmail !== '') {
+            [$token, $expiresAt] = $this->issueManageBookingToken($customerEmail);
+
+            $response['customer_manage_booking'] = [
+                'email' => $customerEmail,
+                'token' => $token,
+                'expires_at' => $expiresAt->toIso8601String(),
+            ];
+        }
+
+        return response()->json($response);
+    }
+
+    private function issueManageBookingToken(string $email): array
+    {
+        $token = Str::random(64);
+        $expiresAt = now()->addHour();
+
+        Cache::put(
+            $this->manageBookingTokenCacheKey($token),
+            [
+                'email' => strtolower(trim($email)),
+                'expires_at' => $expiresAt->toIso8601String(),
+            ],
+            $expiresAt
+        );
+
+        return [$token, $expiresAt];
+    }
+
+    private function manageBookingTokenCacheKey(string $token): string
+    {
+        return 'manage_booking_token:' . hash('sha256', $token);
     }
 
     private function createNewAppointmentNotifications(Appointment $appointment): void

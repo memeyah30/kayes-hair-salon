@@ -535,7 +535,7 @@ const ManageStylists = () => {
     })
     setSchedulePreset(getMatchingSchedulePreset(defaultHours))
     setWeekOffset(0)
-    setImagePreview(stylist.image ? resolveAssetUrl(stylist.image) : null)
+    setImagePreview(stylist.image_url || stylist.image ? resolveAssetUrl(stylist.image_url || stylist.image) : null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -990,10 +990,10 @@ const ManageStylists = () => {
                 }}
                 title="Click to view stylist details"
               >
-                {s.image ? (
+                {(s.image_url || s.image) ? (
                 <img
-                    key={`${s.id}-${s.image}`}
-                    src={`${resolveAssetUrl(s.image)}?v=${Date.now()}`}
+                    key={`${s.id}-${s.image_url || s.image}`}
+                    src={`${resolveAssetUrl(s.image_url || s.image)}?v=${Date.now()}`}
                   alt={s.name}
                   className="mb-2 h-52 w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] object-contain"
                     onError={(e) => {
@@ -1088,9 +1088,9 @@ const ManageStylists = () => {
 
               {viewingStaff.type === 'stylist' ? (
                 <div className="space-y-4">
-                  {viewingStaff.staff.image ? (
+                  {(viewingStaff.staff.image_url || viewingStaff.staff.image) ? (
                     <img
-                      src={`${resolveAssetUrl(viewingStaff.staff.image)}?v=${Date.now()}`}
+                      src={`${resolveAssetUrl(viewingStaff.staff.image_url || viewingStaff.staff.image)}?v=${Date.now()}`}
                       alt={viewingStaff.staff.name}
                       className="h-64 w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] object-contain"
                     />

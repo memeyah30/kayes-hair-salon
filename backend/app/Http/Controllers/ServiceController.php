@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Service;
+use App\Support\UploadStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -22,10 +23,7 @@ class ServiceController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('uploads/services'), $imageName);
-            $data['image'] = 'uploads/services/' . $imageName;
+            $data['image'] = UploadStorage::store($request->file('image'), 'uploads/services');
         }
 
         $service = Service::create($data);
@@ -65,13 +63,8 @@ class ServiceController extends Controller
         // Handle image upload
         if ($request->hasFile('image')) {
             // Delete old image if exists
-            if ($service->image && file_exists(public_path($service->image))) {
-                @unlink(public_path($service->image));
-            }
-            $image = $request->file('image');
-            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('uploads/services'), $imageName);
-            $data['image'] = 'uploads/services/' . $imageName;
+            UploadStorage::delete($service->getRawOriginal('image'));
+            $data['image'] = UploadStorage::store($request->file('image'), 'uploads/services');
         }
 
         // Update all provided fields
@@ -94,14 +87,11 @@ class ServiceController extends Controller
         }
 
         // Delete image if exists
-        if ($service->image && file_exists(public_path($service->image))) {
-            unlink(public_path($service->image));
-        }
+        UploadStorage::delete($service->getRawOriginal('image'));
 
         $service->delete();
         return response()->json(['message' => 'Service deleted successfully']);
     }
 }
-
 
 

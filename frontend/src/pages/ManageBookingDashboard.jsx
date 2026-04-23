@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import RatingModal from '../components/RatingModal'
@@ -69,6 +69,9 @@ const ManageBookingDashboard = () => {
   const [submittingCancelId, setSubmittingCancelId] = useState(null)
   const [ratingAppointment, setRatingAppointment] = useState(null)
   const [submittingRating, setSubmittingRating] = useState(false)
+  const [showBookingHistory, setShowBookingHistory] = useState(false)
+  const upcomingSectionRef = useRef(null)
+  const historySectionRef = useRef(null)
 
   const hasSession = useMemo(
     () => Boolean(queryToken && queryEmail) || isManageBookingVerified(),
@@ -77,6 +80,16 @@ const ManageBookingDashboard = () => {
 
   const upcomingCount = useMemo(
     () => appointments.filter((appointment) => ['pending', 'confirmed', 'booked'].includes(appointment.status)).length,
+    [appointments]
+  )
+
+  const upcomingAppointments = useMemo(
+    () => appointments.filter((appointment) => ['pending', 'confirmed', 'booked'].includes(appointment.status)),
+    [appointments]
+  )
+
+  const historyAppointments = useMemo(
+    () => appointments.filter((appointment) => !['pending', 'confirmed', 'booked'].includes(appointment.status)),
     [appointments]
   )
 
@@ -133,6 +146,16 @@ const ManageBookingDashboard = () => {
       navigate('/customer/manage', { replace: true })
     }
   }, [navigate, pathname])
+
+  useEffect(() => {
+    if (!showBookingHistory) return
+    historySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [showBookingHistory])
+
+  useEffect(() => {
+    if (historyAppointments.length > 0) return
+    setShowBookingHistory(false)
+  }, [historyAppointments.length])
 
   const openReschedule = (appointment) => {
     setRescheduleForId(appointment.id)
@@ -211,6 +234,133 @@ const ManageBookingDashboard = () => {
     }
   }
 
+  const openBookingHistory = () => {
+    if (historyAppointments.length === 0) {
+      upcomingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+
+    setShowBookingHistory(true)
+  }
+
+  const renderAppointmentCard = (appointment) => {
+    const hasCanRateFlag = Object.prototype.hasOwnProperty.call(appointment, 'can_rate')
+    const normalizedStatus = String(appointment.raw_status || appointment.status || '').toLowerCase()
+    const canRate = hasCanRateFlag ? Boolean(appointment.can_rate) : normalizedStatus === 'completed'
+    const statusLabel = appointment.status === 'pending' ? 'booked' : appointment.status
+    const isRescheduled = wasRescheduled(appointment)
+    const rescheduledAtLabel = formatRescheduledAtLabel(appointment.rescheduled_at)
+
+    return (
+      <div key={appointment.id} className="border rounded-lg p-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex-1">
+            <div className="font-semibold text-lg">{appointment.service_name}</div>
+            <div className="text-sm text-[#6f5b7e] mt-1">
+              {appointment.appointment_date} at {appointment.appointment_time}
+            </div>
+            {isRescheduled && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#6d28d9]">
+                  Rescheduled
+                </span>
+                {rescheduledAtLabel && (
+                  <span className="text-xs text-[#7c688f]">
+                    Updated on {rescheduledAtLabel} PHT
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="text-sm text-[#7c688f] mt-1">with {appointment.stylist_name}</div>
+            <div className="text-sm font-medium text-green-600 mt-2">
+              {formatCurrency(appointment.total_amount)}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:ml-4">
+            {appointment.can_reschedule && (
+              <button
+                onClick={() => openReschedule(appointment)}
+                className={actionButtonClasses({ tone: 'primary', size: 'compact' })}
+              >
+                Reschedule
+              </button>
+            )}
+
+            {appointment.can_cancel && (
+              <button
+                onClick={() => handleCancel(appointment.id)}
+                disabled={submittingCancelId === appointment.id}
+                className={actionButtonClasses({ tone: 'danger', size: 'compact' })}
+              >
+                {submittingCancelId === appointment.id ? 'Cancelling...' : 'Cancel'}
+              </button>
+            )}
+
+            {canRate && (
+              <button
+                onClick={() => setRatingAppointment(appointment)}
+                className={actionButtonClasses({ tone: 'success', size: 'compact' })}
+              >
+                Rate Appointment
+              </button>
+            )}
+
+            {!canRate && appointment.rating && (
+              <span className="px-2 py-1 rounded text-xs self-center bg-emerald-100 text-emerald-700">
+                Rated {Number(appointment.rating.overall_rating) || 0}/5
+              </span>
+            )}
+
+            <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appointment.status] || 'bg-gray-100 text-gray-700'}`}>
+              {statusLabel}
+            </span>
+          </div>
+        </div>
+
+        {rescheduleForId === appointment.id && (
+          <div className="mt-4 rounded-xl border border-[#f3cade] bg-[#fff4f9] p-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">New Date</label>
+                <input
+                  type="date"
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#E75480]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">New Time</label>
+                <input
+                  type="time"
+                  value={rescheduleTime}
+                  onChange={(e) => setRescheduleTime(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#E75480]"
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <button
+                onClick={() => handleReschedule(appointment.id)}
+                disabled={submittingReschedule}
+                className={`${primaryActionButtonClass} px-4 py-1.5 text-xs`}
+              >
+                {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
+              </button>
+              <button
+                onClick={() => setRescheduleForId(null)}
+                className="tap-safe rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
@@ -265,11 +415,23 @@ const ManageBookingDashboard = () => {
               <div className="text-2xl font-bold text-[#E75480]">{upcomingCount}</div>
               <div className="text-sm text-[#6f5b7e] mt-2">Verified booking access is active for this session.</div>
             </div>
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+            <button
+              type="button"
+              onClick={openBookingHistory}
+              className={`bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-left transition ${
+                appointments.length > 0
+                  ? 'tap-safe hover:-translate-y-px hover:border-[#d9cdf0] cursor-pointer'
+                  : 'cursor-default'
+              }`}
+            >
               <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
               <div className="text-2xl font-bold text-emerald-700">{appointments.length}</div>
-              <div className="text-sm text-[#6f5b7e] mt-2 break-all">Verified as {customerEmail || 'your booking email'}</div>
-            </div>
+              <div className="text-sm text-[#6f5b7e] mt-2 break-all">
+                {historyAppointments.length > 0
+                  ? 'Click to view booking history'
+                  : `Verified as ${customerEmail || 'your booking email'}`}
+              </div>
+            </button>
           </div>
 
           {appointments.length === 0 ? (
@@ -285,128 +447,48 @@ const ManageBookingDashboard = () => {
               </button>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
-              <h2 className="font-semibold text-lg mb-4">My Appointments</h2>
-              <div className="space-y-3">
-                {appointments.map((appointment) => {
-                  const hasCanRateFlag = Object.prototype.hasOwnProperty.call(appointment, 'can_rate')
-                  const normalizedStatus = String(appointment.raw_status || appointment.status || '').toLowerCase()
-                  const canRate = hasCanRateFlag ? Boolean(appointment.can_rate) : normalizedStatus === 'completed'
-                  const statusLabel = appointment.status === 'pending' ? 'booked' : appointment.status
-                  const isRescheduled = wasRescheduled(appointment)
-                  const rescheduledAtLabel = formatRescheduledAtLabel(appointment.rescheduled_at)
-
-                  return (
-                    <div key={appointment.id} className="border rounded-lg p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="font-semibold text-lg">{appointment.service_name}</div>
-                          <div className="text-sm text-[#6f5b7e] mt-1">
-                            {appointment.appointment_date} at {appointment.appointment_time}
-                          </div>
-                          {isRescheduled && (
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                              <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#6d28d9]">
-                                Rescheduled
-                              </span>
-                              {rescheduledAtLabel && (
-                                <span className="text-xs text-[#7c688f]">
-                                  Updated on {rescheduledAtLabel} PHT
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          <div className="text-sm text-[#7c688f] mt-1">with {appointment.stylist_name}</div>
-                          <div className="text-sm font-medium text-green-600 mt-2">
-                            {formatCurrency(appointment.total_amount)}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:ml-4">
-                          {appointment.can_reschedule && (
-                            <button
-                              onClick={() => openReschedule(appointment)}
-                              className={actionButtonClasses({ tone: 'primary', size: 'compact' })}
-                            >
-                              Reschedule
-                            </button>
-                          )}
-
-                          {appointment.can_cancel && (
-                            <button
-                              onClick={() => handleCancel(appointment.id)}
-                              disabled={submittingCancelId === appointment.id}
-                              className={actionButtonClasses({ tone: 'danger', size: 'compact' })}
-                            >
-                              {submittingCancelId === appointment.id ? 'Cancelling...' : 'Cancel'}
-                            </button>
-                          )}
-
-                          {canRate && (
-                            <button
-                              onClick={() => setRatingAppointment(appointment)}
-                              className={actionButtonClasses({ tone: 'success', size: 'compact' })}
-                            >
-                              Rate Appointment
-                            </button>
-                          )}
-
-                          {!canRate && appointment.rating && (
-                            <span className="px-2 py-1 rounded text-xs self-center bg-emerald-100 text-emerald-700">
-                              Rated {Number(appointment.rating.overall_rating) || 0}/5
-                            </span>
-                          )}
-
-                          <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appointment.status] || 'bg-gray-100 text-gray-700'}`}>
-                            {statusLabel}
-                          </span>
-                        </div>
-                      </div>
-
-                      {rescheduleForId === appointment.id && (
-                        <div className="mt-4 rounded-xl border border-[#f3cade] bg-[#fff4f9] p-3">
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-700">New Date</label>
-                              <input
-                                type="date"
-                                value={rescheduleDate}
-                                onChange={(e) => setRescheduleDate(e.target.value)}
-                                className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#E75480]"
-                              />
-                            </div>
-                            <div>
-                              <label className="mb-1 block text-xs font-medium text-gray-700">New Time</label>
-                              <input
-                                type="time"
-                                value={rescheduleTime}
-                                onChange={(e) => setRescheduleTime(e.target.value)}
-                                className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#E75480]"
-                              />
-                            </div>
-                          </div>
-                          <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                            <button
-                              onClick={() => handleReschedule(appointment.id)}
-                              disabled={submittingReschedule}
-                              className={`${primaryActionButtonClass} px-4 py-1.5 text-xs`}
-                            >
-                              {submittingReschedule ? 'Saving...' : 'Save Reschedule'}
-                            </button>
-                            <button
-                              onClick={() => setRescheduleForId(null)}
-                              className="tap-safe rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+            <>
+              <div ref={upcomingSectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+                <h2 className="font-semibold text-lg mb-4">
+                  {upcomingAppointments.length > 0 ? 'My Appointments' : 'Upcoming Appointments'}
+                </h2>
+                {upcomingAppointments.length > 0 ? (
+                  <div className="space-y-3">
+                    {upcomingAppointments.map((appointment) => renderAppointmentCard(appointment))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-[#ece6f4] bg-white p-6 text-center">
+                    <div className="text-sm font-semibold text-[#6f5b7e] mb-4">No upcoming appointments</div>
+                    <h3 className="text-xl font-semibold mb-2">No Upcoming Appointment</h3>
+                    <p className="text-[#6f5b7e] mb-4">Your previous bookings are still available in your booking history.</p>
+                    <button
+                      onClick={() => navigate('/book?fresh=1')}
+                      className={primaryActionButtonClass}
+                    >
+                      Book Appointment Now
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
+
+              {showBookingHistory && historyAppointments.length > 0 && (
+                <div ref={historySectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h2 className="font-semibold text-lg">Booking History</h2>
+                    <button
+                      type="button"
+                      onClick={() => setShowBookingHistory(false)}
+                      className="tap-safe rounded-lg border border-[#e2d7ea] bg-white px-3 py-1.5 text-sm text-[#5c4b68] hover:bg-[#faf6fd]"
+                    >
+                      Close History
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {historyAppointments.map((appointment) => renderAppointmentCard(appointment))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

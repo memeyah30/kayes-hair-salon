@@ -88,22 +88,12 @@ const Login = ({ userType: propUserType }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.jsx:14',message:'Login form submitted',data:{email,selectedType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.jsx:18',message:'Sending login API request',data:{email,selectedType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       const res = await api.post('/login', {
         email,
         password,
         type: selectedType,
       })
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.jsx:25',message:'Login API response received',data:{userType:res.data.type,hasUser:!!res.data.user},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       
       // Session-based auth - keep auth identity tab-scoped to avoid
       // admin/manager/staff data leaking between tabs.
@@ -134,10 +124,6 @@ const Login = ({ userType: propUserType }) => {
         finalRedirectPath = `${resolveBackendOrigin()}${redirectPath}`
       }
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.jsx:52',message:'Calculated redirect path',data:{currentOrigin,isDevServer,redirectPath,finalRedirectPath,storedUserType:(sessionStorage.getItem('userType') || localStorage.getItem('userType'))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      
       console.log('Current origin:', currentOrigin)
       console.log('Is dev server:', isDevServer)
       console.log('Final redirect path:', finalRedirectPath)
@@ -146,14 +132,8 @@ const Login = ({ userType: propUserType }) => {
       // This is necessary for session-based authentication to work correctly
       // Use immediate redirect - localStorage is already set, ProtectedRoute will allow access
       console.log('Executing redirect to:', finalRedirectPath)
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.jsx:82',message:'Executing window.location.href redirect',data:{finalRedirectPath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       window.location.href = finalRedirectPath
     } catch (e) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.jsx:86',message:'Login API error',data:{status:e.response?.status,message:e.response?.data?.message||e.message,errorDetails:e.response?.data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       console.error('Login error:', e)
       console.error('Error response:', e.response)
       const errorMessage = e.response?.data?.message || e.response?.data?.errors?.email?.[0] || e.message || 'Login failed. Please check your credentials and try again.'
@@ -378,6 +358,5 @@ const Login = ({ userType: propUserType }) => {
 }
 
 export default Login
-
 
 

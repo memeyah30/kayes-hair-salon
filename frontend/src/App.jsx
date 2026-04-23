@@ -23,7 +23,6 @@ import SalesMonitoring from './pages/admin/SalesMonitoring'
 import PendingStaffApprovals from './pages/admin/PendingStaffApprovals'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
-import ManageBookingDashboard from './pages/ManageBookingDashboard'
 import AddStaff from './pages/manager/AddStaff'
 import StaffRequests from './pages/manager/StaffRequests'
 
@@ -47,13 +46,13 @@ const App = () => {
         <Route path="/manage-booking" element={<Navigate to="/" replace />} />
         <Route path="/manage-booking/start" element={<ManageBookingEmail />} />
         <Route path="/manage-booking/verify" element={<VerifyOtp />} />
-        <Route path="/manage-booking/dashboard" element={<Navigate to="/customer/manage" replace />} />
+        <Route path="/manage-booking/dashboard" element={<Navigate to="/customer" replace />} />
         <Route path="/customer/dashboard" element={<Navigate to="/customer" replace />} />
 
         {/* Customer routes (public) */}
         <Route path="/customer" element={<CustomerDashboard />} />
         <Route path="/customer/profile" element={<Navigate to="/customer" replace />} />
-        <Route path="/customer/manage" element={<ManageBookingDashboard />} />
+        <Route path="/customer/manage" element={<Navigate to="/customer" replace />} />
         <Route path="/book" element={<BookAppointment />} />
         <Route path="/stylists" element={<Stylists />} />
         <Route path="/services" element={<Services />} />

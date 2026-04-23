@@ -58,8 +58,8 @@ const ManageServices = () => {
       reader.readAsDataURL(file)
     } else {
       // If no file selected, keep existing image if editing
-      if (editing && editing.image) {
-        setImagePreview(resolveAssetUrl(editing.image))
+      if (editing && (editing.image_url || editing.image)) {
+        setImagePreview(resolveAssetUrl(editing.image_url || editing.image))
       }
     }
   }
@@ -197,7 +197,7 @@ const ManageServices = () => {
       image: null, // Reset to null - user must select new image to update
     })
     // Show existing image as preview when editing
-    setImagePreview(service.image ? `${resolveAssetUrl(service.image)}?t=${Date.now()}` : null)
+    setImagePreview((service.image_url || service.image) ? `${resolveAssetUrl(service.image_url || service.image)}?t=${Date.now()}` : null)
     
     // Load variants for this service
     try {
@@ -638,10 +638,10 @@ const ManageServices = () => {
                   className="group h-full overflow-hidden rounded-[14px] border border-[#DDD6FE] bg-white shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(123,92,245,0.16)]"
                 >
                   <div className="relative h-44 overflow-hidden bg-[#F2EDFF]">
-                    {s.image ? (
+                    {(s.image_url || s.image) ? (
                       <img
-                        key={`${s.id}-${s.image}`}
-                        src={`${resolveAssetUrl(s.image)}?v=${Date.now()}`}
+                        key={`${s.id}-${s.image_url || s.image}`}
+                        src={`${resolveAssetUrl(s.image_url || s.image)}?v=${Date.now()}`}
                         alt={s.name}
                         className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
                         loading="lazy"

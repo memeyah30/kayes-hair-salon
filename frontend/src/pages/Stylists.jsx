@@ -54,9 +54,9 @@ const Stylists = () => {
             {stylists.map((stylist) => (
               <article key={stylist.id} className="stylist-card">
                 <div className="image-container">
-                  {stylist.image ? (
+                  {(stylist.image_url || stylist.image) ? (
                     <img
-                      src={imageUrl(stylist.image)}
+                      src={imageUrl(stylist.image_url || stylist.image)}
                       alt={stylist.name}
                       onError={(event) => {
                         event.currentTarget.style.display = 'none'
@@ -65,7 +65,7 @@ const Stylists = () => {
                       }}
                     />
                   ) : null}
-                  <div className={`image-placeholder ${stylist.image ? 'hidden' : ''}`}>
+                  <div className={`image-placeholder ${(stylist.image_url || stylist.image) ? 'hidden' : ''}`}>
                     No Image Available
                   </div>
                 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UploadStorage;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
@@ -23,6 +24,10 @@ class Manager extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = [
+        'image_url',
+    ];
+
     protected $casts = [
         'active' => 'boolean',
     ];
@@ -35,6 +40,10 @@ class Manager extends Authenticatable
             $this->attributes['password'] = $value;
         }
     }
-}
 
+    public function getImageUrlAttribute(): ?string
+    {
+        return UploadStorage::url($this->getRawOriginal('image'));
+    }
+}
 

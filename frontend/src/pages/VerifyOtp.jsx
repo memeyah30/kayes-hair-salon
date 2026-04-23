@@ -23,7 +23,7 @@ const VerifyOtp = () => {
 
   useEffect(() => {
     if (isManageBookingVerified()) {
-      navigate('/customer/manage', { replace: true })
+      navigate('/customer', { replace: true })
     }
   }, [navigate])
 
@@ -53,7 +53,7 @@ const VerifyOtp = () => {
         token: data.token,
       })
       toast.success('Verified successfully.')
-      window.location.assign('/customer/manage')
+      window.location.assign('/customer')
     } catch (error) {
       const message = error.response?.data?.message || 'OTP verification failed.'
       toast.error(message)

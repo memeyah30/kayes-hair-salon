@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UploadStorage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -31,7 +32,7 @@ class PaymentAccount extends Model
     public function getQrCodeFullUrlAttribute(): ?string
     {
         if ($this->qr_code_path) {
-            return \Illuminate\Support\Facades\Storage::url($this->qr_code_path);
+            return UploadStorage::url($this->getRawOriginal('qr_code_path'));
         }
 
         if ($this->qr_code_url) {

@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { toPng } from 'html-to-image'
-import { QRCodeSVG } from 'qrcode.react'
 import api from '../utils/api'
 import LandingFooter from '../components/LandingFooter'
 import manageBookingApi, {
@@ -17,8 +16,11 @@ import returningBookingApi, {
 } from '../utils/returningBookingApi'
 import {
   clearReturningBookingVerification,
+  getManageBookingVerifiedEmail,
   getReturningBookingPendingEmail,
   getReturningBookingVerifiedEmail,
+  isManageBookingVerified,
+  persistManageBookingVerification,
   persistReturningBookingVerification,
   setReturningBookingPendingEmail,
 } from '../utils/customerVerification'
@@ -853,49 +855,6 @@ const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => 
               </div>
             </div>
           </div>
-
-          {!isRescheduleReceipt && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold mb-3 text-center">Share Your Booking</h3>
-              <div className="flex flex-col md:flex-row items-center gap-4">
-                <div className="flex flex-col items-center">
-                  <QRCodeSVG
-                    value={`${window.location.origin}/book`}
-                    size={120}
-                    bgColor="#ffffff"
-                    fgColor="#1e40af"
-                    level="M"
-                    includeMargin={true}
-                  />
-                  <p className="text-xs text-[#9b857a] mt-1">Scan to book an appointment</p>
-                </div>
-                <div className="flex-1 space-y-2">
-                  <p className="text-sm text-[#8f7a6f]">Share this link to book an appointment:</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={`${window.location.origin}/book`}
-                      className="flex-1 border rounded px-3 py-2 text-sm bg-white"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/book`)
-                        toast.success('Link copied to clipboard!')
-                      }}
-                      className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                  <p className="text-xs text-[#9b857a]">
-                    Your receipt number: {'APT-' + String(appointment.id).padStart(6, '0')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
               onClick={handlePrint}
@@ -929,8 +888,29 @@ const BookAppointment = () => {
   const bookingRequestIdRef = useRef(null)
   const shouldRestoreDraft = shouldRestoreBookingDraft()
   const draft = shouldRestoreDraft ? readBookingDraft() : null
+  const initialSearchParams = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams()
+  const entrySource = initialSearchParams.get('source') || ''
+  const initialEntryAppointmentId = initialSearchParams.get('reschedule') || initialSearchParams.get('appointment')
+  const initialManageBookingVerifiedEmail = entrySource === 'customer-dashboard' && isManageBookingVerified()
+    ? getManageBookingVerifiedEmail()
+    : ''
+  const canFastTrackCustomerDashboardBooking = Boolean(initialManageBookingVerifiedEmail)
+    && entrySource === 'customer-dashboard'
+    && !initialEntryAppointmentId
+  const shouldForceFreshVerificationEntry = !canFastTrackCustomerDashboardBooking && !initialEntryAppointmentId && !shouldRestoreDraft && (
+    initialSearchParams.get('fresh') === '1'
+    || initialSearchParams.has('services')
+    || initialSearchParams.has('stylist')
+    || initialSearchParams.has('variant')
+    || initialSearchParams.has('variant_id')
+  )
   const initialPendingReturningEmail = getReturningBookingPendingEmail()
   const initialVerifiedReturningEmail = getReturningBookingVerifiedEmail()
+  const initialAutoloadReturningEmail = canFastTrackCustomerDashboardBooking
+    ? initialManageBookingVerifiedEmail
+    : (initialVerifiedReturningEmail || initialManageBookingVerifiedEmail)
   const draftBookingEmail = normalizeEmailValue(draft?.booking?.email)
   const hasDraftCustomerFields = Boolean(draft?.booking?.name || draft?.booking?.phone || draft?.booking?.address)
   const [step, setStep] = useState(() => normalizeStepValue(draft?.step)) // 1: Customer Info, 2: Select Service, 3: Date & Time, 4: Confirm Booking
@@ -991,7 +971,7 @@ const BookAppointment = () => {
     name: typeof draft?.booking?.name === 'string' ? draft.booking.name : '',
     email: typeof draft?.booking?.email === 'string'
       ? draft.booking.email
-      : initialPendingReturningEmail || initialVerifiedReturningEmail || '',
+      : (shouldForceFreshVerificationEntry ? '' : initialPendingReturningEmail || initialAutoloadReturningEmail || ''),
     phone: typeof draft?.booking?.phone === 'string' ? draft.booking.phone : '',
     address: typeof draft?.booking?.address === 'string' ? draft.booking.address : '',
     privacyConsent: draft?.booking?.privacyConsent === true,
@@ -1007,6 +987,14 @@ const BookAppointment = () => {
   const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '', privacy: '' })
   // Returning customers must verify their email before we reuse any saved profile data.
   const [customerLookupState, setCustomerLookupState] = useState(() => {
+    if (canFastTrackCustomerDashboardBooking && (!draftBookingEmail || draftBookingEmail === initialManageBookingVerifiedEmail)) {
+      return 'loading_profile'
+    }
+
+    if (shouldForceFreshVerificationEntry) {
+      return 'idle'
+    }
+
     if (initialVerifiedReturningEmail && (!draftBookingEmail || draftBookingEmail === initialVerifiedReturningEmail)) {
       return 'loading_profile'
     }
@@ -1029,6 +1017,9 @@ const BookAppointment = () => {
   const [customerProfileSaving, setCustomerProfileSaving] = useState(false)
   const [rescheduling, setRescheduling] = useState(null)
   const [receipt, setReceipt] = useState(null)
+  const freshBookingRoute = isManageBookingVerified()
+    ? '/book?fresh=1&source=customer-dashboard'
+    : '/book?fresh=1'
   const [prefillServiceIds, setPrefillServiceIds] = useState([])
   const [prefillStylistId, setPrefillStylistId] = useState('')
   const [prefillVariantId, setPrefillVariantId] = useState('')
@@ -1132,8 +1123,17 @@ const BookAppointment = () => {
   }
 
   const loadReturningCustomerProfile = async ({ silent = false, advanceOnComplete = false } = {}) => {
-    const sessionToken = (localStorage.getItem(RETURNING_BOOKING_TOKEN_KEY) || '').trim()
-    const sessionEmail = normalizeEmailValue(localStorage.getItem(RETURNING_BOOKING_EMAIL_KEY))
+    const sessionToken = (
+      (canFastTrackCustomerDashboardBooking ? localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) : '')
+      || localStorage.getItem(RETURNING_BOOKING_TOKEN_KEY)
+      || localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY)
+      || ''
+    ).trim()
+    const sessionEmail = normalizeEmailValue(
+      (canFastTrackCustomerDashboardBooking ? localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) : '')
+      || localStorage.getItem(RETURNING_BOOKING_EMAIL_KEY)
+      || localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY)
+    )
 
     if (!sessionToken || !sessionEmail || rescheduling) {
       return false
@@ -1223,7 +1223,15 @@ const BookAppointment = () => {
   }, [])
 
   useEffect(() => {
-    if (!initialVerifiedReturningEmail || rescheduling || customerLookupState !== 'loading_profile') {
+    if (!shouldForceFreshVerificationEntry || rescheduling) {
+      return
+    }
+
+    clearReturningBookingSession()
+  }, [shouldForceFreshVerificationEntry, rescheduling])
+
+  useEffect(() => {
+    if (shouldForceFreshVerificationEntry || !initialAutoloadReturningEmail || rescheduling || customerLookupState !== 'loading_profile') {
       return
     }
 
@@ -1231,7 +1239,7 @@ const BookAppointment = () => {
       silent: true,
       advanceOnComplete: normalizeStepValue(draft?.step) > 1,
     })
-  }, [customerLookupState, draft?.step, initialVerifiedReturningEmail, rescheduling]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [customerLookupState, draft?.step, initialAutoloadReturningEmail, rescheduling, shouldForceFreshVerificationEntry]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (rescheduling) {
@@ -1290,13 +1298,29 @@ const BookAppointment = () => {
       setSelectedDate(getTodayDateKey())
       setCalendarMonth(today.getMonth())
       setCalendarYear(today.getFullYear())
-      setBooking({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        privacyConsent: false,
-      })
+      if (canFastTrackCustomerDashboardBooking) {
+        setCustomerLookupState('loading_profile')
+        setCustomerLookupMessage('')
+        setReturningOtp('')
+        setReturningCustomerProfile(null)
+        setReturningCustomerMissingFields([])
+        setReturningCustomerEditMode(false)
+        setBooking({
+          name: '',
+          email: initialManageBookingVerifiedEmail,
+          phone: '',
+          address: '',
+          privacyConsent: true,
+        })
+      } else {
+        setBooking({
+          name: '',
+          email: '',
+          phone: '',
+          address: '',
+          privacyConsent: false,
+        })
+      }
       setFormErrors({ email: '', phone: '', payment: '', privacy: '' })
       setPayment({
         method: 'on_hand',
@@ -1319,7 +1343,7 @@ const BookAppointment = () => {
         { replace: true }
       )
     }
-  }, [location.pathname, location.search, navigate, shouldRestoreDraft])
+  }, [canFastTrackCustomerDashboardBooking, initialManageBookingVerifiedEmail, location.pathname, location.search, navigate, shouldRestoreDraft])
 
   useEffect(() => {
     let isCancelled = false
@@ -2237,22 +2261,24 @@ const BookAppointment = () => {
 
       // Don't set Content-Type header manually - let axios handle it for FormData
       // This ensures the boundary is set correctly
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:870',message:'Submitting appointment booking',data:{date:bookingDate,preferred_time:preferredTime,selectedSlotStart:selectedSlot?.start,selectedSlotEnd:selectedSlot?.end,selectedServicesCount:selectedServicesData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T4'})}).catch(()=>{});
-      // #endregion
       const res = await api.post('/appointments', formData, {
         headers: {
           'X-Booking-Request-Id': bookingRequestIdRef.current,
         },
       })
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:872',message:'Booking response received',data:{appointmentId:res.data?.id,start_datetime:res.data?.start_datetime,end_datetime:res.data?.end_datetime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T4'})}).catch(()=>{});
-      // #endregion
+
+      const manageBookingSession = res.data?.customer_manage_booking
+      if (manageBookingSession?.email && manageBookingSession?.token) {
+        persistManageBookingVerification({
+          email: manageBookingSession.email,
+          token: manageBookingSession.token,
+        })
+      }
       
       toast.success('Appointment booked successfully!')
 
       // Keep the booking email handy for the OTP flow without exposing history publicly.
-      if (booking.email) {
+      if (booking.email && !manageBookingSession?.token) {
         localStorage.setItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY, booking.email.trim().toLowerCase())
       }
       
@@ -2261,9 +2287,6 @@ const BookAppointment = () => {
       try {
         const receiptRes = await api.get(`/appointments/${res.data.id}`)
         if (receiptRes.data && (receiptRes.data.service || receiptRes.data.services?.length)) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7bcf3a64-27e0-4dfa-bd64-c09787aae3bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BookAppointment.jsx:878',message:'Receipt data fetched',data:{appointmentId:receiptRes.data?.id,start_datetime:receiptRes.data?.start_datetime,end_datetime:receiptRes.data?.end_datetime,start_datetime_pht:receiptRes.data?.start_datetime_pht,end_datetime_pht:receiptRes.data?.end_datetime_pht},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T5'})}).catch(()=>{});
-          // #endregion
           setReceipt(receiptRes.data)
         } else {
           // If relationships not loaded, use response data
@@ -2493,7 +2516,7 @@ const BookAppointment = () => {
               </button>
             )}
             <button
-              onClick={() => navigate('/book?fresh=1')}
+              onClick={() => navigate(freshBookingRoute)}
               className="tap-safe booking-cta-pill"
             >
               Book Appointment
@@ -3386,10 +3409,11 @@ const BookAppointment = () => {
                         ? stylist.specialization_names.filter(Boolean)
                         : []
                       const metaLabel = specialty || specializationNames.join(', ') || stylist?.role || 'Stylist'
-                      const imageSrc = stylist?.image
-                        ? (String(stylist.image).startsWith('http')
-                          ? stylist.image
-                          : `/${String(stylist.image).replace(/^\/+/, '')}`)
+                      const stylistImage = stylist?.image_url || stylist?.image
+                      const imageSrc = stylistImage
+                        ? (String(stylistImage).startsWith('http')
+                          ? stylistImage
+                          : `/${String(stylistImage).replace(/^\/+/, '')}`)
                         : null
 
                       return (
@@ -4114,13 +4138,8 @@ const BookAppointment = () => {
           isRescheduleReceipt={isRescheduleFlow}
           onClose={() => {
             clearBookingDraft()
-            if (!isRescheduleFlow) {
-              localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
-              localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
-              localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
-              localStorage.removeItem('customer_email')
-              localStorage.removeItem('customer_phone')
-            }
+            localStorage.removeItem('customer_email')
+            localStorage.removeItem('customer_phone')
             setReceipt(null)
             setRescheduling(null)
             setStep(1)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Admin;
 use App\Models\Manager;
 use App\Models\Stylist;
+use App\Support\UploadStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -244,21 +245,12 @@ class AuthController extends Controller
         ]);
 
         $folder = $user instanceof Manager ? 'uploads/managers' : 'uploads/stylists';
-        $targetDirectory = public_path($folder);
-        if (!is_dir($targetDirectory)) {
-            mkdir($targetDirectory, 0755, true);
-        }
-
-        $oldPath = $user->image;
-        $image = $data['image'];
-        $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-        $image->move($targetDirectory, $imageName);
-
-        $user->image = $folder . '/' . $imageName;
+        $oldPath = $user->getRawOriginal('image');
+        $user->image = UploadStorage::store($data['image'], $folder);
         $user->save();
 
-        if ($oldPath && $oldPath !== $user->image && file_exists(public_path($oldPath))) {
-            @unlink(public_path($oldPath));
+        if ($oldPath && $oldPath !== $user->getRawOriginal('image')) {
+            UploadStorage::delete($oldPath);
         }
 
         return response()->json([
@@ -279,12 +271,12 @@ class AuthController extends Controller
             return response()->json(['message' => 'Profile photo editing is only available for manager and staff accounts'], 403);
         }
 
-        $oldPath = $user->image;
+        $oldPath = $user->getRawOriginal('image');
         $user->image = null;
         $user->save();
 
-        if ($oldPath && file_exists(public_path($oldPath))) {
-            @unlink(public_path($oldPath));
+        if ($oldPath) {
+            UploadStorage::delete($oldPath);
         }
 
         return response()->json([

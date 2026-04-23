@@ -1,16 +1,7 @@
+import { isBackendHostedAssetPath, resolveApiOrigin } from './apiConfig'
+
 export const resolveBackendOrigin = () => {
-  const configured = import.meta.env.VITE_BACKEND_ORIGIN || ''
-  if (configured) {
-    return configured.replace(/\/+$/, '')
-  }
-
-  if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol || 'http:'
-    const hostname = window.location.hostname || '127.0.0.1'
-    return `${protocol}//${hostname}:8000`
-  }
-
-  return 'http://127.0.0.1:8000'
+  return resolveApiOrigin()
 }
 
 export const resolveAssetUrl = (path) => {
@@ -19,7 +10,7 @@ export const resolveAssetUrl = (path) => {
 
   const normalizedPath = String(path).replace(/^\/+/, '')
 
-  if (import.meta.env.DEV) {
+  if (isBackendHostedAssetPath(normalizedPath)) {
     return `${resolveBackendOrigin()}/${normalizedPath}`
   }
 

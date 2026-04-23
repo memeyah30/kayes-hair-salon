@@ -1,27 +1,12 @@
 import axios from 'axios'
+import { resolveApiBaseUrl } from './apiConfig'
 
 export const CUSTOMER_BOOKING_TOKEN_KEY = 'customer_manage_booking_token'
 export const CUSTOMER_BOOKING_EMAIL_KEY = 'customer_manage_booking_email'
 export const CUSTOMER_BOOKING_PENDING_EMAIL_KEY = 'customer_manage_booking_pending_email'
 
-const resolveBaseUrl = () => {
-  const configured = import.meta.env.VITE_API_URL || ''
-
-  if (import.meta.env.DEV) {
-    return '/api'
-  }
-
-  if (!configured) {
-    return '/api'
-  }
-
-  return configured.endsWith('/api')
-    ? configured
-    : `${configured.replace(/\/+$/, '')}/api`
-}
-
 const manageBookingApi = axios.create({
-  baseURL: resolveBaseUrl(),
+  baseURL: resolveApiBaseUrl({ withApiPrefix: true }),
   withCredentials: true,
 })
 

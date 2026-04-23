@@ -6,6 +6,7 @@ use App\Models\Service;
 use App\Models\Stylist;
 use App\Models\StylistWorkingHour;
 use App\Services\Scheduler;
+use App\Support\UploadStorage;
 use Carbon\Carbon;
 use Carbon\CarbonInterval;
 use Illuminate\Http\Request;
@@ -71,10 +72,7 @@ class StylistController extends Controller
         }
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('uploads/stylists'), $imageName);
-            $data['image'] = 'uploads/stylists/' . $imageName;
+            $data['image'] = UploadStorage::store($request->file('image'), 'uploads/stylists');
         }
 
         // Set default password if not provided (mutator will hash it)
@@ -143,13 +141,8 @@ class StylistController extends Controller
 
         if ($request->hasFile('image')) {
             // Delete old image if exists
-            if ($stylist->image && file_exists(public_path($stylist->image))) {
-                unlink(public_path($stylist->image));
-            }
-            $image = $request->file('image');
-            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('uploads/stylists'), $imageName);
-            $data['image'] = 'uploads/stylists/' . $imageName;
+            UploadStorage::delete($stylist->getRawOriginal('image'));
+            $data['image'] = UploadStorage::store($request->file('image'), 'uploads/stylists');
         }
 
         // Remove password from update if not provided (mutator will hash if provided)
@@ -304,9 +297,7 @@ class StylistController extends Controller
         $stylist->timeOffs()->delete();
         
         // Delete image if exists
-        if ($stylist->image && file_exists(public_path($stylist->image))) {
-            unlink(public_path($stylist->image));
-        }
+        UploadStorage::delete($stylist->getRawOriginal('image'));
 
         $stylist->delete();
         return response()->json(['message' => 'Stylist deleted successfully']);
@@ -367,6 +358,7 @@ class StylistController extends Controller
 
         $stylist->setAttribute('specialization_names', $serviceNames);
         $stylist->setAttribute('specialization_ids', $serviceIds);
+        $stylist->setAttribute('image_url', $stylist->image_url);
 
         return $stylist;
     }

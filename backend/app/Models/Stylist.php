@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UploadStorage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -24,6 +25,10 @@ class Stylist extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $appends = [
+        'image_url',
     ];
 
     protected $casts = [
@@ -70,5 +75,10 @@ class Stylist extends Authenticatable
     public function specializedServices(): BelongsToMany
     {
         return $this->services();
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return UploadStorage::url($this->getRawOriginal('image'));
     }
 }

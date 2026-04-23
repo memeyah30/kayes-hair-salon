@@ -1,11 +1,7 @@
 import axios from 'axios'
+import { resolveApiBaseUrl } from './apiConfig'
 
-// In development, use relative URLs so Vite proxy works
-// In production, use the full URL
-// If accessing from Laravel backend directly, use relative URLs to stay on same origin
-const baseURL = import.meta.env.DEV 
-  ? '' // Use relative URLs in dev (Vite proxy will handle it)
-  : (import.meta.env.VITE_API_URL || '') // Use relative URLs when served from Laravel (same origin)
+const baseURL = resolveApiBaseUrl()
 
 const api = axios.create({
   baseURL,
@@ -35,9 +31,7 @@ const getCsrfToken = async () => {
   }
   
   // Fetch new token
-  const csrfBaseURL = import.meta.env.DEV 
-    ? '' // Use relative URLs in dev
-    : (import.meta.env.VITE_API_URL || '') // Use relative URLs when served from Laravel (same origin)
+  const csrfBaseURL = resolveApiBaseUrl()
   
   csrfTokenPromise = axios.get(`${csrfBaseURL}/csrf-token`, {
     withCredentials: true

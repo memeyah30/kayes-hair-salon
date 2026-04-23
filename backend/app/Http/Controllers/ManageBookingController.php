@@ -253,7 +253,7 @@ class ManageBookingController extends Controller
         $response = $appointments->map(function (Appointment $appointment) use ($ratedIds, $appointmentRatingsById, $customerRatingsById) {
             $start = Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')->setTimezone('Asia/Manila');
             $rescheduledAt = $appointment->getRawOriginal('rescheduled_at');
-            $isOutsideLockWindow = $start->greaterThan(Carbon::now('Asia/Manila')->addHours(3));
+            $isUpcoming = $start->greaterThan(Carbon::now('Asia/Manila'));
             $isModifiableStatus = in_array($appointment->status, ['booked', 'pending', 'confirmed'], true);
             $hasRating = $ratedIds->has($appointment->id);
             $ratingPayload = $this->buildRatingPayload(
@@ -290,8 +290,8 @@ class ManageBookingController extends Controller
                 'reschedule_reason' => $appointment->reschedule_reason,
                 'total_amount' => round($totalAmountCents / 100, 2),
                 'total_amount_cents' => $totalAmountCents,
-                'can_reschedule' => $isModifiableStatus && $isOutsideLockWindow,
-                'can_cancel' => $isModifiableStatus && $isOutsideLockWindow,
+                'can_reschedule' => $isModifiableStatus && $isUpcoming,
+                'can_cancel' => $isModifiableStatus && $isUpcoming,
                 'can_rate' => $appointment->status === 'completed' && !$hasRating,
                 'rating' => $ratingPayload,
             ];
@@ -338,7 +338,7 @@ class ManageBookingController extends Controller
 
         if (!$this->canModifyAppointment($appointment)) {
             return response()->json([
-                'message' => 'Reschedule is only allowed for pending/confirmed bookings at least 3 hours before the appointment.',
+                'message' => 'Reschedule is only allowed for upcoming booked, pending, or confirmed appointments.',
             ], 422);
         }
 
@@ -346,9 +346,9 @@ class ManageBookingController extends Controller
         $time = $data['appointment_time'] ?? $data['time'];
         $newStartManila = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$time}", 'Asia/Manila');
 
-        if (!$newStartManila || $newStartManila->lessThanOrEqualTo(Carbon::now('Asia/Manila')->addHours(3))) {
+        if (!$newStartManila || $newStartManila->lessThanOrEqualTo(Carbon::now('Asia/Manila')->addMinutes(30))) {
             return response()->json([
-                'message' => 'New appointment time must be at least 3 hours from now.',
+                'message' => 'New appointment time must be at least 30 minutes from now.',
             ], 422);
         }
 
@@ -406,7 +406,7 @@ class ManageBookingController extends Controller
 
         if (!$this->canModifyAppointment($appointment)) {
             return response()->json([
-                'message' => 'Cancel is only allowed for pending/confirmed bookings at least 3 hours before the appointment.',
+                'message' => 'Cancel is only allowed for upcoming booked, pending, or confirmed appointments.',
             ], 422);
         }
 
@@ -550,7 +550,7 @@ class ManageBookingController extends Controller
         $start = Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')
             ->setTimezone('Asia/Manila');
 
-        return $start->greaterThan(Carbon::now('Asia/Manila')->addHours(3));
+        return $start->greaterThan(Carbon::now('Asia/Manila'));
     }
 
     private function mapStatusForCustomer(string $status): string
