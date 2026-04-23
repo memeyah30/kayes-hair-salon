@@ -99,7 +99,7 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
 });
 
 // Admin-only routes
-Route::middleware(['auth:sanctum', 'userType:admin'])->group(function () {
+Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     // Stylists (staff) management + time-offs
     Route::get('/stylists/{stylist}', [StylistController::class, 'show']);
     Route::post('/stylists', [StylistController::class, 'store']);
@@ -198,7 +198,7 @@ Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(functio
 });
 
 // Stylist-only routes
-Route::middleware(['auth:sanctum', 'userType:stylist'])->group(function () {
+Route::middleware(['auth.any', 'userType:stylist'])->group(function () {
     Route::get('/dashboard/stylist/stats', [DashboardController::class, 'stylistStats']);
     Route::get('/appointments/assigned', [AppointmentController::class, 'index']); // Only assigned appointments
     Route::get('/appointments/history', [AppointmentController::class, 'history']); // Appointment history

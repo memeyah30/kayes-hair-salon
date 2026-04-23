@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import AdminLayout from '../components/AdminLayout'
 import RatingModal from '../components/RatingModal'
-import Sidebar from '../components/Sidebar'
-import Navbar from '../components/Navbar'
 import manageBookingApi from '../utils/manageBookingApi'
 import {
   clearManageBookingVerification,
   getManageBookingVerifiedEmail,
+  getManageBookingVerifiedName,
   isManageBookingVerified,
   persistManageBookingVerification,
+  setManageBookingVerifiedName,
 } from '../utils/customerVerification'
 
-const primaryActionButtonClass = 'tap-safe rounded-[30px] bg-[#7b5cf5] px-5 py-2.5 text-white font-semibold shadow-[0_14px_30px_rgba(40,28,110,0.3)] transition hover:-translate-y-px hover:bg-[#8a6cf8] disabled:opacity-60'
-const secondaryActionButtonClass = 'tap-safe rounded-xl border border-[#e2d7ea] bg-white px-4 py-2 text-sm text-[#5c4b68] shadow-[0_8px_24px_rgba(44,19,56,0.05)] transition hover:bg-[#faf6fd]'
+const primaryActionButtonClass = 'tap-safe rounded-[30px] bg-[#7b5cf5] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(40,28,110,0.3)] transition hover:-translate-y-px hover:bg-[#8a6cf8] disabled:opacity-60'
+const secondaryActionButtonClass = 'tap-safe rounded-[30px] border border-[#ddd3ee] bg-white px-5 py-2.5 text-sm font-semibold text-[#5c4b68] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#cfc0ec] hover:bg-[#faf6fd]'
+const logoutActionButtonClass = 'tap-safe rounded-[30px] border border-[#efd5df] bg-white px-5 py-2.5 text-sm font-semibold text-[#a24f69] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#e8c6d2] hover:bg-[#fff5f8] disabled:opacity-60'
+const backButtonClass = 'tap-safe w-fit rounded-2xl border border-white/36 bg-white/82 px-3 py-2 text-lg font-bold text-[#654abf] shadow-[0_14px_28px_rgba(43,20,97,0.12)] hover:bg-white'
+const customerPanelClass = 'rounded-[28px] border border-white/40 bg-white/82 shadow-[0_14px_32px_rgba(59,31,114,0.12)] backdrop-blur-md'
 
 const statusClasses = {
   pending: 'bg-amber-100 text-amber-800',
@@ -48,6 +52,24 @@ const formatRescheduledAtLabel = (value) => {
   })
 }
 
+const CustomerDashboardShell = ({ children, customerName = '', hideUserBadge = false }) => (
+  <AdminLayout
+    userType="customer"
+    title="Dashboard"
+    hideUserBadge={hideUserBadge}
+    navbarProps={
+      hideUserBadge
+        ? {}
+        : {
+            userBadgeName: customerName || 'Customer',
+            userBadgeSubtitle: 'Registered Customer',
+          }
+    }
+  >
+    {children}
+  </AdminLayout>
+)
+
 const CustomerActionsMenu = ({ open, onToggle, options }) => {
   if (!options.length) return null
 
@@ -58,16 +80,21 @@ const CustomerActionsMenu = ({ open, onToggle, options }) => {
         onClick={onToggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="tap-safe inline-flex items-center gap-2 rounded-[18px] border border-[#d9cdf0] bg-white px-4 py-2 text-sm font-semibold text-[#5c4b68] shadow-[0_8px_20px_rgba(44,19,56,0.08)] transition hover:border-[#cbb9ea] hover:bg-[#faf7fe]"
+        className="tap-safe inline-flex min-w-[9.25rem] items-center justify-between gap-3 rounded-[18px] border border-[#d7c9ef] bg-white px-4 py-2.5 text-sm font-semibold text-[#5a4780] shadow-[0_10px_24px_rgba(44,19,56,0.09)] transition hover:-translate-y-px hover:border-[#c8b7ea] hover:bg-[#faf7ff]"
       >
-        Actions
-        <span aria-hidden="true" className={`text-xs transition-transform ${open ? 'rotate-180' : ''}`}>
-          v
+        <span>Actions</span>
+        <span
+          aria-hidden="true"
+          className={`flex h-6 w-6 items-center justify-center rounded-full bg-[#f3eeff] text-[#6b4ed1] transition ${open ? 'rotate-180 bg-[#ebe3ff]' : ''}`}
+        >
+          <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 8l5 5 5-5" />
+          </svg>
         </span>
       </button>
 
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-[#e6dbf3] bg-white shadow-[0_18px_40px_rgba(44,19,56,0.16)]">
+        <div className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-[20px] border border-[#e6dbf3] bg-white shadow-[0_18px_40px_rgba(44,19,56,0.16)]">
           <div className="py-2">
             {options.map((option) => (
               <button
@@ -134,6 +161,9 @@ const CustomerDashboard = () => {
   const [submittingRating, setSubmittingRating] = useState(false)
   const [showBookingHistory, setShowBookingHistory] = useState(false)
   const [openActionForId, setOpenActionForId] = useState(null)
+  const [customerName, setCustomerName] = useState(getManageBookingVerifiedName())
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   const hasVerifiedAccess = Boolean(queryToken && queryEmail) || isManageBookingVerified()
   const verifiedEmail = queryEmail || getManageBookingVerifiedEmail()
@@ -151,6 +181,48 @@ const CustomerDashboard = () => {
     [appointments]
   )
 
+  const syncCustomerIdentity = (nextName) => {
+    const normalizedName = String(nextName || '').trim().replace(/\s+/g, ' ')
+    if (!normalizedName) return
+    setCustomerName(normalizedName)
+    setManageBookingVerifiedName(normalizedName)
+  }
+
+  const resetCustomerPanelState = () => {
+    setAppointments([])
+    setShowBookingHistory(false)
+    setOpenActionForId(null)
+    setRatingAppointment(null)
+    setSubmittingCancelId(null)
+    setSubmittingRating(false)
+    setLogoutModalOpen(false)
+    setCustomerName('')
+  }
+
+  const loadAppointments = async () => {
+    try {
+      setLoading(true)
+      const { data } = await manageBookingApi.get('/manage-booking/appointments')
+      setAppointments(data.appointments || [])
+      syncCustomerIdentity(data.customer_name)
+      return data
+    } catch (error) {
+      if (error.response?.status === 401) {
+        clearManageBookingVerification()
+        resetCustomerPanelState()
+        toast.error('Session expired. Please verify OTP again.')
+        navigate('/customer', { replace: true })
+        return null
+      }
+
+      toast.error(error.response?.data?.message || 'Failed to load appointments.')
+      setAppointments([])
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     clearLegacyCustomerLookup()
 
@@ -166,32 +238,11 @@ const CustomerDashboard = () => {
 
   useEffect(() => {
     if (!hasVerifiedAccess) {
-      setAppointments([])
-      setShowBookingHistory(false)
+      resetCustomerPanelState()
       return
     }
 
-    const loadAppointments = async () => {
-      try {
-        setLoading(true)
-        const { data } = await manageBookingApi.get('/manage-booking/appointments')
-        setAppointments(data.appointments || [])
-      } catch (error) {
-        if (error.response?.status === 401) {
-          clearManageBookingVerification()
-          toast.error('Session expired. Please verify OTP again.')
-          navigate('/customer', { replace: true })
-          return
-        }
-
-        toast.error(error.response?.data?.message || 'Failed to load appointments.')
-        setAppointments([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadAppointments()
+    void loadAppointments()
   }, [hasVerifiedAccess, navigate])
 
   useEffect(() => {
@@ -221,10 +272,21 @@ const CustomerDashboard = () => {
       // Best-effort logout.
     } finally {
       clearManageBookingVerification()
-      setAppointments([])
-      setShowBookingHistory(false)
-      setOpenActionForId(null)
+      resetCustomerPanelState()
       navigate('/customer', { replace: true })
+    }
+  }
+
+  const handleConfirmedLogout = async () => {
+    try {
+      setLoggingOut(true)
+      await manageBookingApi.post('/manage-booking/logout')
+    } catch {
+      // Best-effort logout.
+    } finally {
+      clearManageBookingVerification()
+      resetCustomerPanelState()
+      window.location.assign('/')
     }
   }
 
@@ -241,9 +303,7 @@ const CustomerDashboard = () => {
       setOpenActionForId(null)
       await manageBookingApi.post(`/manage-booking/appointments/${appointmentId}/cancel`)
       toast.success('Appointment cancelled.')
-
-      const { data } = await manageBookingApi.get('/manage-booking/appointments')
-      setAppointments(data.appointments || [])
+      await loadAppointments()
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please verify OTP again.')
@@ -265,9 +325,7 @@ const CustomerDashboard = () => {
       await manageBookingApi.post(`/manage-booking/appointments/${ratingAppointment.id}/rate`, payload)
       toast.success('Thank you for your rating.')
       setRatingAppointment(null)
-
-      const { data } = await manageBookingApi.get('/manage-booking/appointments')
-      setAppointments(data.appointments || [])
+      await loadAppointments()
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please verify OTP again.')
@@ -326,7 +384,7 @@ const CustomerDashboard = () => {
     ].filter(Boolean)
 
     return (
-      <div key={appointment.id} className="border rounded-lg p-4">
+      <div key={appointment.id} className="rounded-[24px] border border-[#eee4ff] bg-white/90 p-4 shadow-[0_10px_24px_rgba(44,19,56,0.06)]">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex-1">
             <div className="font-semibold text-lg">{serviceSummary.title}</div>
@@ -397,168 +455,161 @@ const CustomerDashboard = () => {
 
   if (!hasVerifiedAccess) {
     return (
-      <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
-        <Sidebar userType="customer" />
-        <main className="flex-1 min-w-0 flex flex-col">
-          <Navbar hideUserBadge />
-          <div className="app-mobile-shell space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => navigate('/home')}
-                  className="tap-safe px-3 py-2 bg-[#2C1338] text-white rounded hover:brightness-110 text-lg font-bold"
-                  aria-label="Back to Home"
-                  title="Back to Home"
-                >
-                  &larr;
-                </button>
-                <h1 className="text-2xl font-bold">My Appointments</h1>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  onClick={() => navigate(customerBookRoute)}
-                  className={`${primaryActionButtonClass} w-full sm:w-auto text-sm`}
-                >
-                  Book New
-                </button>
-                <button
-                  onClick={() => navigate('/manage-booking/start')}
-                  className={`${secondaryActionButtonClass} w-full sm:w-auto`}
-                >
-                  Verify Booking
-                </button>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
-                <div className="text-[#7c688f] text-sm">Upcoming Appointments</div>
-                <div className="text-2xl font-bold text-[#E75480]">0</div>
-                <div className="text-sm text-[#6f5b7e] mt-2">Verification is required before booking details are shown.</div>
-              </div>
-              <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
-                <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
-                <div className="text-2xl font-bold text-emerald-700">0</div>
-                <div className="text-sm text-[#6f5b7e] mt-2">Use OTP verification to securely open your linked booking history.</div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6 md:p-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#efe8ff] text-[#6b46dc]">
-                <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3a4 4 0 0 0-4 4v2H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1V7a4 4 0 0 0-4-4Z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V7a3 3 0 1 1 6 0v2" />
-                </svg>
-              </div>
-              <div className="text-sm font-semibold text-[#6f5b7e] mb-3">Secure Access Required</div>
-              <h2 className="text-2xl font-semibold text-[#2C1338] mb-3">Verify your booking before viewing appointments</h2>
-              <p className="mx-auto max-w-2xl text-[#6f5b7e] mb-6">
-                For privacy and security, booking history, appointment details, rescheduling, and cancellation options are only available after
-                you verify your booking through the OTP process sent to your booking email.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  onClick={() => navigate('/manage-booking/start')}
-                  className={primaryActionButtonClass}
-                >
-                  Verify My Booking
-                </button>
-                <button
-                  onClick={() => navigate(customerBookRoute)}
-                  className={secondaryActionButtonClass}
-                >
-                  Book Appointment Now
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
-        <Sidebar userType="customer" />
-        <main className="flex-1 min-w-0 flex flex-col">
-          <Navbar hideUserBadge />
-          <div className="flex items-center justify-center min-h-screen">
-            <div>Loading your appointments...</div>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen app-panel-bg flex flex-col md:flex-row text-[#2C1338]">
-      <Sidebar userType="customer" />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <Navbar hideUserBadge />
+      <CustomerDashboardShell hideUserBadge>
         <div className="app-mobile-shell space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate('/home')}
-                className="tap-safe px-3 py-2 bg-[#2C1338] text-white rounded hover:brightness-110 text-lg font-bold"
+                onClick={() => navigate('/')}
+                className={backButtonClass}
                 aria-label="Back to Home"
                 title="Back to Home"
               >
                 &larr;
               </button>
-              <h1 className="text-2xl font-bold">My Appointments</h1>
+              <h1 className="text-2xl font-bold text-[#24173f]">My Appointments</h1>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={() => navigate(customerBookRoute)}
-                className={`${primaryActionButtonClass} w-full sm:w-auto text-sm`}
+                className={`${primaryActionButtonClass} w-full sm:w-auto`}
               >
                 Book New
               </button>
               <button
-                onClick={() => { void clearSessionAndStayOnCustomer() }}
+                onClick={() => navigate('/manage-booking/start')}
                 className={`${secondaryActionButtonClass} w-full sm:w-auto`}
               >
-                End Session
+                Verify Booking
               </button>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className={`${customerPanelClass} p-5`}>
+              <div className="text-sm text-[#7c688f]">Upcoming Appointments</div>
+              <div className="mt-2 text-2xl font-bold text-[#E75480]">0</div>
+              <div className="mt-2 text-sm text-[#6f5b7e]">Verification is required before booking details are shown.</div>
+            </div>
+            <div className={`${customerPanelClass} p-5`}>
+              <div className="text-sm text-[#7c688f]">Total Booked Appointments</div>
+              <div className="mt-2 text-2xl font-bold text-emerald-700">0</div>
+              <div className="mt-2 text-sm text-[#6f5b7e]">Use OTP verification to securely open your linked booking history.</div>
+            </div>
+          </div>
+
+          <div className={`${customerPanelClass} p-6 text-center md:p-8`}>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#efe8ff] text-[#6b46dc]">
+              <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3a4 4 0 0 0-4 4v2H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1V7a4 4 0 0 0-4-4Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V7a3 3 0 1 1 6 0v2" />
+              </svg>
+            </div>
+            <div className="mb-3 text-sm font-semibold text-[#6f5b7e]">Secure Access Required</div>
+            <h2 className="mb-3 text-2xl font-semibold text-[#2C1338]">Verify your booking before viewing appointments</h2>
+            <p className="mx-auto mb-6 max-w-2xl text-[#6f5b7e]">
+              For privacy and security, booking history, appointment details, rescheduling, and cancellation options are only available after
+              you verify your booking through the OTP process sent to your booking email.
+            </p>
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <button
+                onClick={() => navigate('/manage-booking/start')}
+                className={primaryActionButtonClass}
+              >
+                Verify My Booking
+              </button>
+              <button
+                onClick={() => navigate(customerBookRoute)}
+                className={secondaryActionButtonClass}
+              >
+                Book Appointment Now
+              </button>
+            </div>
+          </div>
+        </div>
+      </CustomerDashboardShell>
+    )
+  }
+
+  if (loading) {
+    return (
+      <CustomerDashboardShell customerName={customerName} hideUserBadge={!customerName}>
+        <div className="flex min-h-[calc(100vh-var(--dashboard-navbar-height)-2rem)] items-center justify-center px-6">
+          <div className={`${customerPanelClass} px-6 py-5 text-center text-[#5f4f8f]`}>Loading your appointments...</div>
+        </div>
+      </CustomerDashboardShell>
+    )
+  }
+
+  return (
+    <CustomerDashboardShell customerName={customerName}>
+      <>
+        <div className="app-mobile-shell space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/')}
+                className={backButtonClass}
+                aria-label="Back to Home"
+                title="Back to Home"
+              >
+                &larr;
+              </button>
+              <h1 className="text-2xl font-bold text-[#24173f]">My Appointments</h1>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={() => navigate(customerBookRoute)}
+                className={`${primaryActionButtonClass} w-full sm:w-auto`}
+              >
+                Book New
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogoutModalOpen(true)}
+                className={`${logoutActionButtonClass} w-full sm:w-auto`}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className={`${customerPanelClass} p-5`}>
               <div className="text-[#7c688f] text-sm">Upcoming Appointments</div>
-              <div className="text-2xl font-bold text-[#E75480]">{upcomingAppointments.length}</div>
+              <div className="mt-2 text-2xl font-bold text-[#E75480]">{upcomingAppointments.length}</div>
             </div>
             <button
               type="button"
               onClick={openBookingHistory}
               disabled={appointments.length === 0}
-              className={`bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-left transition ${
+              className={`${customerPanelClass} p-5 text-left transition ${
                 appointments.length > 0
                   ? 'tap-safe hover:-translate-y-px hover:border-[#d9cdf0] cursor-pointer'
                   : 'cursor-default'
               }`}
             >
               <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
-              <div className="text-2xl font-bold text-emerald-700">{appointments.length}</div>
+              <div className="mt-2 text-2xl font-bold text-emerald-700">{appointments.length}</div>
               <div className="text-sm text-[#6f5b7e] mt-2">
                 {historyAppointments.length > 0
                   ? 'Click to view booking history'
-                  : `Verified as ${verifiedEmail || 'your booking email'}`}
+                  : customerName
+                    ? `Registered as ${customerName}`
+                    : `Verified as ${verifiedEmail || 'your booking email'}`}
               </div>
             </button>
           </div>
 
           {upcomingAppointments.length > 0 ? (
-            <div ref={appointmentsSectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+            <div ref={appointmentsSectionRef} className={`${customerPanelClass} p-5`}>
               <h2 className="font-semibold text-lg mb-4">Upcoming Appointments</h2>
               <div className="space-y-3">
                 {upcomingAppointments.map((appointment) => renderAppointmentCard(appointment))}
               </div>
             </div>
           ) : (
-            <div ref={appointmentsSectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-6 text-center">
+            <div ref={appointmentsSectionRef} className={`${customerPanelClass} p-6 text-center`}>
               <div className="text-sm font-semibold text-[#6f5b7e] mb-4">No upcoming appointments</div>
               <h3 className="text-xl font-semibold mb-2">No Upcoming Appointment</h3>
               <p className="text-[#6f5b7e] mb-4">Book a new appointment to get started.</p>
@@ -572,7 +623,7 @@ const CustomerDashboard = () => {
           )}
 
           {showBookingHistory && historyAppointments.length > 0 && (
-            <div ref={historySectionRef} className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
+            <div ref={historySectionRef} className={`${customerPanelClass} p-5`}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="font-semibold text-lg">Booking History</h2>
                 <button
@@ -589,7 +640,62 @@ const CustomerDashboard = () => {
             </div>
           )}
         </div>
-      </main>
+
+        {logoutModalOpen && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-[#120628]/55"
+              onClick={() => {
+                if (!loggingOut) {
+                  setLogoutModalOpen(false)
+                }
+              }}
+              aria-hidden="true"
+            />
+            <div className="relative w-full max-w-md rounded-[28px] border border-white/40 bg-[linear-gradient(180deg,#ffffff_0%,#f8f2ff_100%)] p-6 shadow-[0_24px_48px_rgba(41,21,93,0.24)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-[0.16em] text-[#8a74bc]">Confirm Logout</div>
+                  <h2 className="mt-2 text-2xl font-semibold text-[#24173f]">Leave your customer session?</h2>
+                  <p className="mt-3 text-sm leading-6 text-[#6f5b7e]">
+                    You will be logged out from the customer panel and sent back to the landing page.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!loggingOut) {
+                      setLogoutModalOpen(false)
+                    }
+                  }}
+                  className="rounded-full border border-[#ddd3ee] px-3 py-1 text-sm text-[#6f4ed0] transition hover:bg-[#f6f2ff]"
+                  disabled={loggingOut}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setLogoutModalOpen(false)}
+                  className={secondaryActionButtonClass}
+                  disabled={loggingOut}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { void handleConfirmedLogout() }}
+                  className={logoutActionButtonClass}
+                  disabled={loggingOut}
+                >
+                  {loggingOut ? 'Logging out...' : 'Yes, Logout'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       {ratingAppointment && (
         <RatingModal
@@ -600,7 +706,8 @@ const CustomerDashboard = () => {
           submitting={submittingRating}
         />
       )}
-    </div>
+      </>
+    </CustomerDashboardShell>
   )
 }
 

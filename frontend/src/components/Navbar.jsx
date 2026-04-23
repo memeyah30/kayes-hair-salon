@@ -37,7 +37,13 @@ const resolveImageUrl = (imagePath) => {
   return resolveAssetUrl(imagePath)
 }
 
-const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => {
+const Navbar = ({
+  title = 'Dashboard',
+  hideUserBadge = false,
+  onMenuClick,
+  userBadgeName = '',
+  userBadgeSubtitle = '',
+}) => {
   const [userType, setUserType] = useState(getStoredUserType)
   const [user, setUser] = useState(parseStoredUser)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -47,7 +53,10 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
   const menuRef = useRef(null)
   const isAdminTheme = true
   const roleLabel = ROLE_LABELS[userType] || 'User'
-  const displayName = user?.name || roleLabel
+  const resolvedBadgeName = String(userBadgeName || '').trim()
+  const resolvedBadgeSubtitle = String(userBadgeSubtitle || '').trim()
+  const displayName = resolvedBadgeName || user?.name || roleLabel
+  const badgeSubtitle = resolvedBadgeSubtitle || roleLabel
   const initials = getInitials(displayName)
   const profileImageUrl = resolveImageUrl(user?.image_url || user?.image)
   const salonLogoUrl = resolveAssetUrl('logo.png')
@@ -105,7 +114,7 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
       resizeObserver?.disconnect()
       window.removeEventListener('resize', syncNavbarHeight)
     }
-  }, [title, displayName, roleLabel, profileImageUrl, hideUserBadge, menuOpen, uploading, userType])
+  }, [title, badgeSubtitle, displayName, roleLabel, profileImageUrl, hideUserBadge, menuOpen, uploading, userType])
 
   const handleToggleSidebar = () => {
     if (typeof onMenuClick === 'function') {
@@ -259,7 +268,12 @@ const Navbar = ({ title = 'Dashboard', hideUserBadge = false, onMenuClick }) => 
                   initials
                 )}
               </div>
-              <div className={`hidden sm:block text-sm ${isAdminTheme ? 'text-white' : 'text-gray-700'}`}>{roleLabel}</div>
+              <div className={`hidden sm:flex min-w-0 flex-col leading-tight ${isAdminTheme ? 'text-white' : 'text-gray-700'}`}>
+                <span className="max-w-[12rem] truncate text-sm font-semibold">{displayName}</span>
+                <span className={`max-w-[12rem] truncate text-[11px] ${isAdminTheme ? 'text-white/74' : 'text-[#7f6aa8]'}`}>
+                  {badgeSubtitle}
+                </span>
+              </div>
             </button>
 
             {canManagePhoto && menuOpen && (

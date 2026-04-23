@@ -56,8 +56,23 @@ SESSION_DRIVER=database
 CACHE_STORE=database
 QUEUE_CONNECTION=database
 
+FRONTEND_URL=https://your-frontend.vercel.app
+SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=none
+CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app
+
+ADMIN_LOGIN=admin
+ADMIN_NAME="Owner"
+ADMIN_PASSWORD=choose-a-strong-password
+ADMIN_FORCE_PASSWORD=true
+
 UPLOADS_DISK=public
 ```
+
+If `ADMIN_PASSWORD` is set, Railway pre-deploy will automatically run
+`php artisan admin:ensure-from-env`.
+Use `ADMIN_FORCE_PASSWORD=true` when you want deployment to refresh the admin
+password from the environment value.
 
 ### Persistent uploads
 

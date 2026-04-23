@@ -464,15 +464,6 @@ const Home = () => {
               >
                 Contact
               </button>
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  navigate('/manage-booking/start')
-                }}
-                className="block w-full text-left py-2 px-2 rounded hover:bg-white/15"
-              >
-                Manage My Booking
-              </button>
             </div>
           )}
         </nav>
@@ -491,12 +482,6 @@ const Home = () => {
                 className="home-hero__btn home-hero__btn--primary tap-safe"
               >
                 Book Appointment
-              </button>
-              <button
-                onClick={() => navigate('/manage-booking/start')}
-                className="home-hero__btn home-hero__btn--secondary tap-safe"
-              >
-                Manage My Booking
               </button>
             </div>
           </div>
@@ -731,16 +716,6 @@ const Home = () => {
       </main>
 
       <LandingFooter onScrollToSection={scrollToSection} />
-
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#2f245a]/95 border-t border-[#6f5fd3] px-3 py-2 z-50 backdrop-blur-sm">
-        <div className="flex items-center justify-around text-xs">
-          <button onClick={() => navigate('/')} className="text-white px-2 py-1 rounded hover:bg-white/10">Home</button>
-          <button onClick={() => navigate('/book?fresh=1')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Book</button>
-          <button onClick={() => navigate('/manage-booking/start')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Manage</button>
-          <button onClick={() => navigate('/services')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Services</button>
-          <button onClick={() => navigate('/stylists')} className="text-[#d2c6ff] hover:text-white px-2 py-1 rounded hover:bg-white/10">Stylists</button>
-        </div>
-      </div>
     </div>
   )
 }

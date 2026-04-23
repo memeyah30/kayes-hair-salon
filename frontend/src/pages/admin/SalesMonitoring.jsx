@@ -247,7 +247,7 @@ const SalesMonitoring = () => {
           {/* Top Selling Items */}
           {stats?.top_selling_items && stats.top_selling_items.length > 0 && (
             <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-              <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">Top Selling Items</h2>
+              <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">Top Services</h2>
               <div className="md:hidden space-y-2">
                 {stats.top_selling_items.map((item, idx) => (
                   <div key={idx} className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
@@ -263,7 +263,7 @@ const SalesMonitoring = () => {
                 <table className="w-full min-w-[640px]">
                   <thead className="bg-[#F2EDFF]">
                     <tr className="border-b border-[#DDD6FE]">
-                      <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Item Name</th>
+                      <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Service</th>
                       <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Quantity Sold</th>
                       <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Total Revenue</th>
                     </tr>
@@ -330,14 +330,14 @@ const SalesMonitoring = () => {
                     <thead className="bg-[#F2EDFF]">
                       <tr className="border-b border-[#DDD6FE]">
                         <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Date</th>
-                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Item</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Services</th>
                         <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Type</th>
                         <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Quantity</th>
                         <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Unit Price</th>
                         <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Total</th>
                         <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Payment</th>
                         <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Customer</th>
-                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Stylist</th>
+                       
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#DDD6FE]">

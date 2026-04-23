@@ -314,7 +314,12 @@ class ManageBookingController extends Controller
             ->sortByDesc('rated_at')
             ->values();
 
+        $customerName = $appointments
+            ->map(fn (Appointment $appointment) => trim((string) $appointment->customer_name))
+            ->first(fn (string $name) => $name !== '');
+
         return response()->json([
+            'customer_name' => $customerName ?: null,
             'appointments' => $response->values(),
             'ratings' => $ratings,
         ]);

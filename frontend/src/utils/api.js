@@ -99,12 +99,13 @@ api.interceptors.response.use(
       }
     }
     // Handle CSRF token mismatch - refresh token and retry
-    if (error.response?.status === 419) {
+    if (error.response?.status === 419 && error.config && !error.config._csrfRetried) {
       csrfToken = null // Reset token to fetch new one
       csrfTokenPromise = null
       try {
         const newToken = await getCsrfToken()
         if (newToken && error.config) {
+          error.config._csrfRetried = true
           // Update the request with new token
           error.config.headers['X-CSRF-TOKEN'] = newToken
           if (error.config.data instanceof FormData) {

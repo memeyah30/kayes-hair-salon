@@ -10,9 +10,11 @@ import {
 } from './returningBookingApi'
 
 export const CUSTOMER_BOOKING_VERIFIED_KEY = 'customer_manage_booking_verified'
+export const CUSTOMER_BOOKING_NAME_KEY = 'customer_manage_booking_name'
 export const RETURNING_BOOKING_VERIFIED_KEY = 'customer_returning_booking_verified'
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
+const normalizeName = (name) => String(name || '').trim().replace(/\s+/g, ' ')
 
 const readValue = (key) => {
   if (typeof window === 'undefined') return ''
@@ -23,6 +25,10 @@ export const getManageBookingVerifiedEmail = () => {
   if (!isManageBookingVerified()) return ''
   return normalizeEmail(readValue(CUSTOMER_BOOKING_EMAIL_KEY))
 }
+
+export const getManageBookingVerifiedName = () => (
+  normalizeName(readValue(CUSTOMER_BOOKING_NAME_KEY))
+)
 
 export const isManageBookingVerified = () => {
   const token = readValue(CUSTOMER_BOOKING_TOKEN_KEY)
@@ -57,10 +63,21 @@ export const persistManageBookingVerification = ({ email, token }) => {
   window.localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
 }
 
+export const setManageBookingVerifiedName = (name) => {
+  if (typeof window === 'undefined') return
+  const normalizedName = normalizeName(name)
+  if (normalizedName) {
+    window.localStorage.setItem(CUSTOMER_BOOKING_NAME_KEY, normalizedName)
+  } else {
+    window.localStorage.removeItem(CUSTOMER_BOOKING_NAME_KEY)
+  }
+}
+
 export const clearManageBookingVerification = () => {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(CUSTOMER_BOOKING_TOKEN_KEY)
   window.localStorage.removeItem(CUSTOMER_BOOKING_EMAIL_KEY)
+  window.localStorage.removeItem(CUSTOMER_BOOKING_NAME_KEY)
   window.localStorage.removeItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY)
   window.localStorage.removeItem(CUSTOMER_BOOKING_VERIFIED_KEY)
   window.localStorage.removeItem('customer_email')
