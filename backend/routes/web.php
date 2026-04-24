@@ -35,6 +35,25 @@ $serveFrontend = function () {
         ], 404);
 };
 
+$serveUploadedAsset = function (string $relativePath, array $candidateRoots) {
+    $normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+
+    if ($normalizedPath === '' || str_contains($normalizedPath, '..')) {
+        abort(404);
+    }
+
+    foreach ($candidateRoots as $root) {
+        $absolutePath = rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalizedPath);
+        if (is_file($absolutePath)) {
+            return response()->file($absolutePath, [
+                'Cache-Control' => 'public, max-age=31536000',
+            ]);
+        }
+    }
+
+    abort(404);
+};
+
 // Root route - serve frontend
 Route::get('/', $serveFrontend);
 
@@ -42,6 +61,20 @@ Route::get('/', $serveFrontend);
 Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 });
+
+Route::get('/uploads/{path}', function (string $path) use ($serveUploadedAsset) {
+    return $serveUploadedAsset($path, [
+        public_path('uploads'),
+        storage_path('app/public/uploads'),
+    ]);
+})->where('path', '.*');
+
+Route::get('/storage/{path}', function (string $path) use ($serveUploadedAsset) {
+    return $serveUploadedAsset($path, [
+        storage_path('app/public'),
+        public_path(),
+    ]);
+})->where('path', '.*');
 
 // Public routes
 Route::get('/services', function (Request $request) use ($serveFrontend) {

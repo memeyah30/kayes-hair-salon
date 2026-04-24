@@ -31,7 +31,15 @@ class UploadStorage
         $normalized = ltrim((string) $path, '/');
 
         if (self::isLegacyPublicPath($normalized)) {
-            return '/' . $normalized;
+            if (self::usesLegacyPublicFile($normalized)) {
+                return '/' . $normalized;
+            }
+
+            if (Storage::disk(self::diskName())->exists($normalized)) {
+                return '/storage/' . $normalized;
+            }
+
+            return '/storage/' . $normalized;
         }
 
         $resolvedUrl = Storage::disk(self::diskName())->url($normalized);
