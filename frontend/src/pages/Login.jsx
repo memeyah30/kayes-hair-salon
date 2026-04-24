@@ -6,6 +6,12 @@ import api from '../utils/api'
 import { resolveBackendOrigin } from '../utils/runtime'
 
 const easeOut = [0.22, 1, 0.36, 1]
+const SESSION_CONFIRMATION_ATTEMPTS = 4
+const SESSION_CONFIRMATION_DELAY_MS = 250
+
+const pause = (ms) => new Promise((resolve) => {
+  window.setTimeout(resolve, ms)
+})
 
 const roleOptions = [
   { value: 'admin', label: 'Owner' },
@@ -21,6 +27,42 @@ const Login = ({ userType: propUserType }) => {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const shouldReduceMotion = useReducedMotion()
+
+  const confirmSession = async (type, fallbackUser) => {
+    const requestConfig = {
+      params: { type },
+      headers: { 'X-User-Type': type },
+    }
+
+    for (let attempt = 0; attempt < SESSION_CONFIRMATION_ATTEMPTS; attempt += 1) {
+      try {
+        const sessionProbe = await api.get('/me', requestConfig)
+        const sessionPayload = sessionProbe.data || {}
+        const resolvedUser = sessionPayload.user || sessionPayload
+        const resolvedType = sessionPayload.type || type
+
+        if (resolvedUser && typeof resolvedUser === 'object') {
+          sessionStorage.setItem('user', JSON.stringify(resolvedUser))
+        } else if (fallbackUser) {
+          sessionStorage.setItem('user', JSON.stringify(fallbackUser))
+        }
+
+        sessionStorage.setItem('userType', resolvedType)
+        localStorage.removeItem('user')
+        localStorage.removeItem('userType')
+        window.dispatchEvent(new Event('user:updated'))
+        return true
+      } catch {
+        if (attempt === SESSION_CONFIRMATION_ATTEMPTS - 1) {
+          return false
+        }
+
+        await pause(SESSION_CONFIRMATION_DELAY_MS)
+      }
+    }
+
+    return false
+  }
 
   const shellReveal = {
     hidden: {
@@ -102,6 +144,12 @@ const Login = ({ userType: propUserType }) => {
       sessionStorage.setItem('userType', res.data.type)
       localStorage.removeItem('user')
       localStorage.removeItem('userType')
+      window.dispatchEvent(new Event('user:updated'))
+
+      const sessionConfirmed = await confirmSession(res.data.type, res.data.user)
+      if (!sessionConfirmed) {
+        throw new Error('Login succeeded, but the session is still syncing. Please try again in a moment.')
+      }
 
       toast.success(`Welcome, ${res.data.user.name}!`)
       
@@ -358,5 +406,4 @@ const Login = ({ userType: propUserType }) => {
 }
 
 export default Login
-
 

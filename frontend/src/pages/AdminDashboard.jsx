@@ -28,6 +28,10 @@ const formatCompactNumber = (value) => new Intl.NumberFormat('en-PH', {
   maximumFractionDigits: 1,
 }).format(Math.max(0, Number(value) || 0))
 
+const pause = (ms) => new Promise((resolve) => {
+  window.setTimeout(resolve, ms)
+})
+
 const formatCurrencyCompact = (cents) => {
   const pesos = (Number(cents) || 0) / 100
   return `PHP ${formatCompactNumber(pesos)}`
@@ -63,6 +67,18 @@ const getAppointmentServices = (appointment) => (
     ? appointment.services
     : (appointment.service ? [appointment.service] : [])
 )
+
+const normalizeAppointmentsPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return payload
+  }
+
+  if (Array.isArray(payload?.data)) {
+    return payload.data
+  }
+
+  return []
+}
 
 const getAppointmentServiceVariant = (service) => {
   const variantId = service?.pivot?.service_variant_id
@@ -389,21 +405,46 @@ const AdminDashboard = () => {
   }, [])
 
   const loadStats = async () => {
+    const requestUserType = sessionStorage.getItem('userType') || storedUserType || 'admin'
+    const roleRequestConfig = {
+      params: { type: requestUserType },
+      headers: { 'X-User-Type': requestUserType },
+    }
+
     try {
       setLoading(true)
-      const requestUserType = sessionStorage.getItem('userType') || storedUserType || 'admin'
-      const roleRequestConfig = {
-        params: { type: requestUserType },
-        headers: { 'X-User-Type': requestUserType },
-      }
-      const requests = [
-        api.get('/dashboard/admin/stats', roleRequestConfig),
-        api.get('/appointments', roleRequestConfig),
-      ]
+      let payload = null
 
-      const [statsRes, appointmentsRes] = await Promise.all(requests)
-      setStats({ ...statsRes.data })
-      const allAppointments = appointmentsRes.data || []
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const [statsRes, appointmentsRes] = await Promise.all([
+            api.get('/dashboard/admin/stats', roleRequestConfig),
+            api.get('/appointments', roleRequestConfig),
+          ])
+
+          payload = {
+            stats: statsRes.data || {},
+            appointments: normalizeAppointmentsPayload(appointmentsRes.data),
+          }
+          break
+        } catch (error) {
+          const status = error.response?.status
+          const shouldRetry = attempt === 0 && (!status || status === 401 || status === 419)
+
+          if (!shouldRetry) {
+            throw error
+          }
+
+          await pause(350)
+        }
+      }
+
+      if (!payload) {
+        throw new Error('Dashboard request did not return data.')
+      }
+
+      setStats({ ...payload.stats })
+      const allAppointments = payload.appointments
       setAppointments(allAppointments)
       const sorted = [...allAppointments].sort((a, b) => {
         const aDate = new Date(a.start_datetime_pht || a.start_datetime)
@@ -876,5 +917,4 @@ const AdminDashboard = () => {
 }
 
 export default AdminDashboard
-
 
