@@ -30,11 +30,17 @@ class UploadStorage
 
         $normalized = ltrim((string) $path, '/');
 
-        if (self::usesLegacyPublicFile($normalized)) {
-            return url($normalized);
+        if (self::isLegacyPublicPath($normalized)) {
+            return '/' . $normalized;
         }
 
-        return Storage::disk(self::diskName())->url($normalized);
+        $resolvedUrl = Storage::disk(self::diskName())->url($normalized);
+
+        if (self::diskName() === 'public') {
+            return self::normalizePublicUrlPath($resolvedUrl);
+        }
+
+        return $resolvedUrl;
     }
 
     public static function delete(?string $path): void
@@ -112,5 +118,18 @@ class UploadStorage
     private static function usesLegacyPublicFile(string $path): bool
     {
         return self::isLegacyPublicPath($path) && is_file(public_path($path));
+    }
+
+    private static function normalizePublicUrlPath(string $url): string
+    {
+        if (!self::isAbsoluteUrl($url)) {
+            return '/' . ltrim($url, '/');
+        }
+
+        $parsedPath = parse_url($url, PHP_URL_PATH);
+
+        return $parsedPath
+            ? '/' . ltrim($parsedPath, '/')
+            : $url;
     }
 }

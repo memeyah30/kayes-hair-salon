@@ -647,6 +647,8 @@ const ManageServices = () => {
                         loading="lazy"
                         onError={(e) => {
                           e.target.style.display = 'none'
+                          const fallback = e.target.nextSibling
+                          if (fallback) fallback.style.display = 'flex'
                         }}
                       />
                     ) : (
@@ -654,6 +656,11 @@ const ManageServices = () => {
                         No Image
                       </div>
                     )}
+                    {(s.image_url || s.image) ? (
+                      <div className="hidden h-full w-full items-center justify-center text-sm font-medium text-[#7B5CF5]">
+                        No Image
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="flex min-h-[210px] flex-col justify-between p-4">

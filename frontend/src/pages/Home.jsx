@@ -469,12 +469,6 @@ const Home = () => {
               >
                 Contact
               </button>
-              <button
-                onClick={handleManageBooking}
-                className="block w-full text-left py-2 px-2 rounded hover:bg-white/15"
-              >
-                Manage My Booking
-              </button>
             </div>
           )}
         </nav>
