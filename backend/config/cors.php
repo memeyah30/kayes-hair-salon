@@ -19,12 +19,10 @@ $frontendUrl = trim((string) env('FRONTEND_URL', ''));
 return [
 
     'paths' => [
-        'api/*',
-        'login',
-        'logout',
-        'me',
-        'csrf-token',
-        'sanctum/csrf-cookie',
+        // The SPA talks directly to Laravel "web" routes like /services,
+        // /ratings, /appointments, and /admin/notifications from Vercel.
+        // Restrict origins, but apply CORS headers to every route.
+        '*',
     ],
 
     'allowed_methods' => ['*'],
