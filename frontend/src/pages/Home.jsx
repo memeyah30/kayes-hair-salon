@@ -407,6 +407,11 @@ const Home = () => {
     closeServiceOptions()
   }
 
+  const handleManageBooking = () => {
+    setMobileMenuOpen(false)
+    navigate('/manage-booking/start')
+  }
+
   const heroBackgroundImage = `url(${imageUrl('hero-salon-interior.png')})`
 
   return (
@@ -464,6 +469,12 @@ const Home = () => {
               >
                 Contact
               </button>
+              <button
+                onClick={handleManageBooking}
+                className="block w-full text-left py-2 px-2 rounded hover:bg-white/15"
+              >
+                Manage My Booking
+              </button>
             </div>
           )}
         </nav>
@@ -482,6 +493,12 @@ const Home = () => {
                 className="home-hero__btn home-hero__btn--primary tap-safe"
               >
                 Book Appointment
+              </button>
+              <button
+                onClick={handleManageBooking}
+                className="home-hero__btn home-hero__btn--secondary tap-safe"
+              >
+                Manage My Booking
               </button>
             </div>
           </div>

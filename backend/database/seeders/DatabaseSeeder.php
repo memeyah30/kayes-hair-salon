@@ -11,42 +11,30 @@ use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
+    
     public function run(): void
     {
-        // Create admin user (password will be hashed by mutator)
-        // Use 'admin' as the email/login identifier
+        
         Admin::firstOrCreate(
             ['email' => 'admin'],
             [
                 'name' => 'Admin User',
-                'password' => 'admin123', // Mutator will hash this
+                'password' => 'admin123', 
             ]
         );
 
-        User::firstOrCreate(
-            ['email' => 'admin@gmail.com'],
-            [
-                'name' => 'Admin',
-                'password' => Hash::make('admin123'),
-                'role' => 'admin',
-                'status' => 'active',
-            ]
-        );
+    
 
-        // Remove default stylist - stylists will be registered through admin panel
-        // $stylist = Stylist::firstOrCreate(...) - REMOVED
 
-        Service::firstOrCreate(
-            ['name' => 'Haircut'],
-            ['price_cents' => 80000]
-        );
+User::create([
+    'name' => 'Admin',
+    'email' => 'admin@gmail.com',
+    'password' => Hash::make('admin123'),
+    'role' => 'admin',
+    'status' => 'active',
+]);
+       
 
-        Service::firstOrCreate(
-            ['name' => 'Coloring'],
-            ['price_cents' => 150000]
-        );
+        
     }
 }
