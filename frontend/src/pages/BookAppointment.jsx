@@ -2507,13 +2507,13 @@ const BookAppointment = () => {
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            {step !== 1 && (
-              <button
-                onClick={() => navigate('/manage-booking/start')}
-                className="tap-safe booking-outline-btn"
-              >
-                Manage My Booking
-              </button>
+            {!hasManageBookingSession && (
+            <button
+              onClick={() => navigate('/customer')}
+              className="tap-safe booking-outline-btn"
+            >
+              Manage My Booking
+            </button>
             )}
             <button
               onClick={() => navigate(freshBookingRoute)}
@@ -4118,7 +4118,7 @@ const BookAppointment = () => {
                 disabled={(
                   bookingInProgress ||
                   !payment.proofFile ||
-                  (payment.method === 'online' && !payment.selectedAccount) ||
+                  (payment.method === 'online' && paymentAccounts.length > 0 && !payment.selectedAccount) ||
                   (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
                 )}
                 className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"

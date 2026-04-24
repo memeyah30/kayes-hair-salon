@@ -7,7 +7,7 @@ echo "Preparing Laravel application for Railway..."
 mkdir -p storage/framework/{cache/data,sessions,views} bootstrap/cache
 
 php artisan optimize:clear
-php artisan storage:link --force || true
+php artisan storage:link --relative --force || true
 
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   php artisan migrate --force

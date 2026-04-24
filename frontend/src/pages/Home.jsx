@@ -409,7 +409,7 @@ const Home = () => {
 
   const handleManageBooking = () => {
     setMobileMenuOpen(false)
-    navigate('/manage-booking/start')
+    navigate('/customer')
   }
 
   const heroBackgroundImage = `url(${imageUrl('hero-salon-interior.png')})`

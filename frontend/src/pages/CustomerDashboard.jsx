@@ -239,6 +239,7 @@ const CustomerDashboard = () => {
   useEffect(() => {
     if (!hasVerifiedAccess) {
       resetCustomerPanelState()
+      navigate('/manage-booking/start', { replace: true })
       return
     }
 
