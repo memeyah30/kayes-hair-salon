@@ -527,27 +527,29 @@ const Home = () => {
                   return (
                     <article
                       key={service.id}
-                      className="home-service-card group h-full rounded-3xl border border-[#d8cbff] bg-white shadow-[0_12px_28px_rgba(70,45,130,0.12)] overflow-hidden transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_34px_rgba(70,45,130,0.2)]"
+                      className="home-service-card group flex flex-col h-full rounded-3xl border border-[#d8cbff] bg-white shadow-[0_12px_28px_rgba(70,45,130,0.12)] overflow-hidden transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_34px_rgba(70,45,130,0.2)]"
                     >
-                      {serviceImage ? (
-                        <img
-                          src={imageUrl(serviceImage)}
-                          alt={service.name}
-                          className="w-full h-44 object-cover"
-                          onError={(event) => {
-                            event.currentTarget.style.display = 'none'
-                            const fallback = event.currentTarget.nextSibling
-                            if (fallback) fallback.style.display = 'flex'
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className={`w-full h-32 ${serviceImage ? 'hidden' : 'flex'} items-center justify-center bg-[#ede5ff] text-[#6b5b95] text-sm font-medium`}
-                      >
-                        Service Image
+                      <div className="w-full h-48 shrink-0 overflow-hidden relative">
+                        {serviceImage ? (
+                          <img
+                            src={imageUrl(serviceImage)}
+                            alt={service.name}
+                            className="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-110"
+                            onError={(event) => {
+                              event.currentTarget.style.display = 'none'
+                              const fallback = event.currentTarget.nextSibling
+                              if (fallback) fallback.style.display = 'flex'
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className={`w-full h-full absolute inset-0 ${serviceImage ? 'hidden' : 'flex'} items-center justify-center bg-[#ede5ff] text-[#6b5b95] text-sm font-medium`}
+                        >
+                          Service Image
+                        </div>
                       </div>
 
-                      <div className="p-6 flex flex-col h-[calc(100%-8rem)]">
+                      <div className="p-6 flex flex-col flex-1">
                         <h3 className="text-xl font-semibold text-[#2f245a] truncate">{service.name}</h3>
                         <div className="mt-4 min-h-[72px]">
                           <p className="text-lg font-semibold text-[#453493]">{cardPrice.headline}</p>
