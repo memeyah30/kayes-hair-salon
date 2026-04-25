@@ -190,7 +190,7 @@ const HowToBookSection = () => {
                         transition: { duration: 0.26, ease: 'easeOut' },
                       }
                 }
-                className="group relative overflow-hidden rounded-[20px] border border-[#dcccff] bg-white/88 p-3.5 shadow-[0_10px_24px_rgba(71,46,137,0.08)] backdrop-blur-sm transition duration-300 hover:border-[#c6b3ff] hover:shadow-[0_16px_30px_rgba(71,46,137,0.14)] md:p-4"
+                className="group relative overflow-hidden rounded-[20px] border border-[#dcccff] bg-white/88 p-3 shadow-[0_10px_24px_rgba(71,46,137,0.08)] backdrop-blur-sm transition duration-300 hover:border-[#c6b3ff] hover:shadow-[0_16px_30px_rgba(71,46,137,0.14)] md:p-4"
               >
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#8b74ff] via-[#6d54df] to-[#4b3bd6]" />
                 <motion.div
@@ -212,7 +212,7 @@ const HowToBookSection = () => {
                     STEP {item.step}
                   </motion.span>
                   <motion.span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#785fff_0%,#5740d8_100%)] text-white shadow-[0_10px_18px_rgba(66,42,150,0.22)] transition duration-300 group-hover:shadow-[0_14px_24px_rgba(66,42,150,0.28)] [&>svg]:h-4.5 [&>svg]:w-4.5"
+                    className="flex h-7 w-7 md:h-8 md:w-8 shrink-0 items-center justify-center rounded-xl md:rounded-2xl bg-[linear-gradient(135deg,#785fff_0%,#5740d8_100%)] text-white shadow-[0_10px_18px_rgba(66,42,150,0.22)] transition duration-300 group-hover:shadow-[0_14px_24px_rgba(66,42,150,0.28)] [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:md:h-4.5 [&>svg]:md:w-4.5"
                     animate={
                       shouldReduceMotion
                         ? undefined
@@ -228,17 +228,17 @@ const HowToBookSection = () => {
                   </motion.span>
                 </div>
 
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="text-[1.7rem] font-semibold tracking-tight text-[#3f2f86]/15">
+                <div className="mt-2.5 md:mt-3 flex items-center gap-2">
+                  <div className="text-2xl md:text-[1.7rem] font-semibold tracking-tight text-[#3f2f86]/15">
                     {index + 1}
                   </div>
                   <div className="h-px flex-1 bg-gradient-to-r from-[#d9ccff] to-transparent" />
                 </div>
 
-                <h3 className="mt-3 text-[1.05rem] font-semibold leading-6 text-[#2f245a]">
+                <h3 className="mt-2 md:mt-3 text-[0.95rem] md:text-[1.05rem] font-semibold leading-5 md:leading-6 text-[#2f245a]">
                   {item.title}
                 </h3>
-                <p className="mt-1.5 text-[13px] leading-5 text-[#70618f]">
+                <p className="mt-1 md:mt-1.5 text-xs md:text-[13px] leading-4 md:leading-5 text-[#70618f]">
                   {item.description}
                 </p>
               </motion.article>

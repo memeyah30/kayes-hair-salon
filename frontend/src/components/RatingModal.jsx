@@ -32,7 +32,7 @@ const RatingModal = ({ open, appointment, onClose, onSubmit, submitting = false 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white p-5 shadow-[0_16px_32px_rgba(92,64,51,0.18)]">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-[#eadfd5] bg-white p-5 shadow-[0_16px_32px_rgba(92,64,51,0.18)]">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h3 className="text-lg font-semibold text-[#3b2f2a]">Rate Appointment</h3>

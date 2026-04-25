@@ -210,7 +210,7 @@ const PendingStaffApprovals = () => {
 
         {rejecting && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-            <div className="w-full max-w-md rounded-2xl border border-[#eadfd5] bg-white p-5">
+            <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-[#eadfd5] bg-white p-5">
               <h2 className="text-lg font-semibold mb-2">Reject Staff Request</h2>
               <p className="text-sm text-[#8f7a6f] mb-3">
                 Provide a reason for rejecting {rejecting.first_name} {rejecting.last_name}.
