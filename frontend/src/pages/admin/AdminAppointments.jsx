@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
+import { resolveAssetUrl } from '../../utils/runtime'
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MOBILE_TABS = [
@@ -1563,7 +1564,7 @@ const AdminAppointments = () => {
                           )}
                         </div>
                       )}
-                      <div className="mt-1 text-xs text-[#6B6B6B]">{dateLabel} • {timeLabel}</div>
+                      <div className="mt-1 text-xs text-[#6B6B6B]">{dateLabel} â€¢ {timeLabel}</div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
                           {paymentChoice}
