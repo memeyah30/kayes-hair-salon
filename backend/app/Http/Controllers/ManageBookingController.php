@@ -81,7 +81,7 @@ class ManageBookingController extends Controller
             Mail::to($email)->send(new CustomerOtpMail($otp, self::OTP_EXPIRY_MINUTES));
         } catch (\Throwable $e) {
             $exceptionMessage = (string) $e->getMessage();
-            $responseMessage = 'Failed to send OTP email. Check SMTP configuration.';
+            $responseMessage = 'Failed to send OTP email. Check SMTP configuration. Error: ' . $exceptionMessage;
             if (
                 str_contains($exceptionMessage, '535-5.7.8') ||
                 str_contains($exceptionMessage, 'Username and Password not accepted')
@@ -91,13 +91,11 @@ class ManageBookingController extends Controller
 
             Log::error('Failed to send manage-booking OTP email', [
                 'email' => $email,
-                'mail_driver' => config('mail.default'),
-                'mail_host' => config('mail.mailers.smtp.host'),
-                'mail_port' => config('mail.mailers.smtp.port'),
-                'exception' => $exceptionMessage,
+                'error' => $exceptionMessage,
             ]);
             return response()->json([
                 'message' => $responseMessage,
+                'raw_error' => $exceptionMessage
             ], 500);
         }
 
