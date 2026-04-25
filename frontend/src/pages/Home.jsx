@@ -533,7 +533,7 @@ const Home = () => {
                         <img
                           src={imageUrl(serviceImage)}
                           alt={service.name}
-                          className="w-full h-32 object-cover"
+                          className="w-full h-44 object-cover"
                           onError={(event) => {
                             event.currentTarget.style.display = 'none'
                             const fallback = event.currentTarget.nextSibling
