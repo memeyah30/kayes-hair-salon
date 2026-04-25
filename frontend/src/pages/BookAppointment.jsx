@@ -2355,13 +2355,13 @@ const BookAppointment = () => {
     const hasDashboardSession = ['admin', 'manager', 'stylist'].includes(currentUserType)
     const manageBookingToken = (localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || '').trim()
     const manageBookingEmail = (localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) || '').trim()
-    const hasManageBookingSession = !hasDashboardSession && Boolean(manageBookingToken && manageBookingEmail)
+    const isManageBookingSession = !hasDashboardSession && Boolean(manageBookingToken && manageBookingEmail)
 
     try {
       const preferredTime = toManilaHHmm(selectedSlot.start)
       let updatedAppointment = null
 
-      if (hasManageBookingSession) {
+      if (isManageBookingSession) {
         await manageBookingApi.post(`/manage-booking/appointments/${rescheduling.id}/reschedule`, {
           appointment_date: selectedDate,
           appointment_time: preferredTime,
@@ -2388,7 +2388,7 @@ const BookAppointment = () => {
       }
       toast.success('Appointment rescheduled successfully!')
     } catch (e) {
-      if (hasManageBookingSession && e.response?.status === 401) {
+      if (isManageBookingSession && e.response?.status === 401) {
         toast.error('Session expired. Please verify OTP again.')
         navigate('/manage-booking/start')
         return
@@ -2481,6 +2481,10 @@ const BookAppointment = () => {
 
     setStep(4)
   }
+
+  const hasManageBookingSession = !['admin', 'manager', 'stylist'].includes(
+    (sessionStorage.getItem('userType') || localStorage.getItem('userType') || '').trim().toLowerCase()
+  ) && Boolean((localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || '').trim() && (localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY) || '').trim())
 
   return (
     <div className="booking-page min-h-screen app-panel-bg">

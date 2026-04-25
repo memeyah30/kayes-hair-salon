@@ -9,7 +9,7 @@ import {
 
 const ManageBookingEmail = () => {
   const navigate = useNavigate()
-  const [email, setEmail] = useState(localStorage.getItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY) || '')
+  const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
@@ -54,16 +54,18 @@ const ManageBookingEmail = () => {
             Use your booking email so we can securely open your booking dashboard.
           </div>
 
-          <form onSubmit={handleSendOtp} className="space-y-4">
+          <form onSubmit={handleSendOtp} className="space-y-4" autoComplete="off">
             <div>
               <label className="mb-2 block text-sm font-semibold text-[#2d2d2d]">Email</label>
               <input
                 type="email"
+                name="manage_booking_email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="tap-safe w-full rounded-[10px] border border-[#d8ccff] px-4 py-3 text-[#2d2d2d] outline-none transition focus:border-[#7b5cf5] focus:ring-4 focus:ring-[#7b5cf522]"
                 placeholder="your@email.com"
                 required
+                autoComplete="off"
               />
             </div>
 
