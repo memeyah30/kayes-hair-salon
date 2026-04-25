@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { toPng } from 'html-to-image'
+import imageCompression from 'browser-image-compression'
 import api from '../utils/api'
 import LandingFooter from '../components/LandingFooter'
 import manageBookingApi, {
@@ -2869,7 +2870,7 @@ const BookAppointment = () => {
             <div>
               <label className="block text-base font-medium mb-2 text-gray-900">Full Name *</label>
               <div className="booking-input-wrap">
-                <span className="booking-input-icon" aria-hidden="true">👤</span>
+                <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€˜Â¤</span>
                 <input
                   type="text"
                   required
@@ -2884,7 +2885,7 @@ const BookAppointment = () => {
             <div>
               <label className="block text-base font-medium mb-2 text-gray-900">Email *</label>
               <div className="booking-input-wrap">
-                <span className="booking-input-icon" aria-hidden="true">✉</span>
+                <span className="booking-input-icon" aria-hidden="true">Ã¢Å“â€°</span>
                 <input
                   type="email"
                   required
@@ -2904,7 +2905,7 @@ const BookAppointment = () => {
             <div>
               <label className="block text-base font-medium mb-2 text-gray-900">Contact Number *</label>
               <div className="booking-input-wrap">
-                <span className="booking-input-icon" aria-hidden="true">📞</span>
+                <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€œÅ¾</span>
                 <input
                   type="tel"
                   required
@@ -2924,7 +2925,7 @@ const BookAppointment = () => {
             <div>
               <label className="block text-base font-medium mb-2 text-gray-900">Address</label>
               <div className="booking-input-wrap">
-                <span className="booking-input-icon" aria-hidden="true">📍</span>
+                <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€œÂ</span>
                 <input
                   type="text"
                   className="booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
@@ -3372,7 +3373,7 @@ const BookAppointment = () => {
                     >
                       <div className="flex items-start gap-3">
                         <div className="h-12 w-12 rounded-full bg-[#ede7ff] text-[#5b3cc4] flex items-center justify-center text-lg">
-                          ⭐
+                          Ã¢Â­Â
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-base text-[#2C1338]">No Preference (Auto-Assign Best Available)</div>
@@ -4066,20 +4067,35 @@ const BookAppointment = () => {
                 accept="image/*"
                 required
                 className="tap-safe w-full border rounded px-3 py-2 text-gray-900"
-                onChange={(e) => {
-                  const file = e.target.files[0]
-                  if (file) {
-                    if (file.size > 5 * 1024 * 1024) {
-                      toast.error('File size must be less than 5MB')
-                      return
+                onChange={async (e) => {
+                    const file = e.target.files[0]
+                    if (file) {
+                      if (file.size > 15 * 1024 * 1024) {
+                        toast.error('File size must be less than 15MB before compression')
+                        return
+                      }
+                      
+                      try {
+                        toast.info('Processing image...', { autoClose: 1500, toastId: 'compressing-img' })
+                        const options = {
+                          maxSizeMB: 1, // Compress to max 1MB
+                          maxWidthOrHeight: 1200,
+                          useWebWorker: true,
+                          initialQuality: 0.8
+                        }
+                        const compressedFile = await imageCompression(file, options)
+                        
+                        setPayment({ 
+                          ...payment, 
+                          proofFile: compressedFile,
+                          proofPreview: URL.createObjectURL(compressedFile)
+                        })
+                      } catch (error) {
+                        console.error('Image compression error:', error)
+                        toast.error('Failed to process image. Please try another one.')
+                      }
                     }
-                    setPayment({ 
-                      ...payment, 
-                      proofFile: file,
-                      proofPreview: URL.createObjectURL(file)
-                    })
-                  }
-                }}
+                  }}
               />
               {payment.proofPreview && (
                 <div className="mt-3">

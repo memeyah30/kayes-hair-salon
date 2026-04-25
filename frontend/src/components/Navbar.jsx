@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import api from '../utils/api'
 import NotificationsBell from './NotificationsBell'
 import { resolveAssetUrl } from '../utils/runtime'
+import imageCompression from 'browser-image-compression'
 
 const ROLE_LABELS = {
   admin: 'Admin',
@@ -150,13 +151,29 @@ const Navbar = ({
       return
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image size must be 2MB or less.')
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Image size must be less than 15MB before compression.')
+      return
+    }
+
+    let fileToUpload = file
+    try {
+      toast.info('Processing image...', { autoClose: 1500, toastId: 'compressing-img' })
+      const options = {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 800,
+        useWebWorker: true,
+        initialQuality: 0.8
+      }
+      fileToUpload = await imageCompression(file, options)
+    } catch (error) {
+      console.error('Image compression error:', error)
+      toast.error('Failed to process image.')
       return
     }
 
     const formData = new FormData()
-    formData.append('image', file)
+    formData.append('image', fileToUpload)
 
     try {
       setUploading(true)
