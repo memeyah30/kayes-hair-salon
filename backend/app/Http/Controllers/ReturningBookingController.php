@@ -232,12 +232,6 @@ class ReturningBookingController extends Controller
     {
         $mailDriver = (string) config('mail.default');
 
-        if (in_array($mailDriver, ['log', 'array'], true)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'email' => ['Email sending is not configured. Please set MAIL_MAILER=smtp and valid SMTP credentials in backend/.env.'],
-            ]);
-        }
-
         if ($mailDriver !== 'smtp') {
             return;
         }

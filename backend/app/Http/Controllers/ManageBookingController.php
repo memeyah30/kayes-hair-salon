@@ -32,13 +32,8 @@ class ManageBookingController extends Controller
 
         $email = $this->normalizeEmail($data['email']);
 
-        // Prevent false success when mail is not actually deliverable.
+        // Allow 'log' and 'array' drivers to be used for bypasses.
         $mailDriver = (string) config('mail.default');
-        if (in_array($mailDriver, ['log', 'array'], true)) {
-            return response()->json([
-                'message' => 'Email sending is not configured. Please set MAIL_MAILER=smtp and valid SMTP credentials in backend/.env.',
-            ], 500);
-        }
         if ($mailDriver === 'smtp') {
             $mailHost = (string) config('mail.mailers.smtp.host');
             $mailUser = (string) config('mail.mailers.smtp.username');
