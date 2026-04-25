@@ -585,7 +585,7 @@ const AdminDashboard = () => {
            
           </div>
 
-          <div className={`grid gap-4 md:grid-cols-2 ${canAccessSales ? 'xl:grid-cols-7' : 'xl:grid-cols-5'} animate-slideUpStagger animation-delay-100`}>
+          <div className={`grid gap-4 grid-cols-1 lg:grid-cols-3 ${canAccessSales ? '2xl:grid-cols-7 xl:grid-cols-4' : '2xl:grid-cols-5 xl:grid-cols-3'} animate-slideUpStagger animation-delay-100`}>
             {canAccessSales ? (
               <>
                 <GradientMetricCard
@@ -712,7 +712,7 @@ const AdminDashboard = () => {
 
           <section className={`${glassPanelClass} animation-delay-100 animate-slideUpStagger animation-delay-200`}>
             <h2 className="text-xl font-semibold text-[#2f2252]">Appointment Status Summary</h2>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-3">
               <StatusSummaryCard
                 title="Booked"
                 value={stats.status_summary.booked}
@@ -756,9 +756,9 @@ const AdminDashboard = () => {
             </div>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr] animate-slideUpStagger animation-delay-300">
+          <section className="grid gap-4 grid-cols-1 xl:grid-cols-[1.4fr_1fr] animate-slideUpStagger animation-delay-300">
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 animate-slideUpStagger animation-delay-100">
+              <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 animate-slideUpStagger animation-delay-100">
                 {canAccessSales ? (
                   <button
                     type="button"

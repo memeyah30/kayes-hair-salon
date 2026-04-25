@@ -257,7 +257,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       {/* Closed desktop state keeps a slim rail so feature icons stay visible without covering content. */}
       <aside
         aria-hidden={isOpen ? 'true' : undefined}
-        className={`hidden lg:flex fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100vh-var(--dashboard-navbar-height))] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-4 transition-[opacity,transform] duration-300 ease-out xl:py-5 ${
+        className={`hidden lg:flex fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100dvh-var(--dashboard-navbar-height))] pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center overflow-hidden overscroll-contain px-2 py-4 transition-[opacity,transform] duration-300 ease-out xl:py-5 ${
           isOpen ? 'pointer-events-none -translate-x-3 opacity-0' : 'translate-x-0 opacity-100'
         } ${
           isAdminTheme
@@ -265,7 +265,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
             : 'bg-slate-900 text-white shadow-[18px_0_38px_rgba(15,23,42,0.18)]'
         }`}
       >
-        <nav className="flex w-full flex-1 flex-col items-center gap-2 pt-1 xl:gap-2.5">
+        <nav className="flex w-full flex-1 overflow-y-auto flex-col items-center gap-2 pt-1 xl:gap-2.5 no-scrollbar">
           {links.map((link) => (
             <NavLink
               key={`${link.to}-collapsed`}
@@ -289,7 +289,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
           ))}
         </nav>
 
-        {(userType === 'admin' || userType === 'manager') && onLogout && (
+        {(userType === 'admin' || userType === 'manager' || userType === 'owner') && onLogout && (
           <div className="pb-2 pt-3 xl:pb-4">
             <button
               type="button"
@@ -320,7 +320,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
       <aside
         id="dashboard-sidebar"
-        className={`fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100vh-var(--dashboard-navbar-height))] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col overflow-x-hidden overflow-y-auto overscroll-contain transform transition-[transform,box-shadow] duration-300 ease-out ${
+        className={`fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100dvh-var(--dashboard-navbar-height))] pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col overflow-hidden transform transition-[transform,box-shadow] duration-300 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
           isAdminTheme
@@ -330,7 +330,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         role="dialog"
         aria-modal={!isDesktopViewport()}
       >
-        <nav className="flex-1 space-y-1.5 px-3 py-4 text-sm md:px-4 md:py-4">
+        <nav className="flex-1 overflow-y-auto space-y-1.5 px-3 py-4 text-sm md:px-4 md:py-4">
           {links.map((link) => (
             <NavLink
               key={link.to}
@@ -368,7 +368,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
           ))}
         </nav>
 
-        {(userType === 'admin' || userType === 'manager') && onLogout && (
+        {(userType === 'admin' || userType === 'manager' || userType === 'owner') && onLogout && (
           <div className={`border-t px-4 py-3 md:px-5 md:py-3 ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
             <button
               onClick={() => {
