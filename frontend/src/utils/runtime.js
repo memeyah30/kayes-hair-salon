@@ -18,6 +18,9 @@ export const resolveAssetUrl = (path) => {
   if (/^https?:\/\//i.test(path)) {
     const normalizedAbsolutePath = extractPathname(path).replace(/^\/+/, '')
     if (isBackendHostedAssetPath(normalizedAbsolutePath)) {
+      if (import.meta.env.DEV) {
+        return `/${normalizedAbsolutePath}`
+      }
       return `${resolveBackendOrigin()}/${normalizedAbsolutePath}`
     }
 
@@ -27,6 +30,9 @@ export const resolveAssetUrl = (path) => {
   const normalizedPath = String(path).replace(/^\/+/, '')
 
   if (isBackendHostedAssetPath(normalizedPath)) {
+    if (import.meta.env.DEV) {
+      return `/${normalizedPath}`
+    }
     return `${resolveBackendOrigin()}/${normalizedPath}`
   }
 
