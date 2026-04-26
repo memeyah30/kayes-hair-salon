@@ -3639,12 +3639,24 @@ const BookAppointment = () => {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => setStep(1)}
-                        className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
-                      >
-                        Back to Customer Info
-                      </button>
+                      {rescheduling ? (
+                        <button
+                          onClick={() => {
+                            setRescheduling(null)
+                            navigate('/customer', { replace: true })
+                          }}
+                          className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                        >
+                          Cancel Reschedule
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setStep(1)}
+                          className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                        >
+                          Back to Customer Info
+                        </button>
+                      )}
                       {rescheduling ? (
                         <button
                           onClick={handleReschedule}
@@ -3772,12 +3784,24 @@ const BookAppointment = () => {
           </div>
 
           <div className="booking-step2-mobile-actions flex flex-col sm:flex-row gap-3 xl:hidden">
-            <button
-              onClick={() => setStep(1)}
-              className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
-            >
-              Back
-            </button>
+              {rescheduling ? (
+                <button
+                  onClick={() => {
+                    setRescheduling(null)
+                    navigate('/customer', { replace: true })
+                  }}
+                  className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
+                >
+                  Cancel
+                </button>
+              ) : (
+                <button
+                  onClick={() => setStep(1)}
+                  className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
+                >
+                  Back
+                </button>
+              )}
             {rescheduling ? (
               <button
                 onClick={handleReschedule}
