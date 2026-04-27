@@ -208,3 +208,5 @@ Route::middleware(['auth.any', 'userType:stylist'])->group(function () {
 
 // Verified customer stats
 Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerStats'])->middleware('customer.otp');
+
+Route::get('/debug-proofs', function () { return response()->json(['storage_path' => storage_path('app/public/payment-proofs'), 'exists' => is_dir(storage_path('app/public/payment-proofs')), 'files' => is_dir(storage_path('app/public/payment-proofs')) ? scandir(storage_path('app/public/payment-proofs')) : [], 'public_storage_symlink_exists' => is_link(public_path('storage')), 'public_storage_target' => is_link(public_path('storage')) ? readlink(public_path('storage')) : null]); });
