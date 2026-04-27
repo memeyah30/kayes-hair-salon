@@ -4042,15 +4042,15 @@ const BookAppointment = () => {
             </div>
 
             {/* Payment Account Selection */}
-            {payment.method === 'online' && paymentAccounts.length > 0 && (
+            {paymentAccounts.length > 0 && (
               <div className="mb-6">
                 <label className="block text-sm font-medium mb-2 text-gray-900">Select Payment Account *</label>
                 <div className="space-y-3">
                   {paymentAccounts.map(account => (
                     <label
                       key={account.id}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition block ${
-                        payment.selectedAccount === account.id.toString() ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      className={`border-2 rounded-xl p-4 cursor-pointer transition block ${
+                        payment.selectedAccount === account.id.toString() ? 'border-[#6d4de6] bg-[#f8f5ff] shadow-sm' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <input
@@ -4061,20 +4061,22 @@ const BookAppointment = () => {
                         onChange={(e) => setPayment({ ...payment, selectedAccount: e.target.value })}
                         className="sr-only"
                       />
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-gray-900">{account.account_name}</div>
-                          <div className="text-sm text-[#8f7a6f]">{account.account_number}</div>
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex-1 w-full text-center sm:text-left">
+                          <div className="font-semibold text-gray-900 text-lg">{account.account_name}</div>
+                          <div className="text-base text-[#6f5b7e] font-medium">{account.account_number}</div>
                           {account.instructions && (
-                            <div className="text-xs text-[#9b857a] mt-1">{account.instructions}</div>
+                            <div className="text-sm text-[#9b857a] mt-2 bg-white/60 p-2 rounded-lg inline-block border border-gray-100">{account.instructions}</div>
                           )}
                         </div>
                         {resolveQrUrl(account.qr_code_full_url || account.qr_code_url) && (
-                          <img
-                            src={resolveQrUrl(account.qr_code_full_url || account.qr_code_url)}
-                            alt="QR Code"
-                            className="w-20 h-20 object-contain"
-                          />
+                          <div className="flex-shrink-0 bg-white p-2.5 border-2 border-gray-100 rounded-2xl shadow-sm">
+                            <img
+                              src={resolveQrUrl(account.qr_code_full_url || account.qr_code_url)}
+                              alt="QR Code"
+                              className="w-36 h-36 sm:w-44 sm:h-44 object-contain"
+                            />
+                          </div>
                         )}
                       </div>
                     </label>
@@ -4162,7 +4164,7 @@ const BookAppointment = () => {
                 disabled={(
                   bookingInProgress ||
                   !payment.proofFile ||
-                  (payment.method === 'online' && paymentAccounts.length > 0 && !payment.selectedAccount) ||
+                  (paymentAccounts.length > 0 && !payment.selectedAccount) ||
                   (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
                 )}
                 className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
