@@ -829,8 +829,7 @@ const AdminAppointments = () => {
     !shouldHidePaymentStatusBadge(method, appointmentStatus)
   const resolveProofUrl = (url) => {
     if (!url) return null
-    if (url.startsWith('http')) return url
-    return `/${url.replace(/^\/+/, '')}`
+    return resolveAssetUrl(url)
   }
   const openProofFile = async (proofUrl) => {
     if (!proofUrl) {
