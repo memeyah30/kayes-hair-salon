@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import { toPng } from 'html-to-image'
 import imageCompression from 'browser-image-compression'
 import api from '../utils/api'
+import { resolveAssetUrl } from '../utils/runtime'
 import LandingFooter from '../components/LandingFooter'
 import manageBookingApi, {
   CUSTOMER_BOOKING_EMAIL_KEY,
@@ -49,12 +50,6 @@ const validatePhone = (phone) => {
 }
 
 const normalizeEmailValue = (email) => String(email || '').trim().toLowerCase()
-
-const resolveQrUrl = (url) => {
-  if (!url) return null
-  if (url.startsWith('http')) return url
-  return `${window.location.origin}/${url.replace(/^\/+/, '')}`
-}
 
 // Helper function to convert ISO string to HH:MM format in Asia/Manila timezone
 const toManilaHHmm = (isoString) => {
@@ -4069,10 +4064,10 @@ const BookAppointment = () => {
                             <div className="text-sm text-[#9b857a] mt-2 bg-white/60 p-2 rounded-lg inline-block border border-gray-100">{account.instructions}</div>
                           )}
                         </div>
-                        {resolveQrUrl(account.qr_code_full_url || account.qr_code_url) && (
+                        {resolveAssetUrl(account.qr_code_full_url || account.qr_code_url) && (
                           <div className="flex-shrink-0 bg-white p-2.5 border-2 border-gray-100 rounded-2xl shadow-sm">
                             <img
-                              src={resolveQrUrl(account.qr_code_full_url || account.qr_code_url)}
+                              src={resolveAssetUrl(account.qr_code_full_url || account.qr_code_url)}
                               alt="QR Code"
                               className="w-36 h-36 sm:w-44 sm:h-44 object-contain"
                             />
