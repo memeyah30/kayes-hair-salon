@@ -195,7 +195,7 @@ class DashboardController extends Controller
 
         // Appointment status summary
         $statusSummary = [
-            'booked' => $appointments->where('status', 'booked')->count(),
+            'booked' => $appointments->whereIn('status', ['booked', 'confirmed'])->count(),
             'completed' => $appointments->where('status', 'completed')->count(),
             'cancelled' => $appointments->where('status', 'cancelled')->count(),
         ];

@@ -276,53 +276,45 @@ const AdminAppointments = () => {
   const toManilaDate = (value) => formatManilaDate(value)
 
   useEffect(() => {
-    if (!location.search) {
-      setFilter('all')
-      setSearchTerm('')
-      setSearchDate('')
-      setSearchServiceId('')
-      setRangeFilter('')
-      return
-    }
-
-    setFilter('all')
-    setSearchTerm('')
-    setSearchDate('')
-    setSearchServiceId('')
-    setRangeFilter('')
-
     const params = new URLSearchParams(location.search)
     const statusParam = (params.get('status') || '').toLowerCase().trim()
-    const dateParam = params.get('date')
-    const range = params.get('range')
-    const serviceId = params.get('serviceId')
-    const query = params.get('q')
+    const dateParam = params.get('date') || ''
+    const rangeParam = params.get('range') || ''
+    const serviceIdParam = params.get('serviceId') || ''
+    const queryParam = params.get('q') || ''
 
+    let nextFilter = 'all'
     if (statusParam) {
-      if (statusParam === 'pending') {
-        setFilter('booked')
-        setStatusDateScope('month')
-      } else if (['all', 'booked', 'confirmed', 'completed', 'cancelled', 'missed'].includes(statusParam)) {
-        setFilter(statusParam)
-        if (statusParam === 'booked' || statusParam === 'completed') {
-          setStatusDateScope('month')
-        }
+      if (statusParam === 'pending' || statusParam === 'booked') {
+        nextFilter = 'booked'
+      } else if (['all', 'confirmed', 'completed', 'cancelled', 'missed'].includes(statusParam)) {
+        nextFilter = statusParam
       }
     }
 
-    if (serviceId) setSearchServiceId(serviceId)
-    if (query !== null) setSearchTerm(query)
+    let nextRangeFilter = ''
+    if (rangeParam) {
+      const normalizedRange = rangeParam.toLowerCase()
+      const allowedRanges = ['today', 'week', 'month']
+      if (allowedRanges.includes(normalizedRange)) {
+        nextRangeFilter = normalizedRange
+      }
+    }
+
+    setFilter(nextFilter)
+    setSearchTerm(queryParam)
+    setSearchServiceId(serviceIdParam)
+    
+    if (nextFilter === 'booked' || nextFilter === 'completed') {
+      setStatusDateScope('month')
+    }
 
     if (dateParam) {
       setSearchDate(dateParam)
       setRangeFilter('')
-    } else if (range) {
-      const normalizedRange = range.toLowerCase()
-      const allowedRanges = ['today', 'week', 'month']
-      setRangeFilter(allowedRanges.includes(normalizedRange) ? normalizedRange : '')
-      if (allowedRanges.includes(normalizedRange)) {
-        setSearchDate('')
-      }
+    } else {
+      setSearchDate('')
+      setRangeFilter(nextRangeFilter)
     }
   }, [location.search])
 

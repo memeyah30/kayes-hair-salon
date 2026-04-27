@@ -714,7 +714,7 @@ const AdminDashboard = () => {
             <h2 className="text-xl font-semibold text-[#2f2252]">Appointment Status Summary</h2>
             <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-3">
               <StatusSummaryCard
-                title="Booked"
+                title="Pending"
                 value={stats.status_summary.booked}
                 total={statusTotal}
                 accent="#df9a57"
