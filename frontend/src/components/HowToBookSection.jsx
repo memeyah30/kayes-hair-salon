@@ -171,7 +171,7 @@ const HowToBookSection = () => {
           />
 
           <motion.div
-            className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+            className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-3"
             variants={cardStagger}
             initial="hidden"
             whileInView="visible"
@@ -204,15 +204,15 @@ const HowToBookSection = () => {
                   transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut', delay: index * 0.22 }}
                 />
 
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-1 sm:gap-4">
                   <motion.span
-                    className="inline-flex rounded-full bg-[#f1ebff] px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-[#6c55c5]"
+                    className="inline-flex rounded-full bg-[#f1ebff] px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] text-[#6c55c5]"
                     whileHover={shouldReduceMotion ? undefined : { x: 2 }}
                   >
                     STEP {item.step}
                   </motion.span>
                   <motion.span
-                    className="flex h-7 w-7 md:h-8 md:w-8 shrink-0 items-center justify-center rounded-xl md:rounded-2xl bg-[linear-gradient(135deg,#785fff_0%,#5740d8_100%)] text-white shadow-[0_10px_18px_rgba(66,42,150,0.22)] transition duration-300 group-hover:shadow-[0_14px_24px_rgba(66,42,150,0.28)] [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:md:h-4.5 [&>svg]:md:w-4.5"
+                    className="flex h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl bg-[linear-gradient(135deg,#785fff_0%,#5740d8_100%)] text-white shadow-[0_10px_18px_rgba(66,42,150,0.22)] transition duration-300 group-hover:shadow-[0_14px_24px_rgba(66,42,150,0.28)] [&>svg]:h-3 [&>svg]:w-3 [&>svg]:sm:h-3.5 [&>svg]:sm:w-3.5 [&>svg]:md:h-4.5 [&>svg]:md:w-4.5"
                     animate={
                       shouldReduceMotion
                         ? undefined
@@ -235,10 +235,10 @@ const HowToBookSection = () => {
                   <div className="h-px flex-1 bg-gradient-to-r from-[#d9ccff] to-transparent" />
                 </div>
 
-                <h3 className="mt-2 md:mt-3 text-[0.95rem] md:text-[1.05rem] font-semibold leading-5 md:leading-6 text-[#2f245a]">
+                <h3 className="mt-2 md:mt-3 text-[0.8rem] sm:text-[0.95rem] md:text-[1.05rem] font-semibold leading-tight sm:leading-5 md:leading-6 text-[#2f245a]">
                   {item.title}
                 </h3>
-                <p className="mt-1 md:mt-1.5 text-xs md:text-[13px] leading-4 md:leading-5 text-[#70618f]">
+                <p className="mt-1 md:mt-1.5 text-[0.65rem] sm:text-xs md:text-[13px] leading-[1.1rem] sm:leading-4 md:leading-5 text-[#70618f]">
                   {item.description}
                 </p>
               </motion.article>
