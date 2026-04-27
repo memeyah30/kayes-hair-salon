@@ -427,7 +427,7 @@ const Services = () => {
             No services available for this selection.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
             {filteredServices.map((service) => {
               const cardPrice = resolveCardPrice(service)
               const serviceImage = service.image_url || service.image
@@ -436,7 +436,7 @@ const Services = () => {
                   key={service.id}
                   className="group flex flex-col h-full rounded-3xl border border-[#d8cbff] bg-white shadow-[0_12px_28px_rgba(70,45,130,0.12)] overflow-hidden transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_34px_rgba(70,45,130,0.2)]"
                 >
-                  <div className="w-full h-48 shrink-0 overflow-hidden relative">
+                  <div className="w-full h-32 sm:h-40 md:h-48 shrink-0 overflow-hidden relative">
                     {serviceImage ? (
                       <img
                         src={imageUrl(serviceImage)}
@@ -456,23 +456,25 @@ const Services = () => {
                     </div>
                   </div>
 
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className="text-xl font-semibold text-[#2f245a] truncate">{service.name}</h3>
-                    <div className="mt-4 min-h-[72px]">
-                      <p className="text-lg font-semibold text-[#453493]">{cardPrice.headline}</p>
-                      <div className="space-y-1 mt-1">
-                        {cardPrice.sublines.slice(0, 2).map((line) => (
-                          <p key={`${service.id}-${line}`} className="text-xs text-[#7b6ba8]">
-                            {line}
-                          </p>
-                        ))}
-                      </div>
+                  <div className="p-3 sm:p-4 md:p-6 flex flex-col flex-1">
+                    <h3 className="text-sm sm:text-base md:text-xl font-semibold text-[#2f245a] truncate">{service.name}</h3>
+                    <div className="mt-2 md:mt-4 min-h-[56px] md:min-h-[72px]">
+                      <p className="text-xs sm:text-sm md:text-lg font-semibold text-[#453493]">{cardPrice.headline}</p>
+                      {cardPrice.sublines.length > 0 && (
+                        <div className="space-y-1 mt-1">
+                          {cardPrice.sublines.map((line, idx) => (
+                            <p key={`${service.id}-${idx}`} className="text-[10px] sm:text-xs text-[#7b6ba8]">
+                              {line}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <button
                       type="button"
                       onClick={() => openOptions(service)}
-                      className="mt-auto tap-safe w-full rounded-xl bg-gradient-to-r from-[#6f5cff] to-[#4b3bd6] text-white font-semibold py-2.5 hover:from-[#7f6dff] hover:to-[#5b4ae1] transition"
+                      className="mt-auto tap-safe w-full rounded-lg md:rounded-xl bg-gradient-to-r from-[#6f5cff] to-[#4b3bd6] text-white text-xs sm:text-sm md:text-base font-semibold py-2 md:py-2.5 hover:from-[#7f6dff] hover:to-[#5b4ae1] transition"
                     >
                       {service._pricing.ctaLabel}
                     </button>
