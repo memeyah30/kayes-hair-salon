@@ -7,6 +7,7 @@ $defaultAllowedOrigins = [
     'http://127.0.0.1:8000',
     'http://localhost:8000',
     'https://tholits-system-capstone.vercel.app',
+    'https://kayes-hair-salon.vercel.app',
 ];
 
 $configuredAllowedOrigins = array_values(array_filter(array_map(
