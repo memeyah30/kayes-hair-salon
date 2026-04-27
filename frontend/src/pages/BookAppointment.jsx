@@ -1159,7 +1159,12 @@ const BookAppointment = () => {
       }
 
       if (data.is_complete && (advanceOnComplete || step === 1)) {
-        setStep(2)
+        // Skip service selection for reschedule flow
+        if (rescheduling || initialEntryAppointmentId) {
+          setStep(3)
+        } else {
+          setStep(2)
+        }
       }
 
       return true
@@ -1227,7 +1232,7 @@ const BookAppointment = () => {
   }, [shouldForceFreshVerificationEntry, rescheduling])
 
   useEffect(() => {
-    if (shouldForceFreshVerificationEntry || !initialAutoloadReturningEmail || rescheduling || customerLookupState !== 'loading_profile') {
+    if (shouldForceFreshVerificationEntry || !initialAutoloadReturningEmail || rescheduling || customerLookupState !== 'loading_profile' || initialEntryAppointmentId) {
       return
     }
 
@@ -1235,13 +1240,13 @@ const BookAppointment = () => {
       silent: true,
       advanceOnComplete: normalizeStepValue(draft?.step) > 1,
     })
-  }, [customerLookupState, draft?.step, initialAutoloadReturningEmail, rescheduling, shouldForceFreshVerificationEntry]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [customerLookupState, draft?.step, initialAutoloadReturningEmail, rescheduling, shouldForceFreshVerificationEntry, initialEntryAppointmentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (rescheduling) {
-      return
+    if (rescheduling && step === 2) {
+      setStep(3)
     }
-  }, [rescheduling])
+  }, [rescheduling, step])
 
 
   useEffect(() => {
@@ -2075,7 +2080,11 @@ const BookAppointment = () => {
       return
     }
 
-    setStep(2)
+    if (isRescheduleFlow) {
+      setStep(3)
+    } else {
+      setStep(2)
+    }
   }
 
   const handleBook = async () => {

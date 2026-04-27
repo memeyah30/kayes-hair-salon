@@ -56,7 +56,7 @@ A comprehensive appointment booking system for hair salon management with role-b
 
 2. **Create Database**:
    - Open `http://localhost/phpmyadmin`
-   - Create database: `tholits_salon`
+   - Create database: `kayes_hair_salon`
    - Collation: `utf8mb4_unicode_ci`
 
 3. **Backend Setup**:
@@ -121,7 +121,7 @@ npm run dev
 ## 📁 Project Structure
 
 ```
-THOLITS SALON/
+KAYES HAIR SALON/
 ├── backend/              # Laravel API
 │   ├── app/
 │   │   ├── Http/
@@ -175,5 +175,3 @@ For setup assistance, refer to:
 ---
 
 **Happy Coding! 🎉**
-
-
