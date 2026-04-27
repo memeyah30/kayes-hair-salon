@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
+import { resolveAssetUrl } from '../../utils/runtime'
 import AdminLayout from '../../components/AdminLayout'
 
 const ManagePaymentAccounts = () => {
@@ -97,7 +98,7 @@ const ManagePaymentAccounts = () => {
       instructions: account.instructions || '',
       is_active: account.is_active,
     })
-    setQrPreview(account.qr_code_full_url || account.qr_code_url || '')
+    setQrPreview(resolveAssetUrl(account.qr_code_full_url || account.qr_code_url) || '')
     setShowModal(true)
   }
 
@@ -237,7 +238,7 @@ const ManagePaymentAccounts = () => {
                       <span className="text-xs text-[#9b857a]">QR Code:</span>
                       <div className="mt-1">
                         <img
-                          src={account.qr_code_full_url || account.qr_code_url}
+                          src={resolveAssetUrl(account.qr_code_full_url || account.qr_code_url)}
                           alt="QR Code"
                           className="w-24 h-24 object-contain border rounded"
                         />
