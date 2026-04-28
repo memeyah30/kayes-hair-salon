@@ -145,12 +145,7 @@ const AdminCustomers = () => {
             </div>
           </div>
 
-          {loading ? (
-            <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] p-8 text-center">
-              <div className="text-lg text-[#8f7a6f]">Loading customer data...</div>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
           <div className="p-4 border-b">
             <h2 className="font-semibold mb-3">All Customers ({pagination.total})</h2>
@@ -165,7 +160,14 @@ const AdminCustomers = () => {
               }}
             />
           </div>
-          <div className="divide-y max-h-96 overflow-y-auto">
+          <div className="divide-y max-h-96 overflow-y-auto relative min-h-[200px]">
+            {loading && (
+              <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                <div className="text-sm text-[#8f7a6f] font-medium bg-white px-4 py-2 rounded-lg shadow-sm border border-[#eadfd5]">
+                  Loading data...
+                </div>
+              </div>
+            )}
             {customerList.length === 0 ? (
               <div className="p-8 text-center">
                 {!searchTerm.trim() ? (
@@ -415,8 +417,7 @@ const AdminCustomers = () => {
             </div>
           </div>
         )}
-            </div>
-          )}
+          </div>
       </div>
     </AdminLayout>
   )
