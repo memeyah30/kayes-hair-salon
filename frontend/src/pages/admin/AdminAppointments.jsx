@@ -646,12 +646,12 @@ const AdminAppointments = () => {
     }
 
     const aptDate = toManilaDate(getStart(apt))
-    if (hasScopedStatusDateFilter && scopedStatusDateWindow) {
+    if (rangeDates) {
+      if (!aptDate || aptDate < rangeDates.start || aptDate > rangeDates.end) return false
+    } else if (scopedStatusDateWindow) {
       if (!aptDate || aptDate < scopedStatusDateWindow.start || aptDate > scopedStatusDateWindow.end) return false
     } else if (searchDate) {
       if (aptDate !== searchDate) return false
-    } else if (rangeDates) {
-      if (!aptDate || aptDate < rangeDates.start || aptDate > rangeDates.end) return false
     }
 
       if (normalizedSearch) {
