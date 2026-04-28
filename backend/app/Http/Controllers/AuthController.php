@@ -53,51 +53,41 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|string', // Keep as string to allow non-email identifiers
+            'email' => 'required|string', // Identifier (Email or Username)
             'password' => 'required',
-            'type' => 'required|in:admin,manager,stylist',
         ]);
 
-        if ($request->type === 'stylist') {
-            return response()->json([
-                'message' => 'Staff login is no longer available.',
-            ], 403);
-        }
-
+        $identifier = $request->email;
         $user = null;
-        if ($request->type === 'admin') {
-            // Allow login with 'admin' username or email
-            // Support both 'admin' and 'admin@tholits.local' for backward compatibility
-            $email = $request->email;
-            if ($email === 'admin') {
-                // Try 'admin' first, then fallback to 'admin@tholits.local'
-                $user = Admin::where('email', 'admin')->first();
-                if (!$user) {
-                    $user = Admin::where('email', 'admin@tholits.local')->first();
-                    // If found with old email, update it to 'admin'
-                    if ($user) {
-                        $user->email = 'admin';
-                        $user->save();
-                    }
+        $type = null;
+
+        // 1. Try to find an Admin
+        if ($identifier === 'admin') {
+            $user = Admin::where('email', 'admin')->first();
+            if (!$user) {
+                $user = Admin::where('email', 'admin@tholits.local')->first();
+                if ($user) {
+                    $user->email = 'admin';
+                    $user->save();
                 }
-            } else {
-                $user = Admin::where('email', $email)->first();
             }
-        } elseif ($request->type === 'manager') {
-            // Managers login with username (stored in the "email" field of the request for UI compatibility)
-            $user = Manager::where('username', $request->email)->where('active', true)->first();
         } else {
-            // Stylists can login using email or phone (email is optional in the model)
-            $identifier = $request->email;
-            $user = Stylist::where('active', true)
-                ->where(function ($query) use ($identifier) {
-                    $query->where('email', $identifier)
-                        ->orWhere('phone', $identifier);
-                })
-                ->first();
+            $user = Admin::where('email', $identifier)->first();
         }
 
-        if (!$user || !PasswordHash::matches($request->password, $user->password)) {
+        if ($user && PasswordHash::matches($request->password, $user->password)) {
+            $type = 'admin';
+        } else {
+            // 2. If not an Admin, try to find a Manager
+            $user = Manager::where('username', $identifier)->where('active', true)->first();
+            if ($user && PasswordHash::matches($request->password, $user->password)) {
+                $type = 'manager';
+            } else {
+                $user = null; // Reset if password doesn't match
+            }
+        }
+
+        if (!$user) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
@@ -106,26 +96,17 @@ class AuthController extends Controller
         PasswordHash::upgradeIfNeeded($user, $request->password);
 
         // Use session-based authentication
-        // Determine the guard based on user type
-        $guard = match($request->type) {
-            'admin' => 'admin',
-            'manager' => 'manager',
-            'stylist' => 'stylist',
-            default => 'web',
-        };
+        $guard = $type;
 
-        // Login the user using the requested guard. Do not force-logout other
-        // guards so admin/manager/staff sessions can coexist in separate tabs.
         Auth::guard($guard)->login($user);
         $request->session()->put('active_guard', $guard);
-        $request->session()->put('active_user_type', $request->type);
+        $request->session()->put('active_user_type', $type);
         
-        // Regenerate session ID for security
         $request->session()->regenerate();
 
         return response()->json([
             'user' => $user,
-            'type' => $request->type,
+            'type' => $type,
             'message' => 'Logged in successfully',
         ]);
     }

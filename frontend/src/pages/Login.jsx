@@ -12,15 +12,7 @@ const SESSION_CONFIRMATION_DELAY_MS = 250
 const pause = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms)
 })
-
-const roleOptions = [
-  { value: 'admin', label: 'Owner' },
-  { value: 'manager', label: 'Manager' },
-]
-
-const Login = ({ userType: propUserType }) => {
-  const initialType = propUserType === 'manager' ? 'manager' : 'admin'
-  const [selectedType, setSelectedType] = useState(initialType)
+const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -134,7 +126,6 @@ const Login = ({ userType: propUserType }) => {
       const res = await api.post('/login', {
         email,
         password,
-        type: selectedType,
       })
       
       // Session-based auth - keep auth identity tab-scoped to avoid
@@ -190,13 +181,8 @@ const Login = ({ userType: propUserType }) => {
     }
   }
 
-  const loginLabel = selectedType === 'admin'
-    ? 'Username or Email'
-    : 'Username'
-
-  const loginPlaceholder = selectedType === 'admin'
-    ? 'admin'
-    : ''
+  const loginLabel = 'Username or Email'
+  const loginPlaceholder = 'admin'
 
   return (
     <motion.div
@@ -296,37 +282,7 @@ const Login = ({ userType: propUserType }) => {
                 </div>
               </motion.div>
 
-              <motion.div className="mt-8" variants={fadeUp}>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-[#7784aa]">Role</label>
-                <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#dde5f7] p-1.5">
-                  {roleOptions.map((role) => {
-                    const isSelected = selectedType === role.value
 
-                    return (
-                      <motion.button
-                        key={role.value}
-                        type="button"
-                        onClick={() => setSelectedType(role.value)}
-                        className={`tap-safe relative rounded-lg px-2 py-2 text-xs font-semibold sm:px-3 sm:text-sm ${
-                          isSelected
-                            ? 'text-[#5670ca]'
-                            : 'text-[#6f7ca3] hover:bg-white/80'
-                        }`}
-                        whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
-                      >
-                        {isSelected ? (
-                          <motion.span
-                            layoutId="login-role-pill"
-                            className="absolute inset-0 rounded-lg bg-white shadow-[0_10px_18px_rgba(91,115,199,0.18)]"
-                            transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-                          />
-                        ) : null}
-                        <span className="relative z-10">{role.label}</span>
-                      </motion.button>
-                    )
-                  })}
-                </div>
-              </motion.div>
 
               <motion.form onSubmit={handleSubmit} className="mt-6 space-y-4" variants={staggerChildren}>
                 <motion.div variants={fadeUp}>
