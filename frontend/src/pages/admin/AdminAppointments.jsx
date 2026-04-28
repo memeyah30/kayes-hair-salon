@@ -1380,84 +1380,48 @@ const AdminAppointments = () => {
                                 </button>
                               </>
                             )}
-                            <div className="relative apt-actions ml-auto">
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
                               <button
                                 type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  if (isProcessingAction) return
-                                  setOpenActionId(openActionId === apt.id ? null : apt.id)
-                                }}
-                                className={`tap-safe px-3 py-1.5 rounded-lg border text-xs font-medium ${
-                                  isProcessingAction
-                                    ? 'bg-gray-200 text-[#9b857a] border-gray-200 cursor-not-allowed'
-                                    : 'bg-white text-[#6f5b50] border-[#eadfd5] hover:bg-[#f4ebe4]'
-                                }`}
+                                onClick={() => setSelectedAppointment(apt)}
+                                className="tap-safe px-3 py-1.5 rounded-lg border border-[#eadfd5] text-[#6f5b50] hover:bg-[#f4ebe4] text-xs font-medium"
                               >
-                                More
+                                Details
                               </button>
-
-                              {openActionId === apt.id && (
-                                <div className="absolute right-0 mt-2 w-52 rounded-xl border border-[#eadfd5] bg-white shadow-[0_16px_32px_rgba(92,64,51,0.12)] p-2 z-20">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionId(null)
-                                      setSelectedAppointment(apt)
-                                    }}
-                                    className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-[#f4ebe4] text-[#6f5b50]"
-                                  >
-                                    View Details
-                                  </button>
-                                  {proofUrl && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenActionId(null)
-                                        openProofFile(proofUrl)
-                                      }}
-                                      className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-[#f4ebe4] text-[#6f5b50]"
-                                    >
-                                      View Proof
-                                    </button>
-                                  )}
-                                  {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenActionId(null)
-                                          handlePaymentStatus(apt.id, 'paid')
-                                        }}
-                                        className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-emerald-50 text-emerald-700"
-                                      >
-                                        Mark Paid
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenActionId(null)
-                                          handlePaymentStatus(apt.id, 'rejected')
-                                        }}
-                                        className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-red-50 text-red-700"
-                                      >
-                                        Reject
-                                      </button>
-                                    </>
-                                  )}
-                                  <div className="border-t border-[#f0e4dc] my-1" />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionId(null)
-                                      handleDelete(apt)
-                                    }}
-                                    className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-red-50 text-red-700"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
+                              {proofUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => openProofFile(proofUrl)}
+                                  className="tap-safe px-3 py-1.5 rounded-lg border border-[#eadfd5] text-[#6f5b50] hover:bg-[#f4ebe4] text-xs font-medium"
+                                >
+                                  Proof
+                                </button>
                               )}
+                              {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => !isProcessingAction && handlePaymentStatus(apt.id, 'paid')}
+                                    className="tap-safe px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100"
+                                  >
+                                    Mark Paid
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => !isProcessingAction && handlePaymentStatus(apt.id, 'rejected')}
+                                    className="tap-safe px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => !isProcessingAction && handleDelete(apt)}
+                                className="tap-safe px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100 ml-auto"
+                              >
+                                Delete
+                              </button>
                             </div>
                           </div>
                         </article>
@@ -1778,120 +1742,77 @@ const AdminAppointments = () => {
                       </td>
                       <td className="px-4 py-4">
                         <div
-                          className="relative apt-actions"
+                          className="flex flex-wrap items-center gap-2"
                           onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
                         >
+                          {proofUrl && (
+                            <button
+                              type="button"
+                              onClick={() => openProofFile(proofUrl)}
+                              className="tap-safe rounded-lg border border-[#7B5CF5] px-3 py-1.5 text-xs text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
+                              title="View Payment Proof"
+                            >
+                              Proof
+                            </button>
+                          )}
+                          {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
+                            <button
+                              type="button"
+                              onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
+                              disabled={isProcessingAction}
+                              className={`tap-safe rounded-lg px-3 py-1.5 text-xs font-medium transition ${!isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                            >
+                              {isProcessingAction && processingAppointmentId === apt.id ? 'Confirming...' : 'Confirm Booking'}
+                            </button>
+                          )}
+                          {normalizedStatus === 'confirmed' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => !isProcessingAction && handleRescheduleClick(apt)}
+                                disabled={isProcessingAction}
+                                className={`tap-safe rounded-lg border border-[#7B5CF5] px-3 py-1.5 text-xs text-[#7B5CF5] transition hover:bg-[#F6F2FF]`}
+                              >
+                                Reschedule
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
+                                disabled={isProcessingAction}
+                                className={`tap-safe rounded-lg px-3 py-1.5 text-xs font-medium transition ${!isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                              >
+                                {isProcessingAction && processingAppointmentId === apt.id ? 'Completing...' : 'Complete'}
+                              </button>
+                            </>
+                          )}
+                          {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => !isProcessingAction && handlePaymentStatus(apt.id, 'paid')}
+                                disabled={isProcessingAction}
+                                className={`tap-safe rounded-lg px-3 py-1.5 text-xs font-medium transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#DCFCE7] text-[#15803D] hover:bg-[#BBF7D0]'}`}
+                              >
+                                Mark Paid
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => !isProcessingAction && handlePaymentStatus(apt.id, 'rejected')}
+                                disabled={isProcessingAction}
+                                className={`tap-safe rounded-lg px-3 py-1.5 text-xs font-medium transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#FEE2E2] text-[#B91C1C] hover:bg-[#FECACA]'}`}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
                           <button
                             type="button"
-                            onClick={(event) => {
-                              if (isProcessingAction) return
-                              event.stopPropagation()
-                              setOpenActionId(openActionId === apt.id ? null : apt.id)
-                            }}
-                            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition ${isProcessingAction ? 'cursor-not-allowed border-[#E5E7EB] bg-[#E5E7EB] text-[#9CA3AF]' : 'border-[#7B5CF5] bg-white text-[#7B5CF5] hover:bg-[#F6F2FF]'}`}
-                            aria-haspopup="menu"
-                            aria-expanded={openActionId === apt.id}
+                            onClick={() => !isProcessingAction && handleDelete(apt)}
                             disabled={isProcessingAction}
+                            className={`tap-safe rounded-lg px-3 py-1.5 text-xs font-medium transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#EF4444] text-white hover:bg-[#DC2626]'}`}
                           >
-                            {isProcessingAction ? 'Updating...' : 'Actions'}
-                            <svg
-                              className={`h-4 w-4 transition ${openActionId === apt.id ? 'rotate-180' : ''}`}
-                              viewBox="0 0 20 20"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 8l5 5 5-5" />
-                            </svg>
+                            Delete
                           </button>
-                          {openActionId === apt.id && (
-                            <div className="absolute right-0 z-20 mt-2 w-56 rounded-[14px] border border-[#DDD6FE] bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
-                              {proofUrl && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionId(null)
-                                    openProofFile(proofUrl)
-                                  }}
-                                  className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
-                                >
-                                  View Proof
-                                </button>
-                              )}
-                              {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
-                                <button
-                                  onClick={() => {
-                                    if (isProcessingAction) return
-                                    setOpenActionId(null)
-                                    handleAction(apt.id, 'confirm')
-                                  }}
-                                  className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${!isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
-                                >
-                                  {isProcessingAction ? 'Confirming...' : 'Confirm Booking'}
-                                </button>
-                              )}
-                              {normalizedStatus === 'confirmed' && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      if (isProcessingAction) return
-                                      setOpenActionId(null)
-                                      handleRescheduleClick(apt)
-                                    }}
-                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${!isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
-                                  >
-                                    Reschedule
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (isProcessingAction) return
-                                      setOpenActionId(null)
-                                      handleAction(apt.id, 'complete')
-                                    }}
-                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${!isProcessingAction ? 'text-[#6846E8] hover:bg-[#F2EDFF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
-                                  >
-                                    {isProcessingAction ? 'Completing...' : 'Complete'}
-                                  </button>
-                                </>
-                              )}
-                              {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      if (isProcessingAction) return
-                                      setOpenActionId(null)
-                                      handlePaymentStatus(apt.id, 'paid')
-                                    }}
-                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#15803D] hover:bg-[#DCFCE7]'}`}
-                                  >
-                                    Mark Paid
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (isProcessingAction) return
-                                      setOpenActionId(null)
-                                      handlePaymentStatus(apt.id, 'rejected')
-                                    }}
-                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#B91C1C] hover:bg-[#FEE2E2]'}`}
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              <div className="my-1 border-t border-[#DDD6FE]" />
-                              <button
-                                onClick={() => {
-                                  if (isProcessingAction) return
-                                  setOpenActionId(null)
-                                  handleDelete(apt)
-                                }}
-                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#B91C1C] hover:bg-[#FEE2E2]'}`}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
                         </div>
                       </td>
                     </tr>
