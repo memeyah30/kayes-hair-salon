@@ -60,10 +60,7 @@ const SalesMonitoring = () => {
     to: 0,
   })
   const [dateRange, setDateRange] = useState(() => getDateRangeFromSearch(location.search, manilaToday))
-  const [filters, setFilters] = useState({
-    transaction_type: '',
-    stylist_id: '',
-  })
+  const [filters, setFilters] = useState({})
 
   useEffect(() => {
     const nextRange = getDateRangeFromSearch(location.search, manilaToday)
@@ -92,8 +89,7 @@ const SalesMonitoring = () => {
       const params = new URLSearchParams()
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
-      if (filters.transaction_type) params.append('transaction_type', filters.transaction_type)
-      if (filters.stylist_id) params.append('stylist_id', filters.stylist_id)
+
       params.append('paginate', '1')
       params.append('per_page', '10')
       params.append('page', String(page))
@@ -158,8 +154,7 @@ const SalesMonitoring = () => {
       const params = new URLSearchParams()
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
-      if (filters.transaction_type) params.append('transaction_type', filters.transaction_type)
-      if (filters.stylist_id) params.append('stylist_id', filters.stylist_id)
+
 
       const baseUrl = api.defaults.baseURL || ''
       const token = localStorage.getItem('token') || sessionStorage.getItem('token')
@@ -234,7 +229,7 @@ const SalesMonitoring = () => {
 
           {/* Filters */}
           <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Start Date</label>
                 <input
@@ -253,36 +248,12 @@ const SalesMonitoring = () => {
                   onChange={(e) => setDateRange({ ...dateRange, end_date: e.target.value })}
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Transaction Type</label>
-                <select
-                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
-                  value={filters.transaction_type}
-                  onChange={(e) => setFilters({ ...filters, transaction_type: e.target.value })}
-                >
-                  <option value="">All Types</option>
-                  <option value="service">Service</option>
-                  <option value="product">Product</option>
-                  <option value="both">Both</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Stylist</label>
-                <select
-                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
-                  value={filters.stylist_id}
-                  onChange={(e) => setFilters({ ...filters, stylist_id: e.target.value })}
-                >
-                  <option value="">All Stylists</option>
-                  {/* You can load stylists here if needed */}
-                </select>
-              </div>
             </div>
           </div>
 
           {/* Stats Cards */}
           {stats && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                 <div className="text-sm text-[#6B6B6B]">Total Sales</div>
                 <div className="text-2xl font-bold text-[#7B5CF5]">{currency(stats.total_sales_cents)}</div>
@@ -294,12 +265,6 @@ const SalesMonitoring = () => {
                 <div className="text-sm text-[#6B6B6B]">Service Sales</div>
                 <div className="text-2xl font-bold text-[#22C55E]">
                   {currency(stats.sales_by_type?.service || 0)}
-                </div>
-              </div>
-              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                <div className="text-sm text-[#6B6B6B]">Product Sales</div>
-                <div className="text-2xl font-bold text-[#3B82F6]">
-                  {currency(stats.sales_by_type?.product || 0)}
                 </div>
               </div>
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
@@ -364,19 +329,11 @@ const SalesMonitoring = () => {
                           <div className="font-medium text-[#2D2D2D]">{sale.item_name}</div>
                           <div className="mt-1 text-xs text-[#6B6B6B]">{formatDate(sale.created_at)}</div>
                         </div>
-                        <span className={`rounded-full px-2.5 py-1 text-xs ${
-                          sale.transaction_type === 'service' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                          sale.transaction_type === 'product' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                          'bg-[#EDE9FE] text-[#6D4DE6]'
-                        }`}>
-                          {sale.transaction_type}
-                        </span>
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-[#6B6B6B]">
                         <div>Qty: {sale.quantity}</div>
                         <div className="text-right">Unit: {currency(sale.unit_price_cents)}</div>
                         <div>Customer: {sale.customer_name || '-'}</div>
-                        <div className="text-right">Stylist: {sale.stylist?.name || '-'}</div>
                       </div>
                       <div className="mt-3 flex items-center justify-between">
                         <span className={`rounded-full px-2.5 py-1 text-xs ${
@@ -398,13 +355,11 @@ const SalesMonitoring = () => {
                       <tr className="border-b border-[#DDD6FE]">
                         <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Date</th>
                         <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Services</th>
-                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Type</th>
                         <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Quantity</th>
                         <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Unit Price</th>
                         <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Total</th>
                         <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Payment</th>
                         <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Customer</th>
-                       
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#DDD6FE]">
@@ -412,15 +367,6 @@ const SalesMonitoring = () => {
                         <tr key={sale.id} className="transition hover:bg-[#F6F2FF]">
                           <td className="p-3 text-sm text-[#2D2D2D]">{formatDate(sale.created_at)}</td>
                           <td className="p-3 text-[#2D2D2D]">{sale.item_name}</td>
-                          <td className="p-3">
-                            <span className={`rounded-full px-2.5 py-1 text-xs ${
-                              sale.transaction_type === 'service' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                              sale.transaction_type === 'product' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                              'bg-[#EDE9FE] text-[#6D4DE6]'
-                            }`}>
-                              {sale.transaction_type}
-                            </span>
-                          </td>
                           <td className="p-3 text-right text-[#2D2D2D]">{sale.quantity}</td>
                           <td className="p-3 text-right text-[#2D2D2D]">{currency(sale.unit_price_cents)}</td>
                           <td className="p-3 text-right font-bold text-[#7B5CF5]">{currency(sale.total_amount_cents)}</td>
@@ -434,7 +380,6 @@ const SalesMonitoring = () => {
                             </span>
                           </td>
                           <td className="p-3 text-sm text-[#2D2D2D]">{sale.customer_name || '-'}</td>
-                          <td className="p-3 text-sm text-[#2D2D2D]">{sale.stylist?.name || '-'}</td>
                         </tr>
                       ))}
                     </tbody>

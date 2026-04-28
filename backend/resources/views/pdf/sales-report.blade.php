@@ -124,9 +124,6 @@
         <div class="meta">
             Generated on: {{ $generated_at }}<br>
             Period: {{ $start_date }} to {{ $end_date }}
-            @if($stylist_name)
-                <br>Filtered by Stylist: {{ $stylist_name }}
-            @endif
         </div>
     </div>
 
@@ -161,7 +158,6 @@
             <tr>
                 <th>Date</th>
                 <th>Item / Service</th>
-                <th>Type</th>
                 <th>Qty</th>
                 <th class="text-right">Unit Price</th>
                 <th class="text-right">Total</th>
@@ -174,14 +170,6 @@
                     <td>{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Asia/Manila')->format('M d, Y h:i A') }}</td>
                     <td>
                         {{ $sale->item_name }}
-                        @if($sale->stylist)
-                            <div style="font-size: 9px; color: #6B6B6B;">Stylist: {{ $sale->stylist->name }}</div>
-                        @endif
-                    </td>
-                    <td>
-                        <span class="badge badge-{{ $sale->transaction_type }}">
-                            {{ $sale->transaction_type }}
-                        </span>
                     </td>
                     <td>{{ $sale->quantity }}</td>
                     <td class="text-right">PHP {{ number_format($sale->unit_price_cents / 100, 2) }}</td>
@@ -192,7 +180,7 @@
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td colspan="5" class="text-right">TOTAL REVENUE</td>
+                <td colspan="4" class="text-right">TOTAL REVENUE</td>
                 <td class="text-right">PHP {{ number_format($total_sales_cents / 100, 2) }}</td>
                 <td></td>
             </tr>
