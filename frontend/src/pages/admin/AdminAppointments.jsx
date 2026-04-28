@@ -387,14 +387,14 @@ const AdminAppointments = () => {
   }, [hasScopedStatusDateFilter, searchDate, statusDateScope])
 
   const tableDateWindow = useMemo(() => {
+    if (rangeDates) {
+      return rangeDates
+    }
     if (hasScopedStatusDateFilter && scopedStatusDateWindow) {
       return scopedStatusDateWindow
     }
     if (searchDate) {
       return { start: searchDate, end: searchDate }
-    }
-    if (rangeDates) {
-      return rangeDates
     }
     return null
   }, [hasScopedStatusDateFilter, scopedStatusDateWindow, searchDate, rangeDates])
