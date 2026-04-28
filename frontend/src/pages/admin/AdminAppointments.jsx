@@ -1038,6 +1038,7 @@ const AdminAppointments = () => {
                     setSearchDate(e.target.value)
                     setRangeFilter('')
                     if (e.target.value) {
+                      setStatusDateScope('day')
                       setSelectedDate(e.target.value)
                       const month = monthStartFromKey(e.target.value)
                       if (month) setCalendarMonth(month)
@@ -1059,6 +1060,7 @@ const AdminAppointments = () => {
                   onClick={() => {
                     setSearchDate(todayKey)
                     setRangeFilter('')
+                    setStatusDateScope('day')
                     setSelectedDate(todayKey)
                     setSelectedTimeSlot('')
                     const month = monthStartFromKey(todayKey)
