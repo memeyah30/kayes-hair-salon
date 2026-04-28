@@ -29,6 +29,37 @@ const formatNotificationTimestamp = (value) => {
   })
 }
 
+const playNotificationSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext
+    if (!AudioContext) return
+    const ctx = new AudioContext()
+    
+    const playTone = (freq, startTime, duration) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, startTime)
+      
+      gain.gain.setValueAtTime(0, startTime)
+      gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration)
+      
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(startTime)
+      osc.stop(startTime + duration)
+    }
+
+    const now = ctx.currentTime
+    playTone(880, now, 0.2)             // First ding (A5)
+    playTone(1108.73, now + 0.15, 0.4)  // Second higher ding (C#6)
+  } catch (err) {
+    console.error('Audio play failed:', err)
+  }
+}
+
 const NotificationsBell = ({ userType, isAdminTheme = true }) => {
   const navigate = useNavigate()
   const dropdownRef = useRef(null)
@@ -36,6 +67,7 @@ const NotificationsBell = ({ userType, isAdminTheme = true }) => {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const previousUnreadCountRef = useRef(0)
 
   const isManagementUser = userType === 'admin' || userType === 'manager'
 
@@ -59,8 +91,16 @@ const NotificationsBell = ({ userType, isAdminTheme = true }) => {
         const response = await api.get('/admin/notifications')
         if (!isMounted) return
 
+        const newUnreadCount = Number(response.data?.unread_count || 0)
+
+        // Play sound if there are new unread notifications and it's not the first load
+        if (hasLoadedOnce && newUnreadCount > previousUnreadCountRef.current) {
+          playNotificationSound()
+        }
+
+        previousUnreadCountRef.current = newUnreadCount
         setNotifications(response.data?.notifications || [])
-        setUnreadCount(Number(response.data?.unread_count || 0))
+        setUnreadCount(newUnreadCount)
         hasLoadedOnce = true
       } catch (error) {
         if (!isMounted) return

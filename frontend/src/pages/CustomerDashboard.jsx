@@ -358,18 +358,39 @@ const CustomerDashboard = () => {
     const isRescheduled = wasRescheduled(appointment)
     const rescheduledAtLabel = formatRescheduledAtLabel(appointment.rescheduled_at)
 
+    const isCreatedToday = (() => {
+      if (!appointment.created_at) return false
+      // Use Manila timezone for comparison
+      const createdDate = new Date(appointment.created_at).toLocaleDateString('en-US', { timeZone: 'Asia/Manila' })
+      const today = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Manila' })
+      return createdDate === today
+    })()
+
     const actionOptions = [
       appointment.can_reschedule
         ? {
             label: 'Reschedule',
-            onClick: () => openReschedule(appointment),
+            onClick: () => {
+              if (!isCreatedToday) {
+                toast.info('Rescheduling is only allowed on the day of booking.')
+                return
+              }
+              openReschedule(appointment)
+            },
+            disabled: !isCreatedToday,
           }
         : null,
       appointment.can_cancel
         ? {
             label: submittingCancelId === appointment.id ? 'Cancelling...' : 'Cancel',
-            onClick: () => handleCancel(appointment.id),
-            disabled: submittingCancelId === appointment.id,
+            onClick: () => {
+              if (!isCreatedToday) {
+                toast.info('Cancellation is only allowed on the day of booking.')
+                return
+              }
+              handleCancel(appointment.id)
+            },
+            disabled: submittingCancelId === appointment.id || !isCreatedToday,
             tone: 'danger',
           }
         : null,

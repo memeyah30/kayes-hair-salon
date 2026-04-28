@@ -559,6 +559,47 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
   )
 }
 
+const QRModal = ({ src, onClose }) => {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div className="relative max-w-2xl w-full bg-white rounded-2xl p-4 shadow-2xl animate-in zoom-in duration-200">
+        <button 
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white text-3xl font-bold hover:text-gray-300 transition"
+        >
+          &times;
+        </button>
+        <div className="flex flex-col items-center gap-4">
+          <img 
+            src={src} 
+            alt="Enlarged QR Code" 
+            className="w-full h-auto max-h-[75vh] object-contain rounded-lg"
+          />
+          <p className="text-[#2C1338] font-semibold text-lg">GCash QR Code</p>
+          <button 
+            onClick={onClose}
+            className="w-full bg-[#6d4de6] text-white font-bold py-3 rounded-xl hover:bg-[#5b3cc4] transition shadow-lg"
+          >
+            Close Preview
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => {
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
 
@@ -981,6 +1022,7 @@ const BookAppointment = () => {
     proofPreview: null,
   }))
   const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '', privacy: '' })
+  const [enlargedQR, setEnlargedQR] = useState(null)
   // Returning customers must verify their email before we reuse any saved profile data.
   const [customerLookupState, setCustomerLookupState] = useState(() => {
     if (canFastTrackCustomerDashboardBooking && (!draftBookingEmail || draftBookingEmail === initialManageBookingVerifiedEmail)) {
@@ -2203,9 +2245,8 @@ const BookAppointment = () => {
         if (normalizedPaymentType === 'full') {
           paymentAmountCents = totalAmountCents
         } else {
-          // Downpayment - use entered amount or default to 50%
-          paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.5)
-          const minDepositCents = Math.round(totalAmountCents * 0.5)
+          paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.2)
+          const minDepositCents = Math.round(totalAmountCents * 0.2)
           if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
             toast.warn(`Minimum GCash downpayment is ${currency(minDepositCents)}`)
             return
@@ -2213,12 +2254,12 @@ const BookAppointment = () => {
         }
       } else if (payment.method === 'on_hand') {
         if (!payment.amount) {
-          // Downpayment only - default to 50%
-          paymentAmountCents = Math.round(totalAmountCents * 0.5)
+          // Downpayment only - default to 20%
+          paymentAmountCents = Math.round(totalAmountCents * 0.2)
         } else {
           paymentAmountCents = Math.round(parseFloat(payment.amount) * 100)
         }
-        const minDepositCents = Math.round(totalAmountCents * 0.5)
+        const minDepositCents = Math.round(totalAmountCents * 0.2)
         if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
           toast.warn(`Minimum cash deposit is ${currency(minDepositCents)}`)
           return
@@ -3874,7 +3915,7 @@ const BookAppointment = () => {
         }, 0)
         const totalAmount = totalAmountCents / 100
         
-        const minDownpayment = totalAmount * 0.5
+        const minDownpayment = totalAmount * 0.2
         const parsedPaymentAmount = parseFloat(payment.amount)
         const selectedPaymentType = payment.method === 'online'
           ? (payment.paymentType === 'full' ? 'full' : 'downpayment')
@@ -3985,7 +4026,7 @@ const BookAppointment = () => {
                     className="sr-only"
                   />
                   <div className="font-semibold text-gray-900">Downpayment</div>
-                  <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.5))}</div>
+                  <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.2))}</div>
                 </label>
 
                 {payment.method === 'online' && (
@@ -4033,15 +4074,15 @@ const BookAppointment = () => {
                   if (value >= minDownpayment && value <= totalAmount) {
                     setPayment({ ...payment, amount: e.target.value })
                   } else if (value < minDownpayment) {
-                    toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.5))}`)
+                    toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.2))}`)
                   }
                 }}
-                placeholder={selectedPaymentType === 'full' ? currency(totalAmountCents) : `Minimum: ${currency(Math.round(totalAmountCents * 0.5))}`}
+                placeholder={selectedPaymentType === 'full' ? currency(totalAmountCents) : `Minimum: ${currency(Math.round(totalAmountCents * 0.2))}`}
               />
               <p className="text-xs text-[#9b857a] mt-1">
                 {selectedPaymentType === 'full'
                   ? <>Full payment selected | Remaining: {currency(0)}</>
-                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.5))} | Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}</>}
+                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.2))} | Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}</>}
               </p>
             </div>
 
@@ -4074,12 +4115,24 @@ const BookAppointment = () => {
                           )}
                         </div>
                         {resolveAssetUrl(account.qr_code_full_url || account.qr_code_url) && (
-                          <div className="flex-shrink-0 bg-white p-2.5 border-2 border-gray-100 rounded-2xl shadow-sm">
+                          <div 
+                            className="flex-shrink-0 bg-white p-2.5 border-2 border-gray-100 rounded-2xl shadow-sm cursor-zoom-in hover:border-[#6d4de6] transition group relative"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setEnlargedQR(resolveAssetUrl(account.qr_code_full_url || account.qr_code_url));
+                            }}
+                          >
                             <img
                               src={resolveAssetUrl(account.qr_code_full_url || account.qr_code_url)}
                               alt="QR Code"
-                              className="w-36 h-36 sm:w-44 sm:h-44 object-contain"
+                              className="w-36 h-36 sm:w-44 sm:h-44 object-contain group-hover:scale-[1.02] transition-transform"
                             />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 rounded-2xl">
+                              <span className="bg-white/90 px-3 py-1.5 rounded-lg text-xs font-bold text-[#6d4de6] shadow-sm">
+                                Click to enlarge
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -4169,7 +4222,7 @@ const BookAppointment = () => {
                   bookingInProgress ||
                   !payment.proofFile ||
                   (paymentAccounts.length > 0 && !payment.selectedAccount) ||
-                  (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.5)
+                  (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.2)
                 )}
                 className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
               >
@@ -4200,6 +4253,13 @@ const BookAppointment = () => {
             window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
             navigate('/customer', { replace: true })
           }} 
+        />
+      )}
+
+      {enlargedQR && (
+        <QRModal 
+          src={enlargedQR} 
+          onClose={() => setEnlargedQR(null)} 
         />
       )}
       </div>

@@ -7,7 +7,7 @@ use Carbon\Carbon;
 
 class MissedAppointmentService
 {
-    private const ACTIVE_STATUSES = ['booked', 'confirmed', 'pending'];
+    private const ACTIVE_STATUSES = ['pending'];
     private const MISSED_STATUS = 'missed';
     private const TIMEZONE = 'Asia/Manila';
 
@@ -17,9 +17,13 @@ class MissedAppointmentService
      */
     public function markOverdueAppointmentsAsMissed(): int
     {
+        // Get the start of today in Manila, then convert to UTC for database comparison.
+        // This ensures appointments are only marked as 'missed' once their scheduled day has ended.
+        $todayStartUtc = Carbon::today(self::TIMEZONE)->setTimezone('UTC');
+
         return Appointment::query()
             ->whereIn('status', self::ACTIVE_STATUSES)
-            ->where('start_datetime', '<', $this->nowUtc())
+            ->where('start_datetime', '<', $todayStartUtc)
             ->update([
                 'status' => self::MISSED_STATUS,
                 'updated_at' => now(),
@@ -54,7 +58,9 @@ class MissedAppointmentService
             return false;
         }
 
-        return Carbon::parse($rawStart, 'UTC')->lt($this->nowUtc());
+        // Check if the appointment day has ended in Manila timezone
+        $todayStartUtc = Carbon::today(self::TIMEZONE)->setTimezone('UTC');
+        return Carbon::parse($rawStart, 'UTC')->lt($todayStartUtc);
     }
 
     private function nowUtc(): Carbon
