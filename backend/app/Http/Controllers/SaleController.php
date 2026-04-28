@@ -6,8 +6,6 @@ use App\Http\Controllers\Concerns\InteractsWithPagination;
 use App\Models\Sale;
 use App\Models\Inventory;
 use App\Services\InventoryWorkflowService;
-use App\Models\Stylist;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -236,32 +234,5 @@ class SaleController extends Controller
             'top_selling_items' => $topItems,
             'daily_sales' => $dailySales,
         ]);
-    }
-
-    public function exportPdf(Request $request)
-    {
-        // Re-use stats logic to get summary data
-        $statsResponse = $this->stats($request);
-        $stats = json_decode($statsResponse->getContent(), true);
-
-        // Re-use index logic to get sales list (without pagination)
-        $request->merge(['paginate' => '0']); // Disable pagination for PDF
-        $sales = $this->index($request);
-
-        $filters = [
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'transaction_type' => $request->transaction_type,
-            'stylist_name' => $request->stylist_id ? (Stylist::find($request->stylist_id)?->name) : null,
-        ];
-
-        $pdf = Pdf::loadView('pdf.sales-report', [
-            'sales' => $sales,
-            'stats' => $stats,
-            'filters' => $filters,
-            'generated_at' => Carbon::now('Asia/Manila')->format('M d, Y h:i A'),
-        ]);
-
-        return $pdf->download('sales-report-' . date('Y-m-d') . '.pdf');
     }
 }

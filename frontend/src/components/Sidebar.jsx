@@ -1,111 +1,397 @@
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import api from '../utils/api'
+import { NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 
-const Sidebar = ({ userType = 'admin', onLogout }) => {
-  const location = useLocation()
-  const navigate = useNavigate()
+const SIDEBAR_STATE_KEY = 'dashboard_sidebar_open'
+const DESKTOP_SIDEBAR_QUERY = '(min-width: 1024px)'
+
+const getInitialSidebarState = () => {
+  if (typeof window === 'undefined') return false
+
+  const storedState = window.sessionStorage.getItem(SIDEBAR_STATE_KEY)
+  if (storedState !== 'true') return false
+
+  return window.matchMedia(DESKTOP_SIDEBAR_QUERY).matches
+}
+
+const isDesktopViewport = () => (
+  typeof window !== 'undefined' && window.matchMedia(DESKTOP_SIDEBAR_QUERY).matches
+)
+
+const Sidebar = ({ userType = 'customer', onLogout }) => {
+  const [isOpen, setIsOpen] = useState(getInitialSidebarState)
   const [showInventoryModal, setShowInventoryModal] = useState(false)
 
-  const menuItems = {
-    admin: [
-      { path: '/admin/dashboard', label: 'Dashboard', icon: 'M4 6h16M4 12h16M4 18h16' },
-      { path: '/admin/appointments', label: 'Appointments', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-      { path: '/admin/customers', label: 'Customers', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-      { path: '/admin/sales', label: 'Sales Monitoring', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-      { path: '/admin/staff', label: 'Staff Management', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-      { path: '/admin/inventory', label: 'Inventory', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-      { path: '/admin/holidays', label: 'Holidays', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-      { path: '/admin/payment-accounts', label: 'Payment Accounts', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
-      { path: '/admin/ratings', label: 'Ratings', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
-    ],
-    manager: [
-      { path: '/manager/dashboard', label: 'Dashboard', icon: 'M4 6h16M4 12h16M4 18h16' },
-      { path: '/manager/appointments', label: 'Appointments', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-      { path: '/manager/customers', label: 'Customers', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-      { path: '/manager/staff', label: 'Staff Management', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-      { path: '/manager/inventory', label: 'Inventory', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-      { path: '/manager/holidays', label: 'Holidays', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-    ],
-    stylist: [
-      { path: '/stylist/dashboard', label: 'Dashboard', icon: 'M4 6h16M4 12h16M4 18h16' },
-      { path: '/stylist/appointments', label: 'Assigned Appointments', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-      { path: '/stylist/ratings', label: 'My Ratings', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
-    ]
+  const adminLinks = [
+    { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { to: '/admin/customers', label: 'Customers', icon: 'customers' },
+    { to: '/admin/manage/services', label: 'Services', icon: 'services' },
+    { to: '/admin/manage/stylists', label: 'Staff Profiles', icon: 'staff' },
+    { to: '/admin/staff/pending', label: 'Approvals', icon: 'staff-add' },
+    { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
+    { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
+    { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },
+    { to: '/admin/payment-accounts', label: 'Payments', icon: 'payments' },
+    { to: '/admin/sales', label: 'Reports', icon: 'reports' },
+  ]
+
+  const managerLinks = [
+    { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { to: '/manager/staff/add', label: 'Add Staff', icon: 'staff' },
+    { to: '/manager/staff/requests', label: 'Staff Requests', icon: 'reviews' },
+    { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
+    { to: '/admin/customers', label: 'Customers', icon: 'customers' },
+    { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
+    { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },
+  ]
+
+  const customerLinks = [
+    { to: '/customer', label: 'Dashboard', icon: 'dashboard' },
+    { to: '/book?fresh=1&source=customer-dashboard', label: 'Book Appointment', icon: 'appointments' },
+    { to: '/manage-booking/start', label: 'Manage Booking', icon: 'calendar' },
+    { to: '/services', label: 'Services', icon: 'services' },
+  ]
+
+  const links = userType === 'admin'
+    ? adminLinks
+    : userType === 'manager'
+      ? managerLinks
+      : customerLinks
+
+  const isAdminTheme = true
+
+  const renderIcon = (name) => {
+    const base = 'h-5 w-5'
+    switch (name) {
+      case 'dashboard':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h7V4H4v8Zm9 8h7V4h-7v16Zm-9 0h7v-6H4v6Z" />
+          </svg>
+        )
+      case 'customers':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 14a4 4 0 1 0-8 0v1a5 5 0 0 0 5 5h6" />
+            <circle cx="10" cy="8" r="3" />
+          </svg>
+        )
+      case 'services':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10v10H7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h4M17 7h4M3 17h4M17 17h4" />
+          </svg>
+        )
+      case 'staff':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <circle cx="8" cy="8" r="3" />
+            <circle cx="16" cy="10" r="2.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 18c0-2.2 1.8-4 4-4h1c2.2 0 4 1.8 4 4" />
+          </svg>
+        )
+      case 'staff-add':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <circle cx="8" cy="8" r="3" />
+            <circle cx="16" cy="10" r="2.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 18c0-2.2 1.8-4 4-4h1c2.2 0 4 1.8 4 4" />
+            <circle cx="18.25" cy="5.75" r="4" fill="white" stroke="currentColor" strokeWidth="1.1" />
+            <path strokeLinecap="round" strokeLinejoin="round" stroke="#5f3eb4" strokeWidth="2.2" d="M18.25 3.7v4.1M16.2 5.75h4.1" />
+          </svg>
+        )
+      case 'appointments':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <rect x="4" y="5" width="16" height="15" rx="2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 3v4M16 3v4M7 11h10M7 15h6" />
+          </svg>
+        )
+      case 'reviews':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4l2.2 4.5 5 .7-3.6 3.4.9 5-4.5-2.4-4.5 2.4.9-5L4.8 9.2l5-.7L12 4Z" />
+          </svg>
+        )
+      case 'calendar':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <rect x="3" y="4" width="18" height="17" rx="2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v4M16 2v4M3 9h18" />
+          </svg>
+        )
+      case 'payments':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <rect x="3" y="6" width="18" height="12" rx="2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 14h4" />
+          </svg>
+        )
+      case 'inventory':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
+          </svg>
+        )
+      case 'reports':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5M9 19V9M14 19V12M19 19V7" />
+          </svg>
+        )
+      case 'managers':
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <circle cx="12" cy="7" r="3" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" />
+          </svg>
+        )
+      default:
+        return (
+          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <circle cx="12" cy="12" r="4" />
+          </svg>
+        )
+    }
   }
 
-  const items = menuItems[userType] || []
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
 
-  const handleLogout = async () => {
-    try {
-      await api.post('/logout')
-      localStorage.clear()
-      sessionStorage.clear()
-      navigate('/login')
-    } catch (e) {
-      console.error('Logout failed:', e)
-      localStorage.clear()
-      sessionStorage.clear()
-      navigate('/login')
+    const toggle = () => setIsOpen((prev) => !prev)
+    const open = () => setIsOpen(true)
+    const close = () => setIsOpen(false)
+
+    window.addEventListener('sidebar:toggle', toggle)
+    window.addEventListener('sidebar:open', open)
+    window.addEventListener('sidebar:close', close)
+
+    return () => {
+      window.removeEventListener('sidebar:toggle', toggle)
+      window.removeEventListener('sidebar:open', open)
+      window.removeEventListener('sidebar:close', close)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.sessionStorage.setItem(SIDEBAR_STATE_KEY, String(isOpen))
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || isDesktopViewport()) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isOpen])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const mediaQuery = window.matchMedia(DESKTOP_SIDEBAR_QUERY)
+    const handleViewportChange = (event) => {
+      if (!event.matches) {
+        setIsOpen(false)
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleViewportChange)
+    return () => mediaQuery.removeEventListener('change', handleViewportChange)
+  }, [])
+
+  const handleSidebarLinkClick = (event, link, shouldCloseMenu = false) => {
+    const shouldCloseSidebar = shouldCloseMenu && !isDesktopViewport()
+
+    if (link.comingSoon) {
+      event.preventDefault()
+      event.stopPropagation()
+      if (shouldCloseSidebar) {
+        setIsOpen(false)
+      }
+      setShowInventoryModal(true)
+      return
+    }
+
+    if (shouldCloseSidebar) {
+      setIsOpen(false)
     }
   }
 
   return (
     <>
-      <aside className="fixed left-0 top-0 h-full w-64 border-r border-[#DDD6FE] bg-white pt-20 hidden lg:block">
-        <nav className="space-y-1 px-4">
-          {items.map((item) => {
-            const isActive = location.pathname === item.path
-            if (item.label === 'Inventory') {
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => setShowInventoryModal(true)}
-                  className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#6B6B6B] transition hover:bg-[#F2EDFF] hover:text-[#7B5CF5]"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
-                  </svg>
-                  {item.label}
-                </button>
-              )
-            }
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
-                  isActive
-                    ? 'bg-[#7B5CF5] text-white shadow-[0_8px_20px_rgba(123,92,245,0.24)]'
-                    : 'text-[#6B6B6B] hover:bg-[#F2EDFF] hover:text-[#7B5CF5]'
-                }`}
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
-                </svg>
-                {item.label}
-              </Link>
-            )
-          })}
+      {/* On desktop the layout keeps space for either the full drawer or the icon-only rail. */}
+      <div
+        aria-hidden="true"
+        className={`hidden lg:block shrink-0 transition-[width] duration-300 ease-out ${
+          isOpen ? 'w-[var(--dashboard-sidebar-width)]' : 'w-[var(--dashboard-sidebar-collapsed-width)]'
+        }`}
+      />
+
+      {/* This top filler keeps the header and sidebar visually aligned on desktop. */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none fixed left-0 top-0 z-20 hidden border-b border-white/10 bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] shadow-[0_14px_34px_rgba(35,12,88,0.14)] transition-[width] duration-300 ease-out lg:block ${
+          isOpen ? 'w-[var(--dashboard-sidebar-width)]' : 'w-[var(--dashboard-sidebar-collapsed-width)]'
+        }`}
+        style={{ height: 'var(--dashboard-navbar-height)' }}
+      />
+
+      {/* Closed desktop state keeps a slim rail so feature icons stay visible without covering content. */}
+      <aside
+        aria-hidden={isOpen ? 'true' : undefined}
+        className={`hidden lg:flex fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100dvh-var(--dashboard-navbar-height))] pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center overflow-hidden overscroll-contain px-2 py-4 transition-[opacity,transform] duration-300 ease-out xl:py-5 ${
+          isOpen ? 'pointer-events-none -translate-x-3 opacity-0' : 'translate-x-0 opacity-100'
+        } ${
+          isAdminTheme
+            ? 'bg-gradient-to-b from-[#5f3eb4] via-[#5635aa] to-[#472a90] text-white border-r border-white/10 shadow-[18px_0_38px_rgba(28,10,72,0.18)]'
+            : 'bg-slate-900 text-white shadow-[18px_0_38px_rgba(15,23,42,0.18)]'
+        }`}
+      >
+        <nav className="flex w-full flex-1 overflow-y-auto flex-col items-center gap-2 pt-1 xl:gap-2.5 no-scrollbar">
+          {links.map((link) => (
+            <NavLink
+              key={`${link.to}-collapsed`}
+              to={link.to}
+              title={link.label}
+              aria-label={link.label}
+              aria-disabled={link.comingSoon ? 'true' : undefined}
+              className={({ isActive }) => (
+                `flex h-10 w-10 items-center justify-center rounded-2xl transition xl:h-11 xl:w-11 ${
+                  link.comingSoon
+                    ? 'text-white/70 hover:bg-white/10 hover:text-white/85 opacity-65'
+                    : isActive
+                      ? 'bg-white text-[#5437a9] shadow-[0_14px_30px_rgba(26,9,67,0.24)]'
+                      : 'text-white hover:bg-white/16 hover:text-white'
+                }`
+              )}
+              onClick={(event) => handleSidebarLinkClick(event, link)}
+            >
+              {renderIcon(link.icon)}
+            </NavLink>
+          ))}
         </nav>
 
-        <div className="absolute bottom-8 w-full px-4">
-          <button
-            onClick={onLogout || handleLogout}
-            className="flex w-full items-center gap-3 rounded-xl bg-[#F6F2FF] px-4 py-3 text-sm font-semibold text-[#7B5CF5] transition hover:bg-[#EF4444] hover:text-white"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Logout
-          </button>
-        </div>
+        {(userType === 'admin' || userType === 'manager' || userType === 'owner') && onLogout && (
+          <div className="pb-2 pt-3 xl:pb-4">
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Logout"
+              aria-label="Logout"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#d96c82] text-white transition hover:bg-[#c85f74] shadow-[0_12px_24px_rgba(44,12,80,0.18)] xl:h-11 xl:w-11"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17l5-5-5-5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H9" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </aside>
+
+      <div className={`fixed inset-x-0 bottom-0 top-[var(--dashboard-navbar-height)] z-20 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}>
+        <div
+          className={`absolute inset-0 ${
+            isAdminTheme ? 'bg-[#120628]/52' : 'bg-black/40'
+          }`}
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      </div>
+
+      <aside
+        id="dashboard-sidebar"
+        className={`fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100dvh-var(--dashboard-navbar-height))] pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col overflow-hidden transform transition-[transform,box-shadow] duration-300 ease-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${
+          isAdminTheme
+            ? 'bg-gradient-to-b from-[#5f3eb4] via-[#5635aa] to-[#472a90] text-white border-r border-white/10 shadow-[18px_0_38px_rgba(28,10,72,0.28)]'
+            : 'bg-slate-900 text-white shadow-[18px_0_38px_rgba(15,23,42,0.28)]'
+        }`}
+        role="dialog"
+        aria-modal={!isDesktopViewport()}
+      >
+        <nav className="flex-1 overflow-y-auto space-y-1.5 px-3 py-4 text-sm md:px-4 md:py-4">
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              aria-disabled={link.comingSoon ? 'true' : undefined}
+              className={({ isActive }) => (
+                `flex items-center gap-3 rounded-xl px-3 py-2 transition ${
+                  link.comingSoon
+                    ? 'text-white/70 hover:bg-white/10 hover:text-white/85 opacity-65'
+                    : isActive
+                      ? 'bg-white text-[#5437a9] shadow-[0_14px_30px_rgba(26,9,67,0.24)]'
+                      : 'text-white hover:bg-white/16 hover:text-white'
+                }`
+              )}
+              onClick={(event) => handleSidebarLinkClick(event, link, true)}
+            >
+              <span
+                className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                  isAdminTheme
+                    ? 'bg-white/12 border border-white/20'
+                    : 'bg-slate-800 text-white'
+                }`}
+              >
+                {renderIcon(link.icon)}
+              </span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="font-medium">{link.label}</span>
+                {link.comingSoon && (
+                  <span className="rounded-full border border-white/35 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/90">
+                    Coming Soon
+                  </span>
+                )}
+              </div>
+            </NavLink>
+          ))}
+        </nav>
+
+        {(userType === 'admin' || userType === 'manager' || userType === 'owner') && onLogout && (
+          <div className={`border-t px-4 py-3 md:px-5 md:py-3 ${isAdminTheme ? 'border-white/10' : 'border-slate-800'}`}>
+            <button
+              onClick={() => {
+                setIsOpen(false)
+                onLogout()
+              }}
+              className={`w-full px-3 py-2 rounded text-sm ${
+                isAdminTheme
+                  ? 'bg-[#d96c82] hover:bg-[#c85f74] text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </aside>
 
       {showInventoryModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-[#120628]/55"
+            onClick={() => setShowInventoryModal(false)}
             aria-hidden="true"
           />
           <div

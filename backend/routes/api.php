@@ -162,7 +162,6 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     // Sales management
     Route::get('/sales', [SaleController::class, 'index']);
     Route::get('/sales/stats', [SaleController::class, 'stats']);
-    Route::get('/sales/export-pdf', [SaleController::class, 'exportPdf']);
     Route::post('/sales', [SaleController::class, 'store']);
     Route::get('/sales/{sale}', [SaleController::class, 'show']);
     Route::patch('/sales/{sale}', [SaleController::class, 'update']);
