@@ -62,6 +62,8 @@ const SalesMonitoring = () => {
   const [dateRange, setDateRange] = useState(() => getDateRangeFromSearch(location.search, manilaToday))
   const [filters, setFilters] = useState({
     payment_method: '',
+    payment_status: '',
+    appointment_status: '',
     q: '',
   })
 
@@ -93,6 +95,8 @@ const SalesMonitoring = () => {
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
       if (filters.payment_method) params.append('payment_method', filters.payment_method)
+      if (filters.payment_status) params.append('payment_status', filters.payment_status)
+      if (filters.appointment_status) params.append('appointment_status', filters.appointment_status)
       if (filters.q) params.append('q', filters.q)
       params.append('paginate', '1')
       params.append('per_page', '10')
@@ -138,7 +142,7 @@ const SalesMonitoring = () => {
     }
   }
 
-  const currency = (cents) => `PHP ${(cents / 100).toFixed(2)}`
+  const currency = (cents) => `₱${(cents / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -159,6 +163,8 @@ const SalesMonitoring = () => {
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
       if (filters.payment_method) params.append('payment_method', filters.payment_method)
+      if (filters.payment_status) params.append('payment_status', filters.payment_status)
+      if (filters.appointment_status) params.append('appointment_status', filters.appointment_status)
       if (filters.q) params.append('q', filters.q)
       const baseUrl = api.defaults.baseURL || ''
       const token = localStorage.getItem('token') || sessionStorage.getItem('token')
@@ -233,7 +239,7 @@ const SalesMonitoring = () => {
 
           {/* Filters */}
           <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid md:grid-cols-3 xl:grid-cols-6 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Start Date</label>
                 <input
@@ -267,10 +273,39 @@ const SalesMonitoring = () => {
                 </select>
               </div>
               <div>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Payment Status</label>
+                <select
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
+                  value={filters.payment_status}
+                  onChange={(e) => setFilters({ ...filters, payment_status: e.target.value })}
+                >
+                  <option value="">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                  <option value="paid">Paid</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Appt. Status</label>
+                <select
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
+                  value={filters.appointment_status}
+                  onChange={(e) => setFilters({ ...filters, appointment_status: e.target.value })}
+                >
+                  <option value="">All Status</option>
+                  <option value="booked">Booked</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="missed">Missed</option>
+                </select>
+              </div>
+              <div>
                 <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Search</label>
                 <input
                   type="text"
-                  placeholder="Customer or service..."
+                  placeholder="ID or Customer..."
                   className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                   value={filters.q}
                   onChange={(e) => setFilters({ ...filters, q: e.target.value })}
@@ -281,25 +316,38 @@ const SalesMonitoring = () => {
 
           {/* Stats Cards */}
           {stats && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                <div className="text-sm text-[#6B6B6B]">Total Sales</div>
-                <div className="text-2xl font-bold text-[#7B5CF5]">{currency(stats.total_sales_cents)}</div>
-                <div className="mt-1 text-xs text-[#6B6B6B]">
-                  {stats.period.start_date} to {stats.period.end_date}
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Total Sales</div>
+                <div className="text-xl font-bold text-[#7B5CF5]">{currency(stats.total_sales_cents)}</div>
               </div>
-              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                <div className="text-sm text-[#6B6B6B]">Service Sales</div>
-                <div className="text-2xl font-bold text-[#22C55E]">
-                  {currency(stats.sales_by_type?.service || 0)}
-                </div>
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Total Collected</div>
+                <div className="text-xl font-bold text-[#22C55E]">{currency(stats.appointments_summary?.total_collected_cents || 0)}</div>
               </div>
-              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                <div className="text-sm text-[#6B6B6B]">Cash Payments</div>
-                <div className="text-2xl font-bold text-[#F59E0B]">
-                  {currency(stats.sales_by_payment_method?.cash || 0)}
-                </div>
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Remaining Balance</div>
+                <div className="text-xl font-bold text-[#F59E0B]">{currency(stats.appointments_summary?.total_remaining_balance_cents || 0)}</div>
+              </div>
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Completed</div>
+                <div className="text-xl font-bold text-[#10B981]">{stats.appointments_summary?.count_completed || 0}</div>
+              </div>
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Downpayments</div>
+                <div className="text-xl font-bold text-[#6366F1]">{currency(stats.appointments_summary?.total_downpayment_cents || 0)}</div>
+              </div>
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Full Payments</div>
+                <div className="text-xl font-bold text-[#8B5CF6]">{currency(stats.appointments_summary?.total_full_payment_cents || 0)}</div>
+              </div>
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Cancelled</div>
+                <div className="text-xl font-bold text-[#EF4444]">{stats.appointments_summary?.count_cancelled || 0}</div>
+              </div>
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Missed</div>
+                <div className="text-xl font-bold text-[#6B7280]">{stats.appointments_summary?.count_missed || 0}</div>
               </div>
             </div>
           )}
@@ -350,64 +398,109 @@ const SalesMonitoring = () => {
             ) : (
               <>
                 <div className="md:hidden space-y-3">
-                  {sales.map((sale) => (
-                    <div key={sale.id} className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
-                      <div className="flex items-start justify-between gap-2">
+                    <div key={sale.id} className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-4 shadow-sm">
+                      <div className="flex items-start justify-between border-b border-[#F0EDFF] pb-2 mb-2">
                         <div>
-                          <div className="font-medium text-[#2D2D2D]">{sale.item_name}</div>
-                          <div className="mt-1 text-xs text-[#6B6B6B]">{formatDate(sale.created_at)}</div>
+                          <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Sales ID: #{sale.id}</div>
+                          <div className="text-sm font-bold text-[#2D2D2D]">{sale.customer_name}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] text-[#6B6B6B]">Booking ID</div>
+                          <div className="text-xs font-bold text-[#2D2D2D]">#{sale.appointment_id}</div>
                         </div>
                       </div>
-                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-[#6B6B6B]">
-                        <div>Qty: {sale.quantity}</div>
-                        <div className="text-right">Unit: {currency(sale.unit_price_cents)}</div>
-                        <div>Customer: {sale.customer_name || '-'}</div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className={`rounded-full px-2.5 py-1 text-xs ${
-                          sale.payment_method === 'cash' ? 'bg-[#FEF3C7] text-[#B45309]' :
-                          sale.payment_method === 'gcash' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                          'bg-[#DCFCE7] text-[#15803D]'
-                        }`}>
-                          {sale.payment_method}
-                        </span>
-                        <span className="text-base font-semibold text-[#7B5CF5]">{currency(sale.total_amount_cents)}</span>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B6B6B]">Date:</span>
+                          <span className="font-medium">{formatDate(sale.created_at)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B6B6B]">Services:</span>
+                          <span className="font-medium text-right ml-4">{sale.item_name}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B6B6B]">Payment Method:</span>
+                          <span className="uppercase font-bold text-[#7B5CF5]">{sale.payment_method}</span>
+                        </div>
+                        <div className="flex justify-between text-sm pt-1 border-t border-[#F0EDFF]">
+                          <span className="font-bold">Total:</span>
+                          <span className="font-bold text-[#7B5CF5]">{currency(sale.total_amount_cents)}</span>
+                        </div>
                       </div>
                     </div>
-                  ))}
                 </div>
 
                 <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[640px]">
                     <thead className="bg-[#F2EDFF]">
                       <tr className="border-b border-[#DDD6FE]">
-                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Date</th>
-                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Services</th>
-                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Quantity</th>
-                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Unit Price</th>
-                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Total</th>
-                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Payment</th>
-                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Customer</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Sales ID</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Booking ID</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Customer</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Services</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Date</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Type</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Method</th>
+                        <th className="p-3 text-right text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Total</th>
+                        <th className="p-3 text-right text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Paid</th>
+                        <th className="p-3 text-right text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Balance</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">P. Status</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">A. Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#DDD6FE]">
                       {sales.map(sale => (
-                        <tr key={sale.id} className="transition hover:bg-[#F6F2FF]">
-                          <td className="p-3 text-sm text-[#2D2D2D]">{formatDate(sale.created_at)}</td>
-                          <td className="p-3 text-[#2D2D2D]">{sale.item_name}</td>
-                          <td className="p-3 text-right text-[#2D2D2D]">{sale.quantity}</td>
-                          <td className="p-3 text-right text-[#2D2D2D]">{currency(sale.unit_price_cents)}</td>
-                          <td className="p-3 text-right font-bold text-[#7B5CF5]">{currency(sale.total_amount_cents)}</td>
+                        <tr key={sale.id} className="transition hover:bg-[#F6F2FF] text-xs">
+                          <td className="p-3 text-[#7B5CF5] font-bold">#{sale.id}</td>
+                          <td className="p-3 font-medium">#{sale.appointment_id}</td>
+                          <td className="p-3 font-semibold text-[#2D2D2D]">{sale.customer_name}</td>
                           <td className="p-3">
-                            <span className={`rounded-full px-2.5 py-1 text-xs ${
-                              sale.payment_method === 'cash' ? 'bg-[#FEF3C7] text-[#B45309]' :
-                              sale.payment_method === 'gcash' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                              'bg-[#DCFCE7] text-[#15803D]'
-                            }`}>
+                            <div className="max-w-[150px] truncate" title={sale.item_name}>
+                              {sale.item_name}
+                            </div>
+                          </td>
+                          <td className="p-3 text-[#6B6B6B]">
+                            {sale.appointment ? formatDate(sale.appointment.start_datetime_pht || sale.appointment.start_datetime) : formatDate(sale.created_at)}
+                          </td>
+                          <td className="p-3">
+                            <span className="uppercase text-[10px] font-bold text-[#6B6B6B]">
+                              {sale.appointment?.mode_of_payment || 'Full'}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span className="uppercase text-[10px] font-bold text-[#7B5CF5]">
                               {sale.payment_method}
                             </span>
                           </td>
-                          <td className="p-3 text-sm text-[#2D2D2D]">{sale.customer_name || '-'}</td>
+                          <td className="p-3 text-right font-bold text-[#2D2D2D]">{currency(sale.total_amount_cents)}</td>
+                          <td className="p-3 text-right text-[#10B981] font-bold">
+                            {sale.appointment ? currency(sale.appointment.amount_paid_cents) : currency(sale.total_amount_cents)}
+                          </td>
+                          <td className="p-3 text-right text-[#F59E0B] font-bold">
+                            {sale.appointment ? currency(sale.appointment.remaining_balance_cents) : '₱0.00'}
+                          </td>
+                          <td className="p-3">
+                             <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
+                              sale.payment_status === 'paid' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                              sale.payment_status === 'pending' ? 'bg-[#FEF3C7] text-[#B45309]' :
+                              'bg-[#F3F4F6] text-[#6B6B6B]'
+                            }`}>
+                              {sale.payment_status || 'Paid'}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {sale.appointment && (
+                              <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
+                                sale.appointment.status === 'completed' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                                sale.appointment.status === 'booked' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                                sale.appointment.status === 'cancelled' ? 'bg-[#FDE8E8] text-[#9B1C1C]' :
+                                'bg-[#F3F4F6] text-[#6B6B6B]'
+                              }`}>
+                                {sale.appointment.status}
+                              </span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

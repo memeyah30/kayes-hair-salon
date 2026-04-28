@@ -24,6 +24,10 @@ class SaleController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
             'paginate' => ['nullable'],
+            'payment_method' => ['nullable', 'string'],
+            'payment_status' => ['nullable', 'string'],
+            'appointment_status' => ['nullable', 'string'],
+            'q' => ['nullable', 'string'],
         ]);
 
         $timezone = 'Asia/Manila';
@@ -43,14 +47,31 @@ class SaleController extends Controller
             $query->where('created_at', '<=', $endUtc);
         }
 
-        // Filter by transaction type
-        if ($request->filled('transaction_type')) {
-            $query->where('transaction_type', $request->transaction_type);
+        // Filter by payment method
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
         }
 
-        // Filter by stylist
-        if ($request->filled('stylist_id')) {
-            $query->where('stylist_id', $request->stylist_id);
+        // Filter by payment status
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
+        }
+
+        // Filter by appointment status
+        if ($request->filled('appointment_status')) {
+            $query->whereHas('appointment', function($q) use ($request) {
+                $q->where('status', $request->appointment_status);
+            });
+        }
+
+        // Filter by search keyword
+        if ($request->filled('q')) {
+            $keyword = $request->q;
+            $query->where(function($q) use ($keyword) {
+                $q->where('item_name', 'like', "%{$keyword}%")
+                  ->orWhere('customer_name', 'like', "%{$keyword}%")
+                  ->orWhere('appointment_id', $keyword);
+            });
         }
 
         $query->orderBy('created_at', 'desc');
@@ -223,6 +244,21 @@ class SaleController extends Controller
             })
             ->values();
 
+        // Fetch appointments for the same period to get summary counts
+        $appointments = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc])->get();
+
+        $appointmentsSummary = [
+            'total_downpayment_cents' => $appointments->where('mode_of_payment', 'downpayment')->sum('amount_paid_cents'),
+            'total_full_payment_cents' => $appointments->where('mode_of_payment', 'full')->sum('amount_paid_cents'),
+            'total_collected_cents' => $appointments->sum('amount_paid_cents'),
+            'total_remaining_balance_cents' => $appointments->sum('remaining_balance_cents'),
+            'count_completed' => $appointments->where('status', 'completed')->count(),
+            'count_cancelled' => $appointments->where('status', 'cancelled')->count(),
+            'count_missed' => $appointments->where('status', 'missed')->count(),
+            'count_booked' => $appointments->where('status', 'booked')->count(),
+            'count_confirmed' => $appointments->where('status', 'confirmed')->count(),
+        ];
+
         return response()->json([
             'period' => [
                 'start_date' => $startManila->toDateString(),
@@ -233,6 +269,7 @@ class SaleController extends Controller
             'sales_by_payment_method' => $salesByPayment,
             'top_selling_items' => $topItems,
             'daily_sales' => $dailySales,
+            'appointments_summary' => $appointmentsSummary,
         ]);
     }
 
