@@ -398,6 +398,7 @@ const SalesMonitoring = () => {
             ) : (
               <>
                 <div className="md:hidden space-y-3">
+                  {sales.map((sale) => (
                     <div key={sale.id} className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-4 shadow-sm">
                       <div className="flex items-start justify-between border-b border-[#F0EDFF] pb-2 mb-2">
                         <div>
@@ -429,6 +430,7 @@ const SalesMonitoring = () => {
                         </div>
                       </div>
                     </div>
+                  ))}
                 </div>
 
                 <div className="hidden md:block overflow-x-auto">
