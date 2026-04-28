@@ -74,11 +74,14 @@ class AdminCustomerController extends Controller
                 ->where('status', 'completed')
                 ->sum(fn (Appointment $appointment) => $this->getAppointmentTotalPriceCents($appointment));
 
+            $address = trim((string) $appointments->whereNotNull('customer_address')->where('customer_address', '!=', '')->first()?->customer_address);
+
             return [
                 'customer_key' => md5(strtolower($name . '|' . $email . '|' . $phone)),
                 'name' => $name,
                 'email' => $email !== '' ? $email : null,
                 'phone' => $phone !== '' ? $phone : null,
+                'address' => $address !== '' ? $address : null,
                 'appointments' => $appointments->values(),
                 'total_appointments' => (int) $appointments->count(),
                 'completed_appointments' => (int) $appointments->where('status', 'completed')->count(),

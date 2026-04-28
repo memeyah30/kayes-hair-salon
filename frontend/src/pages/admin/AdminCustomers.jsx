@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../../utils/api'
@@ -19,6 +19,7 @@ const AdminCustomers = () => {
     from: 0,
     to: 0,
   })
+  const searchTimeoutRef = useRef(null)
   const navigate = useNavigate()
   const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
@@ -51,7 +52,19 @@ const AdminCustomers = () => {
   }
 
   useEffect(() => {
-    loadData(currentPage)
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      loadData(currentPage)
+    }, 400)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
   }, [currentPage, searchTerm])
 
   const loadData = async (page = 1) => {
@@ -236,27 +249,41 @@ const AdminCustomers = () => {
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <h3 className="font-semibold text-lg mb-3">Personal Information</h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-[#9b857a] mb-1">Full Name</div>
-                    <div className="font-medium text-lg">{selectedCustomer.name}</div>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm text-[#9b857a] mb-1">Full Name</div>
+                      <div className="font-medium text-lg text-gray-900">{selectedCustomer.name}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-[#9b857a] mb-1">Address</div>
+                      {selectedCustomer.address ? (
+                        <div className="text-base text-gray-900 leading-relaxed">{selectedCustomer.address}</div>
+                      ) : (
+                        <div className="text-sm text-gray-400 italic">No address provided</div>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm text-[#9b857a] mb-1">Contact Information</div>
-                    {selectedCustomer.email && (
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm">Email:</span>
-                        <span>{selectedCustomer.email}</span>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm text-[#9b857a] mb-1">Contact Details</div>
+                      <div className="bg-white rounded-lg border border-gray-200 p-3 space-y-2">
+                        {selectedCustomer.email && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-sm text-gray-500 w-12">Email:</span>
+                            <span className="text-gray-900 font-medium break-all">{selectedCustomer.email}</span>
+                          </div>
+                        )}
+                        {selectedCustomer.phone && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-sm text-gray-500 w-12">Phone:</span>
+                            <span className="text-gray-900 font-medium">{selectedCustomer.phone}</span>
+                          </div>
+                        )}
+                        {!selectedCustomer.email && !selectedCustomer.phone && (
+                          <div className="text-sm text-gray-400 italic">No contact information</div>
+                        )}
                       </div>
-                    )}
-                    {selectedCustomer.phone && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">Phone:</span>
-                        <span>{selectedCustomer.phone}</span>
-                      </div>
-                    )}
-                    {!selectedCustomer.email && !selectedCustomer.phone && (
-                      <div className="text-sm text-gray-400 italic">No contact information</div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
