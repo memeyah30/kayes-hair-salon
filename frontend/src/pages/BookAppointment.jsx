@@ -559,7 +559,7 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
   )
 }
 
-const QRModal = ({ src, onClose }) => {
+const ImageModal = ({ src, title = "Image Preview", onClose }) => {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -583,10 +583,10 @@ const QRModal = ({ src, onClose }) => {
         <div className="flex flex-col items-center gap-4">
           <img 
             src={src} 
-            alt="Enlarged QR Code" 
+            alt={title} 
             className="w-full h-auto max-h-[75vh] object-contain rounded-lg"
           />
-          <p className="text-[#2C1338] font-semibold text-lg">GCash QR Code</p>
+          <p className="text-[#2C1338] font-semibold text-lg">{title}</p>
           <button 
             onClick={onClose}
             className="w-full bg-[#6d4de6] text-white font-bold py-3 rounded-xl hover:bg-[#5b3cc4] transition shadow-lg"
@@ -1101,7 +1101,7 @@ const BookAppointment = () => {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   const [showPaymentPolicyModal, setShowPaymentPolicyModal] = useState(false)
   const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '', privacy: '', paymentPolicy: '' })
-  const [enlargedQR, setEnlargedQR] = useState(null)
+  const [enlargedImage, setEnlargedImage] = useState(null)
   // Returning customers must verify their email before we reuse any saved profile data.
   const [customerLookupState, setCustomerLookupState] = useState(() => {
     if (canFastTrackCustomerDashboardBooking && (!draftBookingEmail || draftBookingEmail === initialManageBookingVerifiedEmail)) {
@@ -4209,21 +4209,21 @@ const BookAppointment = () => {
                         </div>
                         {resolveAssetUrl(account.qr_code_full_url || account.qr_code_url) && (
                           <div 
-                            className="flex-shrink-0 bg-white p-2.5 border-2 border-gray-100 rounded-2xl shadow-sm cursor-zoom-in hover:border-[#6d4de6] transition group relative"
+                            className="flex-shrink-0 bg-white p-1.5 border-2 border-gray-100 rounded-xl shadow-sm cursor-zoom-in hover:border-[#6d4de6] transition group relative"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              setEnlargedQR(resolveAssetUrl(account.qr_code_full_url || account.qr_code_url));
+                              setEnlargedImage({ src: resolveAssetUrl(account.qr_code_full_url || account.qr_code_url), title: 'GCash QR Code' });
                             }}
                           >
                             <img
                               src={resolveAssetUrl(account.qr_code_full_url || account.qr_code_url)}
                               alt="QR Code"
-                              className="w-36 h-36 sm:w-44 sm:h-44 object-contain group-hover:scale-[1.02] transition-transform"
+                              className="w-24 h-24 sm:w-28 sm:h-28 object-contain group-hover:scale-[1.02] transition-transform"
                             />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 rounded-2xl">
-                              <span className="bg-white/90 px-3 py-1.5 rounded-lg text-xs font-bold text-[#6d4de6] shadow-sm">
-                                Click to enlarge
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl">
+                              <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#6d4de6] shadow-sm">
+                                Enlarge
                               </span>
                             </div>
                           </div>
@@ -4274,8 +4274,18 @@ const BookAppointment = () => {
                   }}
               />
               {payment.proofPreview && (
-                <div className="mt-3">
-                  <img src={payment.proofPreview} alt="Payment proof preview" className="max-w-xs border rounded" />
+                <div className="mt-3 inline-block">
+                  <div 
+                    className="relative cursor-zoom-in group border-2 border-gray-100 rounded-xl p-1 bg-white shadow-sm hover:border-[#6d4de6] transition"
+                    onClick={() => setEnlargedImage({ src: payment.proofPreview, title: 'Payment Proof' })}
+                  >
+                    <img src={payment.proofPreview} alt="Payment proof preview" className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg">
+                      <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#6d4de6] shadow-sm">
+                        Enlarge
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
               <p className="text-xs text-[#9b857a] mt-1">
@@ -4383,10 +4393,11 @@ const BookAppointment = () => {
         />
       )}
 
-      {enlargedQR && (
-        <QRModal 
-          src={enlargedQR} 
-          onClose={() => setEnlargedQR(null)} 
+      {enlargedImage && (
+        <ImageModal 
+          src={enlargedImage.src} 
+          title={enlargedImage.title}
+          onClose={() => setEnlargedImage(null)} 
         />
       )}
 
