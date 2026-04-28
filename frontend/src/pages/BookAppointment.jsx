@@ -4187,7 +4187,7 @@ const BookAppointment = () => {
                   {paymentAccounts.map(account => (
                     <label
                       key={account.id}
-                      className={`border-2 rounded-xl p-4 cursor-pointer transition block ${
+                      className={`border-2 rounded-xl p-3 cursor-pointer transition block ${
                         payment.selectedAccount === account.id.toString() ? 'border-[#6d4de6] bg-[#f8f5ff] shadow-sm' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
@@ -4219,7 +4219,7 @@ const BookAppointment = () => {
                             <img
                               src={resolveAssetUrl(account.qr_code_full_url || account.qr_code_url)}
                               alt="QR Code"
-                              className="w-24 h-24 sm:w-28 sm:h-28 object-contain group-hover:scale-[1.02] transition-transform"
+                              className="w-16 h-16 sm:w-20 sm:h-20 object-contain group-hover:scale-[1.02] transition-transform"
                             />
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl">
                               <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#6d4de6] shadow-sm">
@@ -4279,7 +4279,7 @@ const BookAppointment = () => {
                     className="relative cursor-zoom-in group border-2 border-gray-100 rounded-xl p-1 bg-white shadow-sm hover:border-[#6d4de6] transition"
                     onClick={() => setEnlargedImage({ src: payment.proofPreview, title: 'Payment Proof' })}
                   >
-                    <img src={payment.proofPreview} alt="Payment proof preview" className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" />
+                    <img src={payment.proofPreview} alt="Payment proof preview" className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg">
                       <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#6d4de6] shadow-sm">
                         Enlarge
