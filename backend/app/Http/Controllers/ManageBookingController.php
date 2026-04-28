@@ -287,6 +287,9 @@ class ManageBookingController extends Controller
                 'can_cancel' => $isModifiableStatus && $isUpcoming,
                 'can_rate' => $appointment->status === 'completed' && !$hasRating,
                 'rating' => $ratingPayload,
+                'created_at' => $appointment->created_at
+                    ? Carbon::parse($appointment->created_at, 'UTC')->setTimezone('Asia/Manila')->toIso8601String()
+                    : null,
             ];
         });
 
