@@ -134,11 +134,6 @@ const ManageHolidays = () => {
       <div className="fixed inset-0 z-[90]">
         <div
           className="absolute inset-0 bg-[#1B1237]/55 backdrop-blur-[1px]"
-          onClick={() => {
-            setShowModal(false)
-            setEditing(null)
-            setFormData(DEFAULT_HOLIDAY_FORM)
-          }}
           aria-hidden="true"
         />
         <div className="absolute inset-0 flex items-center justify-center p-4">

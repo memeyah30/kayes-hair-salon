@@ -1913,11 +1913,9 @@ const AdminAppointments = () => {
         {selectedAppointment && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B1237]/45 p-4"
-            onClick={() => setSelectedAppointment(null)}
           >
             <div
               className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_16px_32px_rgba(0,0,0,0.12)] sm:p-5 md:p-6"
-              onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>

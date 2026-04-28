@@ -163,6 +163,51 @@ const SalesMonitoring = () => {
               >&larr;</button>
               <h1 className="text-2xl font-bold text-[#2D2D2D]">Sales Monitoring</h1>
             </div>
+            <button
+              onClick={async () => {
+                try {
+                  const params = new URLSearchParams()
+                  if (dateRange.start_date) params.append('start_date', dateRange.start_date)
+                  if (dateRange.end_date) params.append('end_date', dateRange.end_date)
+                  if (filters.transaction_type) params.append('transaction_type', filters.transaction_type)
+                  if (filters.stylist_id) params.append('stylist_id', filters.stylist_id)
+                  
+                  // Use window.location.href or a direct link for file downloads in some cases,
+                  // but here we can use axios to get the blob if we want more control,
+                  // or just a simple anchor tag.
+                  const baseUrl = api.defaults.baseURL || ''
+                  const url = `${baseUrl}/sales/export-pdf?${params.toString()}`
+                  
+                  // Since it's a download, we can just open it in a new tab or use a hidden anchor
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.setAttribute('download', `sales-report-${new Date().toISOString().split('T')[0]}.pdf`)
+                  // Need to include auth token if the route is protected by Sanctum
+                  // However, if we use Sanctum with cookies, it might just work.
+                  // If we use Bearer token, we need to fetch the blob.
+                  
+                  const response = await api.get(`/sales/export-pdf?${params.toString()}`, {
+                    responseType: 'blob'
+                  })
+                  const blobUrl = window.URL.createObjectURL(new Blob([response.data]))
+                  const downloadLink = document.createElement('a')
+                  downloadLink.href = blobUrl
+                  downloadLink.setAttribute('download', `sales-report-${new Date().toISOString().split('T')[0]}.pdf`)
+                  document.body.appendChild(downloadLink)
+                  downloadLink.click()
+                  downloadLink.remove()
+                } catch (e) {
+                  toast.error('Failed to export PDF')
+                  console.error(e)
+                }
+              }}
+              className="tap-safe flex items-center gap-2 rounded-xl bg-[#7B5CF5] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(123,92,245,0.24)] transition hover:bg-[#6846E8]"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export PDF
+            </button>
           </div>
 
           {/* Filters */}
