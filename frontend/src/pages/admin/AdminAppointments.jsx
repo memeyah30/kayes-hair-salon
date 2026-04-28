@@ -1338,54 +1338,48 @@ const AdminAppointments = () => {
                           </div>
 
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => canConfirm && !isProcessingAction && handleAction(apt.id, 'confirm')}
-                              disabled={!canConfirm || isProcessingAction}
-                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
-                                canConfirm && !isProcessingAction
-                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
-                              }`}
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => canConfirm && !isProcessingAction && handleAction(apt.id, 'confirm')}
-                              disabled={!canConfirm || isProcessingAction}
-                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
-                                canConfirm && !isProcessingAction
-                                  ? 'bg-teal-600 text-white hover:bg-teal-700'
-                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
-                              }`}
-                            >
-                              Start
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'complete')}
-                              disabled={!canModify || isProcessingAction}
-                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
-                                canModify && !isProcessingAction
-                                  ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
-                              }`}
-                            >
-                              Done
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => canModify && !isProcessingAction && handleRescheduleClick(apt)}
-                              disabled={!canModify || isProcessingAction}
-                              className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
-                                canModify && !isProcessingAction
-                                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                  : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
-                              }`}
-                            >
-                              Reschedule
-                            </button>
+                            {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
+                              <button
+                                type="button"
+                                onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
+                                disabled={isProcessingAction}
+                                className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                  !isProcessingAction
+                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                    : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
+                                }`}
+                              >
+                                {isProcessingAction ? 'Confirming...' : 'Confirm Booking'}
+                              </button>
+                            )}
+                            {normalizedStatus === 'confirmed' && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
+                                  disabled={isProcessingAction}
+                                  className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                    !isProcessingAction
+                                      ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                      : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
+                                  }`}
+                                >
+                                  {isProcessingAction ? 'Completing...' : 'Complete'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => !isProcessingAction && handleRescheduleClick(apt)}
+                                  disabled={isProcessingAction}
+                                  className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                    !isProcessingAction
+                                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                      : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
+                                  }`}
+                                >
+                                  Reschedule
+                                </button>
+                              </>
+                            )}
                             <div className="relative apt-actions ml-auto">
                               <button
                                 type="button"
@@ -1586,30 +1580,36 @@ const AdminAppointments = () => {
                       >
                         Details
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => canConfirm && !isProcessingAction && handleAction(apt.id, 'confirm')}
-                        disabled={!canConfirm || isProcessingAction}
-                        className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${canConfirm && !isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => canModify && !isProcessingAction && handleRescheduleClick(apt)}
-                        disabled={!canModify || isProcessingAction}
-                        className={`tap-safe rounded-lg border px-3 py-2 text-sm transition ${canModify && !isProcessingAction ? 'border-[#7B5CF5] bg-transparent text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed border-[#E5E7EB] bg-[#E5E7EB] text-[#9CA3AF]'}`}
-                      >
-                        Reschedule
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => canModify && !isProcessingAction && handleAction(apt.id, 'complete')}
-                        disabled={!canModify || isProcessingAction}
-                        className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${canModify && !isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
-                      >
-                        {isProcessingAction ? 'Completing...' : 'Complete'}
-                      </button>
+                      {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
+                        <button
+                          type="button"
+                          onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
+                          disabled={isProcessingAction}
+                          className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${!isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                        >
+                          {isProcessingAction ? 'Confirming...' : 'Confirm Booking'}
+                        </button>
+                      )}
+                      {normalizedStatus === 'confirmed' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => !isProcessingAction && handleRescheduleClick(apt)}
+                            disabled={isProcessingAction}
+                            className={`tap-safe rounded-lg border px-3 py-2 text-sm transition ${!isProcessingAction ? 'border-[#7B5CF5] bg-transparent text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed border-[#E5E7EB] bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                          >
+                            Reschedule
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
+                            disabled={isProcessingAction}
+                            className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${!isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                          >
+                            {isProcessingAction ? 'Completing...' : 'Complete'}
+                          </button>
+                        </>
+                      )}
                       {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
                         <>
                           <button
@@ -1819,26 +1819,42 @@ const AdminAppointments = () => {
                                   View Proof
                                 </button>
                               )}
-                              <button
-                                onClick={() => {
-                                  if (!canConfirm || isProcessingAction) return
-                                  setOpenActionId(null)
-                                  handleAction(apt.id, 'confirm')
-                                }}
-                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canConfirm && !isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (!canModify || isProcessingAction) return
-                                  setOpenActionId(null)
-                                  handleRescheduleClick(apt)
-                                }}
-                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canModify && !isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
-                              >
-                                Reschedule
-                              </button>
+                              {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
+                                <button
+                                  onClick={() => {
+                                    if (isProcessingAction) return
+                                    setOpenActionId(null)
+                                    handleAction(apt.id, 'confirm')
+                                  }}
+                                  className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${!isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
+                                >
+                                  {isProcessingAction ? 'Confirming...' : 'Confirm Booking'}
+                                </button>
+                              )}
+                              {normalizedStatus === 'confirmed' && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      if (isProcessingAction) return
+                                      setOpenActionId(null)
+                                      handleRescheduleClick(apt)
+                                    }}
+                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${!isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
+                                  >
+                                    Reschedule
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (isProcessingAction) return
+                                      setOpenActionId(null)
+                                      handleAction(apt.id, 'complete')
+                                    }}
+                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${!isProcessingAction ? 'text-[#6846E8] hover:bg-[#F2EDFF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
+                                  >
+                                    {isProcessingAction ? 'Completing...' : 'Complete'}
+                                  </button>
+                                </>
+                              )}
                               {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
                                 <>
                                   <button
@@ -1863,16 +1879,6 @@ const AdminAppointments = () => {
                                   </button>
                                 </>
                               )}
-                              <button
-                                onClick={() => {
-                                  if (!canModify || isProcessingAction) return
-                                  setOpenActionId(null)
-                                  handleAction(apt.id, 'complete')
-                                }}
-                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canModify && !isProcessingAction ? 'text-[#6846E8] hover:bg-[#F2EDFF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
-                              >
-                                {isProcessingAction ? 'Completing...' : 'Complete'}
-                              </button>
                               <div className="my-1 border-t border-[#DDD6FE]" />
                               <button
                                 onClick={() => {
@@ -1913,7 +1919,6 @@ const AdminAppointments = () => {
         {selectedAppointment && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B1237]/45 p-4"
-            onClick={() => setSelectedAppointment(null)}
           >
             <div
               className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_16px_32px_rgba(0,0,0,0.12)] sm:p-5 md:p-6"
