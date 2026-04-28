@@ -60,7 +60,10 @@ const SalesMonitoring = () => {
     to: 0,
   })
   const [dateRange, setDateRange] = useState(() => getDateRangeFromSearch(location.search, manilaToday))
-  const [filters, setFilters] = useState({})
+  const [filters, setFilters] = useState({
+    payment_method: '',
+    q: '',
+  })
 
   useEffect(() => {
     const nextRange = getDateRangeFromSearch(location.search, manilaToday)
@@ -89,7 +92,8 @@ const SalesMonitoring = () => {
       const params = new URLSearchParams()
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
-
+      if (filters.payment_method) params.append('payment_method', filters.payment_method)
+      if (filters.q) params.append('q', filters.q)
       params.append('paginate', '1')
       params.append('per_page', '10')
       params.append('page', String(page))
@@ -154,8 +158,8 @@ const SalesMonitoring = () => {
       const params = new URLSearchParams()
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
-
-
+      if (filters.payment_method) params.append('payment_method', filters.payment_method)
+      if (filters.q) params.append('q', filters.q)
       const baseUrl = api.defaults.baseURL || ''
       const token = localStorage.getItem('token') || sessionStorage.getItem('token')
       const url = `${baseUrl}/sales/export-pdf?${params.toString()}${token ? `&token=${token}` : ''}`
@@ -229,7 +233,7 @@ const SalesMonitoring = () => {
 
           {/* Filters */}
           <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Start Date</label>
                 <input
@@ -246,6 +250,30 @@ const SalesMonitoring = () => {
                   className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                   value={dateRange.end_date}
                   onChange={(e) => setDateRange({ ...dateRange, end_date: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Payment Method</label>
+                <select
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
+                  value={filters.payment_method}
+                  onChange={(e) => setFilters({ ...filters, payment_method: e.target.value })}
+                >
+                  <option value="">All Methods</option>
+                  <option value="cash">Cash</option>
+                  <option value="gcash">GCash</option>
+                  <option value="paymaya">PayMaya</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Search</label>
+                <input
+                  type="text"
+                  placeholder="Customer or service..."
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
+                  value={filters.q}
+                  onChange={(e) => setFilters({ ...filters, q: e.target.value })}
                 />
               </div>
             </div>

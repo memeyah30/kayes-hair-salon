@@ -242,7 +242,10 @@ class SaleController extends Controller
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date_format:Y-m-d'],
             'transaction_type' => ['nullable', 'in:service,product,both'],
-            'stylist_id' => ['nullable', 'integer', 'exists:stylists,id'],
+            'payment_method' => ['nullable', 'string'],
+            'payment_status' => ['nullable', 'string'],
+            'appointment_status' => ['nullable', 'string'],
+            'q' => ['nullable', 'string'],
         ]);
 
         $timezone = 'Asia/Manila';
@@ -269,14 +272,23 @@ class SaleController extends Controller
             $query->where('created_at', '<=', $endUtc);
         }
 
-        // Filter by transaction type
-        if ($request->filled('transaction_type')) {
-            $query->where('transaction_type', $request->transaction_type);
+        // Filter by payment method
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
         }
 
-        // Filter by stylist
-        if ($request->filled('stylist_id')) {
-            $query->where('stylist_id', $request->stylist_id);
+        // Filter by payment status
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
+        }
+
+        // Filter by search keyword
+        if ($request->filled('q')) {
+            $keyword = $request->q;
+            $query->where(function($q) use ($keyword) {
+                $q->where('item_name', 'like', "%{$keyword}%")
+                  ->orWhere('customer_name', 'like', "%{$keyword}%");
+            });
         }
 
         $sales = $query->orderBy('created_at', 'desc')->get();
@@ -290,28 +302,43 @@ class SaleController extends Controller
             $stylist = \App\Models\Stylist::find($request->stylist_id);
         }
 
-        // Fetch appointments for the same period to get downpayment/remaining balance totals
-        $appointments = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc])
-            ->whereIn('status', ['booked', 'confirmed', 'completed'])
-            ->get();
+        // Fetch appointments for the same period to get summary counts
+        $appointmentsQuery = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc]);
+        
+        // Apply status filter if provided (though sales are usually only for completed)
+        if ($request->filled('appointment_status')) {
+            $appointmentsQuery->where('status', $request->appointment_status);
+        }
+
+        $appointments = $appointmentsQuery->get();
 
         $appointmentsSummary = [
             'total_downpayment_cents' => $appointments->where('mode_of_payment', 'downpayment')->sum('amount_paid_cents'),
             'total_full_payment_cents' => $appointments->where('mode_of_payment', 'full')->sum('amount_paid_cents'),
             'total_collected_cents' => $appointments->sum('amount_paid_cents'),
             'total_remaining_balance_cents' => $appointments->sum('remaining_balance_cents'),
+            'count_completed' => $appointments->where('status', 'completed')->count(),
+            'count_cancelled' => $appointments->where('status', 'cancelled')->count(),
+            'count_missed' => $appointments->where('status', 'missed')->count(),
+            'count_booked' => $appointments->where('status', 'booked')->count(),
+            'count_confirmed' => $appointments->where('status', 'confirmed')->count(),
         ];
 
         $data = [
             'salon_name' => 'Kaye\'s Hair Salon and Spa',
             'generated_at' => Carbon::now($timezone)->format('M d, Y h:i A'),
+            'generated_by' => $request->user() ? $request->user()->name : 'Admin',
             'start_date' => $startUtc->setTimezone($timezone)->format('M d, Y'),
             'end_date' => $endUtc->setTimezone($timezone)->format('M d, Y'),
-            'transaction_type' => $request->transaction_type,
-            'stylist_name' => $stylist ? $stylist->name : null,
-            'sales' => $sales,
+            'filters' => [
+                'transaction_type' => $request->transaction_type,
+                'payment_method' => $request->payment_method,
+                'payment_status' => $request->payment_status,
+                'appointment_status' => $request->appointment_status,
+                'search_keyword' => $request->q,
+            ],
+            'sales' => $sales->load('appointment'),
             'total_sales_cents' => $totalSales,
-            'sales_by_type' => $salesByType,
             'appointments_summary' => $appointmentsSummary,
         ];
 

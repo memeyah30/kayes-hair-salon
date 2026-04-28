@@ -7,206 +7,274 @@
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
             color: #2D2D2D;
-            line-height: 1.5;
+            line-height: 1.4;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #7B5CF5;
-            padding-bottom: 20px;
+            padding-bottom: 10px;
         }
         .salon-name {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             color: #7B5CF5;
             margin: 0;
         }
         .report-title {
-            font-size: 18px;
-            margin: 5px 0;
-            color: #6B6B6B;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        .meta {
-            font-size: 12px;
-            color: #6B6B6B;
-        }
-        .summary-grid {
-            width: 100%;
-            margin-bottom: 30px;
-            border-collapse: collapse;
-        }
-        .summary-card {
-            background: #F2EDFF;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            width: 23%;
-        }
-        .summary-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #7B5CF5;
-            margin-bottom: 5px;
-        }
-        .summary-value {
             font-size: 16px;
+            margin: 5px 0;
+            color: #4B5563;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .meta-info {
+            font-size: 11px;
+            color: #6B7280;
+            margin-top: 5px;
+        }
+        .filter-section {
+            background-color: #F9FAFB;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 11px;
+            border: 1px solid #E5E7EB;
+        }
+        .filter-title {
             font-weight: bold;
+            color: #374151;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+        .filter-grid {
+            width: 100%;
+        }
+        .filter-grid td {
+            padding: 2px 0;
         }
         .section-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             margin-bottom: 10px;
-            color: #2D2D2D;
+            color: #111827;
             border-left: 4px solid #7B5CF5;
-            padding-left: 10px;
+            padding-left: 8px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
-            font-size: 11px;
+            font-size: 10px;
         }
         th {
-            background-color: #F2EDFF;
-            color: #6B6B6B;
+            background-color: #F3F4F6;
+            color: #374151;
             text-align: left;
-            padding: 10px;
+            padding: 8px 4px;
+            border-bottom: 1px solid #D1D5DB;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            font-size: 9px;
         }
         td {
-            padding: 10px;
-            border-bottom: 1px solid #DDD6FE;
+            padding: 8px 4px;
+            border-bottom: 1px solid #E5E7EB;
+            vertical-align: top;
         }
-        .text-right {
-            text-align: right;
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        .summary-section {
+            margin-top: 20px;
+            page-break-inside: avoid;
         }
-        .badge {
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 9px;
+        .summary-table {
+            width: 300px;
+            margin-left: auto;
+        }
+        .summary-table td {
+            border: none;
+            padding: 4px 0;
+        }
+        .summary-total {
+            border-top: 1px solid #7B5CF5 !important;
+            font-size: 12px;
             font-weight: bold;
-            text-transform: uppercase;
+            color: #7B5CF5;
         }
-        .badge-service { background: #DBEAFE; color: #1D4ED8; }
-        .badge-product { background: #DCFCE7; color: #15803D; }
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 8px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .status-completed { background: #DEF7EC; color: #03543F; }
+        .status-booked { background: #E1EFFE; color: #1E429F; }
+        .status-cancelled { background: #FDE8E8; color: #9B1C1C; }
         .footer {
-            margin-top: 50px;
+            margin-top: 30px;
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
             color: #9CA3AF;
             border-top: 1px solid #E5E7EB;
             padding-top: 10px;
         }
-        .total-row {
-            background-color: #F9FAFB;
-            font-weight: bold;
-        }
-        .payment-summary {
-            margin-top: 20px;
-            width: 300px;
-            margin-left: auto;
-        }
-        .payment-summary table td {
-            border: none;
-            padding: 5px 0;
-        }
+        .currency { font-family: DejaVu Sans, sans-serif; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1 class="salon-name">{{ $salon_name }}</h1>
         <p class="report-title">Sales Report</p>
-        <div class="meta">
-            Generated on: {{ $generated_at }}<br>
-            Period: {{ $start_date }} to {{ $end_date }}
+        <div class="meta-info">
+            Date Generated: {{ $generated_at }}<br>
+            Generated by: {{ $generated_by }}
         </div>
     </div>
 
-    <div class="section-title">Performance Summary</div>
-    <table class="summary-grid">
-        <tr>
-            <td class="summary-card">
-                <div class="summary-label">Total Sales</div>
-                <div class="summary-value">PHP {{ number_format($total_sales_cents / 100, 2) }}</div>
-            </td>
-            <td style="width: 2%"></td>
-            <td class="summary-card">
-                <div class="summary-label">Downpayments</div>
-                <div class="summary-value">PHP {{ number_format($appointments_summary['total_downpayment_cents'] / 100, 2) }}</div>
-            </td>
-            <td style="width: 2%"></td>
-            <td class="summary-card">
-                <div class="summary-label">Full Payments</div>
-                <div class="summary-value">PHP {{ number_format($appointments_summary['total_full_payment_cents'] / 100, 2) }}</div>
-            </td>
-            <td style="width: 2%"></td>
-            <td class="summary-card" style="background: #FFF7ED;">
-                <div class="summary-label" style="color: #B45309;">Remaining Balance</div>
-                <div class="summary-value" style="color: #B45309;">PHP {{ number_format($appointments_summary['total_remaining_balance_cents'] / 100, 2) }}</div>
-            </td>
-        </tr>
-    </table>
+    <div class="filter-section">
+        <div class="filter-title">Filter Summary</div>
+        <table class="filter-grid">
+            <tr>
+                <td width="20%"><strong>Date Range:</strong></td>
+                <td width="30%">{{ $start_date }} to {{ $end_date }}</td>
+                <td width="20%"><strong>Payment Status:</strong></td>
+                <td width="30%">{{ ucfirst($filters['payment_status'] ?? 'All') }}</td>
+            </tr>
+            <tr>
+                <td><strong>Payment Method:</strong></td>
+                <td>{{ strtoupper($filters['payment_method'] ?? 'All') }}</td>
+                <td><strong>Appointment Status:</strong></td>
+                <td>{{ ucfirst($filters['appointment_status'] ?? 'All') }}</td>
+            </tr>
+            <tr>
+                <td><strong>Search Keyword:</strong></td>
+                <td>{{ $filters['search_keyword'] ?? 'None' }}</td>
+                <td><strong>Payment Type:</strong></td>
+                <td>{{ ucfirst($filters['transaction_type'] ?? 'All') }}</td>
+            </tr>
+        </table>
+    </div>
 
-    <div class="section-title">Detailed Transactions</div>
+    <div class="section-title">Sales Records</div>
     <table>
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Item / Service</th>
-                <th>Qty</th>
-                <th class="text-right">Unit Price</th>
-                <th class="text-right">Total</th>
-                <th>Payment</th>
+                <th>Booking ID</th>
+                <th>Customer</th>
+                <th>Services</th>
+                <th>Appt. Date</th>
+                <th>Payment Method</th>
+                <th class="text-right">Total Amount</th>
+                <th class="text-right">Paid</th>
+                <th class="text-right">Balance</th>
+                <th>Status</th>
             </tr>
         </thead>
         <tbody>
             @foreach($sales as $sale)
                 <tr>
-                    <td>{{ \Carbon\Carbon::parse($sale->created_at)->setTimezone('Asia/Manila')->format('M d, Y h:i A') }}</td>
+                    <td>#{{ $sale->appointment_id ?? 'N/A' }}</td>
+                    <td>{{ $sale->customer_name }}</td>
                     <td>
                         {{ $sale->item_name }}
+                        @if($sale->appointment && $sale->appointment->services)
+                            <div style="font-size: 8px; color: #6B7280;">
+                                ({{ $sale->appointment->services->pluck('name')->join(', ') }})
+                            </div>
+                        @endif
                     </td>
-                    <td>{{ $sale->quantity }}</td>
-                    <td class="text-right">PHP {{ number_format($sale->unit_price_cents / 100, 2) }}</td>
-                    <td class="text-right" style="font-weight: bold; color: #7B5CF5;">PHP {{ number_format($sale->total_amount_cents / 100, 2) }}</td>
+                    <td>
+                        @if($sale->appointment)
+                            {{ \Carbon\Carbon::parse($sale->appointment->start_datetime_pht ?? $sale->appointment->start_datetime)->format('M d, Y') }}
+                        @else
+                            {{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y') }}
+                        @endif
+                    </td>
                     <td>{{ strtoupper($sale->payment_method) }}</td>
+                    <td class="text-right"><span class="currency">₱</span>{{ number_format($sale->total_amount_cents / 100, 2) }}</td>
+                    <td class="text-right">
+                        @if($sale->appointment)
+                            <span class="currency">₱</span>{{ number_format($sale->appointment->amount_paid_cents / 100, 2) }}
+                        @else
+                            <span class="currency">₱</span>{{ number_format($sale->total_amount_cents / 100, 2) }}
+                        @endif
+                    </td>
+                    <td class="text-right">
+                        @if($sale->appointment)
+                            <span class="currency">₱</span>{{ number_format($sale->appointment->remaining_balance_cents / 100, 2) }}
+                        @else
+                            <span class="currency">₱</span>0.00
+                        @endif
+                    </td>
+                    <td>
+                        @if($sale->appointment)
+                            <span class="status-badge status-{{ $sale->appointment->status }}">
+                                {{ $sale->appointment->status }}
+                            </span>
+                        @else
+                            <span class="status-badge status-completed">Completed</span>
+                        @endif
+                    </td>
                 </tr>
             @endforeach
         </tbody>
-        <tfoot>
-            <tr class="total-row">
-                <td colspan="4" class="text-right">TOTAL REVENUE</td>
-                <td class="text-right">PHP {{ number_format($total_sales_cents / 100, 2) }}</td>
-                <td></td>
-            </tr>
-        </tfoot>
     </table>
 
-    <div class="payment-summary">
-        <div class="section-title">Collection Summary</div>
-        <table>
+    <div class="summary-section">
+        <div class="section-title">Sales Summary</div>
+        <table class="summary-table">
             <tr>
-                <td>Total Collected (Paid)</td>
-                <td class="text-right">PHP {{ number_format($appointments_summary['total_collected_cents'] / 100, 2) }}</td>
+                <td>Total Sales</td>
+                <td class="text-right"><span class="currency">₱</span>{{ number_format($total_sales_cents / 100, 2) }}</td>
             </tr>
             <tr>
-                <td style="color: #B45309;">Total Uncollected (Balance)</td>
-                <td class="text-right" style="color: #B45309;">PHP {{ number_format($appointments_summary['total_remaining_balance_cents'] / 100, 2) }}</td>
+                <td>Total Amount Paid</td>
+                <td class="text-right"><span class="currency">₱</span>{{ number_format($appointments_summary['total_collected_cents'] / 100, 2) }}</td>
             </tr>
-            <tr style="border-top: 1px solid #DDD6FE; font-weight: bold;">
-                <td>GROSS TOTAL</td>
-                <td class="text-right">PHP {{ number_format(($appointments_summary['total_collected_cents'] + $appointments_summary['total_remaining_balance_cents']) / 100, 2) }}</td>
+            <tr>
+                <td style="padding-left: 15px; font-size: 9px; color: #6B7280;">- Downpayments</td>
+                <td class="text-right" style="font-size: 9px; color: #6B7280;"><span class="currency">₱</span>{{ number_format($appointments_summary['total_downpayment_cents'] / 100, 2) }}</td>
+            </tr>
+            <tr>
+                <td style="padding-left: 15px; font-size: 9px; color: #6B7280;">- Full Payments</td>
+                <td class="text-right" style="font-size: 9px; color: #6B7280;"><span class="currency">₱</span>{{ number_format($appointments_summary['total_full_payment_cents'] / 100, 2) }}</td>
+            </tr>
+            <tr>
+                <td>Total Remaining Balance</td>
+                <td class="text-right" style="color: #B45309;"><span class="currency">₱</span>{{ number_format($appointments_summary['total_remaining_balance_cents'] / 100, 2) }}</td>
+            </tr>
+            <tr class="summary-total">
+                <td>GROSS REVENUE</td>
+                <td class="text-right"><span class="currency">₱</span>{{ number_format(($appointments_summary['total_collected_cents'] + $appointments_summary['total_remaining_balance_cents']) / 100, 2) }}</td>
             </tr>
         </table>
+
+        <div style="margin-top: 15px;">
+            <div class="section-title">Appointment Statistics</div>
+            <table style="width: 100%; border: 1px solid #E5E7EB; border-radius: 8px;">
+                <tr style="background: #F9FAFB;">
+                    <td class="text-center"><strong>Completed</strong></td>
+                    <td class="text-center"><strong>Cancelled</strong></td>
+                    <td class="text-center"><strong>Missed</strong></td>
+                    <td class="text-center"><strong>Pending/Booked</strong></td>
+                </tr>
+                <tr>
+                    <td class="text-center">{{ $appointments_summary['count_completed'] }}</td>
+                    <td class="text-center">{{ $appointments_summary['count_cancelled'] }}</td>
+                    <td class="text-center">{{ $appointments_summary['count_missed'] }}</td>
+                    <td class="text-center">{{ $appointments_summary['count_booked'] + $appointments_summary['count_confirmed'] }}</td>
+                </tr>
+            </table>
+        </div>
     </div>
 
     <div class="footer">
-        &copy; {{ date('Y') }} Kaye's Hair Salon and Spa. This is a computer-generated report.
+        &copy; {{ date('Y') }} Kaye's Hair Salon and Spa. This report is for official use only.
     </div>
 </body>
 </html>
