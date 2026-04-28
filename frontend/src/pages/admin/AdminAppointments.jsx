@@ -370,10 +370,7 @@ const AdminAppointments = () => {
     return null
   }, [rangeFilter])
 
-  const hasScopedStatusDateFilter = filter === 'booked' || filter === 'completed'
-
   const scopedStatusDateWindow = useMemo(() => {
-    if (!hasScopedStatusDateFilter) return null
     const anchorDate = searchDate || formatManilaDate(new Date())
     const parsed = parseDateKey(anchorDate)
     if (!parsed) return null
@@ -394,20 +391,20 @@ const AdminAppointments = () => {
     }
 
     return { start: anchorDate, end: anchorDate }
-  }, [hasScopedStatusDateFilter, searchDate, statusDateScope])
+  }, [searchDate, statusDateScope])
 
   const tableDateWindow = useMemo(() => {
     if (rangeDates) {
       return rangeDates
     }
-    if (hasScopedStatusDateFilter && scopedStatusDateWindow) {
+    if (scopedStatusDateWindow) {
       return scopedStatusDateWindow
     }
     if (searchDate) {
       return { start: searchDate, end: searchDate }
     }
     return null
-  }, [hasScopedStatusDateFilter, scopedStatusDateWindow, searchDate, rangeDates])
+  }, [scopedStatusDateWindow, searchDate, rangeDates])
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -1048,18 +1045,16 @@ const AdminAppointments = () => {
                   }}
                   className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
                 />
-                {hasScopedStatusDateFilter && (
                   <select
                     value={statusDateScope}
                     onChange={(e) => setStatusDateScope(e.target.value)}
                     className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
-                    title={filter === 'booked' ? 'Pending date scope' : 'Completed date scope'}
+                    title="Date Scope"
                   >
                     <option value="day">By Day</option>
                     <option value="month">By Month</option>
                     <option value="year">By Year</option>
                   </select>
-                )}
                 <button
                   onClick={() => {
                     setSearchDate(todayKey)
