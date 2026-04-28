@@ -153,7 +153,13 @@ const AdminAppointments = () => {
   const [tableAppointments, setTableAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [tableLoading, setTableLoading] = useState(false)
-  const [filter, setFilter] = useState('all') // all, booked, completed, cancelled
+  const [filter, setFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const statusParam = (params.get('status') || '').toLowerCase().trim()
+    if (statusParam === 'pending' || statusParam === 'booked') return 'booked'
+    if (['all', 'confirmed', 'completed', 'cancelled', 'missed'].includes(statusParam)) return statusParam
+    return 'all'
+  })
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
   const [reschedulingAppointment, setReschedulingAppointment] = useState(null)
   const [rescheduleData, setRescheduleData] = useState({
@@ -163,10 +169,14 @@ const AdminAppointments = () => {
   })
   const [stylists, setStylists] = useState([])
   const [services, setServices] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [searchDate, setSearchDate] = useState('')
-  const [searchServiceId, setSearchServiceId] = useState('')
-  const [rangeFilter, setRangeFilter] = useState('')
+  const [searchTerm, setSearchTerm] = useState(() => new URLSearchParams(window.location.search).get('q') || '')
+  const [searchDate, setSearchDate] = useState(() => new URLSearchParams(window.location.search).get('date') || '')
+  const [searchServiceId, setSearchServiceId] = useState(() => new URLSearchParams(window.location.search).get('serviceId') || '')
+  const [rangeFilter, setRangeFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const rangeParam = (params.get('range') || '').toLowerCase().trim()
+    return ['today', 'week', 'month'].includes(rangeParam) ? rangeParam : ''
+  })
   const [statusDateScope, setStatusDateScope] = useState('month') // day | month | year
   const [openActionId, setOpenActionId] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
@@ -1343,13 +1353,14 @@ const AdminAppointments = () => {
                                 type="button"
                                 onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
                                 disabled={isProcessingAction}
-                                className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${
                                   !isProcessingAction
                                     ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                                     : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
                                 }`}
+                                title="Confirm Booking"
                               >
-                                {isProcessingAction ? 'Confirming...' : 'Confirm Booking'}
+                                {isProcessingAction ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>}
                               </button>
                             )}
                             {normalizedStatus === 'confirmed' && (
@@ -1358,42 +1369,47 @@ const AdminAppointments = () => {
                                   type="button"
                                   onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
                                   disabled={isProcessingAction}
-                                  className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                  className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${
                                     !isProcessingAction
                                       ? 'bg-purple-600 text-white hover:bg-purple-700'
                                       : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
                                   }`}
+                                  title="Complete"
                                 >
-                                  {isProcessingAction ? 'Completing...' : 'Complete'}
+                                  {isProcessingAction ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => !isProcessingAction && handleRescheduleClick(apt)}
                                   disabled={isProcessingAction}
-                                  className={`tap-safe px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                  className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${
                                     !isProcessingAction
                                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                                       : 'bg-gray-200 text-[#9b857a] cursor-not-allowed'
                                   }`}
+                                  title="Reschedule"
                                 >
-                                  Reschedule
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                 </button>
                               </>
                             )}
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <div className="flex flex-wrap items-center gap-2 mt-1 ml-auto">
                               <button
                                 type="button"
                                 onClick={() => setSelectedAppointment(apt)}
-                                className="tap-safe px-3 py-1.5 rounded-lg border border-[#eadfd5] text-[#6f5b50] hover:bg-[#f4ebe4] text-xs font-medium"
+                                className="tap-safe flex h-8 w-8 items-center justify-center rounded-lg border border-[#eadfd5] text-[#6f5b50] hover:bg-[#f4ebe4]"
+                                title="Details"
                               >
-                                Details
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => !isProcessingAction && handleDelete(apt)}
-                                className="tap-safe px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100 ml-auto"
+                                disabled={isProcessingAction}
+                                className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${isProcessingAction ? 'bg-gray-200 text-[#9b857a] cursor-not-allowed' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}
+                                title="Delete"
                               >
-                                Delete
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                               </button>
                             </div>
                           </div>
@@ -1500,22 +1516,24 @@ const AdminAppointments = () => {
                       </div>
                     </button>
 
-                    <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setSelectedAppointment(apt)}
-                        className="tap-safe rounded-lg border border-[#7B5CF5] px-3 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
+                        className="tap-safe flex h-8 w-8 items-center justify-center rounded-lg border border-[#7B5CF5] text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
+                        title="Details"
                       >
-                        Details
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                       </button>
                       {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
                         <button
                           type="button"
                           onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
                           disabled={isProcessingAction}
-                          className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${!isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                          className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                          title="Confirm Booking"
                         >
-                          {isProcessingAction ? 'Confirming...' : 'Confirm Booking'}
+                          {isProcessingAction ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>}
                         </button>
                       )}
                       {normalizedStatus === 'confirmed' && (
@@ -1524,17 +1542,19 @@ const AdminAppointments = () => {
                             type="button"
                             onClick={() => !isProcessingAction && handleRescheduleClick(apt)}
                             disabled={isProcessingAction}
-                            className={`tap-safe rounded-lg border px-3 py-2 text-sm transition ${!isProcessingAction ? 'border-[#7B5CF5] bg-transparent text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed border-[#E5E7EB] bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                            className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg border border-[#7B5CF5] text-[#7B5CF5] transition hover:bg-[#F6F2FF]`}
+                            title="Reschedule"
                           >
-                            Reschedule
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                           </button>
                           <button
                             type="button"
                             onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
                             disabled={isProcessingAction}
-                            className={`tap-safe rounded-lg px-3 py-2 text-sm transition ${!isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                            className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                            title="Complete"
                           >
-                            {isProcessingAction ? 'Completing...' : 'Complete'}
+                            {isProcessingAction ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                           </button>
                         </>
                       )}
@@ -1542,9 +1562,10 @@ const AdminAppointments = () => {
                         type="button"
                         onClick={() => !isProcessingAction && handleDelete(apt)}
                         disabled={isProcessingAction}
-                        className={`tap-safe col-span-2 rounded-lg px-3 py-2 text-sm transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#EF4444] text-white hover:bg-[#DC2626]'}`}
+                        className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#EF4444] text-white hover:bg-[#DC2626]'} ml-auto`}
+                        title="Delete"
                       >
-                        Delete
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     </div>
                   </article>
@@ -1694,9 +1715,10 @@ const AdminAppointments = () => {
                               type="button"
                               onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
                               disabled={isProcessingAction}
-                              className={`tap-safe rounded-lg px-3 py-1.5 text-xs font-medium transition ${!isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                              className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                              title="Confirm Booking"
                             >
-                              {isProcessingAction && processingAppointmentId === apt.id ? 'Confirming...' : 'Confirm Booking'}
+                              {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>}
                             </button>
                           )}
                           {normalizedStatus === 'confirmed' && (
@@ -1705,17 +1727,19 @@ const AdminAppointments = () => {
                                 type="button"
                                 onClick={() => !isProcessingAction && handleRescheduleClick(apt)}
                                 disabled={isProcessingAction}
-                                className={`tap-safe rounded-lg border border-[#7B5CF5] px-3 py-1.5 text-xs text-[#7B5CF5] transition hover:bg-[#F6F2FF]`}
+                                className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg border border-[#7B5CF5] text-[#7B5CF5] transition hover:bg-[#F6F2FF]`}
+                                title="Reschedule"
                               >
-                                Reschedule
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
                                 disabled={isProcessingAction}
-                                className={`tap-safe rounded-lg px-3 py-1.5 text-xs font-medium transition ${!isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                                className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                                title="Complete"
                               >
-                                {isProcessingAction && processingAppointmentId === apt.id ? 'Completing...' : 'Complete'}
+                                {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                               </button>
                             </>
                           )}
@@ -1723,9 +1747,10 @@ const AdminAppointments = () => {
                             type="button"
                             onClick={() => !isProcessingAction && handleDelete(apt)}
                             disabled={isProcessingAction}
-                            className={`tap-safe rounded-lg px-3 py-1.5 text-xs font-medium transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#EF4444] text-white hover:bg-[#DC2626]'}`}
+                            className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#EF4444] text-white hover:bg-[#DC2626]'}`}
+                            title="Delete"
                           >
-                            Delete
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           </button>
                         </div>
                       </td>

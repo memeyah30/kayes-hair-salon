@@ -625,7 +625,7 @@ const AdminDashboard = () => {
                   start="#e88fa7"
                   end="#cf6d91"
                   delay={200}
-                  onClick={() => navigate('/admin/appointments?range=today')}
+                  onClick={() => navigate('/admin/appointments?range=today&status=booked')}
                   icon={
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v4M17 3v4M4 9h16M6 7h12a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 1-1Z" />
