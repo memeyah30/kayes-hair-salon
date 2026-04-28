@@ -600,6 +600,78 @@ const QRModal = ({ src, onClose }) => {
   )
 }
 
+const TERMS_AND_CONDITIONS_TEXT = `Terms and Conditions
+
+By using the Kaye's Hair Salon and Spa appointment system, the customer agrees to provide accurate and complete information when booking an appointment. The customer is responsible for selecting the correct service, preferred date, and time schedule.
+
+Appointments are subject to schedule availability and confirmation by the salon. Kaye's Hair Salon and Spa reserves the right to approve, decline, reschedule, or cancel appointments when necessary due to schedule conflicts, service availability, holidays, or other valid operational reasons.
+
+Customers are expected to arrive on time for their scheduled appointment. Late arrival may affect the availability of the selected service and may result in rescheduling or cancellation, depending on the salon's decision.
+
+If payment is required, the customer agrees to follow the payment instructions provided by the system. All payments, including downpayments and full payments, are non-refundable once submitted and verified. Downpayments serve as reservation fees for the selected appointment schedule and salon services.
+
+Rescheduling and cancellation are only allowed within the permitted period set by the salon. Approved rescheduling may allow the existing payment to be applied to the new appointment schedule, subject to salon approval and availability.
+
+By continuing with the booking, the customer confirms that they understand and agree to follow the appointment rules, payment policy, and salon procedures.`;
+
+const DATA_PRIVACY_POLICY_TEXT = `Data Privacy Policy
+
+Kaye's Hair Salon and Spa respects the privacy of its customers. The personal information collected through this appointment system, such as name, contact number, email address, appointment details, selected services, payment information, and uploaded proof of payment, will be used only for appointment booking, schedule management, payment verification, customer communication, and service record purposes.
+
+Customer information will be accessed only by authorized salon personnel such as the owner, manager, or system administrator. The salon will not sell or share customer personal information with unauthorized third parties, unless required by law or necessary for system operation and appointment processing.
+
+The system may use email or contact details to send booking confirmations, appointment updates, payment status notifications, verification codes, reminders, or other important appointment-related messages.
+
+Customers are responsible for providing correct and updated information. The salon will take reasonable measures to protect customer data from unauthorized access, loss, misuse, or disclosure.
+
+By agreeing to this policy, the customer gives consent for Kaye's Hair Salon and Spa to collect, store, and process their personal information for appointment and service-related purposes.`;
+
+const NON_REFUNDABLE_PAYMENT_POLICY_TEXT = `All payments made through this system, including downpayments and full payments, are non-refundable. Downpayments serve as a reservation fee to secure the selected appointment schedule and salon services. Once payment has been submitted and verified, it cannot be refunded if the customer cancels, fails to attend, or does not proceed with the appointment. If rescheduling is approved within the allowed period, the existing payment may be applied to the new appointment schedule, subject to salon approval and availability. By proceeding with payment, the customer confirms that they have read, understood, and agreed to this non-refundable payment policy.`;
+
+const PolicyModal = ({ title, content, onClose }) => {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div 
+        className="relative max-w-2xl w-full bg-white rounded-2xl p-6 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4 border-b pb-3 border-gray-100">
+          <h2 className="text-xl font-bold text-[#2C1338]">{title}</h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-800 transition text-2xl leading-none font-medium h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+          >
+            &times;
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 pr-2 space-y-4 text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+          {content}
+        </div>
+        <div className="mt-6 pt-4 border-t border-gray-100">
+          <button 
+            onClick={onClose}
+            className="w-full bg-[#6d4de6] text-white font-bold py-3.5 rounded-xl hover:bg-[#5b3cc4] transition shadow"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => {
   const currency = cents => `PHP ${(cents / 100).toFixed(2)}`
 
@@ -887,7 +959,10 @@ const ReceiptModal = ({ appointment, onClose, isRescheduleReceipt = false }) => 
                 </div>
               )}
 
-              <div className="border-t pt-4 text-center text-sm text-[#8f7a6f]">
+              <div className="border-t pt-4 text-center text-sm text-[#8f7a6f] px-2">
+                <p className="mb-3 text-xs italic text-[#7b5c6d]">
+                  Note: All payments are non-refundable. Downpayments serve as reservation fees and may only be transferred to a rescheduled appointment if approved by the salon.
+                </p>
                 Thank you for choosing Kaye's Hair Salon and Spa!
               </div>
             </div>
@@ -1020,8 +1095,12 @@ const BookAppointment = () => {
     amount: typeof draft?.payment?.amount === 'string' ? draft.payment.amount : '',
     proofFile: null,
     proofPreview: null,
+    policyAgreed: draft?.payment?.policyAgreed === true,
   }))
-  const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '', privacy: '' })
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false)
+  const [showPaymentPolicyModal, setShowPaymentPolicyModal] = useState(false)
+  const [formErrors, setFormErrors] = useState({ email: '', phone: '', payment: '', privacy: '', paymentPolicy: '' })
   const [enlargedQR, setEnlargedQR] = useState(null)
   // Returning customers must verify their email before we reuse any saved profile data.
   const [customerLookupState, setCustomerLookupState] = useState(() => {
@@ -2137,6 +2216,13 @@ const BookAppointment = () => {
       return
     }
 
+    if (!payment.policyAgreed) {
+      const policyErrorMessage = 'You must agree to the Non-Refundable Payment Policy before continuing.'
+      setFormErrors((prev) => ({ ...prev, paymentPolicy: policyErrorMessage }))
+      toast.warn(policyErrorMessage)
+      return
+    }
+
     if (!selectedSlot) {
       toast.warn('Please select a time slot')
       return
@@ -2853,21 +2939,28 @@ const BookAppointment = () => {
                           privacy: e.target.checked ? '' : prev.privacy,
                         }))
                       }}
-                      className="mt-1 h-4 w-4 rounded border-[#c9bcf1] text-[#6d4de6] focus:ring-[#c9bcf1]"
+                      className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#6d4de6] focus:ring-[#c9bcf1]"
                     />
                     <span>
-                      I agree to the{' '}
-                      <a
-                        href="/privacy-policy"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2"
-                      >
-                        Data Privacy Policy
-                      </a>{' '}
-                      and consent to the collection and processing of my personal information for appointment booking purposes.
+                      I have read and agree to the Terms and Conditions and Data Privacy Policy of Kaye's Hair Salon and Spa.
                     </span>
                   </label>
+                  <div className="mt-3 ml-7 flex flex-col gap-2 sm:flex-row sm:gap-4">
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }}
+                      className="text-sm font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2 text-left hover:text-[#5b3cc4] transition-colors"
+                    >
+                      View Terms and Conditions
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }}
+                      className="text-sm font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2 text-left hover:text-[#5b3cc4] transition-colors"
+                    >
+                      View Data Privacy Policy
+                    </button>
+                  </div>
                 </div>
                 {formErrors.privacy && <p className="text-red-500 text-xs mt-1">{formErrors.privacy}</p>}
               </div>
@@ -4208,6 +4301,40 @@ const BookAppointment = () => {
               </div>
             </div>
 
+            {/* Non-Refundable Payment Policy */}
+            <div className="mb-6">
+              <div className={`rounded-2xl border p-4 ${formErrors.paymentPolicy ? 'border-red-300 bg-red-50' : 'border-[#ece6f4] bg-[#faf8fd]'}`}>
+                <label className="flex items-start gap-3 text-sm leading-6 text-[#4e3b5b]">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={payment.policyAgreed}
+                    onChange={(e) => {
+                      setPayment({ ...payment, policyAgreed: e.target.checked })
+                      setFormErrors((prev) => ({
+                        ...prev,
+                        paymentPolicy: e.target.checked ? '' : prev.paymentPolicy,
+                      }))
+                    }}
+                    className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#6d4de6] focus:ring-[#c9bcf1]"
+                  />
+                  <span>
+                    I understand and agree that my payment is non-refundable and will serve as my reservation/payment for the selected salon appointment and services.
+                  </span>
+                </label>
+                <div className="mt-3 ml-7">
+                  <button 
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setShowPaymentPolicyModal(true); }}
+                    className="text-sm font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2 hover:text-[#5b3cc4] transition-colors text-left"
+                  >
+                    View Non-Refundable Payment Policy
+                  </button>
+                </div>
+              </div>
+              {formErrors.paymentPolicy && <p className="text-red-500 text-xs mt-1">{formErrors.paymentPolicy}</p>}
+            </div>
+
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
@@ -4260,6 +4387,30 @@ const BookAppointment = () => {
         <QRModal 
           src={enlargedQR} 
           onClose={() => setEnlargedQR(null)} 
+        />
+      )}
+
+      {showTermsModal && (
+        <PolicyModal
+          title="Terms and Conditions"
+          content={TERMS_AND_CONDITIONS_TEXT}
+          onClose={() => setShowTermsModal(false)}
+        />
+      )}
+      
+      {showPrivacyModal && (
+        <PolicyModal
+          title="Data Privacy Policy"
+          content={DATA_PRIVACY_POLICY_TEXT}
+          onClose={() => setShowPrivacyModal(false)}
+        />
+      )}
+
+      {showPaymentPolicyModal && (
+        <PolicyModal
+          title="Non-Refundable Payment Policy"
+          content={NON_REFUNDABLE_PAYMENT_POLICY_TEXT}
+          onClose={() => setShowPaymentPolicyModal(false)}
         />
       )}
       </div>

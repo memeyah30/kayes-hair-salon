@@ -1867,6 +1867,11 @@ const AdminAppointments = () => {
                       <span className="font-medium text-[#B45309]">{currency(selectedRemainingBalance)}</span>
                     </div>
                   )}
+                  <div className="border-t border-[#E9E2FF] pt-2 mt-2">
+                    <span className="inline-block rounded-md bg-[#ede9fe] px-2.5 py-1.5 text-xs font-medium text-[#6d28d9]">
+                      ✓ Customer agreed to Non-Refundable Payment Policy
+                    </span>
+                  </div>
                 </div>
               </div>
 
