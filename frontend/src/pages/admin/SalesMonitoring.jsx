@@ -4,11 +4,6 @@ import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
-import DataTable from 'datatables.net-react'
-import DT from 'datatables.net-dt'
-import 'datatables.net-responsive-dt'
-
-DataTable.use(DT)
 
 const getManilaDateInput = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -264,24 +259,25 @@ const SalesMonitoring = () => {
                   </div>
                 ))}
               </div>
-              <div className="hidden md:block overflow-x-auto datatable-container">
-                <DataTable
-                  data={stats.top_selling_items}
-                  columns={[
-                    { title: 'Service', data: 'item_name' },
-                    { title: 'Quantity Sold', data: 'total_quantity', className: 'text-right' },
-                    { title: 'Total Revenue', data: 'total_revenue', className: 'text-right font-bold text-[#7B5CF5]', render: (data) => currency(data) },
-                  ]}
-                  options={{
-                    responsive: true,
-                    autoWidth: false,
-                    paging: false,
-                    info: false,
-                    searching: false,
-                    order: [[2, 'desc']],
-                  }}
-                  className="w-full"
-                />
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full min-w-[640px]">
+                  <thead className="bg-[#F2EDFF]">
+                    <tr className="border-b border-[#DDD6FE]">
+                      <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Service</th>
+                      <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Quantity Sold</th>
+                      <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Total Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#DDD6FE]">
+                    {stats.top_selling_items.map((item, idx) => (
+                      <tr key={idx} className="transition hover:bg-[#F6F2FF]">
+                        <td className="p-3 text-[#2D2D2D]">{item.item_name}</td>
+                        <td className="p-3 text-right text-[#2D2D2D]">{item.total_quantity}</td>
+                        <td className="p-3 text-right font-bold text-[#7B5CF5]">{currency(item.total_revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -329,78 +325,53 @@ const SalesMonitoring = () => {
                   ))}
                 </div>
 
-                <div className="hidden md:block overflow-x-auto datatable-container">
-                  <DataTable
-                    data={sales}
-                    columns={[
-                      { 
-                        title: 'Date', 
-                        data: 'created_at', 
-                        render: (data) => formatDate(data) 
-                      },
-                      { 
-                        title: 'Services', 
-                        data: 'item_name' 
-                      },
-                      { 
-                        title: 'Type', 
-                        data: 'transaction_type',
-                        render: (data) => {
-                          const typeClass = data === 'service' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                                           data === 'product' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                           'bg-[#EDE9FE] text-[#6D4DE6]'
-                          return `<span class="rounded-full px-2.5 py-1 text-xs ${typeClass}">${data}</span>`
-                        }
-                      },
-                      { 
-                        title: 'Qty', 
-                        data: 'quantity', 
-                        className: 'text-right' 
-                      },
-                      { 
-                        title: 'Unit Price', 
-                        data: 'unit_price_cents', 
-                        className: 'text-right', 
-                        render: (data) => currency(data) 
-                      },
-                      { 
-                        title: 'Total', 
-                        data: 'total_amount_cents', 
-                        className: 'text-right font-bold text-[#7B5CF5]', 
-                        render: (data) => currency(data) 
-                      },
-                      { 
-                        title: 'Payment', 
-                        data: 'payment_method',
-                        render: (data) => {
-                          const methodClass = data === 'cash' ? 'bg-[#FEF3C7] text-[#B45309]' :
-                                             data === 'gcash' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                                             'bg-[#DCFCE7] text-[#15803D]'
-                          return `<span class="rounded-full px-2.5 py-1 text-xs ${methodClass}">${data}</span>`
-                        }
-                      },
-                      { 
-                        title: 'Customer', 
-                        data: 'customer_name', 
-                        render: (data) => data || '-' 
-                      },
-                      { 
-                        title: 'Stylist', 
-                        data: 'stylist.name', 
-                        defaultContent: '-',
-                        render: (data, type, row) => row.stylist?.name || '-'
-                      },
-                    ]}
-                    options={{
-                      responsive: true,
-                      autoWidth: false,
-                      paging: false,
-                      info: false,
-                      searching: false,
-                      order: [[0, 'desc']],
-                    }}
-                    className="w-full"
-                  />
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full min-w-[640px]">
+                    <thead className="bg-[#F2EDFF]">
+                      <tr className="border-b border-[#DDD6FE]">
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Date</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Services</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Type</th>
+                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Quantity</th>
+                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Unit Price</th>
+                        <th className="p-3 text-right text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Total</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Payment</th>
+                        <th className="p-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Customer</th>
+                       
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#DDD6FE]">
+                      {sales.map(sale => (
+                        <tr key={sale.id} className="transition hover:bg-[#F6F2FF]">
+                          <td className="p-3 text-sm text-[#2D2D2D]">{formatDate(sale.created_at)}</td>
+                          <td className="p-3 text-[#2D2D2D]">{sale.item_name}</td>
+                          <td className="p-3">
+                            <span className={`rounded-full px-2.5 py-1 text-xs ${
+                              sale.transaction_type === 'service' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                              sale.transaction_type === 'product' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                              'bg-[#EDE9FE] text-[#6D4DE6]'
+                            }`}>
+                              {sale.transaction_type}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right text-[#2D2D2D]">{sale.quantity}</td>
+                          <td className="p-3 text-right text-[#2D2D2D]">{currency(sale.unit_price_cents)}</td>
+                          <td className="p-3 text-right font-bold text-[#7B5CF5]">{currency(sale.total_amount_cents)}</td>
+                          <td className="p-3">
+                            <span className={`rounded-full px-2.5 py-1 text-xs ${
+                              sale.payment_method === 'cash' ? 'bg-[#FEF3C7] text-[#B45309]' :
+                              sale.payment_method === 'gcash' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                              'bg-[#DCFCE7] text-[#15803D]'
+                            }`}>
+                              {sale.payment_method}
+                            </span>
+                          </td>
+                          <td className="p-3 text-sm text-[#2D2D2D]">{sale.customer_name || '-'}</td>
+                          <td className="p-3 text-sm text-[#2D2D2D]">{sale.stylist?.name || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
                 {sales.length === 0 && (
                   <div className="py-8 text-center text-[#6B6B6B]">No sales found for the selected period</div>

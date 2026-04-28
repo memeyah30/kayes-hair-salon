@@ -5,11 +5,6 @@ import api from '../../utils/api'
 import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
 import { resolveAssetUrl } from '../../utils/runtime'
-import DataTable from 'datatables.net-react'
-import DT from 'datatables.net-dt'
-import 'datatables.net-responsive-dt'
-
-DataTable.use(DT)
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MOBILE_TABS = [
@@ -1654,115 +1649,256 @@ const AdminAppointments = () => {
                 <div className="py-8 text-center text-[#6B6B6B]">Loading appointments...</div>
               )}
             </div>
-            <div className="hidden md:block p-4 datatable-container">
-              <DataTable
-                data={paginatedAppointments}
-                columns={[
-                  { 
-                    title: 'Customer', 
-                    data: 'customer_name',
-                    render: (data, type, row) => `
-                      <div class="text-sm font-semibold text-[#2D2D2D]">${data}</div>
-                      <div class="mt-1 text-xs text-[#6B6B6B]">${row.customer_phone || row.customer_email || ''}</div>
-                    `
-                  },
-                  { 
-                    title: 'Service', 
-                    data: null,
-                    render: (data, type, row) => {
-                      const appointmentServices = getAppointmentServices(row)
-                      const primaryService = getServiceName(appointmentServices[0])
-                      const extraCount = Math.max(appointmentServices.length - 1, 0)
-                      let html = `<div class="font-medium text-[#2D2D2D]">${primaryService}${extraCount > 0 ? ` +${extraCount} more` : ''}</div>`
-                      if (row.stylist?.name) {
-                        html += `
-                          <div class="mt-1 flex items-center gap-1 text-xs text-[#6B6B6B]">
-                            <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#F2EDFF] text-[#7B5CF5]">
-                              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full min-w-[720px]">
+                <thead className="bg-[#F2EDFF]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Service</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Payment Choice</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#DDD6FE]">
+                  {paginatedAppointments.map(apt => {
+                    const appointmentServices = getAppointmentServices(apt)
+                    const totalPrice = getAppointmentTotalPriceCents(apt)
+                    const proofUrl = resolveProofUrl(apt.payment_proof_url)
+                    const primaryService = getServiceName(appointmentServices[0])
+                    const extraCount = Math.max(appointmentServices.length - 1, 0)
+                    const startDate = new Date(getStart(apt))
+                    const dateLabel = startDate.toLocaleDateString('en-US', {
+                      timeZone: 'Asia/Manila',
+                      month: 'short',
+                      day: '2-digit',
+                      year: 'numeric'
+                    })
+                    const timeLabel = startDate.toLocaleTimeString('en-US', {
+                      timeZone: 'Asia/Manila',
+                      hour: 'numeric',
+                      minute: '2-digit'
+                    })
+                    const normalizedStatus = (apt.status || '').toLowerCase().trim()
+                    const displayStatus = normalizedStatus
+                      ? normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1)
+                      : 'Unknown'
+                    const canModify = normalizedStatus === 'booked' || normalizedStatus === 'confirmed'
+                    const canConfirm = normalizedStatus === 'booked'
+                    const isProcessingAction = processingAppointmentId === apt.id
+                    const paymentLabel = paymentStatusLabel(apt.payment_status, apt.status, apt.payment_method)
+                    const paymentChoice = paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)
+                    const isRescheduled = isRescheduledAppointment(apt)
+                    const rescheduledAtLabel = formatRescheduledTimestampLabel(apt.rescheduled_at_pht || apt.rescheduled_at)
+
+                    return (
+                    <tr
+                      key={apt.id}
+                      className="cursor-pointer transition hover:bg-[#F6F2FF] focus-visible:bg-[#F6F2FF] focus-visible:outline-none"
+                      onClick={() => {
+                        setOpenActionId(null)
+                        setSelectedAppointment(apt)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setOpenActionId(null)
+                          setSelectedAppointment(apt)
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`View details for appointment of ${apt.customer_name || 'customer'}`}
+                    >
+                      <td className="px-4 py-4">
+                        <div className="text-sm font-semibold text-[#2D2D2D]">{apt.customer_name}</div>
+                        <div className="mt-1 text-xs text-[#6B6B6B]">
+                          {apt.customer_phone || apt.customer_email}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="font-medium text-[#2D2D2D]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
+                        {apt.stylist?.name && (
+                          <div className="mt-1 flex items-center gap-1 text-xs text-[#6B6B6B]">
+                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#F2EDFF] text-[#7B5CF5]">
+                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                                 <circle cx="12" cy="8" r="3" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 20c1.5-3 5-5 7-5s5.5 2 7 5" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c1.5-3 5-5 7-5s5.5 2 7 5" />
                               </svg>
                             </span>
-                            <span>${row.stylist.name}</span>
+                            <span>{apt.stylist.name}</span>
                           </div>
-                        `
-                      }
-                      return html
-                    }
-                  },
-                  { 
-                    title: 'Date & Time', 
-                    data: null,
-                    render: (data, type, row) => {
-                      const startDate = new Date(getStart(row))
-                      const dateLabel = startDate.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: '2-digit', year: 'numeric' })
-                      const timeLabel = startDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' })
-                      let html = `
-                        <div class="font-medium text-[#2D2D2D]">${dateLabel}</div>
-                        <div class="mt-1 text-xs text-[#6B6B6B]">${timeLabel}</div>
-                      `
-                      if (isRescheduledAppointment(row)) {
-                        const reschedLabel = formatRescheduledTimestampLabel(row.rescheduled_at_pht || row.rescheduled_at)
-                        html += `
-                          <div class="mt-2 flex flex-wrap items-center gap-2">
-                            <span class="rounded-full bg-[#ede9fe] px-2.5 py-1 text-[11px] font-medium text-[#6d28d9]">Rescheduled</span>
-                            ${reschedLabel ? `<span class="text-[11px] text-[#6d28d9]">${reschedLabel} PHT</span>` : ''}
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="font-medium text-[#2D2D2D]">{dateLabel}</div>
+                        <div className="mt-1 text-xs text-[#6B6B6B]">{timeLabel}</div>
+                        {isRescheduled && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-[11px] font-medium text-[#6d28d9]">
+                              Rescheduled
+                            </span>
+                            {rescheduledAtLabel && (
+                              <span className="text-[11px] text-[#6d28d9]">
+                                {rescheduledAtLabel} PHT
+                              </span>
+                            )}
                           </div>
-                        `
-                      }
-                      return html
-                    }
-                  },
-                  { 
-                    title: 'Status', 
-                    data: 'status',
-                    render: (data, type, row) => {
-                      const normalized = (data || '').toLowerCase().trim()
-                      const display = normalized === 'confirmed' ? 'Confirmed' : (normalized.charAt(0).toUpperCase() + normalized.slice(1))
-                      return `<span class="w-fit rounded-full px-3 py-1 text-xs font-medium ${statusPillClass(normalized)}">${display}</span>`
-                    }
-                  },
-                  { 
-                    title: 'Payment', 
-                    data: null,
-                    render: (data, type, row) => {
-                      const choice = paymentChoiceLabel(row.payment_method, row.payment_status, row.status)
-                      const label = paymentStatusLabel(row.payment_status, row.status, row.payment_method)
-                      let html = `<span class="px-3 py-1 rounded-full text-xs font-medium w-fit ${paymentChoiceClass(row.payment_method, row.payment_status, row.status)}">${choice}</span>`
-                      if (shouldShowPaymentStatusBadge(row.payment_method, row.payment_status, row.status)) {
-                        html += `<div class="mt-1"><span class="px-3 py-1 rounded-full text-[11px] w-fit ${paymentStatusClass(row.payment_status, row.status, row.payment_method)}">${label}</span></div>`
-                      }
-                      return html
-                    }
-                  },
-                  { 
-                    title: 'Price', 
-                    data: null,
-                    render: (data, type, row) => {
-                      const total = getAppointmentTotalPriceCents(row)
-                      return `<div class="font-semibold text-[#2D2D2D]">${currency(total)}</div>`
-                    }
-                  },
-                  { 
-                    title: 'Action', 
-                    data: null,
-                    orderable: false,
-                    render: () => `<button class="px-3 py-1 border border-[#7B5CF5] text-[#7B5CF5] rounded-lg text-xs hover:bg-[#F6F2FF] transition">View</button>`
-                  }
-                ]}
-                options={{
-                  responsive: true,
-                  autoWidth: false,
-                  paging: false,
-                  info: false,
-                  searching: false,
-                  rowCallback: (row, data) => {
-                    row.style.cursor = 'pointer'
-                    row.onclick = () => setSelectedAppointment(data)
-                  }
-                }}
-                className="w-full"
-              />
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${statusPillClass(normalizedStatus)}`}>
+                            {normalizedStatus === 'confirmed' ? 'Confirmed' : displayStatus}
+                          </span>
+                          {isRescheduled && (
+                            <span className="w-fit rounded-full bg-[#ede9fe] px-3 py-1 text-xs font-medium text-[#6d28d9]">
+                              Rescheduled
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium w-fit ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
+                            {paymentChoice}
+                          </span>
+                          {shouldShowPaymentStatusBadge(apt.payment_method, apt.payment_status, apt.status) && (
+                            <span className={`px-3 py-1 rounded-full text-[11px] w-fit ${paymentStatusClass(apt.payment_status, apt.status, apt.payment_method)}`}>
+                              {paymentLabel}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="font-semibold text-[#2D2D2D]">{currency(totalPrice)}</div>
+                        <div className="mt-1 text-xs text-[#6B6B6B]">{appointmentServices.length > 1 ? 'Total' : 'Service price'}</div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div
+                          className="relative apt-actions"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              if (isProcessingAction) return
+                              event.stopPropagation()
+                              setOpenActionId(openActionId === apt.id ? null : apt.id)
+                            }}
+                            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition ${isProcessingAction ? 'cursor-not-allowed border-[#E5E7EB] bg-[#E5E7EB] text-[#9CA3AF]' : 'border-[#7B5CF5] bg-white text-[#7B5CF5] hover:bg-[#F6F2FF]'}`}
+                            aria-haspopup="menu"
+                            aria-expanded={openActionId === apt.id}
+                            disabled={isProcessingAction}
+                          >
+                            {isProcessingAction ? 'Updating...' : 'Actions'}
+                            <svg
+                              className={`h-4 w-4 transition ${openActionId === apt.id ? 'rotate-180' : ''}`}
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 8l5 5 5-5" />
+                            </svg>
+                          </button>
+                          {openActionId === apt.id && (
+                            <div className="absolute right-0 z-20 mt-2 w-56 rounded-[14px] border border-[#DDD6FE] bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
+                              {proofUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenActionId(null)
+                                    openProofFile(proofUrl)
+                                  }}
+                                  className="w-full rounded-xl px-3 py-2 text-left text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
+                                >
+                                  View Proof
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  if (!canConfirm || isProcessingAction) return
+                                  setOpenActionId(null)
+                                  handleAction(apt.id, 'confirm')
+                                }}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canConfirm && !isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (!canModify || isProcessingAction) return
+                                  setOpenActionId(null)
+                                  handleRescheduleClick(apt)
+                                }}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canModify && !isProcessingAction ? 'text-[#7B5CF5] hover:bg-[#F6F2FF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
+                              >
+                                Reschedule
+                              </button>
+                              {apt.payment_method === 'online' && effectivePaymentStatus(apt.payment_status, apt.status) === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      if (isProcessingAction) return
+                                      setOpenActionId(null)
+                                      handlePaymentStatus(apt.id, 'paid')
+                                    }}
+                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#15803D] hover:bg-[#DCFCE7]'}`}
+                                  >
+                                    Mark Paid
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (isProcessingAction) return
+                                      setOpenActionId(null)
+                                      handlePaymentStatus(apt.id, 'rejected')
+                                    }}
+                                    className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#B91C1C] hover:bg-[#FEE2E2]'}`}
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => {
+                                  if (!canModify || isProcessingAction) return
+                                  setOpenActionId(null)
+                                  handleAction(apt.id, 'complete')
+                                }}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${canModify && !isProcessingAction ? 'text-[#6846E8] hover:bg-[#F2EDFF]' : 'cursor-not-allowed text-[#9CA3AF]'}`}
+                              >
+                                {isProcessingAction ? 'Completing...' : 'Complete'}
+                              </button>
+                              <div className="my-1 border-t border-[#DDD6FE]" />
+                              <button
+                                onClick={() => {
+                                  if (isProcessingAction) return
+                                  setOpenActionId(null)
+                                  handleDelete(apt)
+                                }}
+                                className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${isProcessingAction ? 'cursor-not-allowed text-[#9CA3AF]' : 'text-[#B91C1C] hover:bg-[#FEE2E2]'}`}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {paginatedAppointments.length === 0 && !tableLoading && (
+                <div className="py-8 text-center text-[#6B6B6B]">No appointments found</div>
+              )}
+              {tableLoading && (
+                <div className="py-8 text-center text-[#6B6B6B]">Loading appointments...</div>
+              )}
             </div>
             {paginatedAppointments.length > 0 && (
               <Pagination
