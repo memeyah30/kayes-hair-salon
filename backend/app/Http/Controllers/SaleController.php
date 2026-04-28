@@ -235,4 +235,90 @@ class SaleController extends Controller
             'daily_sales' => $dailySales,
         ]);
     }
+
+    public function exportPdf(Request $request)
+    {
+        $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d'],
+            'transaction_type' => ['nullable', 'in:service,product,both'],
+            'stylist_id' => ['nullable', 'integer', 'exists:stylists,id'],
+        ]);
+
+        $timezone = 'Asia/Manila';
+        $query = Sale::with(['appointment', 'inventory', 'stylist']);
+
+        // Filter by date range
+        if ($request->filled('start_date')) {
+            $startUtc = Carbon::createFromFormat('Y-m-d', $request->start_date, $timezone)
+                ->startOfDay()
+                ->setTimezone('UTC');
+            $query->where('created_at', '>=', $startUtc);
+        } else {
+            $startUtc = Carbon::now($timezone)->startOfMonth()->setTimezone('UTC');
+            $query->where('created_at', '>=', $startUtc);
+        }
+
+        if ($request->filled('end_date')) {
+            $endUtc = Carbon::createFromFormat('Y-m-d', $request->end_date, $timezone)
+                ->endOfDay()
+                ->setTimezone('UTC');
+            $query->where('created_at', '<=', $endUtc);
+        } else {
+            $endUtc = Carbon::now($timezone)->endOfDay()->setTimezone('UTC');
+            $query->where('created_at', '<=', $endUtc);
+        }
+
+        // Filter by transaction type
+        if ($request->filled('transaction_type')) {
+            $query->where('transaction_type', $request->transaction_type);
+        }
+
+        // Filter by stylist
+        if ($request->filled('stylist_id')) {
+            $query->where('stylist_id', $request->stylist_id);
+        }
+
+        $sales = $query->orderBy('created_at', 'desc')->get();
+
+        // Calculate stats (reusing logic from stats method but on the filtered collection)
+        $totalSales = $sales->sum('total_amount_cents');
+        $salesByType = $sales->groupBy('transaction_type')->map->sum('total_amount_cents');
+        
+        $stylist = null;
+        if ($request->filled('stylist_id')) {
+            $stylist = \App\Models\Stylist::find($request->stylist_id);
+        }
+
+        // Fetch appointments for the same period to get downpayment/remaining balance totals
+        $appointments = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc])
+            ->whereIn('status', ['booked', 'confirmed', 'completed'])
+            ->get();
+
+        $appointmentsSummary = [
+            'total_downpayment_cents' => $appointments->where('mode_of_payment', 'downpayment')->sum('amount_paid_cents'),
+            'total_full_payment_cents' => $appointments->where('mode_of_payment', 'full')->sum('amount_paid_cents'),
+            'total_collected_cents' => $appointments->sum('amount_paid_cents'),
+            'total_remaining_balance_cents' => $appointments->sum('remaining_balance_cents'),
+        ];
+
+        $data = [
+            'salon_name' => 'Kaye\'s Hair Salon and Spa',
+            'generated_at' => Carbon::now($timezone)->format('M d, Y h:i A'),
+            'start_date' => $startUtc->setTimezone($timezone)->format('M d, Y'),
+            'end_date' => $endUtc->setTimezone($timezone)->format('M d, Y'),
+            'transaction_type' => $request->transaction_type,
+            'stylist_name' => $stylist ? $stylist->name : null,
+            'sales' => $sales,
+            'total_sales_cents' => $totalSales,
+            'sales_by_type' => $salesByType,
+            'appointments_summary' => $appointmentsSummary,
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.sales-report', $data);
+        
+        $filename = 'sales_report_' . $startUtc->setTimezone($timezone)->format('Ymd') . '_to_' . $endUtc->setTimezone($timezone)->format('Ymd') . '.pdf';
+        
+        return $pdf->download($filename);
+    }
 }

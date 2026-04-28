@@ -150,6 +150,50 @@ const SalesMonitoring = () => {
     })
   }
 
+  const [exporting, setExporting] = useState(false)
+
+  const handleExportPdf = async () => {
+    try {
+      setExporting(true)
+      const params = new URLSearchParams()
+      if (dateRange.start_date) params.append('start_date', dateRange.start_date)
+      if (dateRange.end_date) params.append('end_date', dateRange.end_date)
+      if (filters.transaction_type) params.append('transaction_type', filters.transaction_type)
+      if (filters.stylist_id) params.append('stylist_id', filters.stylist_id)
+
+      const baseUrl = api.defaults.baseURL || ''
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+      const url = `${baseUrl}/sales/export-pdf?${params.toString()}${token ? `&token=${token}` : ''}`
+      
+      // Since it's a file download, we can use window.open or a hidden anchor
+      // But we need to handle auth. Laravel Sanctum usually uses cookies or headers.
+      // If using Bearer token, we might need a different approach for direct links.
+      // For simplicity, if the API is on the same domain or uses cookies, a simple window.location.href works.
+      // However, if we need the token, we can pass it as a query param (if the backend supports it) or use a blob.
+      
+      const response = await api.get(`/sales/export-pdf?${params.toString()}`, {
+        responseType: 'blob'
+      })
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = `sales_report_${dateRange.start_date}_to_${dateRange.end_date}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(downloadUrl)
+      
+      toast.success('PDF report generated successfully')
+    } catch (e) {
+      toast.error('Failed to export PDF')
+      console.error(e)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <AdminLayout userType="admin" title="Sales Reports">
       <div className="app-mobile-shell space-y-6">
@@ -163,6 +207,29 @@ const SalesMonitoring = () => {
               >&larr;</button>
               <h1 className="text-2xl font-bold text-[#2D2D2D]">Sales Monitoring</h1>
             </div>
+            
+            <button
+              onClick={handleExportPdf}
+              disabled={exporting || loading}
+              className="tap-safe flex items-center justify-center gap-2 rounded-xl bg-[#7B5CF5] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(123,92,245,0.24)] transition hover:bg-[#6846E8] disabled:opacity-50"
+            >
+              {exporting ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export PDF
+                </>
+              )}
+            </button>
           </div>
 
           {/* Filters */}
