@@ -4,6 +4,11 @@ import { toast } from 'react-toastify'
 import api from '../../utils/api'
 import AdminLayout from '../../components/AdminLayout'
 import Pagination from '../../components/Pagination'
+import DataTable from 'datatables.net-react'
+import DT from 'datatables.net-dt'
+import 'datatables.net-responsive-dt'
+
+DataTable.use(DT)
 
 const AdminCustomers = () => {
   const [customers, setCustomers] = useState([])
@@ -152,70 +157,52 @@ const AdminCustomers = () => {
               }}
             />
           </div>
-          <div className="divide-y max-h-96 overflow-y-auto">
-            {customerList.length === 0 ? (
-              <div className="p-8 text-center">
-                {!searchTerm.trim() ? (
-                  <div className="space-y-3">
-                    <div className="text-base font-semibold mb-2">No customer records</div>
-                    <div className="text-[#8f7a6f] font-medium">No customers yet</div>
-                    <div className="text-sm text-gray-400">
-                      Customers will appear here automatically after they make their first appointment booking.
-                    </div>
-                    <div className="text-xs text-gray-400 mt-4">
-                      Total Customers: {pagination.total}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-gray-400">
-                    No customers match your search. Try a different search term.
-                  </div>
-                )}
-              </div>
-            ) : (
-              customerList.map((customer, idx) => (
-                <div
-                  key={customer.customer_key || idx}
-                  onClick={() => setSelectedCustomer(customer)}
-                  className={`p-4 cursor-pointer hover:bg-gray-50 transition ${
-                    selectedCustomer?.customer_key === customer.customer_key ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="font-semibold text-lg">{customer.name}</div>
-                      <div className="text-sm text-[#8f7a6f] mt-1 space-y-1">
-                        {customer.email && (
-                          <div className="flex items-center gap-1">
-                            <span>Email:</span>
-                            <span>{customer.email}</span>
-                          </div>
-                        )}
-                        {customer.phone && (
-                          <div className="flex items-center gap-1">
-                            <span>Phone:</span>
-                            <span>{customer.phone}</span>
-                          </div>
-                        )}
+          <div className="datatable-container p-2">
+            <DataTable
+              data={customerList}
+              columns={[
+                { 
+                  title: 'Customer', 
+                  data: 'name',
+                  render: (data, type, row) => {
+                    const contact = row.email || row.phone || ''
+                    return `
+                      <div class="flex flex-col">
+                        <span class="font-semibold text-sm">${data}</span>
+                        <span class="text-[11px] text-[#8f7a6f] truncate max-w-[150px]">${contact}</span>
                       </div>
-                    </div>
-                    <div className="text-right ml-4">
-                      <div className="text-sm font-semibold text-blue-600">{customer.total_appointments}</div>
-                      <div className="text-xs text-[#9b857a]">appointments</div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-4 text-xs">
-                    <span className="text-[#9b857a]">
-                      Total Spent: <span className="font-semibold text-green-600">{currency(customer.total_spent_cents)}</span>
-                    </span>
-                    <span className="text-gray-400">|</span>
-                    <span className="text-[#9b857a]">
-                      Completed: {customer.completed_appointments}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+                    `
+                  }
+                },
+                { 
+                  title: 'Appts', 
+                  data: 'total_appointments',
+                  className: 'text-center text-sm',
+                },
+                { 
+                  title: 'Spent', 
+                  data: 'total_spent_cents',
+                  render: (data) => currency(data),
+                  className: 'text-right text-xs font-semibold text-green-600',
+                }
+              ]}
+              options={{
+                responsive: true,
+                autoWidth: false,
+                paging: false,
+                info: false,
+                searching: false,
+                rowCallback: (row, data) => {
+                  row.onclick = () => setSelectedCustomer(data)
+                  if (selectedCustomer?.customer_key === data.customer_key) {
+                    row.classList.add('bg-blue-50', 'border-l-4', 'border-blue-500')
+                  } else {
+                    row.classList.remove('bg-blue-50', 'border-l-4', 'border-blue-500')
+                  }
+                }
+              }}
+              className="w-full display hover"
+            />
           </div>
           {customerList.length > 0 && (
             <Pagination

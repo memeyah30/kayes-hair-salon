@@ -238,3 +238,15 @@
     min-height: 44px;
   }
 }
+
+/* DataTables Modern Styling */
+.datatable-container .dataTables_wrapper { @apply font-sans text-[#2D2D2D]; }
+.datatable-container table.dataTable { @apply border-collapse border-spacing-0 w-full !important; border: 1px solid #DDD6FE !important; border-radius: 12px !important; overflow: hidden !important; }
+.datatable-container table.dataTable thead th { @apply bg-[#F2EDFF] text-[#6B6B6B] text-xs font-semibold uppercase tracking-wider px-4 py-3 border-b border-[#DDD6FE] !important; }
+.datatable-container table.dataTable tbody td { @apply px-4 py-4 border-b border-[#F2F0FF] text-sm !important; }
+.datatable-container table.dataTable tbody tr:last-child td { @apply border-b-0 !important; }
+.datatable-container table.dataTable tbody tr:hover { @apply bg-[#F6F2FF] !important; }
+.datatable-container .dataTables_info, .datatable-container .dataTables_paginate { @apply mt-4 text-sm text-[#6B6B6B] !important; }
+.datatable-container .dataTables_paginate .paginate_button { @apply rounded-lg border border-[#DDD6FE] bg-white px-3 py-1 mx-1 text-[#7B5CF5] hover:bg-[#F6F2FF] hover:border-[#7B5CF5] !important; }
+.datatable-container .dataTables_paginate .paginate_button.current { @apply bg-[#7B5CF5] text-white border-[#7B5CF5] !important; }
+.datatable-container .dataTables_filter input { @apply rounded-xl border border-[#DDD6FE] px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] !important; }
