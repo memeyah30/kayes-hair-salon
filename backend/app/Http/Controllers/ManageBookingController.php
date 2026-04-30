@@ -218,6 +218,7 @@ class ManageBookingController extends Controller
 
     public function appointments(Request $request)
     {
+        $this->syncMissedAppointments();
         $email = $this->normalizeEmail((string) $request->attributes->get('customer_verified_email', ''));
 
         $appointments = Appointment::query()
@@ -557,5 +558,10 @@ class ManageBookingController extends Controller
     private function mapStatusForCustomer(string $status): string
     {
         return $status === 'booked' ? 'pending' : $status;
+    }
+
+    private function syncMissedAppointments(): void
+    {
+        app(\App\Services\MissedAppointmentService::class)->markOverdueAppointmentsAsMissed();
     }
 }
