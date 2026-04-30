@@ -50,7 +50,7 @@ class AppointmentNotificationService
 
     public function qrPayload(Appointment $appointment): string
     {
-        return $this->magicLinkUrl($appointment);
+        return $this->magicLinkUrl($appointment) . '&view=receipt';
     }
 
     public function qrCodeSvg(Appointment $appointment): string

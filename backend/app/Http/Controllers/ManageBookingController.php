@@ -199,12 +199,19 @@ class ManageBookingController extends Controller
         $request->session()->put('customer_appointment_id', $link->appointment_id);
         $request->session()->put('customer_manage_booking_email', $email);
 
-        $query = http_build_query([
+        $query = [
             'token' => $sessionToken,
             'email' => $email,
-        ]);
+            'appointment_id' => $link->appointment_id,
+        ];
 
-        return redirect('/customer?' . $query);
+        if ($request->has('view')) {
+            $query['view'] = $request->get('view');
+        }
+
+        $frontendUrl = config('app.frontend_url');
+        
+        return redirect($frontendUrl . '/customer?' . http_build_query($query));
     }
 
     public function logout(Request $request)

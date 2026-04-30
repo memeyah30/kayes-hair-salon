@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import AdminLayout from '../components/AdminLayout'
 import RatingModal from '../components/RatingModal'
 import manageBookingApi from '../utils/manageBookingApi'
+import ReceiptModal from '../components/ReceiptModal'
 import {
   clearManageBookingVerification,
   getManageBookingVerifiedEmail,
@@ -164,6 +165,7 @@ const CustomerDashboard = () => {
   const [customerName, setCustomerName] = useState(getManageBookingVerifiedName())
   const [logoutModalOpen, setLogoutModalOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [receiptAppointment, setReceiptAppointment] = useState(null)
 
   const hasVerifiedAccess = Boolean(queryToken && queryEmail) || isManageBookingVerified()
   const verifiedEmail = queryEmail || getManageBookingVerifiedEmail()
@@ -205,6 +207,17 @@ const CustomerDashboard = () => {
       const { data } = await manageBookingApi.get('/manage-booking/appointments')
       setAppointments(data.appointments || [])
       syncCustomerIdentity(data.customer_name)
+
+      // Auto-open receipt if requested via URL
+      const viewMode = params.get('view')
+      const targetAppointmentId = params.get('appointment_id')
+      if (viewMode === 'receipt' && targetAppointmentId && data.appointments) {
+        const target = data.appointments.find(a => String(a.id) === String(targetAppointmentId))
+        if (target) {
+          setReceiptAppointment(target)
+        }
+      }
+
       return data
     } catch (error) {
       if (error.response?.status === 401) {
@@ -468,6 +481,12 @@ const CustomerDashboard = () => {
             <span className={`px-2 py-1 rounded text-xs self-center ${statusClasses[appointment.status] || 'bg-gray-100 text-gray-700'}`}>
               {statusLabel}
             </span>
+            <button
+              onClick={() => setReceiptAppointment(appointment)}
+              className="tap-safe px-3 py-1 rounded-full bg-[#f3eeff] text-[#6b4ed1] text-xs font-bold hover:bg-[#ebe3ff] transition"
+            >
+              View Receipt
+            </button>
           </div>
         </div>
 
@@ -726,6 +745,13 @@ const CustomerDashboard = () => {
           onClose={() => setRatingAppointment(null)}
           onSubmit={submitRating}
           submitting={submittingRating}
+        />
+      )}
+
+      {receiptAppointment && (
+        <ReceiptModal
+          appointment={receiptAppointment}
+          onClose={() => setReceiptAppointment(null)}
         />
       )}
       </>
