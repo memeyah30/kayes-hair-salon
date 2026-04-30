@@ -20,11 +20,9 @@ import ManageHolidays from './pages/admin/ManageHolidays'
 import ManagePaymentAccounts from './pages/admin/ManagePaymentAccounts'
 import ManageInventory from './pages/admin/ManageInventory'
 import SalesMonitoring from './pages/admin/SalesMonitoring'
-import PendingStaffApprovals from './pages/admin/PendingStaffApprovals'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
 import AddStaff from './pages/manager/AddStaff'
-import StaffRequests from './pages/manager/StaffRequests'
 
 const App = () => {
   return (
@@ -71,14 +69,6 @@ const App = () => {
           element={
             <ProtectedRoute allowedTypes={['admin']}>
               <ManageStylists />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/staff/pending"
-          element={
-            <ProtectedRoute allowedTypes={['admin']}>
-              <PendingStaffApprovals />
             </ProtectedRoute>
           }
         />
@@ -154,14 +144,6 @@ const App = () => {
           element={
             <ProtectedRoute allowedTypes={['manager']}>
               <AddStaff />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/manager/staff/requests"
-          element={
-            <ProtectedRoute allowedTypes={['manager']}>
-              <StaffRequests />
             </ProtectedRoute>
           }
         />

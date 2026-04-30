@@ -25,8 +25,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/manage/services', label: 'Services', icon: 'services' },
-    { to: '/admin/manage/stylists', label: 'Staff Profiles', icon: 'staff' },
-    { to: '/admin/staff/pending', label: 'Approvals', icon: 'staff-add' },
+    { to: '/admin/manage/stylists', label: 'Manager Profiles', icon: 'staff' },
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
     { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },
@@ -36,8 +35,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
   const managerLinks = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/manager/staff/add', label: 'Add Staff', icon: 'staff' },
-    { to: '/manager/staff/requests', label: 'Staff Requests', icon: 'reviews' },
+    { to: '/manager/staff/add', label: 'Add Manager', icon: 'staff' },
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },

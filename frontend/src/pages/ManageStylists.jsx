@@ -765,42 +765,40 @@ const ManageStylists = () => {
       handleManagerSubmit(e)
       return
     }
-
     e.preventDefault()
     toast.warn('Please select staff type first')
   }
 
   return (
-    <AdminLayout userType="admin" title="Staff Profiles">
+    <AdminLayout userType="admin" title="Manager Profiles">
       <div className="app-mobile-shell space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <button
-                onClick={() => navigate('/admin/dashboard')}
-                className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
-                aria-label="Return to Dashboard"
-                title="Return to Dashboard"
-              >&larr;</button>
-              <div>
-                <h1 className="text-2xl font-bold text-[#2D2D2D]">Staff Profiles</h1>
-                
-              </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
+              aria-label="Return to Dashboard"
+              title="Return to Dashboard"
+            >&larr;</button>
+            <div>
+              <h1 className="text-2xl font-bold text-[#2D2D2D]">Manager Profiles</h1>
             </div>
           </div>
+        </div>
 
-      <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-        <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">
-          {selectedStaffType === 'stylist'
-            ? `${editing ? 'Edit' : 'Add'} Stylist`
-            : selectedStaffType === 'manager'
-              ? `${editingManager ? 'Edit' : 'Add'} Manager`
-              : 'Add Staff'}
-        </h2>
-        <form onSubmit={handleStaffFormSubmit} className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Staff Type *</label>
-              <select
+        <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+          <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">
+            {selectedStaffType === 'stylist'
+              ? `${editing ? 'Edit' : 'Add'} Stylist`
+              : selectedStaffType === 'manager'
+                ? `${editingManager ? 'Edit' : 'Add'} Manager`
+                : 'Add Staff'}
+          </h2>
+          <form onSubmit={handleStaffFormSubmit} className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[#2D2D2D]">Staff Type *</label>
+                <select
                 className="w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
                 value={selectedStaffType}
                 onChange={(e) => handleStaffTypeChange(e.target.value)}

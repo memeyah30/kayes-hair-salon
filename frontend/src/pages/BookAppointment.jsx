@@ -4008,7 +4008,7 @@ const BookAppointment = () => {
         }, 0)
         const totalAmount = totalAmountCents / 100
         
-        const minDownpayment = totalAmount * 0.2
+        const minDownpayment = totalAmount * 0.1
         const parsedPaymentAmount = parseFloat(payment.amount)
         const selectedPaymentType = payment.method === 'online'
           ? (payment.paymentType === 'full' ? 'full' : 'downpayment')
@@ -4119,7 +4119,7 @@ const BookAppointment = () => {
                     className="sr-only"
                   />
                   <div className="font-semibold text-gray-900">Downpayment</div>
-                  <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.2))}</div>
+                  <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.1))}</div>
                 </label>
 
                 {payment.method === 'online' && (
@@ -4167,15 +4167,15 @@ const BookAppointment = () => {
                   if (value >= minDownpayment && value <= totalAmount) {
                     setPayment({ ...payment, amount: e.target.value })
                   } else if (value < minDownpayment) {
-                    toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.2))}`)
+                    toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.1))}`)
                   }
                 }}
-                placeholder={selectedPaymentType === 'full' ? currency(totalAmountCents) : `Minimum: ${currency(Math.round(totalAmountCents * 0.2))}`}
+                placeholder={selectedPaymentType === 'full' ? currency(totalAmountCents) : `Minimum: ${currency(Math.round(totalAmountCents * 0.1))}`}
               />
               <p className="text-xs text-[#9b857a] mt-1">
                 {selectedPaymentType === 'full'
                   ? <>Full payment selected | Remaining: {currency(0)}</>
-                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.2))} | Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}</>}
+                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.1))} | Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}</>}
               </p>
             </div>
 

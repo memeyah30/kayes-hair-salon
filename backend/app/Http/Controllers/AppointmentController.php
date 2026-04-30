@@ -363,7 +363,7 @@ class AppointmentController extends Controller
 
             $paymentMethod = $data['payment_method'] ?? 'on_hand';
             $downpaymentAmountCents = $data['downpayment_amount_cents'] ?? null;
-            $minDownpaymentCents = (int) round($totalAmountCents * 0.2);
+            $minDownpaymentCents = (int) round($totalAmountCents * 0.1);
 
             if ($downpaymentAmountCents !== null && (int) $downpaymentAmountCents > $totalAmountCents) {
                 return response()->json([
@@ -393,7 +393,7 @@ class AppointmentController extends Controller
                         'message' => 'A cash deposit is required to confirm this appointment.',
                         'errors' => [
                             'downpayment_amount_cents' => [
-                                'Minimum deposit is 20% of the total amount.'
+                                'Minimum deposit is 10% of the total amount.'
                             ]
                         ]
                     ], 422);
