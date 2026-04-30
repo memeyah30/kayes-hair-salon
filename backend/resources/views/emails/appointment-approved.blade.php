@@ -34,8 +34,8 @@
                                 style="display:block;margin:0 auto 14px;background:#ffffff;padding:12px;border-radius:12px;"
                             >
                             <p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#d8c5f1;">If the QR image does not load, use the button below.</p>
-                            <a href="{{ $receiptUrl }}" style="display:inline-block;background:#8b5cf6;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:700;font-size:15px;">
-                                View Appointment Receipt
+                            <a href="{{ $manageUrl }}" style="display:inline-block;background:#8b5cf6;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:700;font-size:15px;">
+                                Manage Appointment
                             </a>
                         </td>
                     </tr>

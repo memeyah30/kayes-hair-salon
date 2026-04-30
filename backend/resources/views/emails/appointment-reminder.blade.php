@@ -33,8 +33,8 @@
                                 height="180"
                                 style="display:block;margin:0 auto 14px;background:#ffffff;padding:12px;border-radius:12px;"
                             >
-                            <a href="{{ $receiptUrl }}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:700;font-size:15px;">
-                                Open Receipt
+                            <a href="{{ $manageUrl }}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:700;font-size:15px;">
+                                Manage Appointment
                             </a>
                         </td>
                     </tr>

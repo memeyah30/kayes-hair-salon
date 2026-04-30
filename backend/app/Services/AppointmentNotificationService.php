@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Mail\AppointmentApprovedMail;
 use App\Mail\ReminderMail;
 use App\Models\Appointment;
+use App\Models\AppointmentLink;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class AppointmentNotificationService
 {
@@ -34,9 +36,21 @@ class AppointmentNotificationService
         return url('/appointments/' . $appointment->getKey() . '/qr-code');
     }
 
+    public function magicLinkUrl(Appointment $appointment): string
+    {
+        $rawToken = Str::random(64);
+        $appointment->appointmentLinks()->create([
+            'token_hash' => hash('sha256', $rawToken),
+            'expires_at' => now()->addDays(30),
+            'purpose' => 'manage',
+        ]);
+
+        return route('customer.magic', ['token' => $rawToken]);
+    }
+
     public function qrPayload(Appointment $appointment): string
     {
-        return $this->receiptUrl($appointment);
+        return $this->magicLinkUrl($appointment);
     }
 
     public function qrCodeSvg(Appointment $appointment): string
@@ -74,8 +88,9 @@ class AppointmentNotificationService
             'statusLabel' => ucfirst((string) $appointment->status),
             'receiptNumber' => 'APT-' . str_pad((string) $appointment->getKey(), 6, '0', STR_PAD_LEFT),
             'receiptUrl' => $this->receiptUrl($appointment),
+            'manageUrl' => $this->magicLinkUrl($appointment),
             'qrCodeImageUrl' => $this->qrCodeImageUrl($appointment),
-            'qrCodePayload' => $this->qrPayload($appointment),
+            'qrCodePayload' => null, // Will be generated on-the-fly via qrCodeSvg if needed
             'totalAmountLabel' => $this->moneyLabel($this->resolvedTotalAmountCents($appointment, $serviceItems)),
             'amountPaidLabel' => $this->moneyLabel((int) $appointment->amount_paid_cents),
             'remainingBalanceLabel' => $this->moneyLabel((int) $appointment->remaining_balance_cents),
