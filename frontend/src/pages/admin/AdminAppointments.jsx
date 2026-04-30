@@ -893,6 +893,9 @@ const AdminAppointments = () => {
   const selectedTotalPrice = selectedAppointment ? getAppointmentTotalPriceCents(selectedAppointment) : 0
   const selectedAmountPaid = selectedAppointment ? getAppointmentAmountPaidCents(selectedAppointment) : 0
   const selectedRemainingBalance = selectedAppointment ? getAppointmentRemainingBalanceCents(selectedAppointment) : 0
+  const selectedCreatedAtLabel = selectedAppointment?.created_at
+    ? formatRescheduledTimestampLabel(selectedAppointment.created_at)
+    : 'N/A'
 
   useEffect(() => {
     setSelectedProofLoadError(false)
@@ -1843,8 +1846,12 @@ const AdminAppointments = () => {
                   <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Schedule</p>
                   <p className="mt-2 font-semibold">{selectedDateLabel}</p>
                   <p className="mt-1 text-sm text-[#6B6B6B]">{selectedTimeLabel} PHT</p>
+                  <div className="mt-3 pt-3 border-t border-[#E5E7EB]">
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-[#6B6B6B]">Booked On</p>
+                    <p className="mt-1 text-sm font-medium text-[#2D2D2D]">{selectedCreatedAtLabel} PHT</p>
+                  </div>
                   {selectedIsRescheduled && (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-[#ede9fe] px-2.5 py-1 text-xs font-medium text-[#6d28d9]">
                         Rescheduled
                       </span>
