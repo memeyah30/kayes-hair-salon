@@ -229,7 +229,7 @@ class ManageBookingController extends Controller
         $email = $this->normalizeEmail((string) $request->attributes->get('customer_verified_email', ''));
 
         $appointments = Appointment::query()
-            ->with(['service:id,name,price_cents', 'services:id,name,price_cents', 'stylist:id,name'])
+            ->with(['service.variants', 'services.variants', 'stylist:id,name'])
             ->whereRaw('LOWER(customer_email) = ?', [$email])
             ->orderByDesc('start_datetime')
             ->get();
@@ -277,6 +277,19 @@ class ManageBookingController extends Controller
 
             return [
                 'id' => $appointment->id,
+                'customer_name' => $appointment->customer_name,
+                'customer_email' => $appointment->customer_email,
+                'customer_phone' => $appointment->customer_phone,
+                'customer_address' => $appointment->customer_address,
+                'services' => $appointment->services,
+                'service' => $appointment->service,
+                'start_datetime' => $appointment->getRawOriginal('start_datetime'),
+                'end_datetime' => $appointment->getRawOriginal('end_datetime'),
+                'amount_paid_cents' => $appointment->amount_paid_cents,
+                'downpayment_amount_cents' => $appointment->downpayment_amount_cents,
+                'remaining_balance_cents' => $appointment->remaining_balance_cents,
+                'payment_method' => $appointment->payment_method,
+                'mode_of_payment' => $appointment->mode_of_payment,
                 'service_name' => $serviceName,
                 'stylist_name' => $appointment->stylist?->name ?? 'Stylist',
                 'appointment_date' => $start->format('Y-m-d'),
