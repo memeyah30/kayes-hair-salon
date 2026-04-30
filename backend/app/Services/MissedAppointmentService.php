@@ -7,7 +7,7 @@ use Carbon\Carbon;
 
 class MissedAppointmentService
 {
-    private const ACTIVE_STATUSES = ['pending'];
+    private const ACTIVE_STATUSES = ['pending', 'booked', 'confirmed'];
     private const MISSED_STATUS = 'missed';
     private const TIMEZONE = 'Asia/Manila';
 

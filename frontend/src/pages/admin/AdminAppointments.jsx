@@ -531,6 +531,20 @@ const AdminAppointments = () => {
           updateAppointmentInState(id, (apt) => ({ ...apt, status: 'confirmed' }))
         }
         toast.success('Appointment confirmed')
+      } else if (action === 'reject') {
+        const reason = window.prompt("Please provide a reason for rejecting this appointment (e.g., Invalid payment proof):")
+        if (!reason || reason.trim() === '') {
+          toast.warn('A reason is required to reject an appointment.')
+          setProcessingAppointmentId(null)
+          return
+        }
+        const response = await api.post(`/appointments/${id}/reject`, { reason })
+        if (response?.data?.appointment) {
+          updateAppointmentInState(id, () => response.data.appointment)
+        } else {
+          updateAppointmentInState(id, (apt) => ({ ...apt, status: 'cancelled' }))
+        }
+        toast.success('Appointment rejected and customer notified')
       } else if (action === 'delete') {
         await api.delete(`/appointments/${id}`)
         setAppointments((prev) => prev.filter((apt) => apt.id !== id))
@@ -1533,6 +1547,17 @@ const AdminAppointments = () => {
                           {isProcessingAction ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>}
                         </button>
                       )}
+                      {normalizedStatus === 'booked' && (
+                        <button
+                          type="button"
+                          onClick={() => !isProcessingAction && handleAction(apt.id, 'reject')}
+                          disabled={isProcessingAction}
+                          className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#EF4444] text-white hover:bg-[#DC2626]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                          title="Reject Booking"
+                        >
+                          {isProcessingAction ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>}
+                        </button>
+                      )}
                       {normalizedStatus === 'confirmed' && (
                         <>
                           <button
@@ -1716,6 +1741,17 @@ const AdminAppointments = () => {
                               title="Confirm Booking"
                             >
                               {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>}
+                            </button>
+                          )}
+                          {normalizedStatus === 'booked' && (
+                            <button
+                              type="button"
+                              onClick={() => !isProcessingAction && handleAction(apt.id, 'reject')}
+                              disabled={isProcessingAction}
+                              className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#EF4444] text-white hover:bg-[#DC2626]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                              title="Reject Booking"
+                            >
+                              {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>}
                             </button>
                           )}
                           {normalizedStatus === 'confirmed' && (

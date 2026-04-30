@@ -1084,6 +1084,44 @@ class AppointmentController extends Controller
         return response()->json(['message' => 'Appointment marked as missed']);
     }
 
+    public function reject(Request $request, Appointment $appointment)
+    {
+        $appointment = $this->refreshMissedStatus($appointment);
+        if ($appointment->status !== 'booked') {
+            return response()->json([
+                'message' => 'Only booked appointments can be rejected.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $appointment->update([
+            'status' => 'cancelled',
+            'rejection_reason' => $data['reason'],
+        ]);
+
+        if ($appointment->customer_email) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($appointment->customer_email)->send(
+                    new \App\Mail\AppointmentRejectedMail($appointment, $data['reason'])
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send appointment rejection email', [
+                    'appointment_id' => $appointment->id,
+                    'customer_email' => $appointment->customer_email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Appointment rejected and customer notified.',
+            'appointment' => $this->formatAppointmentForResponse($appointment->fresh()->load(['stylist', 'service', 'services.variants']))
+        ]);
+    }
+
     public function history(Request $request)
     {
         $this->syncMissedAppointments();

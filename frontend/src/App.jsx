@@ -138,15 +138,6 @@ const App = () => {
           }
         />
 
-        {/* Manager staff request routes */}
-        <Route
-          path="/manager/staff/add"
-          element={
-            <ProtectedRoute allowedTypes={['manager']}>
-              <AddStaff />
-            </ProtectedRoute>
-          }
-        />
         
         {/* Retired staff panel routes */}
         <Route path="/stylist/dashboard" element={<Navigate to="/login" replace />} />

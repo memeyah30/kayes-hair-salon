@@ -35,7 +35,6 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
   const managerLinks = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/manager/staff/add', label: 'Add Manager', icon: 'staff' },
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
