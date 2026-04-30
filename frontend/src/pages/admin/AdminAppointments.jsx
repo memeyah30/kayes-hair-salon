@@ -171,6 +171,7 @@ const AdminAppointments = () => {
   const [services, setServices] = useState([])
   const [searchTerm, setSearchTerm] = useState(() => new URLSearchParams(window.location.search).get('q') || '')
   const [searchDate, setSearchDate] = useState(() => new URLSearchParams(window.location.search).get('date') || '')
+  const [searchEndDate, setSearchEndDate] = useState(() => new URLSearchParams(window.location.search).get('end_date') || '')
   const [searchServiceId, setSearchServiceId] = useState(() => new URLSearchParams(window.location.search).get('serviceId') || '')
   const [rangeFilter, setRangeFilter] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -289,6 +290,7 @@ const AdminAppointments = () => {
     const params = new URLSearchParams(location.search)
     const statusParam = (params.get('status') || '').toLowerCase().trim()
     const dateParam = params.get('date') || ''
+    const endDateParam = params.get('end_date') || ''
     const rangeParam = params.get('range') || ''
     const serviceIdParam = params.get('serviceId') || ''
     const queryParam = params.get('q') || ''
@@ -319,11 +321,13 @@ const AdminAppointments = () => {
       setStatusDateScope('month')
     }
 
-    if (dateParam) {
+    if (dateParam || endDateParam) {
       setSearchDate(dateParam)
+      setSearchEndDate(endDateParam)
       setRangeFilter('')
     } else {
       setSearchDate('')
+      setSearchEndDate('')
       setRangeFilter(nextRangeFilter)
     }
   }, [location.search])
@@ -332,6 +336,7 @@ const AdminAppointments = () => {
     setFilter(nextFilter)
     setSearchTerm('')
     setSearchDate('')
+    setSearchEndDate('')
     setSearchServiceId('')
     setRangeFilter('')
     if (nextFilter === 'booked' || nextFilter === 'completed') {
@@ -397,6 +402,9 @@ const AdminAppointments = () => {
     if (rangeDates) {
       return rangeDates
     }
+    if (searchDate && searchEndDate) {
+      return { start: searchDate, end: searchEndDate }
+    }
     if (scopedStatusDateWindow) {
       return scopedStatusDateWindow
     }
@@ -404,7 +412,7 @@ const AdminAppointments = () => {
       return { start: searchDate, end: searchDate }
     }
     return null
-  }, [scopedStatusDateWindow, searchDate, rangeDates])
+  }, [scopedStatusDateWindow, searchDate, searchEndDate, rangeDates])
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -422,11 +430,11 @@ const AdminAppointments = () => {
 
   useEffect(() => {
     setTablePage(1)
-  }, [filter, searchTerm, searchDate, searchServiceId, rangeFilter, statusDateScope])
+  }, [filter, searchTerm, searchDate, searchEndDate, searchServiceId, rangeFilter, statusDateScope])
 
   useEffect(() => {
     loadTableData(tablePage)
-  }, [tablePage, filter, searchTerm, searchDate, searchServiceId, rangeFilter, statusDateScope, tableDateWindow])
+  }, [tablePage, filter, searchTerm, searchDate, searchEndDate, searchServiceId, rangeFilter, statusDateScope, tableDateWindow])
 
   const loadData = async () => {
     try {
@@ -623,9 +631,11 @@ const AdminAppointments = () => {
     let completed = 0
     let revenueCents = 0
 
+    const range = tableDateWindow || (monthKey ? { start: `${monthKey}-01`, end: `${monthKey}-31` } : null)
+
     appointments.forEach((apt) => {
       const aptDate = toManilaDate(getStart(apt))
-      if (monthKey && aptDate && aptDate.startsWith(monthKey)) {
+      if (range && aptDate && aptDate >= range.start && aptDate <= range.end) {
         total += 1
         if (apt.status === 'completed') {
           completed += 1
@@ -638,7 +648,7 @@ const AdminAppointments = () => {
     })
 
     return { total, pending, completed, revenueCents }
-  }, [appointments, monthKey, toManilaDate])
+  }, [appointments, tableDateWindow, monthKey, toManilaDate])
 
   const normalizedSearch = searchTerm.trim().toLowerCase()
   const filteredAppointments = appointments.filter(apt => {
@@ -953,9 +963,9 @@ const AdminAppointments = () => {
             <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${canAccessSales ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
               <div className="flex items-center justify-between gap-4 rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#7B5CF5]">Total This Month</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#7B5CF5]">Total {tableDateWindow ? 'in Period' : 'This Month'}</p>
                   <p className="text-2xl font-semibold mt-2">{monthlyStats.total}</p>
-                  <p className="mt-1 text-xs text-[#6B6B6B]">This month</p>
+                  <p className="mt-1 text-xs text-[#6B6B6B]">{tableDateWindow ? 'Selected range' : 'This month'}</p>
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2EDFF] text-[#7B5CF5]">
                   <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -1006,7 +1016,7 @@ const AdminAppointments = () => {
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-[#7B5CF5]">Revenue</p>
                     <p className="text-2xl font-semibold mt-2">{currency(monthlyStats.revenueCents)}</p>
-                    <p className="mt-1 text-xs text-[#6B6B6B]">This month</p>
+                    <p className="mt-1 text-xs text-[#6B6B6B]">{tableDateWindow ? 'Selected range' : 'This month'}</p>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2EDFF] text-[#7B5CF5]">
                     <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -1051,6 +1061,7 @@ const AdminAppointments = () => {
                 <input
                   type="date"
                   value={searchDate}
+                  title="Start Date"
                   onChange={(e) => {
                     setSearchDate(e.target.value)
                     setRangeFilter('')
@@ -1060,6 +1071,16 @@ const AdminAppointments = () => {
                       const month = monthStartFromKey(e.target.value)
                       if (month) setCalendarMonth(month)
                     }
+                  }}
+                  className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
+                />
+                <input
+                  type="date"
+                  value={searchEndDate}
+                  title="End Date"
+                  onChange={(e) => {
+                    setSearchEndDate(e.target.value)
+                    setRangeFilter('')
                   }}
                   className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
                 />
@@ -1076,6 +1097,7 @@ const AdminAppointments = () => {
                 <button
                   onClick={() => {
                     setSearchDate(todayKey)
+                    setSearchEndDate(todayKey)
                     setRangeFilter('')
                     setStatusDateScope('day')
                     setSelectedDate(todayKey)
@@ -1096,6 +1118,7 @@ const AdminAppointments = () => {
                   onClick={() => {
                     setSearchTerm('')
                     setSearchDate('')
+                    setSearchEndDate('')
                     setSearchServiceId('')
                     setRangeFilter('')
                     setStatusDateScope('month')
@@ -1841,6 +1864,9 @@ const AdminAppointments = () => {
                   <p className="mt-2 font-semibold">{selectedAppointment.customer_name || 'N/A'}</p>
                   <p className="mt-1 text-sm text-[#6B6B6B]">{selectedAppointment.customer_phone || 'No phone provided'}</p>
                   <p className="mt-1 text-sm text-[#6B6B6B]">{selectedAppointment.customer_email || 'No email provided'}</p>
+                  {selectedAppointment.customer_address && (
+                    <p className="mt-1 text-sm text-[#6B6B6B]">{selectedAppointment.customer_address}</p>
+                  )}
                 </div>
                 <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
                   <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Schedule</p>
