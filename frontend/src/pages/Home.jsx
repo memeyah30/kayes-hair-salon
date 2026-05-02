@@ -707,10 +707,10 @@ const Home = () => {
           </div>
         )}
 
-        <section id="about" className="home-section px-4 md:px-8 py-14 bg-white">
-          <div className="max-w-6xl mx-auto rounded-3xl border border-[#e8ddff] bg-[linear-gradient(135deg,#ffffff_0%,#f8f2ff_100%)] p-8 md:p-12">
-            <h2 className="text-4xl md:text-5xl font-semibold text-[#2f245a] mb-4">About Us</h2>
-            <div className="space-y-4 text-lg md:text-xl text-[#5f4f8f] leading-relaxed">
+        <section id="about" className="home-section px-4 md:px-8 py-8 md:py-14 bg-white">
+          <div className="max-w-6xl mx-auto rounded-2xl md:rounded-3xl border border-[#e8ddff] bg-[linear-gradient(135deg,#ffffff_0%,#f8f2ff_100%)] p-5 md:p-12">
+            <h2 className="text-2xl md:text-5xl font-semibold text-[#2f245a] mb-3 md:mb-4">About Us</h2>
+            <div className="space-y-3 md:space-y-4 text-sm md:text-xl text-[#5f4f8f] leading-relaxed">
               <p>
                 Kaye&apos;s Hair Salon and Spa is dedicated to helping every client feel confident, refreshed, and cared for
                 through modern beauty services delivered with consistency and professionalism. From hair styling and color
