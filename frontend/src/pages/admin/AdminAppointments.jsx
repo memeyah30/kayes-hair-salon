@@ -317,7 +317,9 @@ const AdminAppointments = () => {
     setSearchTerm(queryParam)
     setSearchServiceId(serviceIdParam)
     
-    if (nextFilter === 'booked' || nextFilter === 'completed') {
+    if (nextFilter === 'booked') {
+      setStatusDateScope('all')
+    } else if (nextFilter === 'completed') {
       setStatusDateScope('month')
     }
 
@@ -339,7 +341,9 @@ const AdminAppointments = () => {
     setSearchEndDate('')
     setSearchServiceId('')
     setRangeFilter('')
-    if (nextFilter === 'booked' || nextFilter === 'completed') {
+    if (nextFilter === 'booked') {
+      setStatusDateScope('all')
+    } else if (nextFilter === 'completed') {
       setStatusDateScope('month')
     }
     setSelectedDate('')

@@ -193,9 +193,9 @@ class DashboardController extends Controller
             ->unique()
             ->count();
 
-        // Appointment status summary (scoped to current month)
+        // Appointment status summary (Completed/Cancelled scoped to current month, Pending is all-time)
         $statusSummary = [
-            'booked' => $monthAppointments->whereIn('status', ['booked', 'confirmed'])->count(),
+            'booked' => $appointments->whereIn('status', ['booked', 'confirmed'])->count(),
             'completed' => $monthAppointments->where('status', 'completed')->count(),
             'cancelled' => $monthAppointments->where('status', 'cancelled')->count(),
         ];
