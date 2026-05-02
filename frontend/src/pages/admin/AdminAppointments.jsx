@@ -178,7 +178,7 @@ const AdminAppointments = () => {
     const rangeParam = (params.get('range') || '').toLowerCase().trim()
     return ['today', 'week', 'month'].includes(rangeParam) ? rangeParam : ''
   })
-  const [statusDateScope, setStatusDateScope] = useState('month') // day | month | year
+  const [statusDateScope, setStatusDateScope] = useState('all') // day | month | year | all
   const [openActionId, setOpenActionId] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [selectedProofLoadError, setSelectedProofLoadError] = useState(false)
@@ -318,7 +318,7 @@ const AdminAppointments = () => {
     setSearchServiceId(serviceIdParam)
     
     if (nextFilter === 'booked' || nextFilter === 'completed') {
-      setStatusDateScope('month')
+      setStatusDateScope('all')
     }
 
     if (dateParam || endDateParam) {
@@ -340,7 +340,7 @@ const AdminAppointments = () => {
     setSearchServiceId('')
     setRangeFilter('')
     if (nextFilter === 'booked' || nextFilter === 'completed') {
-      setStatusDateScope('month')
+      setStatusDateScope('all')
     }
     setSelectedDate('')
     setSelectedTimeSlot('')
@@ -376,6 +376,8 @@ const AdminAppointments = () => {
   }, [rangeFilter])
 
   const scopedStatusDateWindow = useMemo(() => {
+    if (statusDateScope === 'all') return null
+
     const anchorDate = searchDate || formatManilaDate(new Date())
     const parsed = parseDateKey(anchorDate)
     if (!parsed) return null
@@ -1093,6 +1095,7 @@ const AdminAppointments = () => {
                     <option value="day">By Day</option>
                     <option value="month">By Month</option>
                     <option value="year">By Year</option>
+                    <option value="all">All Time</option>
                   </select>
                 <button
                   onClick={() => {
@@ -1121,7 +1124,7 @@ const AdminAppointments = () => {
                     setSearchEndDate('')
                     setSearchServiceId('')
                     setRangeFilter('')
-                    setStatusDateScope('month')
+                    setStatusDateScope('all')
                     setSelectedDate('')
                     setSelectedTimeSlot('')
                     setMobileTab('calendar')
