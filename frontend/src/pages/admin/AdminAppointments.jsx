@@ -178,7 +178,7 @@ const AdminAppointments = () => {
     const rangeParam = (params.get('range') || '').toLowerCase().trim()
     return ['today', 'week', 'month'].includes(rangeParam) ? rangeParam : ''
   })
-  const [statusDateScope, setStatusDateScope] = useState('all') // day | month | year | all
+  const [statusDateScope, setStatusDateScope] = useState('month') // day | month | year | all
   const [openActionId, setOpenActionId] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [selectedProofLoadError, setSelectedProofLoadError] = useState(false)
@@ -318,7 +318,7 @@ const AdminAppointments = () => {
     setSearchServiceId(serviceIdParam)
     
     if (nextFilter === 'booked' || nextFilter === 'completed') {
-      setStatusDateScope('all')
+      setStatusDateScope('month')
     }
 
     if (dateParam || endDateParam) {
@@ -340,7 +340,7 @@ const AdminAppointments = () => {
     setSearchServiceId('')
     setRangeFilter('')
     if (nextFilter === 'booked' || nextFilter === 'completed') {
-      setStatusDateScope('all')
+      setStatusDateScope('month')
     }
     setSelectedDate('')
     setSelectedTimeSlot('')
@@ -1124,7 +1124,7 @@ const AdminAppointments = () => {
                     setSearchEndDate('')
                     setSearchServiceId('')
                     setRangeFilter('')
-                    setStatusDateScope('all')
+                    setStatusDateScope('month')
                     setSelectedDate('')
                     setSelectedTimeSlot('')
                     setMobileTab('calendar')

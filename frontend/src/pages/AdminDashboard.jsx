@@ -653,7 +653,7 @@ const AdminDashboard = () => {
             <GradientMetricCard
               title="Pending Appointments"
               value={stats.status_summary.booked}
-              note="Awaiting service"
+              note="This month"
               start="#f0a160"
               end="#d9874d"
               delay={canAccessSales ? 300 : 100}
@@ -667,7 +667,7 @@ const AdminDashboard = () => {
             <GradientMetricCard
               title="Completed Appointments"
               value={stats.status_summary.completed}
-              note="Completed"
+              note="This month"
               start="#74a0ae"
               end="#547f91"
               delay={canAccessSales ? 400 : 200}
