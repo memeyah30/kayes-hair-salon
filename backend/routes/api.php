@@ -53,6 +53,7 @@ Route::get('/payment-accounts', [PaymentAccountController::class, 'index']); // 
 Route::get('/locations', [LocationController::class, 'index']); // Public locations
 
 Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public - customers can rate
+Route::get('/public/ratings', [CustomerRatingController::class, 'publicIndex']); // Public - reviews for homepage
 
 Route::middleware(StartSession::class)->group(function () {
     // Customer manage-booking OTP routes

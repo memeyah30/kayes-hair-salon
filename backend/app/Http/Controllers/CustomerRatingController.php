@@ -70,6 +70,20 @@ class CustomerRatingController extends Controller
         return $query->latest()->get();
     }
 
+    public function publicIndex()
+    {
+        // Safe, public endpoint for the landing page (Home.jsx)
+        $ratings = CustomerRating::with('stylist')
+            ->where('rating', '>=', 4)
+            ->whereNotNull('comment')
+            ->where('comment', '!=', '')
+            ->latest()
+            ->limit(20)
+            ->get(['id', 'stylist_id', 'customer_name', 'rating', 'comment', 'created_at']);
+
+        return response()->json($ratings);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

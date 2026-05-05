@@ -247,14 +247,13 @@ const Home = () => {
       const [servicesRes, stylistsRes, ratingsRes] = await Promise.all([
         api.get('/services'),
         api.get('/stylists'),
-        api.get('/ratings?paginate=true&per_page=20')
+        api.get('/public/ratings')
       ])
       setServices(asArray(servicesRes?.data))
       setStylists(asArray(stylistsRes?.data).filter((s) => s?.active))
       
-      const ratingsData = ratingsRes?.data?.data || asArray(ratingsRes?.data)
-      const positiveReviews = ratingsData.filter(r => r.rating >= 4 && r.comment && r.comment.trim() !== '')
-      setReviews(positiveReviews.slice(0, 6))
+      const positiveReviews = asArray(ratingsRes?.data)
+      setReviews(positiveReviews)
     } catch (e) {
       console.error('Failed to load data:', e)
     } finally {
