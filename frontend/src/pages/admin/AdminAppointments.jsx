@@ -318,7 +318,7 @@ const AdminAppointments = () => {
     setSearchServiceId(serviceIdParam)
     
     if (nextFilter === 'booked' || nextFilter === 'completed') {
-      setStatusDateScope('all')
+      setStatusDateScope('month')
     }
 
     if (dateParam || endDateParam) {
@@ -340,7 +340,7 @@ const AdminAppointments = () => {
     setSearchServiceId('')
     setRangeFilter('')
     if (nextFilter === 'booked' || nextFilter === 'completed') {
-      setStatusDateScope('all')
+      setStatusDateScope('month')
     }
     setSelectedDate('')
     setSelectedTimeSlot('')
@@ -965,9 +965,9 @@ const AdminAppointments = () => {
             <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${canAccessSales ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
               <div className="flex items-center justify-between gap-4 rounded-[14px] border border-[#DDD6FE] bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#7B5CF5]">Total {tableDateWindow ? 'in Period' : 'This Month'}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#7B5CF5]">Total {tableDateWindow ? 'in Period' : 'All Time'}</p>
                   <p className="text-2xl font-semibold mt-2">{monthlyStats.total}</p>
-                  <p className="mt-1 text-xs text-[#6B6B6B]">{tableDateWindow ? 'Selected range' : 'This month'}</p>
+                  <p className="mt-1 text-xs text-[#6B6B6B]">{tableDateWindow ? 'Selected range' : 'All time'}</p>
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2EDFF] text-[#7B5CF5]">
                   <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -1018,7 +1018,7 @@ const AdminAppointments = () => {
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-[#7B5CF5]">Revenue</p>
                     <p className="text-2xl font-semibold mt-2">{currency(monthlyStats.revenueCents)}</p>
-                    <p className="mt-1 text-xs text-[#6B6B6B]">{tableDateWindow ? 'Selected range' : 'This month'}</p>
+                    <p className="mt-1 text-xs text-[#6B6B6B]">{tableDateWindow ? 'Selected range' : 'All time'}</p>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2EDFF] text-[#7B5CF5]">
                     <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -1038,7 +1038,7 @@ const AdminAppointments = () => {
                     const nextFilter = e.target.value
                     setFilter(nextFilter)
                     if (nextFilter === 'booked' || nextFilter === 'completed') {
-                      setStatusDateScope('all')
+                      setStatusDateScope('month')
                     }
                   }}
                   className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
