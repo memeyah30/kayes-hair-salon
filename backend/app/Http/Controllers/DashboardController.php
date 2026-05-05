@@ -75,7 +75,7 @@ class DashboardController extends Controller
         $weekStart = $now->copy()->startOfWeek();
         $weekEnd = $weekStart->copy()->endOfWeek();
         $monthStart = $now->copy()->startOfMonth();
-        $periodEnd = $todayEnd->copy();
+        $monthEnd = $now->copy()->endOfMonth();
         $toManila = function ($value) use ($timezone) {
             if ($value instanceof Carbon) {
                 return $value->copy()->setTimezone($timezone);
@@ -85,18 +85,19 @@ class DashboardController extends Controller
 
         $appointments = Appointment::with(['stylist', 'service.variants', 'services.variants'])->get();
         
-        $todayAppointments = $appointments->filter(function ($apt) use ($toManila, $todayStart) {
-            return $toManila($apt->start_datetime)->isSameDay($todayStart);
+        $todayAppointments = $appointments->filter(function ($apt) use ($toManila, $todayStart, $todayEnd) {
+            $start = $toManila($apt->start_datetime);
+            return $start->betweenIncluded($todayStart, $todayEnd);
         });
 
-        $weekAppointments = $appointments->filter(function ($apt) use ($toManila, $weekStart, $periodEnd) {
+        $weekAppointments = $appointments->filter(function ($apt) use ($toManila, $weekStart, $weekEnd) {
             $start = $toManila($apt->start_datetime);
-            return $start->betweenIncluded($weekStart, $periodEnd);
+            return $start->betweenIncluded($weekStart, $weekEnd);
         });
 
-        $monthAppointments = $appointments->filter(function ($apt) use ($toManila, $monthStart, $periodEnd) {
+        $monthAppointments = $appointments->filter(function ($apt) use ($toManila, $monthStart, $monthEnd) {
             $start = $toManila($apt->start_datetime);
-            return $start->betweenIncluded($monthStart, $periodEnd);
+            return $start->betweenIncluded($monthStart, $monthEnd);
         });
 
         $sumAppointmentRevenue = function ($collection) {
@@ -170,8 +171,8 @@ class DashboardController extends Controller
             );
 
             $todayRevenue = (int) $sumSalesForRange($todayStart, $todayEnd) + $unsyncedTodayRevenue;
-            $weekRevenue = (int) $sumSalesForRange($weekStart, $periodEnd) + $unsyncedWeekRevenue;
-            $monthRevenue = (int) $sumSalesForRange($monthStart, $periodEnd) + $unsyncedMonthRevenue;
+            $weekRevenue = (int) $sumSalesForRange($weekStart, $weekEnd) + $unsyncedWeekRevenue;
+            $monthRevenue = (int) $sumSalesForRange($monthStart, $monthEnd) + $unsyncedMonthRevenue;
 
             foreach ($completedWeekAppointments->filter(
                 fn ($apt) => !$serviceSaleAppointmentIds->has((int) $apt->id)
