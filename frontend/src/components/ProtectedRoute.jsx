@@ -10,25 +10,18 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
     let mounted = true
 
     const clearAuthStorage = () => {
-      sessionStorage.removeItem('user')
-      sessionStorage.removeItem('userType')
       localStorage.removeItem('user')
       localStorage.removeItem('userType')
     }
 
     const validateAuth = async () => {
       try {
-        const sessionType = sessionStorage.getItem('userType') || ''
         const storedType = localStorage.getItem('userType') || ''
-        const routeCompatibleStoredType = storedType && (
+        const preferredType = storedType && (
           allowedTypes.length === 0 || allowedTypes.includes(storedType)
         )
           ? storedType
           : ''
-        const preferredType =
-          sessionType
-          || routeCompatibleStoredType
-          || ''
 
         const requestConfig = preferredType
           ? {
@@ -39,10 +32,8 @@ const ProtectedRoute = ({ children, allowedTypes = [] }) => {
         const res = await api.get('/me', requestConfig)
         const currentUserType = res.data.type
 
-        sessionStorage.setItem('user', JSON.stringify(res.data))
-        sessionStorage.setItem('userType', currentUserType)
-        localStorage.removeItem('user')
-        localStorage.removeItem('userType')
+        localStorage.setItem('user', JSON.stringify(res.data))
+        localStorage.setItem('userType', currentUserType)
         window.dispatchEvent(new Event('user:updated'))
 
         if (!mounted) return

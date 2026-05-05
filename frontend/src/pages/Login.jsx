@@ -34,14 +34,12 @@ const Login = () => {
         const resolvedType = sessionPayload.type || type
 
         if (resolvedUser && typeof resolvedUser === 'object') {
-          sessionStorage.setItem('user', JSON.stringify(resolvedUser))
+          localStorage.setItem('user', JSON.stringify(resolvedUser))
         } else if (fallbackUser) {
-          sessionStorage.setItem('user', JSON.stringify(fallbackUser))
+          localStorage.setItem('user', JSON.stringify(fallbackUser))
         }
 
-        sessionStorage.setItem('userType', resolvedType)
-        localStorage.removeItem('user')
-        localStorage.removeItem('userType')
+        localStorage.setItem('userType', resolvedType)
         window.dispatchEvent(new Event('user:updated'))
         return true
       } catch {
@@ -128,13 +126,10 @@ const Login = () => {
         password,
       })
       
-      // Session-based auth - keep auth identity tab-scoped to avoid
-      // admin/manager/staff data leaking between tabs.
+      // Persistent auth - use localStorage so it survives page reloads reliably.
       const serializedUser = JSON.stringify(res.data.user)
-      sessionStorage.setItem('user', serializedUser)
-      sessionStorage.setItem('userType', res.data.type)
-      localStorage.removeItem('user')
-      localStorage.removeItem('userType')
+      localStorage.setItem('user', serializedUser)
+      localStorage.setItem('userType', res.data.type)
       window.dispatchEvent(new Event('user:updated'))
 
       const sessionConfirmed = await confirmSession(res.data.type, res.data.user)
@@ -149,7 +144,7 @@ const Login = () => {
       
       console.log('Login successful, redirecting to:', redirectPath)
       console.log('User type:', res.data.type)
-      console.log('User data stored in sessionStorage')
+      console.log('User data stored in localStorage')
       
       // Check if we're on Vite dev server (localhost:5173) or Laravel (localhost:8000 or 127.0.0.1:8000)
       const currentOrigin = window.location.origin

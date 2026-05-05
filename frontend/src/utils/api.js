@@ -13,8 +13,6 @@ let csrfToken = null
 let csrfTokenPromise = null
 
 const clearAuthStorage = () => {
-  sessionStorage.removeItem('user')
-  sessionStorage.removeItem('userType')
   localStorage.removeItem('user')
   localStorage.removeItem('userType')
 }
@@ -50,7 +48,7 @@ const getCsrfToken = async () => {
 
 // Add CSRF token to all requests
 api.interceptors.request.use(async (config) => {
-  const currentUserType = sessionStorage.getItem('userType')
+  const currentUserType = localStorage.getItem('userType')
   if (currentUserType && !config.headers['X-User-Type']) {
     config.headers['X-User-Type'] = currentUserType
   }
@@ -85,10 +83,7 @@ api.interceptors.response.use(
 
       // Allow auth/session probes to be handled by caller logic (e.g., ProtectedRoute).
       if (!isSessionProbe && !isAuthRequest) {
-        const currentUserType =
-          sessionStorage.getItem('userType')
-          || localStorage.getItem('userType')
-          || 'admin'
+        const currentUserType = localStorage.getItem('userType') || 'admin'
         const loginPath =
           currentUserType === 'manager'
               ? '/login/manager'
