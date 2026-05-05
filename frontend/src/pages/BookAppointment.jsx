@@ -574,7 +574,10 @@ const ImageModal = ({ src, title = "Image Preview", onClose }) => {
       className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div className="relative max-w-2xl w-full bg-white rounded-2xl p-4 shadow-2xl animate-in zoom-in duration-200">
+      <div 
+        className="relative max-w-2xl w-full bg-white rounded-2xl p-4 shadow-2xl animate-in zoom-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button 
           onClick={onClose}
           className="absolute -top-12 right-0 text-white text-3xl font-bold hover:text-gray-300 transition"
@@ -2013,8 +2016,8 @@ const BookAppointment = () => {
         if (normalizedPaymentType === 'full') {
           paymentAmountCents = totalAmountCents
         } else {
-          paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.2)
-          const minDepositCents = Math.round(totalAmountCents * 0.2)
+          paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.1)
+          const minDepositCents = Math.round(totalAmountCents * 0.1)
           if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
             toast.warn(`Minimum GCash downpayment is ${currency(minDepositCents)}`)
             return
@@ -2022,12 +2025,12 @@ const BookAppointment = () => {
         }
       } else if (payment.method === 'on_hand') {
         if (!payment.amount) {
-          // Downpayment only - default to 20%
-          paymentAmountCents = Math.round(totalAmountCents * 0.2)
+          // Downpayment only - default to 10%
+          paymentAmountCents = Math.round(totalAmountCents * 0.1)
         } else {
           paymentAmountCents = Math.round(parseFloat(payment.amount) * 100)
         }
-        const minDepositCents = Math.round(totalAmountCents * 0.2)
+        const minDepositCents = Math.round(totalAmountCents * 0.1)
         if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
           toast.warn(`Minimum cash deposit is ${currency(minDepositCents)}`)
           return
