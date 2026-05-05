@@ -729,11 +729,6 @@ const Home = () => {
               <h2 className="text-3xl md:text-5xl font-semibold text-[#2f245a] mb-4">What Our Clients Say</h2>
               <p className="text-[#6b5b95] text-lg">Real reviews from our wonderful customers.</p>
             </div>
-            
-            <div className="mb-4 p-4 bg-gray-100 rounded text-xs overflow-auto max-h-40">
-              <p className="font-bold text-red-500 mb-2">DEBUG - raw reviews data:</p>
-              <pre>{JSON.stringify(reviews, null, 2)}</pre>
-            </div>
 
             {reviews.length === 0 ? (
               <div className="text-center py-10 bg-white rounded-2xl border border-[#ece3ff] shadow-sm">

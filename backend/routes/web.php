@@ -91,6 +91,14 @@ Route::get('/stylists', function (Request $request) use ($serveFrontend) {
 
     return $serveFrontend();
 });
+Route::get('/public/ratings', function (Request $request) use ($serveFrontend) {
+    if ($request->expectsJson() || $request->wantsJson()) {
+        return app(CustomerRatingController::class)->publicIndex();
+    }
+
+    return $serveFrontend();
+});
+
 Route::get('/stylists/{stylist}/availability', [StylistController::class, 'availability']);
 Route::get('/appointments/availability', [AppointmentController::class, 'availability']);
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
