@@ -728,6 +728,8 @@ class AppointmentController extends Controller
                 $appointment->update([
                     'status' => 'completed',
                     'payment_status' => $newPaymentStatus,
+                    'amount_paid_cents' => $appointment->total_price_cents,
+                    'remaining_balance_cents' => 0,
                 ]);
 
                 // Refresh appointment to get updated status
