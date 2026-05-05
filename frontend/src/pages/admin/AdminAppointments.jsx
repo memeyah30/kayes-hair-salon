@@ -633,11 +633,11 @@ const AdminAppointments = () => {
     let completed = 0
     let revenueCents = 0
 
-    const range = tableDateWindow || (monthKey ? { start: `${monthKey}-01`, end: `${monthKey}-31` } : null)
+    const range = tableDateWindow
 
     appointments.forEach((apt) => {
       const aptDate = toManilaDate(getStart(apt))
-      if (range && aptDate && aptDate >= range.start && aptDate <= range.end) {
+      if (!range || (aptDate && aptDate >= range.start && aptDate <= range.end)) {
         total += 1
         if (apt.status === 'completed') {
           completed += 1
@@ -650,7 +650,7 @@ const AdminAppointments = () => {
     })
 
     return { total, pending, completed, revenueCents }
-  }, [appointments, tableDateWindow, monthKey, toManilaDate])
+  }, [appointments, tableDateWindow, toManilaDate])
 
   const normalizedSearch = searchTerm.trim().toLowerCase()
   const filteredAppointments = appointments.filter(apt => {
