@@ -216,33 +216,38 @@ const Navbar = ({
         <button
           type="button"
           onClick={handleToggleSidebar}
-          className={`tap-safe shrink-0 rounded-xl p-2.5 transition ${
+          className={`tap-safe shrink-0 rounded-xl p-2 transition ${
             isAdminTheme ? 'hover:bg-white/16 text-white' : 'hover:bg-[#f4edff] text-gray-700'
           }`}
           aria-label="Toggle side panel"
           title="Toggle side panel"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:h-10 sm:w-10 ${
-            isAdminTheme
-              ? 'border-white/16 bg-white/18 shadow-[0_10px_24px_rgba(33,10,86,0.14)]'
-              : 'border-[#e6dcff] bg-white'
-          }`}>
-            <img
-              src={salonLogoUrl}
-              alt="Kaye's Hair Salon logo"
-              className="h-7 w-7 object-contain sm:h-8 sm:w-8"
-            />
-          </span>
-          <div className="flex min-w-0 max-w-[12rem] flex-col leading-tight sm:max-w-[16rem] lg:max-w-[24rem]">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:h-10 sm:w-10 ${
+              isAdminTheme
+                ? 'border-white/16 bg-white/18 shadow-[0_10px_24px_rgba(33,10,86,0.14)]'
+                : 'border-[#e6dcff] bg-white'
+            }`}>
+              <img
+                src={salonLogoUrl}
+                alt="Kaye's Hair Salon logo"
+                className="h-7 w-7 object-contain sm:h-8 sm:w-8"
+              />
+            </span>
             <div className={`truncate font-semibold text-sm sm:text-base lg:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
               Kaye&apos;s Hair Salon and Spa
             </div>
-            <div className={`truncate text-[11px] sm:text-xs lg:text-sm ${isAdminTheme ? 'text-white/68' : 'text-[#7f6aa8]'}`}>{title}</div>
+          </div>
+          
+          <div className="hidden md:block h-6 w-px bg-white/20 mx-1" />
+          
+          <div className={`truncate text-[11px] sm:text-xs lg:text-sm font-medium uppercase tracking-wider ${isAdminTheme ? 'text-white/80' : 'text-[#7f6aa8]'}`}>
+            {title}
           </div>
         </div>
       </div>

@@ -246,7 +246,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       {/* Closed desktop state keeps a slim rail so feature icons stay visible without covering content. */}
       <aside
         aria-hidden={isOpen ? 'true' : undefined}
-        className={`hidden lg:flex fixed left-0 top-0 z-20 h-screen pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center overflow-hidden overscroll-contain px-2 py-4 transition-[opacity,transform] duration-300 ease-out xl:py-5 ${
+        className={`hidden lg:flex fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100dvh-var(--dashboard-navbar-height))] pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center overflow-hidden overscroll-contain px-2 py-4 transition-[opacity,transform] duration-300 ease-out xl:py-5 ${
           isOpen ? 'pointer-events-none -translate-x-3 opacity-0' : 'translate-x-0 opacity-100'
         } ${
           isAdminTheme
@@ -309,7 +309,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
       <aside
         id="dashboard-sidebar"
-        className={`fixed left-0 top-0 z-20 h-screen pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col overflow-hidden transform transition-[transform,box-shadow] duration-300 ease-out ${
+        className={`fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100dvh-var(--dashboard-navbar-height))] pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col overflow-hidden transform transition-[transform,box-shadow] duration-300 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
           isAdminTheme
