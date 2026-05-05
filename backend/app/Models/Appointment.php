@@ -103,12 +103,12 @@ class Appointment extends Model
         $totalAmountCents = max(0, (int) ($this->total_amount_cents ?? 0));
         $recordedAmountCents = max(0, (int) ($this->downpayment_amount_cents ?? 0));
 
-        if ($recordedAmountCents > 0) {
-            return min($recordedAmountCents, $totalAmountCents ?: $recordedAmountCents);
-        }
-
         if (strtolower((string) ($this->payment_status ?? '')) === 'paid' && $totalAmountCents > 0) {
             return $totalAmountCents;
+        }
+
+        if ($recordedAmountCents > 0) {
+            return min($recordedAmountCents, $totalAmountCents ?: $recordedAmountCents);
         }
 
         return 0;
