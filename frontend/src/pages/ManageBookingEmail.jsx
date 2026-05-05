@@ -76,6 +76,14 @@ const ManageBookingEmail = () => {
             >
               {sending ? 'Sending OTP...' : 'Send OTP'}
             </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="tap-safe w-full rounded-[10px] border border-[#d8ccff] bg-white px-4 py-3 font-semibold text-[#6d4de6] transition hover:bg-[#faf7ff]"
+            >
+              Go Back to Home Page
+            </button>
           </form>
         </div>
       </div>
