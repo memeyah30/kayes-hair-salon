@@ -76,9 +76,7 @@ class CustomerRatingController extends Controller
         $ratings = CustomerRating::with('stylist')
             ->where('rating', '>=', 4)
             ->whereNotNull('comment')
-            ->where('comment', '!=', '')
             ->latest()
-            ->limit(20)
             ->get(['id', 'stylist_id', 'customer_name', 'rating', 'comment', 'created_at']);
 
         return response()->json($ratings);
