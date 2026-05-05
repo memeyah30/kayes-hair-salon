@@ -242,13 +242,6 @@ const Navbar = ({
             <div className={`truncate font-semibold text-sm sm:text-base lg:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
               Kaye&apos;s Hair Salon and Spa
             </div>
-          </div>
-          
-          <div className="hidden md:block h-6 w-px bg-white/20 mx-1" />
-          
-          <div className={`truncate text-[11px] sm:text-xs lg:text-sm font-medium uppercase tracking-wider ${isAdminTheme ? 'text-white/80' : 'text-[#7f6aa8]'}`}>
-            {title}
-          </div>
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-3">
