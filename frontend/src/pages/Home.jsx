@@ -730,6 +730,11 @@ const Home = () => {
               <p className="text-[#6b5b95] text-lg">Real reviews from our wonderful customers.</p>
             </div>
             
+            <div className="mb-4 p-4 bg-gray-100 rounded text-xs overflow-auto max-h-40">
+              <p className="font-bold text-red-500 mb-2">DEBUG - raw reviews data:</p>
+              <pre>{JSON.stringify(reviews, null, 2)}</pre>
+            </div>
+
             {reviews.length === 0 ? (
               <div className="text-center py-10 bg-white rounded-2xl border border-[#ece3ff] shadow-sm">
                 <p className="text-[#5f4f8f] italic">No reviews available at the moment. Be the first to leave a review after your appointment!</p>
