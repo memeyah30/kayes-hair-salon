@@ -722,13 +722,19 @@ const Home = () => {
           </div>
         )}
 
-        {reviews.length > 0 && (
-          <section id="reviews" className="home-section px-4 md:px-8 py-10 md:py-16 bg-[#faf7ff]">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center mb-10">
-                <h2 className="text-3xl md:text-5xl font-semibold text-[#2f245a] mb-4">What Our Clients Say</h2>
-                <p className="text-[#6b5b95] text-lg">Real reviews from our wonderful customers.</p>
+        {/* Reviews Section - Always Rendered */}
+        <section id="reviews" className="home-section px-4 md:px-8 py-10 md:py-16 bg-[#faf7ff]">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl md:text-5xl font-semibold text-[#2f245a] mb-4">What Our Clients Say</h2>
+              <p className="text-[#6b5b95] text-lg">Real reviews from our wonderful customers.</p>
+            </div>
+            
+            {reviews.length === 0 ? (
+              <div className="text-center py-10 bg-white rounded-2xl border border-[#ece3ff] shadow-sm">
+                <p className="text-[#5f4f8f] italic">No reviews available at the moment. Be the first to leave a review after your appointment!</p>
               </div>
+            ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {reviews.map((review) => (
                   <div key={review.id} className="bg-white p-6 rounded-2xl shadow-[0_8px_20px_rgba(70,45,130,0.06)] border border-[#ece3ff] flex flex-col h-full">
@@ -754,9 +760,9 @@ const Home = () => {
                   </div>
                 ))}
               </div>
-            </div>
-          </section>
-        )}
+            )}
+          </div>
+        </section>
 
         <section id="about" className="home-section px-4 md:px-8 py-8 md:py-14 bg-white">
           <div className="max-w-6xl mx-auto rounded-2xl md:rounded-3xl border border-[#e8ddff] bg-[linear-gradient(135deg,#ffffff_0%,#f8f2ff_100%)] p-5 md:p-12">
