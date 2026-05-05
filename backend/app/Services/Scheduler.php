@@ -73,15 +73,15 @@ class Scheduler
 
     private function getWorkingBlocks(Stylist $stylist, Carbon $date): Collection
     {
-        // ENFORCE: Monday to Sunday, 8 AM to 8 PM only
+        // ENFORCE: Monday to Sunday, 9:30 AM to 5:30 PM only
         // All days are available with fixed business hours
         // Ensure timezone is Asia/Manila
         $timezone = 'Asia/Manila';
         $date = $date->setTimezone($timezone);
-        $businessStart = $date->copy()->setTime(8, 0, 0)->setTimezone($timezone);
-        $businessEnd = $date->copy()->setTime(20, 0, 0)->setTimezone($timezone);
+        $businessStart = $date->copy()->setTime(9, 30, 0)->setTimezone($timezone);
+        $businessEnd = $date->copy()->setTime(17, 30, 0)->setTimezone($timezone);
 
-        // Return single block for 8 AM to 8 PM regardless of stylist working hours
+        // Return single block for 9:30 AM to 5:30 PM regardless of stylist working hours
         return collect([
             [
                 'start' => $businessStart,

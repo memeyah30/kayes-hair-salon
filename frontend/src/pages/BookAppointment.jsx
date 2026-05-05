@@ -450,7 +450,7 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
   
   return (
     <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.07)] p-4 h-full">
-      <div className="font-semibold mb-3 text-[#2C1338]">Time slots (8 AM - 8 PM)</div>
+      <div className="font-semibold mb-3 text-[#2C1338]">Time slots (9:30 AM - 5:30 PM)</div>
       {loading && !hasSlots && <div className="text-sm text-[#7c688f]">Loading slots...</div>}
       {loading && hasSlots && <div className="text-xs text-[#7c688f] mb-2">Refreshing slots...</div>}
       {!loading && !ready && (

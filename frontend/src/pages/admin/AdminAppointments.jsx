@@ -2033,7 +2033,7 @@ const AdminAppointments = () => {
                     min="08:00"
                     max="19:59"
                   />
-                  <p className="mt-1 text-xs text-[#6B6B6B]">Business hours: 8:00 AM - 8:00 PM</p>
+                  <p className="mt-1 text-xs text-[#6B6B6B]">Business hours: 9:30 AM - 5:30 PM</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Reason (Optional)</label>
