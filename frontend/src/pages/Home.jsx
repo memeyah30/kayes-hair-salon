@@ -249,10 +249,13 @@ const Home = () => {
         api.get('/stylists'),
         api.get('/public/ratings')
       ])
-      setServices(asArray(servicesRes?.data))
-      setStylists(asArray(stylistsRes?.data).filter((s) => s?.active))
       
-      const positiveReviews = asArray(ratingsRes?.data)
+      setServices(asArray(servicesRes?.data?.data || servicesRes?.data))
+      setStylists(asArray(stylistsRes?.data?.data || stylistsRes?.data).filter((s) => s?.active))
+      
+      // Handle potential wrapping in a 'data' key
+      const rawRatings = ratingsRes?.data?.data || ratingsRes?.data
+      const positiveReviews = asArray(rawRatings)
       setReviews(positiveReviews)
     } catch (e) {
       console.error('Failed to load data:', e)
