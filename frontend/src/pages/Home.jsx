@@ -736,22 +736,37 @@ const Home = () => {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {reviews.map((review) => (
-                  <div key={review.id} className="bg-white p-6 rounded-2xl shadow-[0_8px_20px_rgba(70,45,130,0.06)] border border-[#ece3ff] flex flex-col h-full">
-                    <div className="flex items-center gap-1 mb-4">
+                {reviews.map((review, index) => (
+                  <div 
+                    key={review.id} 
+                    className="relative bg-white p-6 rounded-2xl shadow-[0_8px_20px_rgba(70,45,130,0.06)] border border-[#ece3ff] flex flex-col h-full overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(70,45,130,0.15)] group"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    {/* Decorative Background Quote Icon */}
+                    <div className="absolute top-4 right-4 text-[#f3ebff] opacity-50 text-8xl leading-none font-serif select-none pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">
+                      &quot;
+                    </div>
+                    
+                    <div className="relative z-10 flex items-center gap-1 mb-4">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <span key={star} className={`text-xl ${star <= review.rating ? 'text-amber-400' : 'text-gray-200'}`}>
+                        <span 
+                          key={star} 
+                          className={`text-xl transition-transform duration-300 ${star <= review.rating ? 'text-amber-400 group-hover:scale-110' : 'text-gray-200'}`}
+                          style={{ transitionDelay: `${star * 50}ms` }}
+                        >
                           ★
                         </span>
                       ))}
                     </div>
-                    <p className="text-[#5f4f8f] italic flex-1 mb-6">&quot;{review.comment}&quot;</p>
-                    <div className="flex items-center gap-3 mt-auto">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#d8ccff] to-[#bca8ff] flex items-center justify-center text-[#4a3ba7] font-bold">
+                    
+                    <p className="relative z-10 text-[#5f4f8f] italic flex-1 mb-6 leading-relaxed">&quot;{review.comment}&quot;</p>
+                    
+                    <div className="relative z-10 flex items-center gap-3 mt-auto pt-4 border-t border-[#f5f0ff]">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#d8ccff] to-[#bca8ff] flex items-center justify-center text-[#4a3ba7] font-bold shadow-inner group-hover:rotate-12 transition-transform duration-300">
                         {review.customer_name ? review.customer_name.charAt(0).toUpperCase() : 'C'}
                       </div>
                       <div>
-                        <p className="font-semibold text-[#2f245a] text-sm">{review.customer_name || 'Customer'}</p>
+                        <p className="font-semibold text-[#2f245a] text-sm group-hover:text-[#4a3ba7] transition-colors">{review.customer_name || 'Customer'}</p>
                         <p className="text-xs text-[#8f7ea6]">
                           {new Date(review.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                         </p>
