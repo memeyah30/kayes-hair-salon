@@ -186,25 +186,21 @@ class StylistController extends Controller
         // Get free blocks to determine availability
         $freeBlocks = $scheduler->freeBlocksForDate($stylist, $data['date']);
         
-        // Business hours: Fixed 8 AM to 8 PM (Asia/Manila timezone)
+        // Business hours: Fixed 9:30 AM to 5:30 PM (Asia/Manila timezone)
         $timezone = 'Asia/Manila';
         $targetDate = \Carbon\Carbon::parse($data['date'], $timezone)->startOfDay();
-        $businessStart = $targetDate->copy()->setTime(8, 0, 0)->setTimezone($timezone);
-        $businessEnd = $targetDate->copy()->setTime(20, 0, 0)->setTimezone($timezone);
+        $businessStart = $targetDate->copy()->setTime(9, 30, 0)->setTimezone($timezone);
+        $businessEnd = $targetDate->copy()->setTime(17, 30, 0)->setTimezone($timezone);
         
-        // Generate FIXED time slots from 8 AM to 8 PM at regular intervals
-        // Ensure we start exactly at 8:00 AM and end by 8:00 PM
+        // Generate FIXED time slots from 9:30 AM to 5:30 PM at regular intervals
+        // Ensure we start exactly at 9:30 AM and end by 5:30 PM
         $allSlots = [];
         $cursor = $businessStart->copy();
         $latestStart = $businessEnd->copy()->subMinutes($durationMinutes);
         
-        // Debug: Verify we're starting at 8 AM
-        // $cursor should be at hour 8 (8 AM)
-        
         while ($cursor->lte($latestStart)) {
-            // Ensure cursor hour is between 8 and 20 (8 AM to 8 PM)
-            $currentHour = (int)$cursor->format('H');
-            if ($currentHour < 8 || $currentHour >= 20) {
+            // Ensure cursor is within business hours
+            if ($cursor->lt($businessStart) || $cursor->gt($businessEnd)) {
                 break; // Safety check: stop if we go outside business hours
             }
             $slotEnd = $cursor->copy()->addMinutes($durationMinutes);

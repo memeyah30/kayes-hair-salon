@@ -32,8 +32,6 @@ class AppointmentController extends Controller
 
     private const SLOT_INTERVAL_MINUTES = 30;
     private const MAX_SLOTS_PER_TIME = 5;
-    private const BUSINESS_OPEN_HOUR = 8;
-    private const BUSINESS_CLOSE_HOUR = 20;
     private const ACTIVE_SLOT_STATUSES = ['booked', 'pending', 'confirmed'];
     private const BOOKING_SUBMISSION_PROCESSING_TTL_SECONDS = 45;
     private const BOOKING_SUBMISSION_RESULT_TTL_SECONDS = 90;
@@ -1335,8 +1333,8 @@ class AppointmentController extends Controller
         $targetDate = Carbon::createFromFormat('Y-m-d', $date, 'Asia/Manila')->startOfDay();
 
         return [
-            'start' => $targetDate->copy()->setTime(self::BUSINESS_OPEN_HOUR, 0, 0),
-            'end' => $targetDate->copy()->setTime(self::BUSINESS_CLOSE_HOUR, 0, 0),
+            'start' => $targetDate->copy()->setTime(9, 30, 0),
+            'end' => $targetDate->copy()->setTime(17, 30, 0),
         ];
     }
 
