@@ -230,6 +230,7 @@ const Home = () => {
   const navigate = useNavigate()
   const [services, setServices] = useState([])
   const [stylists, setStylists] = useState([])
+  const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const activeServiceCategory = 'all'
   const [isServiceOptionsOpen, setIsServiceOptionsOpen] = useState(false)
@@ -243,12 +244,17 @@ const Home = () => {
 
   const loadData = async () => {
     try {
-      const [servicesRes, stylistsRes] = await Promise.all([
+      const [servicesRes, stylistsRes, ratingsRes] = await Promise.all([
         api.get('/services'),
         api.get('/stylists'),
+        api.get('/ratings?paginate=true&per_page=20')
       ])
       setServices(asArray(servicesRes?.data))
       setStylists(asArray(stylistsRes?.data).filter((s) => s?.active))
+      
+      const ratingsData = ratingsRes?.data?.data || asArray(ratingsRes?.data)
+      const positiveReviews = ratingsData.filter(r => r.rating >= 4 && r.comment && r.comment.trim() !== '')
+      setReviews(positiveReviews.slice(0, 6))
     } catch (e) {
       console.error('Failed to load data:', e)
     } finally {
@@ -438,6 +444,7 @@ const Home = () => {
             <div className="hidden md:flex items-center gap-7 text-lg">
               <button onClick={() => scrollToSection('services')} className="home-hero__link transition">Our Services</button>
               <button onClick={() => scrollToSection('about')} className="home-hero__link transition">About Us</button>
+              <button onClick={() => scrollToSection('reviews')} className="home-hero__link transition">Reviews</button>
               <button onClick={() => scrollToSection('contact')} className="home-hero__link transition">Contact</button>
             </div>
 
@@ -462,6 +469,12 @@ const Home = () => {
                 className="block w-full text-left py-2 px-2 rounded hover:bg-white/15"
               >
                 About Us
+              </button>
+              <button
+                onClick={() => scrollToSection('reviews')}
+                className="block w-full text-left py-2 px-2 rounded hover:bg-white/15"
+              >
+                Reviews
               </button>
               <button
                 onClick={() => scrollToSection('contact')}
@@ -705,6 +718,42 @@ const Home = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {reviews.length > 0 && (
+          <section id="reviews" className="home-section px-4 md:px-8 py-10 md:py-16 bg-[#faf7ff]">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-10">
+                <h2 className="text-3xl md:text-5xl font-semibold text-[#2f245a] mb-4">What Our Clients Say</h2>
+                <p className="text-[#6b5b95] text-lg">Real reviews from our wonderful customers.</p>
+              </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {reviews.map((review) => (
+                  <div key={review.id} className="bg-white p-6 rounded-2xl shadow-[0_8px_20px_rgba(70,45,130,0.06)] border border-[#ece3ff] flex flex-col h-full">
+                    <div className="flex items-center gap-1 mb-4">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star} className={`text-xl ${star <= review.rating ? 'text-amber-400' : 'text-gray-200'}`}>
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[#5f4f8f] italic flex-1 mb-6">&quot;{review.comment}&quot;</p>
+                    <div className="flex items-center gap-3 mt-auto">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#d8ccff] to-[#bca8ff] flex items-center justify-center text-[#4a3ba7] font-bold">
+                        {review.customer_name ? review.customer_name.charAt(0).toUpperCase() : 'C'}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[#2f245a] text-sm">{review.customer_name || 'Customer'}</p>
+                        <p className="text-xs text-[#8f7ea6]">
+                          {new Date(review.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
 
         <section id="about" className="home-section px-4 md:px-8 py-8 md:py-14 bg-white">
