@@ -317,10 +317,8 @@ const AdminAppointments = () => {
     setSearchTerm(queryParam)
     setSearchServiceId(serviceIdParam)
     
-    if (nextFilter === 'booked') {
+    if (nextFilter === 'booked' || nextFilter === 'completed') {
       setStatusDateScope('all')
-    } else if (nextFilter === 'completed') {
-      setStatusDateScope('month')
     }
 
     if (dateParam || endDateParam) {
@@ -341,10 +339,8 @@ const AdminAppointments = () => {
     setSearchEndDate('')
     setSearchServiceId('')
     setRangeFilter('')
-    if (nextFilter === 'booked') {
+    if (nextFilter === 'booked' || nextFilter === 'completed') {
       setStatusDateScope('all')
-    } else if (nextFilter === 'completed') {
-      setStatusDateScope('month')
     }
     setSelectedDate('')
     setSelectedTimeSlot('')
@@ -1042,7 +1038,7 @@ const AdminAppointments = () => {
                     const nextFilter = e.target.value
                     setFilter(nextFilter)
                     if (nextFilter === 'booked' || nextFilter === 'completed') {
-                      setStatusDateScope('month')
+                      setStatusDateScope('all')
                     }
                   }}
                   className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white px-3 py-2 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] lg:w-auto"
