@@ -242,19 +242,11 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
         }`}
       />
 
-      {/* This top filler keeps the header and sidebar visually aligned on desktop. */}
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none fixed left-0 top-0 z-20 hidden border-b border-white/10 bg-gradient-to-r from-[#5f3eb4] via-[#6c49c4] to-[#7f5fd1] shadow-[0_14px_34px_rgba(35,12,88,0.14)] transition-[width] duration-300 ease-out lg:block ${
-          isOpen ? 'w-[var(--dashboard-sidebar-width)]' : 'w-[var(--dashboard-sidebar-collapsed-width)]'
-        }`}
-        style={{ height: 'var(--dashboard-navbar-height)' }}
-      />
 
       {/* Closed desktop state keeps a slim rail so feature icons stay visible without covering content. */}
       <aside
         aria-hidden={isOpen ? 'true' : undefined}
-        className={`hidden lg:flex fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100dvh-var(--dashboard-navbar-height))] pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center overflow-hidden overscroll-contain px-2 py-4 transition-[opacity,transform] duration-300 ease-out xl:py-5 ${
+        className={`hidden lg:flex fixed left-0 top-0 z-20 h-screen pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-collapsed-width)] flex-col items-center overflow-hidden overscroll-contain px-2 py-4 transition-[opacity,transform] duration-300 ease-out xl:py-5 ${
           isOpen ? 'pointer-events-none -translate-x-3 opacity-0' : 'translate-x-0 opacity-100'
         } ${
           isAdminTheme
@@ -317,7 +309,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
 
       <aside
         id="dashboard-sidebar"
-        className={`fixed left-0 top-[var(--dashboard-navbar-height)] z-20 h-[calc(100dvh-var(--dashboard-navbar-height))] pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col overflow-hidden transform transition-[transform,box-shadow] duration-300 ease-out ${
+        className={`fixed left-0 top-0 z-20 h-screen pb-[env(safe-area-inset-bottom)] w-[var(--dashboard-sidebar-width)] max-w-[calc(100vw-1.25rem)] flex flex-col overflow-hidden transform transition-[transform,box-shadow] duration-300 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
           isAdminTheme

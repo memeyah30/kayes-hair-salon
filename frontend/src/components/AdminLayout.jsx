@@ -11,10 +11,10 @@ const AdminLayout = ({
   mainClassName = '',
 }) => {
   return (
-    <div className="min-h-screen app-admin-bg flex flex-col text-[#2d1f4f]">
-      <Navbar title={title} hideUserBadge={hideUserBadge} {...navbarProps} />
-      <div className="flex flex-1 md:flex-row">
-        <Sidebar userType={userType} onLogout={onLogout} />
+    <div className="min-h-screen app-admin-bg flex flex-col md:flex-row text-[#2d1f4f]">
+      <Sidebar userType={userType} onLogout={onLogout} />
+      <div className="flex-1 flex flex-col min-w-0">
+        <Navbar title={title} hideUserBadge={hideUserBadge} {...navbarProps} />
         <main className={`flex-1 min-w-0 flex flex-col ${mainClassName}`.trim()}>
           {children}
         </main>

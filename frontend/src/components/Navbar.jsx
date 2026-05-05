@@ -13,12 +13,13 @@ const ROLE_LABELS = {
 }
 
 const getStoredUserType = () => (
-  sessionStorage.getItem('userType') || 'customer'
+  sessionStorage.getItem('userType') || localStorage.getItem('userType') || 'customer'
 )
 
 const parseStoredUser = () => {
   try {
-    return JSON.parse(sessionStorage.getItem('user') || '{}')
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user')
+    return JSON.parse(raw || '{}')
   } catch {
     return {}
   }
@@ -130,12 +131,12 @@ const Navbar = ({
     if (nextUser) {
       const serializedUser = JSON.stringify(nextUser)
       sessionStorage.setItem('user', serializedUser)
-      localStorage.removeItem('user')
+      localStorage.setItem('user', serializedUser)
       setUser(nextUser)
     }
     if (nextType) {
       sessionStorage.setItem('userType', nextType)
-      localStorage.removeItem('userType')
+      localStorage.setItem('userType', nextType)
       setUserType(nextType)
     }
     window.dispatchEvent(new Event('user:updated'))
