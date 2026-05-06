@@ -122,7 +122,7 @@ const getStatusBadgeStyle = (status) => {
   }
 }
 
-const GradientMetricCard = ({ title, value, note, icon, start, end, onClick, delay = 0, isHero = false }) => {
+const GradientMetricCard = ({ title, value, note, trend, icon, start, end, onClick, delay = 0, isHero = false }) => {
   const Wrapper = onClick ? 'button' : 'div'
   const delayClass = {
     0: '',
@@ -139,24 +139,46 @@ const GradientMetricCard = ({ title, value, note, icon, start, end, onClick, del
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={`relative overflow-hidden rounded-[24px] border border-white/18 p-5 text-left text-white shadow-[0_12px_28px_rgba(39,19,88,0.2)] transition duration-200 animate-fadeInUp ${delayClass} ${
-        isHero ? 'col-span-full py-7' : ''
+        isHero ? 'col-span-full py-8' : ''
       } ${
         onClick ? 'hover:-translate-y-1 hover:shadow-[0_20px_36px_rgba(39,19,88,0.24)]' : ''
       }`}
       style={{ background: `linear-gradient(135deg, ${start}, ${end})` }}
     >
-      <div className={`flex items-start justify-between gap-3 ${isHero ? 'items-center' : ''}`}>
-        <div>
-          <div className={`${isHero ? 'text-sm font-medium opacity-85' : 'text-[10px]'} uppercase tracking-[0.16em] text-white`}>{title}</div>
-          <div className={`mt-2 ${isHero ? 'text-4xl' : 'text-2xl'} font-bold leading-none`}>{value}</div>
-          {note && <div className={`mt-2 ${isHero ? 'text-sm opacity-80' : 'text-[10px] opacity-70'}`}>{note}</div>}
+      {/* Background patterns */}
+      {isHero && (
+        <svg className="absolute inset-0 h-full w-full opacity-10" viewBox="0 0 400 150" preserveAspectRatio="none">
+          <path d="M0 100 C 100 120, 200 80, 400 110 L 400 150 L 0 150 Z" fill="white" />
+          <path d="M0 80 C 150 110, 250 60, 400 90" fill="none" stroke="white" strokeWidth="2" strokeDasharray="5 5" />
+        </svg>
+      )}
+      
+      <div className="relative z-10 flex h-full flex-col justify-between">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className={`${isHero ? 'text-sm' : 'text-[10px]'} font-medium uppercase tracking-[0.12em] text-white/85`}>{title}</div>
+            <div className={`mt-2 ${isHero ? 'text-4xl' : 'text-2xl'} font-bold leading-none`}>{value}</div>
+            {note && <div className={`mt-2 ${isHero ? 'text-sm' : 'text-[10px]'} opacity-75`}>{note}</div>}
+          </div>
+          {isHero && (
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/16 text-white shadow-sm">
+              {icon}
+            </div>
+          )}
         </div>
-        <div className={`flex ${isHero ? 'h-14 w-14' : 'h-10 w-10'} items-center justify-center rounded-2xl border border-white/10 bg-white/16 text-white`}>
-          {icon}
+        
+        <div className={`mt-4 flex items-end justify-between ${isHero ? '' : 'min-h-[1.5rem]'}`}>
+          {isHero ? (
+             <div className="text-xs font-medium text-white/90">
+               {trend && <span>{trend}</span>}
+             </div>
+          ) : (
+            <div className="ml-auto opacity-50">
+              {icon}
+            </div>
+          )}
         </div>
       </div>
-      <div className="pointer-events-none absolute -right-8 -bottom-10 h-24 w-24 rounded-full bg-white/12" />
-      <div className="pointer-events-none absolute right-8 -bottom-16 h-28 w-28 rounded-full bg-white/08" />
     </Wrapper>
   )
 }
@@ -177,26 +199,22 @@ const StatusSummaryCard = ({ title, value, accent, icon, total, onClick, delay =
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-[22px] border border-white/40 bg-white/70 p-4 text-left shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md animate-fadeInUp ${delayClass}`}
+      className={`w-full text-left transition animate-fadeInUp ${delayClass} hover:opacity-80`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5">
         <div
-          className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center"
+          className="h-6 w-6 shrink-0 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: toRgba(accent, 0.12), color: accent }}
         >
           {icon}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium uppercase tracking-wider text-[#7b67a9]">{title}</div>
-          <div className="mt-0.5 text-2xl font-bold text-[#24173f] leading-none">{value}</div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] font-bold text-[#856fb4]">{percent}%</div>
-        </div>
+        <div className="text-[11px] font-bold text-[#322253] truncate">{title}</div>
       </div>
-      <div className="mt-3 h-1.5 w-full rounded-full bg-[#eadfff]/60">
+      <div className="mt-2 text-2xl font-bold text-[#24173f] leading-none">{value}</div>
+      <div className="mt-3 h-1.5 w-full rounded-full bg-[#eadfff]/40">
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${percent}%`, backgroundColor: accent }} />
       </div>
+      <div className="mt-1.5 text-[10px] font-medium text-[#856fb4]">{percent}% of total</div>
     </button>
   )
 }
@@ -597,6 +615,7 @@ const AdminDashboard = () => {
                   isHero
                   title="Total Revenue"
                   value={formatCurrency(stats.revenue.month)}
+                  trend="↑ 12% vs last month"
                   note="This month"
                   start="#7f63e8"
                   end="#5a3dbd"
@@ -604,8 +623,7 @@ const AdminDashboard = () => {
                   onClick={() => navigate('/admin/sales')}
                   icon={
                     <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-                      <rect x="3" y="6" width="18" height="12" rx="2" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 12h10" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2h11M21 12v4a1 1 0 01-1 1h-2a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1zM11 10a1 1 0 100-2 1 1 0 000 2z" />
                     </svg>
                   }
                 />
@@ -719,10 +737,9 @@ const AdminDashboard = () => {
 
           <section className={`${glassPanelClass} space-y-5 animate-slideUpStagger animation-delay-200`}>
             <div>
-              <h2 className="text-lg font-bold text-[#2f2252]">Appointment Status</h2>
-              <p className="text-xs text-[#856fb4]">Overall booking distribution</p>
+              <h2 className="text-lg font-bold text-[#2f2252]">Appointment Status Summary</h2>
             </div>
-            <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+            <div className="grid gap-4 grid-cols-3">
               <StatusSummaryCard
                 title="Pending"
                 value={stats.status_summary.booked}
@@ -766,9 +783,9 @@ const AdminDashboard = () => {
             </div>
           </section>
 
-          <section className="grid gap-4 grid-cols-1 xl:grid-cols-[1.4fr_1fr] animate-slideUpStagger animation-delay-300">
-            <div className="space-y-4">
-              <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 animate-slideUpStagger animation-delay-100">
+          <section className="grid gap-4 grid-cols-2 lg:grid-cols-[1.4fr_1fr] animate-slideUpStagger animation-delay-300">
+            <div className="space-y-4 col-span-full lg:col-span-1">
+              <div className="grid gap-4 grid-cols-2 animate-slideUpStagger animation-delay-100">
                 {canAccessSales ? (
                   <button
                     type="button"
@@ -859,8 +876,9 @@ const AdminDashboard = () => {
               <div className={`${glassPanelClass} space-y-5`}>
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-[#2f2252]">Recent Appointments</h3>
+                  <button type="button" onClick={() => navigate('/admin/appointments')} className="text-xs font-semibold text-[#6143c5] hover:underline">View all</button>
                 </div>
-                <div className="md:hidden space-y-4">
+                <div className="md:hidden space-y-1">
                   {recentAppointments.length === 0 && (
                     <div className={emptyStateClass}>
                       No recent appointments yet.
@@ -869,26 +887,32 @@ const AdminDashboard = () => {
                   {recentAppointments.map((appointment) => (
                     <div
                       key={appointment.id}
-                      className="rounded-[20px] border border-white/40 bg-white/40 p-4 shadow-sm"
+                      className="group flex items-center justify-between py-3 border-b border-[#ece2ff] last:border-0"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 shrink-0 rounded-full bg-[#f2e9ff] flex items-center justify-center text-[#6143c5] font-bold text-sm">
+                          {appointment.customer_name ? appointment.customer_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??'}
+                        </div>
+                        <div className="min-w-0">
                           <div className="font-bold text-[#2f2252] truncate">{appointment.customer_name}</div>
-                          <div className="mt-1 flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5 text-xs text-[#644fa0]">
-                              <span className="font-medium">{getAppointmentServices(appointment)[0]?.name || '-'}</span>
-                            </div>
-                            <div className="text-[10px] text-[#856fb4]">{formatDateTime(appointment.start_datetime_pht || appointment.start_datetime)}</div>
+                          <div className="text-[10px] text-[#856fb4] mt-0.5">
+                            {new Date(appointment.start_datetime_pht || appointment.start_datetime).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })} • {getAppointmentServices(appointment)[0]?.name || '-'}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <span
-                            className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider"
-                            style={getStatusBadgeStyle(appointment.status)}
-                          >
-                            {appointment.status}
-                          </span>
-                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                            appointment.status === 'completed' ? 'bg-[#e8f5f3] text-[#4f8177]' : 
+                            appointment.status === 'booked' ? 'bg-[#fff5eb] text-[#9d6a2d]' :
+                            'bg-[#fff0f3] text-[#9a4963]'
+                          }`}
+                        >
+                          {appointment.status}
+                        </span>
+                        <svg className="w-4 h-4 text-[#bfb1e4]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
                     </div>
                   ))}
