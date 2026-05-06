@@ -88,6 +88,7 @@ const MOBILE_TABS = [
   { id: 'slots', label: 'Time Slots' },
   { id: 'appointments', label: 'Appointments' },
 ]
+const SLOT_CAPACITY = 5
 const BUSINESS_SLOT_KEYS = Array.from({ length: 12 }, (_, index) =>
   `${String(index + 8).padStart(2, '0')}:00`
 )
@@ -874,7 +875,6 @@ const AdminAppointments = () => {
 
   const timeSlotSummaries = useMemo(() => {
     if (!selectedDate) return []
-    const stylistCapacity = stylists.length
     return selectedDateSlots.map((slotKey) => {
       const slotAppointments = appointmentsByDateAndSlot[selectedDate]?.[slotKey] || []
       const statusCounts = slotAppointments.reduce((acc, apt) => {
@@ -888,10 +888,10 @@ const AdminAppointments = () => {
         slotKey,
         total: slotAppointments.length,
         ...statusCounts,
-        isFull: stylistCapacity > 0 && slotAppointments.length >= stylistCapacity,
+        isFull: SLOT_CAPACITY > 0 && slotAppointments.length >= SLOT_CAPACITY,
       }
     })
-  }, [appointmentsByDateAndSlot, selectedDate, selectedDateSlots, stylists.length])
+  }, [appointmentsByDateAndSlot, selectedDate, selectedDateSlots])
 
   const slotAppointments = useMemo(() => {
     if (!selectedDate || !selectedTimeSlot) return []
@@ -2026,7 +2026,6 @@ const AdminAppointments = () => {
 }
 
 export default AdminAppointments
-
 
 
 
