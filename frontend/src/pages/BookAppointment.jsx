@@ -3844,21 +3844,24 @@ const BookAppointment = () => {
                 {selectedPaymentType === 'full' ? 'Full Payment Amount (PHP) *' : 'Downpayment Amount (PHP) *'}
               </label>
               <input
-                type="number"
-                min={selectedPaymentType === 'full' ? totalAmount : minDownpayment}
-                max={totalAmount}
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 required
-                className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-blue-500"
-                value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount)}
+                className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-blue-500 font-medium"
+                value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || '')}
                 readOnly={selectedPaymentType === 'full'}
                 onChange={(e) => {
                   if (selectedPaymentType === 'full') {
                     return
                   }
-                  setPayment({ ...payment, amount: e.target.value })
+                  // Allow only numbers and one decimal point
+                  const val = e.target.value.replace(/[^0-9.]/g, '')
+                  const parts = val.split('.')
+                  if (parts.length > 2) return // Prevent multiple decimals
+                  
+                  setPayment({ ...payment, amount: val })
                 }}
-                placeholder={`Enter amount (Minimum: ${currency(Math.round(totalAmountCents * 0.1))})`}
+                placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.1)).replace('PHP ', '')}`}
               />
 
               <p className="text-xs text-[#9b857a] mt-1">
