@@ -693,6 +693,7 @@ class AppointmentController extends Controller
         // Admin/manager completing an appointment means service is done and payment is settled.
         $newPaymentStatus = 'paid';
 
+        try {
             DB::transaction(function () use (
                 $appointment,
                 $request,
