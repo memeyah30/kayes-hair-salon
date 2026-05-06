@@ -782,8 +782,6 @@ const AdminDashboard = () => {
             </div>
           </section>
 
-          </div>
-          
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 animate-slideUpStagger animation-delay-300">
             {canAccessSales ? (
               <div className={`${glassPanelClass} space-y-4`}>
