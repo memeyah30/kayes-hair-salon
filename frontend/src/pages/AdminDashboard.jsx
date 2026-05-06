@@ -122,7 +122,7 @@ const getStatusBadgeStyle = (status) => {
   }
 }
 
-const GradientMetricCard = ({ title, value, note, icon, start, end, onClick, delay = 0 }) => {
+const GradientMetricCard = ({ title, value, note, icon, start, end, onClick, delay = 0, isHero = false }) => {
   const Wrapper = onClick ? 'button' : 'div'
   const delayClass = {
     0: '',
@@ -138,23 +138,25 @@ const GradientMetricCard = ({ title, value, note, icon, start, end, onClick, del
     <Wrapper
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-[28px] border border-white/18 p-4 text-left text-white shadow-[0_18px_34px_rgba(39,19,88,0.24)] transition duration-200 animate-fadeInUp ${delayClass} ${
-        onClick ? 'hover:-translate-y-1 hover:shadow-[0_24px_40px_rgba(39,19,88,0.28)]' : ''
+      className={`relative overflow-hidden rounded-[24px] border border-white/18 p-5 text-left text-white shadow-[0_12px_28px_rgba(39,19,88,0.2)] transition duration-200 animate-fadeInUp ${delayClass} ${
+        isHero ? 'col-span-full py-7' : ''
+      } ${
+        onClick ? 'hover:-translate-y-1 hover:shadow-[0_20px_36px_rgba(39,19,88,0.24)]' : ''
       }`}
       style={{ background: `linear-gradient(135deg, ${start}, ${end})` }}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className={`flex items-start justify-between gap-3 ${isHero ? 'items-center' : ''}`}>
         <div>
-          <div className="text-xs uppercase tracking-[0.16em] text-white/76">{title}</div>
-          <div className="mt-2 text-3xl font-semibold leading-none">{value}</div>
-          {note && <div className="mt-2 text-xs text-white/74">{note}</div>}
+          <div className={`${isHero ? 'text-sm font-medium opacity-85' : 'text-[10px]'} uppercase tracking-[0.16em] text-white`}>{title}</div>
+          <div className={`mt-2 ${isHero ? 'text-4xl' : 'text-2xl'} font-bold leading-none`}>{value}</div>
+          {note && <div className={`mt-2 ${isHero ? 'text-sm opacity-80' : 'text-[10px] opacity-70'}`}>{note}</div>}
         </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/16 text-white">
+        <div className={`flex ${isHero ? 'h-14 w-14' : 'h-10 w-10'} items-center justify-center rounded-2xl border border-white/10 bg-white/16 text-white`}>
           {icon}
         </div>
       </div>
-      <div className="pointer-events-none absolute -right-8 -bottom-10 h-24 w-24 rounded-full bg-white/18" />
-      <div className="pointer-events-none absolute right-8 -bottom-16 h-28 w-28 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute -right-8 -bottom-10 h-24 w-24 rounded-full bg-white/12" />
+      <div className="pointer-events-none absolute right-8 -bottom-16 h-28 w-28 rounded-full bg-white/08" />
     </Wrapper>
   )
 }
@@ -175,22 +177,26 @@ const StatusSummaryCard = ({ title, value, accent, icon, total, onClick, delay =
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-[26px] border border-white/40 bg-white/78 p-4 text-left shadow-[0_14px_32px_rgba(59,31,114,0.12)] backdrop-blur-md transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(59,31,114,0.16)] animate-fadeInUp ${delayClass}`}
+      className={`w-full rounded-[22px] border border-white/40 bg-white/70 p-4 text-left shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-md animate-fadeInUp ${delayClass}`}
     >
       <div className="flex items-center gap-3">
         <div
-          className="h-10 w-10 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: toRgba(accent, 0.16), color: accent }}
+          className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center"
+          style={{ backgroundColor: toRgba(accent, 0.12), color: accent }}
         >
           {icon}
         </div>
-        <div className="text-base font-semibold text-[#322253]">{title}</div>
-        <div className="ml-auto text-3xl font-semibold text-[#24173f] leading-none">{value}</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium uppercase tracking-wider text-[#7b67a9]">{title}</div>
+          <div className="mt-0.5 text-2xl font-bold text-[#24173f] leading-none">{value}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] font-bold text-[#856fb4]">{percent}%</div>
+        </div>
       </div>
-      <div className="mt-4 h-2 w-full rounded-full bg-[#eadfff]">
-        <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: accent }} />
+      <div className="mt-3 h-1.5 w-full rounded-full bg-[#eadfff]/60">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${percent}%`, backgroundColor: accent }} />
       </div>
-      <div className="mt-2 text-xs text-[#856fb4]">{percent}% of total</div>
     </button>
   )
 }
@@ -577,18 +583,18 @@ const AdminDashboard = () => {
       onLogout={handleLogout}
       title={canAccessSales ? 'Dashboard Overview' : 'Manager Overview'}
     >
-      <div className="app-mobile-shell space-y-6">
+      <div className="app-mobile-shell space-y-7">
           <div className="animate-slideUpStagger">
-            <h1 className="fluid-title-lg font-semibold text-[#24173f]">
+            <h1 className="text-2xl font-bold tracking-tight text-[#24173f]">
               {canAccessSales ? 'Admin Dashboard' : 'Manager Dashboard'}
             </h1>
-           
           </div>
 
-          <div className={`grid gap-4 grid-cols-1 lg:grid-cols-3 ${canAccessSales ? '2xl:grid-cols-7 xl:grid-cols-4' : '2xl:grid-cols-5 xl:grid-cols-3'} animate-slideUpStagger animation-delay-100`}>
+          <div className={`grid gap-4 grid-cols-2 lg:grid-cols-3 ${canAccessSales ? '2xl:grid-cols-7 xl:grid-cols-4' : '2xl:grid-cols-5 xl:grid-cols-3'} animate-slideUpStagger animation-delay-100`}>
             {canAccessSales ? (
               <>
                 <GradientMetricCard
+                  isHero
                   title="Total Revenue"
                   value={formatCurrency(stats.revenue.month)}
                   note="This month"
@@ -597,7 +603,7 @@ const AdminDashboard = () => {
                   delay={0}
                   onClick={() => navigate('/admin/sales')}
                   icon={
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
                       <rect x="3" y="6" width="18" height="12" rx="2" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7 12h10" />
                     </svg>
@@ -635,20 +641,21 @@ const AdminDashboard = () => {
                 />
               </>
             ) : (
-              <GradientMetricCard
-                title="Total Appointments"
-                value={stats.appointments.month}
-                note="This month"
-                start="#7f63e8"
-                end="#5a3dbd"
-                delay={0}
-                onClick={() => navigate('/admin/appointments?range=month')}
-                icon={
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v4M17 3v4M4 9h16M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7Z" />
-                  </svg>
-                }
-              />
+                <GradientMetricCard
+                  isHero
+                  title="Total Appointments"
+                  value={stats.appointments.month}
+                  note="This month"
+                  start="#7f63e8"
+                  end="#5a3dbd"
+                  delay={0}
+                  onClick={() => navigate('/admin/appointments?range=month')}
+                  icon={
+                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v4M17 3v4M4 9h16M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7Z" />
+                    </svg>
+                  }
+                />
             )}
             <GradientMetricCard
               title="Pending Appointments"
@@ -710,9 +717,12 @@ const AdminDashboard = () => {
             />
           </div>
 
-          <section className={`${glassPanelClass} animation-delay-100 animate-slideUpStagger animation-delay-200`}>
-            <h2 className="text-xl font-semibold text-[#2f2252]">Appointment Status Summary</h2>
-            <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-3">
+          <section className={`${glassPanelClass} space-y-5 animate-slideUpStagger animation-delay-200`}>
+            <div>
+              <h2 className="text-lg font-bold text-[#2f2252]">Appointment Status</h2>
+              <p className="text-xs text-[#856fb4]">Overall booking distribution</p>
+            </div>
+            <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
               <StatusSummaryCard
                 title="Pending"
                 value={stats.status_summary.booked}
@@ -783,10 +793,12 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className={`${glassPanelClass} animation-delay-400 animate-slideUpStagger animation-delay-400`}>
+              <div className={`${glassPanelClass} space-y-4 animate-slideUpStagger animation-delay-400`}>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-[#2f2252]">Monthly Appointments</h3>
-                  <span className="text-xs text-[#806caf]">Last 6 months</span>
+                  <div>
+                    <h3 className="text-lg font-bold text-[#2f2252]">Monthly Appointments</h3>
+                    <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Activity over 6 months</p>
+                  </div>
                 </div>
                 <div className={lightChartShellClass}>
                   <LineChart
@@ -803,10 +815,12 @@ const AdminDashboard = () => {
 
             <div className="space-y-4">
               {canAccessSales ? (
-                <div className={`${glassPanelClass} animation-delay-500 animate-slideUpStagger animation-delay-500`}>
+                <div className={`${glassPanelClass} space-y-4 animate-slideUpStagger animation-delay-500`}>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-semibold text-[#2f2252]">Revenue This Week</h3>
-                    <span className="text-xs text-[#806caf]">Mon-Sun</span>
+                    <div>
+                      <h3 className="text-lg font-bold text-[#2f2252]">Weekly Revenue</h3>
+                      <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Performance by day</p>
+                    </div>
                   </div>
                   <div className={darkChartShellClass}>
                     <BarChart
@@ -821,10 +835,12 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className={`${glassPanelClass} animation-delay-500 animate-slideUpStagger animation-delay-500`}>
+                <div className={`${glassPanelClass} space-y-4 animate-slideUpStagger animation-delay-500`}>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-semibold text-[#2f2252]">Appointments This Week</h3>
-                    <span className="text-xs text-[#806caf]">Mon-Sun</span>
+                    <div>
+                      <h3 className="text-lg font-bold text-[#2f2252]">Weekly Appointments</h3>
+                      <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Booking frequency</p>
+                    </div>
                   </div>
                   <div className={darkChartShellClass}>
                     <BarChart
@@ -840,9 +856,11 @@ const AdminDashboard = () => {
                 </div>
               )}
 
-              <div className={glassPanelClass}>
-                <h3 className="text-xl font-semibold text-[#2f2252]">Recent Appointments</h3>
-                <div className="mt-4 md:hidden space-y-3">
+              <div className={`${glassPanelClass} space-y-5`}>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-[#2f2252]">Recent Appointments</h3>
+                </div>
+                <div className="md:hidden space-y-4">
                   {recentAppointments.length === 0 && (
                     <div className={emptyStateClass}>
                       No recent appointments yet.
@@ -851,21 +869,26 @@ const AdminDashboard = () => {
                   {recentAppointments.map((appointment) => (
                     <div
                       key={appointment.id}
-                      className="rounded-xl border border-white/38 bg-[#faf6ff]/82 p-3 shadow-[0_10px_22px_rgba(59,31,114,0.08)]"
+                      className="rounded-[20px] border border-white/40 bg-white/40 p-4 shadow-sm"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-semibold text-[#2f2252]">{appointment.customer_name}</div>
-                          <div className="mt-1 text-sm text-[#806caf]">{getAppointmentServices(appointment)[0]?.name || '-'}</div>
-                          <div className="mt-1 text-xs text-[#806caf]">{appointment.stylist?.name || '-'}</div>
-                          <div className="mt-1 text-xs text-[#806caf]">{formatDateTime(appointment.start_datetime_pht || appointment.start_datetime)}</div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-[#2f2252] truncate">{appointment.customer_name}</div>
+                          <div className="mt-1 flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 text-xs text-[#644fa0]">
+                              <span className="font-medium">{getAppointmentServices(appointment)[0]?.name || '-'}</span>
+                            </div>
+                            <div className="text-[10px] text-[#856fb4]">{formatDateTime(appointment.start_datetime_pht || appointment.start_datetime)}</div>
+                          </div>
                         </div>
-                        <span
-                          className="rounded-full px-2.5 py-1 text-xs font-medium"
-                          style={getStatusBadgeStyle(appointment.status)}
-                        >
-                          {appointment.status}
-                        </span>
+                        <div className="flex flex-col items-end gap-2">
+                          <span
+                            className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider"
+                            style={getStatusBadgeStyle(appointment.status)}
+                          >
+                            {appointment.status}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
