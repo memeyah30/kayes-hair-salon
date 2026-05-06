@@ -123,13 +123,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 14h4" />
           </svg>
         )
-      case 'inventory':
-        return (
-          <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
-          </svg>
-        )
+
       case 'reports':
         return (
           <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
