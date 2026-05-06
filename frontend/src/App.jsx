@@ -16,7 +16,7 @@ import AdminCustomers from './pages/admin/AdminCustomers'
 import AdminRatings from './pages/admin/AdminRatings'
 import ManageHolidays from './pages/admin/ManageHolidays'
 import ManagePaymentAccounts from './pages/admin/ManagePaymentAccounts'
-import ManageInventory from './pages/admin/ManageInventory'
+
 import SalesMonitoring from './pages/admin/SalesMonitoring'
 import AdminManagers from './pages/admin/AdminManagers'
 import ManageBookingEmail from './pages/ManageBookingEmail'
@@ -117,14 +117,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/admin/inventory"
-          element={
-            <ProtectedRoute allowedTypes={['admin']}>
-              <ManageInventory />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/admin/sales"
           element={
