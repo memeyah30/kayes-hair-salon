@@ -1376,6 +1376,11 @@ const AdminAppointments = () => {
                         >
                           {normalizedStatus === 'booked' ? 'PENDING' : normalizedStatus.toUpperCase()}
                         </span>
+                        {normalizedStatus === 'cancelled' && apt.rejection_reason && (
+                          <div className="text-[9px] text-[#DC2626] text-right max-w-[80px] truncate" title={apt.rejection_reason}>
+                            {apt.rejection_reason}
+                          </div>
+                        )}
                         
                         <div className="mt-auto flex flex-col gap-1.5">
                           {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
@@ -1538,6 +1543,11 @@ const AdminAppointments = () => {
                           {isRescheduled && (
                             <span className="w-fit rounded-full bg-[#ede9fe] px-3 py-1 text-xs font-medium text-[#6d28d9]">
                               Rescheduled
+                            </span>
+                          )}
+                          {normalizedStatus === 'cancelled' && apt.rejection_reason && (
+                            <span className="text-xs text-[#DC2626] max-w-[150px] truncate" title={apt.rejection_reason}>
+                              Reason: {apt.rejection_reason}
                             </span>
                           )}
                         </div>
@@ -1723,6 +1733,15 @@ const AdminAppointments = () => {
                   <p className="mt-1 text-xs text-[#6B6B6B]">{selectedAppointmentServices.length} service{selectedAppointmentServices.length === 1 ? '' : 's'}</p>
                 </div>
               </div>
+
+              {selectedAppointment.status === 'cancelled' && selectedAppointment.rejection_reason && (
+                <div className="mt-4 rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-[#DC2626]">Cancellation Reason</p>
+                  <div className="mt-2 text-sm text-[#991B1B]">
+                    {selectedAppointment.rejection_reason}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Payment Details</p>
@@ -1940,6 +1959,7 @@ const AdminAppointments = () => {
 
       {/* Full Image Viewer Modal */}
       {showImageModal && (
+        <>
           <style>{`
             @keyframes fadeInUp {
               from { opacity: 0; transform: translateY(10px); }
@@ -1997,7 +2017,8 @@ const AdminAppointments = () => {
               Close
             </button>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
     </AdminLayout>
@@ -2005,7 +2026,6 @@ const AdminAppointments = () => {
 }
 
 export default AdminAppointments
-
 
 
 

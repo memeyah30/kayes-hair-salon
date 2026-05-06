@@ -6,6 +6,64 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
+    private function dropForeignKeysReferencingColumns(string $tableName, array $columns): void
+    {
+        if (!Schema::hasTable($tableName)) {
+            return;
+        }
+
+        try {
+            $foreignKeys = Schema::getForeignKeys($tableName);
+        } catch (\Throwable $e) {
+            return;
+        }
+
+        foreach ($foreignKeys as $foreignKey) {
+            $foreignKeyColumns = $foreignKey['columns'] ?? [];
+
+            if (!array_intersect($columns, $foreignKeyColumns)) {
+                continue;
+            }
+
+            try {
+                Schema::table($tableName, function (Blueprint $table) use ($foreignKey) {
+                    $table->dropForeign($foreignKey['name']);
+                });
+            } catch (\Throwable $e) {
+                // Ignore if the foreign key was already removed or renamed locally.
+            }
+        }
+    }
+
+    private function dropIndexesReferencingColumns(string $tableName, array $columns): void
+    {
+        if (!Schema::hasTable($tableName)) {
+            return;
+        }
+
+        try {
+            $indexes = Schema::getIndexes($tableName);
+        } catch (\Throwable $e) {
+            return;
+        }
+
+        foreach ($indexes as $index) {
+            $indexColumns = $index['columns'] ?? [];
+
+            if (!array_intersect($columns, $indexColumns)) {
+                continue;
+            }
+
+            try {
+                Schema::table($tableName, function (Blueprint $table) use ($index) {
+                    $table->dropIndex($index['name']);
+                });
+            } catch (\Throwable $e) {
+                // Ignore if the index was already removed or renamed locally.
+            }
+        }
+    }
+
     public function up(): void
     {
         if (Schema::hasTable('appointment_ratings') && Schema::hasColumn('appointment_ratings', 'stylist_rating')) {
@@ -27,82 +85,38 @@ return new class extends Migration {
         }
 
         if (Schema::hasTable('appointments') && Schema::hasColumn('appointments', 'stylist_id')) {
+            $this->dropForeignKeysReferencingColumns('appointments', ['stylist_id']);
+            $this->dropIndexesReferencingColumns('appointments', ['stylist_id']);
+
             Schema::table('appointments', function (Blueprint $table) {
-                try {
-                    $table->dropForeign(['stylist_id']);
-                } catch (\Throwable $e) {
-                    // Ignore if the foreign key was already removed.
-                }
-                try {
-                    $table->dropIndex('appointments_stylist_time_idx');
-                } catch (\Throwable $e) {
-                    // Ignore if the index was already removed.
-                }
-                try {
-                    $table->dropColumn('stylist_id');
-                } catch (\Throwable $e) {
-                    // Ignore if the column was already removed.
-                }
+                $table->dropColumn('stylist_id');
             });
         }
 
         if (Schema::hasTable('customer_ratings') && Schema::hasColumn('customer_ratings', 'stylist_id')) {
+            $this->dropForeignKeysReferencingColumns('customer_ratings', ['stylist_id']);
+            $this->dropIndexesReferencingColumns('customer_ratings', ['stylist_id']);
+
             Schema::table('customer_ratings', function (Blueprint $table) {
-                try {
-                    $table->dropForeign(['stylist_id']);
-                } catch (\Throwable $e) {
-                    // Ignore if the foreign key was already removed.
-                }
-                try {
-                    $table->dropIndex('customer_ratings_stylist_id_index');
-                } catch (\Throwable $e) {
-                    // Ignore if the index was already removed.
-                }
-                try {
-                    $table->dropColumn('stylist_id');
-                } catch (\Throwable $e) {
-                    // Ignore if the column was already removed.
-                }
+                $table->dropColumn('stylist_id');
             });
         }
 
         if (Schema::hasTable('sales') && Schema::hasColumn('sales', 'stylist_id')) {
+            $this->dropForeignKeysReferencingColumns('sales', ['stylist_id']);
+            $this->dropIndexesReferencingColumns('sales', ['stylist_id']);
+
             Schema::table('sales', function (Blueprint $table) {
-                try {
-                    $table->dropForeign(['stylist_id']);
-                } catch (\Throwable $e) {
-                    // Ignore if the foreign key was already removed.
-                }
-                try {
-                    $table->dropIndex('sales_stylist_id_index');
-                } catch (\Throwable $e) {
-                    // Ignore if the index was already removed.
-                }
-                try {
-                    $table->dropColumn('stylist_id');
-                } catch (\Throwable $e) {
-                    // Ignore if the column was already removed.
-                }
+                $table->dropColumn('stylist_id');
             });
         }
 
         if (Schema::hasTable('staff') && Schema::hasColumn('staff', 'user_id')) {
+            $this->dropForeignKeysReferencingColumns('staff', ['user_id']);
+            $this->dropIndexesReferencingColumns('staff', ['user_id']);
+
             Schema::table('staff', function (Blueprint $table) {
-                try {
-                    $table->dropForeign(['user_id']);
-                } catch (\Throwable $e) {
-                    // Ignore if the foreign key was already removed.
-                }
-                try {
-                    $table->dropIndex('staff_user_id_index');
-                } catch (\Throwable $e) {
-                    // Ignore if the index was already removed.
-                }
-                try {
-                    $table->dropColumn('user_id');
-                } catch (\Throwable $e) {
-                    // Ignore if the column was already removed.
-                }
+                $table->dropColumn('user_id');
             });
         }
 
