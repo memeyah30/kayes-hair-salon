@@ -25,19 +25,16 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/manage/services', label: 'Services', icon: 'services' },
-    { to: '/admin/staff/pending', label: 'Staff Approvals', icon: 'reviews' },
+    { to: '/admin/manage/managers', label: 'Manager Profiles', icon: 'staff' },
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
     { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },
     { to: '/admin/payment-accounts', label: 'Payments', icon: 'payments' },
-    { to: '/admin/inventory', label: 'Inventory', icon: 'inventory' },
     { to: '/admin/sales', label: 'Reports', icon: 'reports' },
   ]
 
   const managerLinks = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/manager/staff/add', label: 'Add Staff', icon: 'staff' },
-    { to: '/manager/staff/requests', label: 'Staff Requests', icon: 'reviews' },
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
