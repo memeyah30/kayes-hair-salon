@@ -301,6 +301,12 @@ const AdminAppointments = () => {
   const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
   const canAccessSales = storedUserType === 'admin'
+  const [showRejectionModal, setShowRejectionModal] = useState(false)
+  const [rejectingAppointmentId, setRejectingAppointmentId] = useState(null)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [isRejecting, setIsRejecting] = useState(false)
+  const [showImageModal, setShowImageModal] = useState(false)
+  const [imageModalUrl, setImageModalUrl] = useState('')
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getAppointmentServices = (appointment) =>
@@ -639,19 +645,11 @@ const AdminAppointments = () => {
         }
         toast.success('Appointment confirmed')
       } else if (action === 'reject') {
-        const reason = window.prompt("Please provide a reason for rejecting this appointment (e.g., Invalid payment proof):")
-        if (!reason || reason.trim() === '') {
-          toast.warn('A reason is required to reject an appointment.')
-          setProcessingAppointmentId(null)
-          return
-        }
-        const response = await api.post(`/appointments/${id}/reject`, { reason })
-        if (response?.data?.appointment) {
-          updateAppointmentInState(id, () => response.data.appointment)
-        } else {
-          updateAppointmentInState(id, (apt) => ({ ...apt, status: 'cancelled' }))
-        }
-        toast.success('Appointment rejected and customer notified')
+        setRejectingAppointmentId(id)
+        setRejectionReason('')
+        setShowRejectionModal(true)
+        setProcessingAppointmentId(null)
+        return
       } else if (action === 'delete') {
         await api.delete(`/appointments/${id}`)
         setAppointments((prev) => prev.filter((apt) => apt.id !== id))
@@ -665,6 +663,38 @@ const AdminAppointments = () => {
       toast.error(e.response?.data?.message || 'Failed to update appointment')
     } finally {
       setProcessingAppointmentId(null)
+    }
+  }
+
+  const submitRejection = async () => {
+    if (!rejectingAppointmentId || isRejecting) return
+    if (!rejectionReason.trim()) {
+      toast.warn('Please provide a reason for rejection')
+      return
+    }
+
+    try {
+      setIsRejecting(true)
+      const response = await api.patch(`/appointments/${rejectingAppointmentId}/reject`, {
+        reason: rejectionReason.trim(),
+      })
+
+      if (response?.data?.appointment) {
+        updateAppointmentInState(rejectingAppointmentId, () => response.data.appointment)
+      } else {
+        updateAppointmentInState(rejectingAppointmentId, (apt) => ({ ...apt, status: 'cancelled' }))
+      }
+
+      toast.success('Appointment rejected and customer notified')
+      setShowRejectionModal(false)
+      setRejectingAppointmentId(null)
+      setRejectionReason('')
+      await loadData()
+      await loadTableData(tablePage)
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to reject appointment')
+    } finally {
+      setIsRejecting(false)
     }
   }
 
@@ -949,39 +979,14 @@ const AdminAppointments = () => {
   }
   const shouldShowPaymentStatusBadge = (method, status, appointmentStatus) =>
     !shouldHidePaymentStatusBadge(method, appointmentStatus)
+  const openProofFile = (url) => {
+    setImageModalUrl(url)
+    setShowImageModal(true)
+  }
   const resolveProofUrl = (url) => {
     if (!url) return null
     return resolveAssetUrl(url)
   }
-  const openProofFile = async (proofUrl) => {
-    if (!proofUrl) {
-      toast.error('Payment proof is unavailable for this appointment.')
-      return
-    }
-
-    try {
-      const resolvedUrl = new URL(proofUrl, window.location.origin)
-      if (resolvedUrl.origin === window.location.origin) {
-        const response = await fetch(resolvedUrl.toString(), {
-          method: 'HEAD',
-          credentials: 'include',
-        })
-
-        // Some local servers can reject HEAD even for existing files.
-        if (response.status !== 405) {
-          const contentType = (response.headers.get('content-type') || '').toLowerCase()
-          if (!response.ok || contentType.includes('text/html')) {
-            setSelectedProofLoadError(true)
-            toast.error('Payment proof file was not found.')
-            return
-          }
-        }
-      }
-    } catch {
-      // Best effort check only; continue opening the URL.
-    }
-
-    window.open(proofUrl, '_blank', 'noopener,noreferrer')
   }
 
   const selectedAppointmentServices = selectedAppointment ? getAppointmentServices(selectedAppointment) : []
@@ -1866,6 +1871,120 @@ const AdminAppointments = () => {
             </div>
           </div>
       )}
+
+      {/* Rejection Reason Modal */}
+      {showRejectionModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#1B1237]/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-[24px] border border-[#DDD6FE] bg-white shadow-[0_24px_48px_rgba(41,21,93,0.18)] animate-fadeInScale">
+            <div className="border-b border-[#F2EDFF] bg-[#F9F7FF] px-6 py-4">
+              <h2 className="text-lg font-bold text-[#2D1F4F]">Reject Appointment</h2>
+              <p className="text-xs text-[#856FB4]">Please provide a reason for rejecting this booking.</p>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-semibold text-[#4A3481]">Reason for Rejection <span className="text-[#EF4444]">*</span></label>
+                  <textarea
+                    className="w-full rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] px-4 py-3 text-sm text-[#2D2D2D] transition focus:border-[#7B5CF5] focus:outline-none focus:ring-4 focus:ring-[#7B5CF5]/10"
+                    rows="4"
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="e.g., Invalid payment proof, schedule conflict, etc."
+                    autoFocus
+                  />
+                  <p className="mt-2 text-[11px] text-[#856FB4]">The customer will receive an email with this reason.</p>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRejectionModal(false)
+                    setRejectingAppointmentId(null)
+                    setRejectionReason('')
+                  }}
+                  className="flex-1 rounded-xl border border-[#DDD6FE] py-3 text-sm font-bold text-[#6B6B6B] transition hover:bg-[#F9F7FF]"
+                  disabled={isRejecting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitRejection}
+                  disabled={isRejecting || !rejectionReason.trim()}
+                  className={`flex-1 rounded-xl py-3 text-sm font-bold text-white transition shadow-md ${
+                    isRejecting || !rejectionReason.trim() 
+                      ? 'cursor-not-allowed bg-[#E5E7EB]' 
+                      : 'bg-[#EF4444] hover:bg-[#DC2626] shadow-[#EF4444]/20'
+                  }`}
+                >
+                  {isRejecting ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                      <span>Processing...</span>
+                    </div>
+                  ) : (
+                    'Confirm Reject'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Image Viewer Modal */}
+      {showImageModal && (
+        <div 
+          className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/90 p-4 backdrop-blur-md"
+          onClick={() => setShowImageModal(false)}
+        >
+          <button
+            type="button"
+            className="absolute right-6 top-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            onClick={() => setShowImageModal(false)}
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <div 
+            className="relative max-h-[85vh] max-w-[95vw] overflow-hidden rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={imageModalUrl}
+              alt="Payment Proof Full View"
+              className="max-h-[85vh] w-auto object-contain"
+            />
+          </div>
+          
+          <div className="mt-6 flex gap-4">
+            <a
+              href={imageModalUrl}
+              download
+              className="flex items-center gap-2 rounded-full bg-white/10 px-6 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowImageModal(false)}
+              className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-bold text-[#1B1237] transition hover:bg-white/90"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
     </AdminLayout>
   )
 }
