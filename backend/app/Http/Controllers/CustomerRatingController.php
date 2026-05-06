@@ -142,7 +142,7 @@ class CustomerRatingController extends Controller
             }
 
             $overallRating = (int) round(
-                (((int) $appointmentRating->service_rating) + ((int) $appointmentRating->stylist_rating)) / 2
+                (((int) $appointmentRating->service_rating) + ((int) $appointmentRating->team_rating)) / 2
             );
 
             CustomerRating::query()->updateOrCreate(

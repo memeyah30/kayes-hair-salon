@@ -42,6 +42,7 @@ class AppointmentController extends Controller
         // Let the Appointment model serialize its casted datetimes in Asia/Manila.
         // We only add a lightweight flag here to avoid double-shifting timestamps.
         $appointment->is_rescheduled = !empty($appointment->getRawOriginal('rescheduled_at'));
+        $appointment->team_name = 'Salon Team';
 
         return $appointment;
     }

@@ -291,7 +291,7 @@ class ManageBookingController extends Controller
                 'payment_method' => $appointment->payment_method,
                 'mode_of_payment' => $appointment->mode_of_payment,
                 'service_name' => $serviceName,
-                'stylist_name' => 'Salon Team',
+                'team_name' => 'Salon Team',
                 'appointment_date' => $start->format('Y-m-d'),
                 'appointment_time' => $start->format('H:i'),
                 'status' => $this->mapStatusForCustomer((string) $appointment->status),
@@ -321,7 +321,7 @@ class ManageBookingController extends Controller
                     [
                         'appointment_id' => $appointment['id'],
                         'service_name' => $appointment['service_name'],
-                        'stylist_name' => $appointment['stylist_name'],
+                        'team_name' => $appointment['team_name'],
                         'appointment_date' => $appointment['appointment_date'],
                         'appointment_time' => $appointment['appointment_time'],
                     ],
@@ -437,7 +437,7 @@ class ManageBookingController extends Controller
     {
         $data = $request->validate([
             'service_rating' => ['required', 'integer', 'min:1', 'max:5'],
-            'stylist_rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'team_rating' => ['required', 'integer', 'min:1', 'max:5'],
             'comment' => ['nullable', 'string'],
         ]);
 
@@ -471,16 +471,15 @@ class ManageBookingController extends Controller
             'appointment_id' => $appointment->id,
             'customer_email' => $email,
             'service_rating' => (int) $data['service_rating'],
-            'stylist_rating' => (int) $data['stylist_rating'],
+            'team_rating' => (int) $data['team_rating'],
             'comment' => $data['comment'] ?? null,
         ]);
 
-        $overallRating = (int) round((((int) $data['service_rating']) + ((int) $data['stylist_rating'])) / 2);
+        $overallRating = (int) round((((int) $data['service_rating']) + ((int) $data['team_rating'])) / 2);
 
         CustomerRating::query()->updateOrCreate(
             ['appointment_id' => $appointment->id],
             [
-                'stylist_id' => null,
                 'customer_name' => $appointment->customer_name,
                 'customer_email' => $email,
                 'rating' => max(1, min(5, $overallRating)),
@@ -576,18 +575,18 @@ class ManageBookingController extends Controller
         $serviceRating = $appointmentRating
             ? (int) $appointmentRating->service_rating
             : (int) ($customerRating?->rating ?? 0);
-        $stylistRating = $appointmentRating
-            ? (int) $appointmentRating->stylist_rating
+        $teamRating = $appointmentRating
+            ? (int) $appointmentRating->team_rating
             : (int) ($customerRating?->rating ?? 0);
         $overallRating = $customerRating
             ? (int) $customerRating->rating
-            : (int) round(($serviceRating + $stylistRating) / 2);
+            : (int) round(($serviceRating + $teamRating) / 2);
 
         $ratedAt = $appointmentRating?->created_at ?? $customerRating?->created_at;
 
         return [
             'service_rating' => max(1, min(5, $serviceRating)),
-            'stylist_rating' => max(1, min(5, $stylistRating)),
+            'team_rating' => max(1, min(5, $teamRating)),
             'overall_rating' => max(1, min(5, $overallRating)),
             'comment' => $appointmentRating?->comment ?? $customerRating?->comment,
             'rated_at' => $ratedAt?->toIso8601String(),

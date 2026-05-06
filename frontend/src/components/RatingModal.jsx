@@ -3,7 +3,7 @@ import StarRating from './StarRating'
 
 const RatingModal = ({ open, appointment, onClose, onSubmit, submitting = false }) => {
   const [serviceRating, setServiceRating] = useState(0)
-  const [stylistRating, setStylistRating] = useState(0)
+  const [teamRating, setTeamRating] = useState(0)
   const [comment, setComment] = useState('')
   const [error, setError] = useState('')
 
@@ -13,19 +13,19 @@ const RatingModal = ({ open, appointment, onClose, onSubmit, submitting = false 
     e.preventDefault()
     setError('')
 
-    if (serviceRating < 1 || stylistRating < 1) {
+    if (serviceRating < 1 || teamRating < 1) {
       setError('Please provide both service and salon ratings.')
       return
     }
 
     await onSubmit({
       service_rating: serviceRating,
-      stylist_rating: stylistRating,
+      team_rating: teamRating,
       comment: comment.trim() || null,
     })
 
     setServiceRating(0)
-    setStylistRating(0)
+    setTeamRating(0)
     setComment('')
     setError('')
   }
@@ -56,8 +56,8 @@ const RatingModal = ({ open, appointment, onClose, onSubmit, submitting = false 
           />
 
           <StarRating
-            value={stylistRating}
-            onChange={setStylistRating}
+            value={teamRating}
+            onChange={setTeamRating}
             label="Salon Rating"
           />
 

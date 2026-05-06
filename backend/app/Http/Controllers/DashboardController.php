@@ -316,7 +316,7 @@ class DashboardController extends Controller
                     [
                         'appointment_id' => $apt->id,
                         'service_name' => $serviceName,
-                        'stylist_name' => 'Salon Team',
+                        'team_name' => 'Salon Team',
                         'appointment_date' => $start->format('Y-m-d'),
                         'appointment_time' => $start->format('H:i'),
                     ],
@@ -358,18 +358,18 @@ class DashboardController extends Controller
         $serviceRating = $appointmentRating
             ? (int) $appointmentRating->service_rating
             : (int) ($customerRating?->rating ?? 0);
-        $stylistRating = $appointmentRating
-            ? (int) $appointmentRating->stylist_rating
+        $teamRating = $appointmentRating
+            ? (int) $appointmentRating->team_rating
             : (int) ($customerRating?->rating ?? 0);
         $overallRating = $customerRating
             ? (int) $customerRating->rating
-            : (int) round(($serviceRating + $stylistRating) / 2);
+            : (int) round(($serviceRating + $teamRating) / 2);
 
         $ratedAt = $appointmentRating?->created_at ?? $customerRating?->created_at;
 
         return [
             'service_rating' => max(1, min(5, $serviceRating)),
-            'stylist_rating' => max(1, min(5, $stylistRating)),
+            'team_rating' => max(1, min(5, $teamRating)),
             'overall_rating' => max(1, min(5, $overallRating)),
             'comment' => $appointmentRating?->comment ?? $customerRating?->comment,
             'rated_at' => $ratedAt?->toIso8601String(),

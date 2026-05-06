@@ -8,7 +8,6 @@ import imageCompression from 'browser-image-compression'
 const ROLE_LABELS = {
   admin: 'Admin',
   manager: 'Manager',
-  stylist: 'Staff',
   customer: 'Customer',
 }
 
@@ -62,7 +61,7 @@ const Navbar = ({
   const initials = getInitials(displayName)
   const profileImageUrl = resolveImageUrl(user?.image_url || user?.image)
   const salonLogoUrl = resolveAssetUrl('logo.png')
-  const canManagePhoto = userType === 'manager' || userType === 'stylist'
+  const canManagePhoto = userType === 'manager'
 
   useEffect(() => {
     const syncUserState = () => {

@@ -14,13 +14,13 @@ class AppointmentRating extends Model
         'appointment_id',
         'customer_email',
         'service_rating',
-        'stylist_rating',
+        'team_rating',
         'comment',
     ];
 
     protected $casts = [
         'service_rating' => 'integer',
-        'stylist_rating' => 'integer',
+        'team_rating' => 'integer',
     ];
 
     public function appointment(): BelongsTo
@@ -28,4 +28,3 @@ class AppointmentRating extends Model
         return $this->belongsTo(Appointment::class);
     }
 }
-

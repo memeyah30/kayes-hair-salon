@@ -35,7 +35,6 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/login/admin" element={<Login userType="admin" />} />
         <Route path="/login/manager" element={<Login userType="manager" />} />
-        <Route path="/login/stylist" element={<Navigate to="/login" replace />} />
         
         {/* Customer manage-booking routes (public OTP flow) */}
         <Route path="/my-appointments" element={<Navigate to="/" replace />} />
@@ -59,14 +58,6 @@ const App = () => {
           element={
             <ProtectedRoute allowedTypes={['admin', 'manager']}>
               <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/manage/stylists"
-          element={
-            <ProtectedRoute allowedTypes={['admin']}>
-              <Navigate to="/admin/dashboard" replace />
             </ProtectedRoute>
           }
         />
@@ -136,11 +127,6 @@ const App = () => {
           }
         />
 
-        
-        {/* Retired staff panel routes */}
-        <Route path="/stylist/dashboard" element={<Navigate to="/login" replace />} />
-        <Route path="/stylist/appointments" element={<Navigate to="/login" replace />} />
-        <Route path="/stylist/schedule" element={<Navigate to="/login" replace />} />
         
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

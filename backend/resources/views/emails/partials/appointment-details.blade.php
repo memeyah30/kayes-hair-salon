@@ -15,8 +15,8 @@
                 <p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#4b5563;"><strong>Time:</strong> {{ $appointmentTimeLabel }}</p>
             @endif
 
-            @if(!empty($stylistName))
-                <p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#4b5563;"><strong>Stylist:</strong> {{ $stylistName }}</p>
+            @if(!empty($teamName))
+                <p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#4b5563;"><strong>Team:</strong> {{ $teamName }}</p>
             @endif
 
             @if(!empty($serviceItems))

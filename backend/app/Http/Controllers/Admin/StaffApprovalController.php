@@ -31,11 +31,6 @@ class StaffApprovalController extends Controller
             ], 409);
         }
 
-        $staff->user_id = $staff->user_id ?: null;
-        $staff->save();
-
-        $staff->refresh();
-
         $staff->status = 'approved';
         $staff->approved_by_admin_id = $admin->id;
         $staff->approved_at = now();

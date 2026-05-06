@@ -70,6 +70,10 @@ class AdminCustomerController extends Controller
                 ->orderByDesc('start_datetime')
                 ->get();
 
+            $appointments->each(function (Appointment $appointment) {
+                $appointment->team_name = 'Salon Team';
+            });
+
             $totalSpentCents = (int) $appointments
                 ->where('status', 'completed')
                 ->sum(fn (Appointment $appointment) => $this->getAppointmentTotalPriceCents($appointment));

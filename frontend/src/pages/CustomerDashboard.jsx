@@ -459,7 +459,7 @@ const CustomerDashboard = () => {
                 )}
               </div>
             )}
-            <div className="text-sm text-[#7c688f] mt-1">with {appointment.stylist_name || 'Salon Team'}</div>
+            <div className="text-sm text-[#7c688f] mt-1">with {appointment.team_name || 'Salon Team'}</div>
             <div className="text-sm font-medium text-green-600 mt-2">
               Total: {formatCurrency(appointment.total_amount)}
             </div>

@@ -25,7 +25,6 @@ class Appointment extends Model
     ];
 
     protected $fillable = [
-        'stylist_id',
         'service_id', // Keep for backward compatibility
         'customer_name',
         'customer_email',
@@ -131,11 +130,6 @@ class Appointment extends Model
         }
 
         return $amountPaidCents >= $totalAmountCents ? 'full' : 'downpayment';
-    }
-
-    public function stylist(): BelongsTo
-    {
-        return $this->belongsTo(Stylist::class);
     }
 
     // Keep for backward compatibility (single service)

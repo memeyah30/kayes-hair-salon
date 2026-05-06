@@ -12,7 +12,6 @@ class CustomerRating extends Model
 
     protected $fillable = [
         'appointment_id',
-        'stylist_id',
         'customer_name',
         'customer_email',
         'rating',
@@ -28,9 +27,5 @@ class CustomerRating extends Model
         return $this->belongsTo(Appointment::class);
     }
 
-    public function stylist(): BelongsTo
-    {
-        return $this->belongsTo(Stylist::class);
-    }
 }
 

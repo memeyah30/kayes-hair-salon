@@ -32,12 +32,6 @@ class Service extends Model
         return $this->hasMany(ServiceVariant::class)->orderBy('order');
     }
 
-    public function stylists(): BelongsToMany
-    {
-        return $this->belongsToMany(Stylist::class, 'stylist_services', 'service_id', 'stylist_id')
-            ->withTimestamps();
-    }
-
     public function inventoryRequirements(): HasMany
     {
         return $this->hasMany(ServiceInventoryRequirement::class);

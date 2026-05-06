@@ -19,7 +19,6 @@ class AppointmentNotificationService
     public function loadAppointmentForMail(Appointment $appointment): Appointment
     {
         return $appointment->loadMissing([
-            'stylist:id,name',
             'service:id,name,price_cents',
             'services:id,name,price_cents',
             'services.variants:id,service_id,name,price_cents',
@@ -73,7 +72,7 @@ class AppointmentNotificationService
         return [
             'customerName' => $appointment->customer_name ?: 'Valued Customer',
             'customerEmail' => $appointment->customer_email,
-            'stylistName' => $appointment->stylist?->name ?: 'Salon Team',
+            'teamName' => 'Salon Team',
             'serviceItems' => $serviceItems,
             'serviceSummary' => collect($serviceItems)->pluck('label')->implode(', '),
             'appointmentDateLabel' => $start?->format('F j, Y'),
@@ -139,7 +138,6 @@ class AppointmentNotificationService
 
         return Appointment::query()
             ->with([
-                'stylist:id,name',
                 'service:id,name,price_cents',
                 'services:id,name,price_cents',
                 'services.variants:id,service_id,name,price_cents',

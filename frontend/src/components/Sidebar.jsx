@@ -25,7 +25,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/manage/services', label: 'Services', icon: 'services' },
-    { to: '/admin/manage/stylists', label: 'Manager Profiles', icon: 'staff' },
+    { to: '/admin/manage/managers', label: 'Manager Profiles', icon: 'staff' },
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
     { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },

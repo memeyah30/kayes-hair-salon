@@ -264,7 +264,6 @@ const AdminAppointments = () => {
     preferred_time: '',
     reschedule_reason: '',
   })
-  const [stylists, setStylists] = useState([])
   const [services, setServices] = useState([])
   const [searchTerm, setSearchTerm] = useState(() => new URLSearchParams(window.location.search).get('q') || '')
   const [searchDate, setSearchDate] = useState(() => new URLSearchParams(window.location.search).get('date') || '')
@@ -544,13 +543,11 @@ const AdminAppointments = () => {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [apptsRes, stylistsRes, servicesRes] = await Promise.all([
+      const [apptsRes, servicesRes] = await Promise.all([
         api.get('/appointments'),
-        api.get('/stylists'),
         api.get('/services'),
       ])
       setAppointments(apptsRes.data)
-      setStylists(stylistsRes.data)
       setServices(servicesRes.data)
     } catch {
       toast.error('Failed to load data')
@@ -1505,7 +1502,7 @@ const AdminAppointments = () => {
                       </td>
                       <td className="px-4 py-4">
                         <div className="font-medium text-[#2D2D2D]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
-                        {apt.stylist?.name && (
+                        {apt.team_name && (
                           <div className="mt-1 flex items-center gap-1 text-xs text-[#6B6B6B]">
                             <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#F2EDFF] text-[#7B5CF5]">
                               <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -1513,7 +1510,7 @@ const AdminAppointments = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c1.5-3 5-5 7-5s5.5 2 7 5" />
                               </svg>
                             </span>
-                            <span>{apt.stylist.name}</span>
+                            <span>{apt.team_name}</span>
                           </div>
                         )}
                       </td>
@@ -1695,8 +1692,8 @@ const AdminAppointments = () => {
                       )}
                     </div>
                   )}
-                  {selectedAppointment.stylist?.name && (
-                    <p className="mt-1 text-sm text-[#6B6B6B]">Team: {selectedAppointment.stylist.name}</p>
+                  {selectedAppointment.team_name && (
+                    <p className="mt-1 text-sm text-[#6B6B6B]">Team: {selectedAppointment.team_name}</p>
                   )}
                 </div>
                 <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">

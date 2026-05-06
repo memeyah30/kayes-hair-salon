@@ -22,7 +22,6 @@ class Sale extends Model
         'payment_status',
         'customer_name',
         'customer_phone',
-        'stylist_id',
         'notes',
     ];
 
@@ -42,8 +41,4 @@ class Sale extends Model
         return $this->belongsTo(Inventory::class);
     }
 
-    public function stylist(): BelongsTo
-    {
-        return $this->belongsTo(Stylist::class);
-    }
 }

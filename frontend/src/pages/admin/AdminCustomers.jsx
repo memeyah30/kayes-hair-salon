@@ -374,7 +374,7 @@ const AdminCustomers = () => {
                               })} PHT
                             </div>
                             <div className="text-sm text-[#9b857a] mb-1">
-                              Team: {apt.stylist?.name || 'Salon Team'}
+                              Team: {apt.team_name || 'Salon Team'}
                             </div>
                             <div className="text-sm font-medium text-green-600">
                               {appointmentServices.length > 1 ? 'Total Price: ' : 'Price: '}{currency(totalPrice)}
@@ -424,5 +424,4 @@ const AdminCustomers = () => {
 }
 
 export default AdminCustomers
-
 
