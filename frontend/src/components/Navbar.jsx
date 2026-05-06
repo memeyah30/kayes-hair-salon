@@ -212,7 +212,7 @@ const Navbar = ({
           : 'bg-white/95 shadow supports-[backdrop-filter]:backdrop-blur-md'
       }`}
     >
-      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="flex flex-1 min-w-0 items-center gap-1 sm:gap-3">
         <button
           type="button"
           onClick={handleToggleSidebar}
@@ -226,8 +226,8 @@ const Navbar = ({
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-1 min-w-0 items-center gap-1 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             <span className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:h-10 sm:w-10 ${
               isAdminTheme
                 ? 'border-white/16 bg-white/18 shadow-[0_10px_24px_rgba(33,10,86,0.14)]'
@@ -239,13 +239,13 @@ const Navbar = ({
                 className="h-7 w-7 object-contain sm:h-8 sm:w-8"
               />
             </span>
-            <div className={`truncate font-semibold text-sm sm:text-base lg:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`flex-1 min-w-0 truncate font-bold text-xs sm:text-sm lg:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
               Kaye&apos;s Hair Salon and Spa
             </div>
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 md:gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 md:gap-3">
         <div
           className={`hidden lg:flex items-center gap-2 rounded-full border px-3 py-2 text-sm ${
             isAdminTheme

@@ -166,7 +166,6 @@ const GradientMetricCard = ({ title, value, note, trend, icon, start, end, onCli
             </div>
           )}
         </div>
-        
         <div className={`mt-4 flex items-end justify-between ${isHero ? '' : 'min-h-[1.5rem]'}`}>
           {isHero ? (
              <div className="text-xs font-medium text-white/90">
@@ -783,181 +782,153 @@ const AdminDashboard = () => {
             </div>
           </section>
 
-          <section className="grid gap-4 grid-cols-2 lg:grid-cols-[1.4fr_1fr] animate-slideUpStagger animation-delay-300">
-            <div className="space-y-4 col-span-full lg:col-span-1">
-              <div className="grid gap-4 grid-cols-2 animate-slideUpStagger animation-delay-100">
-                {canAccessSales ? (
-                  <button
-                    type="button"
-                    onClick={goToTodaySales}
-                    className={`${statCardClass} animation-delay-200 text-left transition hover:-translate-y-1 hover:shadow-[0_20px_36px_rgba(59,31,114,0.16)]`}
-                  >
-                    <div className="text-sm text-[#7b67a9]">Daily Revenue</div>
-                    <div className="mt-1 text-3xl font-semibold">{formatCurrency(stats.revenue.today)}</div>
-                    <div className="mt-3 text-sm text-[#7b67a9]">Today&apos;s bookings: {stats.appointments.today}</div>
-                  </button>
-                ) : (
-                  <div className={`${statCardClass} animation-delay-200`}>
-                    <div className="text-sm text-[#7b67a9]">Today Appointments</div>
-                    <div className="mt-1 text-3xl font-semibold">{stats.appointments.today}</div>
-                    <div className="mt-3 text-sm text-[#7b67a9]">Week total: {stats.appointments.week}</div>
-                  </div>
-                )}
-                <div className={`${statCardClass} animation-delay-300`}>
-                  <div className="text-sm text-[#7b67a9]">Week Appointments</div>
-                  <div className="mt-1 text-3xl font-semibold">{stats.appointments.week}</div>
-                  <div className="mt-3 text-sm text-[#7b67a9]">Total services: {stats.services}</div>
-                </div>
-              </div>
-
-              <div className={`${glassPanelClass} space-y-4 animate-slideUpStagger animation-delay-400`}>
+          </div>
+          
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 animate-slideUpStagger animation-delay-300">
+            {canAccessSales ? (
+              <div className={`${glassPanelClass} space-y-4`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-[#2f2252]">Monthly Appointments</h3>
-                    <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Activity over 6 months</p>
+                    <h3 className="text-lg font-bold text-[#2f2252]">Weekly Revenue</h3>
+                    <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Performance by day</p>
                   </div>
                 </div>
-                <div className={lightChartShellClass}>
-                  <LineChart
-                    data={monthlyAppointments}
-                    yTickFormatter={(value) => formatCompactNumber(value)}
+                <div className={darkChartShellClass}>
+                  <BarChart
+                    data={revenueThisWeek}
+                    fill="#ece3ff"
+                    yTickFormatter={(value) => formatCurrencyCompact(value)}
+                    barValueFormatter={(value) => (value > 0 ? formatCompactNumber(value / 100) : '')}
                   />
                 </div>
                 <div className={accentNoteClass}>
-                  Highest month: <span className="font-semibold">{peakMonth.label}</span> ({peakMonth.value} appointments)
+                  Highest day: <span className="font-semibold">{peakRevenueDay.label}</span> ({formatCurrency(peakRevenueDay.value)})
                 </div>
               </div>
-
-            </div>
-
-            <div className="space-y-4">
-              {canAccessSales ? (
-                <div className={`${glassPanelClass} space-y-4 animate-slideUpStagger animation-delay-500`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-[#2f2252]">Weekly Revenue</h3>
-                      <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Performance by day</p>
-                    </div>
-                  </div>
-                  <div className={darkChartShellClass}>
-                    <BarChart
-                      data={revenueThisWeek}
-                      fill="#ece3ff"
-                      yTickFormatter={(value) => formatCurrencyCompact(value)}
-                      barValueFormatter={(value) => (value > 0 ? formatCompactNumber(value / 100) : '')}
-                    />
-                  </div>
-                  <div className={accentNoteClass}>
-                    Highest day: <span className="font-semibold">{peakRevenueDay.label}</span> ({formatCurrency(peakRevenueDay.value)})
+            ) : (
+              <div className={`${glassPanelClass} space-y-4`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#2f2252]">Weekly Appointments</h3>
+                    <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Booking frequency</p>
                   </div>
                 </div>
-              ) : (
-                <div className={`${glassPanelClass} space-y-4 animate-slideUpStagger animation-delay-500`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-[#2f2252]">Weekly Appointments</h3>
-                      <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Booking frequency</p>
-                    </div>
-                  </div>
-                  <div className={darkChartShellClass}>
-                    <BarChart
-                      data={appointmentsThisWeek}
-                      fill="#ece3ff"
-                      yTickFormatter={(value) => formatCompactNumber(value)}
-                      barValueFormatter={(value) => (value > 0 ? formatCompactNumber(value) : '')}
-                    />
-                  </div>
-                  <div className={accentNoteClass}>
-                    Busiest day: <span className="font-semibold">{peakAppointmentsDay.label}</span> ({peakAppointmentsDay.value} appointments)
-                  </div>
+                <div className={darkChartShellClass}>
+                  <BarChart
+                    data={appointmentsThisWeek}
+                    fill="#ece3ff"
+                    yTickFormatter={(value) => formatCompactNumber(value)}
+                    barValueFormatter={(value) => (value > 0 ? formatCompactNumber(value) : '')}
+                  />
+                </div>
+                <div className={accentNoteClass}>
+                  Busiest day: <span className="font-semibold">{peakAppointmentsDay.label}</span> ({peakAppointmentsDay.value} appointments)
+                </div>
+              </div>
+            )}
+
+            <div className={`${glassPanelClass} space-y-4`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-[#2f2252]">Monthly Appointments</h3>
+                  <p className="text-[10px] text-[#806caf] uppercase tracking-wider">Activity over 6 months</p>
+                </div>
+              </div>
+              <div className={lightChartShellClass}>
+                <LineChart
+                  data={monthlyAppointments}
+                  yTickFormatter={(value) => formatCompactNumber(value)}
+                />
+              </div>
+              <div className={accentNoteClass}>
+                Highest month: <span className="font-semibold">{peakMonth.label}</span> ({peakMonth.value} appointments)
+              </div>
+            </div>
+          </div>
+
+          <div className={`${glassPanelClass} space-y-5 animate-slideUpStagger animation-delay-400`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#2f2252]">Recent Appointments</h3>
+              <button type="button" onClick={() => navigate('/admin/appointments')} className="text-xs font-semibold text-[#6143c5] hover:underline">View all</button>
+            </div>
+            <div className="md:hidden space-y-1">
+              {recentAppointments.length === 0 && (
+                <div className={emptyStateClass}>
+                  No recent appointments yet.
                 </div>
               )}
-
-              <div className={`${glassPanelClass} space-y-5`}>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-[#2f2252]">Recent Appointments</h3>
-                  <button type="button" onClick={() => navigate('/admin/appointments')} className="text-xs font-semibold text-[#6143c5] hover:underline">View all</button>
-                </div>
-                <div className="md:hidden space-y-1">
-                  {recentAppointments.length === 0 && (
-                    <div className={emptyStateClass}>
-                      No recent appointments yet.
+              {recentAppointments.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="group flex items-center justify-between py-3 border-b border-[#ece2ff] last:border-0"
+                >
+                  <div className="flex flex-1 min-w-0 items-center gap-1.5 sm:gap-3">
+                    <div className="h-10 w-10 shrink-0 rounded-full bg-[#f2e9ff] flex items-center justify-center text-[#6143c5] font-bold text-sm">
+                      {appointment.customer_name ? appointment.customer_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??'}
                     </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-[#2f2252] truncate">{appointment.customer_name}</div>
+                      <div className="text-[10px] text-[#856fb4] mt-0.5">
+                        {new Date(appointment.start_datetime_pht || appointment.start_datetime).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })} • {getAppointmentServices(appointment)[0]?.name || '-'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                        appointment.status === 'completed' ? 'bg-[#e8f5f3] text-[#4f8177]' : 
+                        appointment.status === 'booked' ? 'bg-[#fff5eb] text-[#9d6a2d]' :
+                        'bg-[#fff0f3] text-[#9a4963]'
+                      }`}
+                    >
+                      {appointment.status}
+                    </span>
+                    <svg className="w-4 h-4 text-[#bfb1e4]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden md:block mt-4 overflow-x-auto">
+              <table className="w-full min-w-[520px] text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase text-[#8a75b9]">
+                    <th className="pb-2">Customer</th>
+                    <th className="pb-2">Service</th>
+                    <th className="pb-2">Stylist</th>
+                    <th className="pb-2">Date</th>
+                    <th className="pb-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentAppointments.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="py-6 text-center text-xs text-[#9a86c7]">
+                        No recent appointments yet.
+                      </td>
+                    </tr>
                   )}
                   {recentAppointments.map((appointment) => (
-                    <div
-                      key={appointment.id}
-                      className="group flex items-center justify-between py-3 border-b border-[#ece2ff] last:border-0"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 shrink-0 rounded-full bg-[#f2e9ff] flex items-center justify-center text-[#6143c5] font-bold text-sm">
-                          {appointment.customer_name ? appointment.customer_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??'}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-[#2f2252] truncate">{appointment.customer_name}</div>
-                          <div className="text-[10px] text-[#856fb4] mt-0.5">
-                            {new Date(appointment.start_datetime_pht || appointment.start_datetime).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })} • {getAppointmentServices(appointment)[0]?.name || '-'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
+                    <tr key={appointment.id} className="border-t border-[#ece2ff]">
+                      <td className="py-3 font-medium">{appointment.customer_name}</td>
+                      <td className="py-3">{getAppointmentServices(appointment)[0]?.name || '-'}</td>
+                      <td className="py-3">{appointment.stylist?.name || '-'}</td>
+                      <td className="py-3">{formatDateTime(appointment.start_datetime_pht || appointment.start_datetime)}</td>
+                      <td className="py-3">
                         <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                            appointment.status === 'completed' ? 'bg-[#e8f5f3] text-[#4f8177]' : 
-                            appointment.status === 'booked' ? 'bg-[#fff5eb] text-[#9d6a2d]' :
-                            'bg-[#fff0f3] text-[#9a4963]'
-                          }`}
+                          className="rounded-full px-2.5 py-1 text-xs font-medium"
+                          style={getStatusBadgeStyle(appointment.status)}
                         >
                           {appointment.status}
                         </span>
-                        <svg className="w-4 h-4 text-[#bfb1e4]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </div>
+                      </td>
+                    </tr>
                   ))}
-                </div>
-                <div className="hidden md:block mt-4 overflow-x-auto">
-                  <table className="w-full min-w-[520px] text-sm">
-                    <thead>
-                      <tr className="text-left text-xs uppercase text-[#8a75b9]">
-                        <th className="pb-2">Customer</th>
-                        <th className="pb-2">Service</th>
-                        <th className="pb-2">Stylist</th>
-                        <th className="pb-2">Date</th>
-                        <th className="pb-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentAppointments.length === 0 && (
-                        <tr>
-                          <td colSpan="5" className="py-6 text-center text-xs text-[#9a86c7]">
-                            No recent appointments yet.
-                          </td>
-                        </tr>
-                      )}
-                      {recentAppointments.map((appointment) => (
-                        <tr key={appointment.id} className="border-t border-[#ece2ff]">
-                          <td className="py-3 font-medium">{appointment.customer_name}</td>
-                          <td className="py-3">{getAppointmentServices(appointment)[0]?.name || '-'}</td>
-                          <td className="py-3">{appointment.stylist?.name || '-'}</td>
-                          <td className="py-3">{formatDateTime(appointment.start_datetime_pht || appointment.start_datetime)}</td>
-                          <td className="py-3">
-                            <span
-                              className="rounded-full px-2.5 py-1 text-xs font-medium"
-                              style={getStatusBadgeStyle(appointment.status)}
-                            >
-                              {appointment.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                </tbody>
+              </table>
             </div>
-          </section>
+          </div>
       </div>
     </AdminLayout>
   )
