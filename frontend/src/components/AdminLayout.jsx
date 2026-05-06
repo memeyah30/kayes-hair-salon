@@ -11,7 +11,7 @@ const AdminLayout = ({
   mainClassName = '',
 }) => {
   return (
-    <div className="h-screen app-admin-bg flex flex-col text-[#2d1f4f] overflow-hidden">
+    <div className="min-h-dvh app-admin-bg flex flex-col text-[#2d1f4f] overflow-hidden">
       <Navbar title={title} hideUserBadge={hideUserBadge} {...navbarProps} />
       <div className="flex-1 flex flex-row min-w-0 overflow-hidden relative">
         <Sidebar userType={userType} onLogout={onLogout} />

@@ -16,12 +16,27 @@ class ManagerController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string',
-            'username' => 'required|string|unique:managers,username',
+            'email' => 'required|string|email|unique:managers,email',
+            'phone' => 'required|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'username' => 'nullable|string|unique:managers,username',
             'password' => 'required|string|min:6',
             'active' => 'nullable',
         ]);
 
         $data['active'] = $this->normalizeActive($data['active'] ?? true);
+        
+        // If username is not provided, use the email prefix
+        if (empty($data['username'])) {
+            $data['username'] = explode('@', $data['email'])[0];
+            // Ensure unique username
+            $baseUsername = $data['username'];
+            $counter = 1;
+            while (\App\Models\Manager::where('username', $data['username'])->exists()) {
+                $data['username'] = $baseUsername . $counter;
+                $counter++;
+            }
+        }
 
         $manager = Manager::create($data);
 
@@ -32,6 +47,9 @@ class ManagerController extends Controller
     {
         $data = $request->validate([
             'name' => 'sometimes|string',
+            'email' => 'sometimes|string|email|unique:managers,email,' . $manager->id,
+            'phone' => 'sometimes|string|max:20',
+            'address' => 'nullable|string|max:500',
             'username' => 'sometimes|string|unique:managers,username,' . $manager->id,
             'password' => 'sometimes|nullable|string|min:6',
             'active' => 'sometimes|nullable',

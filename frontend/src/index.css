@@ -217,7 +217,13 @@
       center,
       center,
       center;
-    background-attachment: fixed;
+    background-attachment: scroll;
+  }
+
+  @media (min-width: 1024px) {
+    .app-admin-bg {
+      background-attachment: fixed;
+    }
   }
 
   .app-mobile-shell {
