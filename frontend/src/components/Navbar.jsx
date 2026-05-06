@@ -239,7 +239,7 @@ const Navbar = ({
                 className="h-7 w-7 object-contain sm:h-8 sm:w-8"
               />
             </span>
-            <div className={`flex-1 min-w-0 truncate font-bold text-xs sm:text-sm lg:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`flex-1 min-w-0 truncate font-bold text-[10px] sm:text-sm lg:text-lg ${isAdminTheme ? 'text-white' : 'text-gray-900'}`}>
               Kaye&apos;s Hair Salon and Spa
             </div>
           </div>

@@ -188,7 +188,7 @@ const NotificationsBell = ({ userType, isAdminTheme = true }) => {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-3 w-[22rem] overflow-hidden rounded-[24px] border border-[#dbcfff] bg-[linear-gradient(180deg,#fdfbff_0%,#f4edff_100%)] shadow-[0_18px_36px_rgba(41,21,93,0.2)]">
+        <div className="fixed inset-x-3 z-50 mt-3 overflow-hidden rounded-[24px] border border-[#dbcfff] bg-[linear-gradient(180deg,#fdfbff_0%,#f4edff_100%)] shadow-[0_18px_36px_rgba(41,21,93,0.2)] sm:absolute sm:inset-x-auto sm:right-0 sm:w-[22rem]">
           <div className="flex items-center justify-between border-b border-[#ebe1ff] px-4 py-3">
             <div>
               <div className="text-sm font-semibold text-[#3a2868]">Notifications</div>
