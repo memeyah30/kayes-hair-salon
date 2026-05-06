@@ -43,6 +43,7 @@ class Appointment extends Model
         'rescheduled_by_id',
         'rescheduled_by_type',
         'reschedule_reason',
+        'rejection_reason',
         'approval_email_sent_at',
         'reminder_sent_at',
     ];

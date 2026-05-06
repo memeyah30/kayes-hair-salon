@@ -7,11 +7,9 @@ import ScrollToTop from './components/ScrollToTop'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import BookAppointment from './pages/BookAppointment'
-import Stylists from './pages/Stylists'
 import Services from './pages/Services'
 import AdminDashboard from './pages/AdminDashboard'
 import CustomerDashboard from './pages/CustomerDashboard'
-import ManageStylists from './pages/ManageStylists'
 import ManageServices from './pages/ManageServices'
 import AdminAppointments from './pages/admin/AdminAppointments'
 import AdminCustomers from './pages/admin/AdminCustomers'
@@ -52,7 +50,7 @@ const App = () => {
         <Route path="/customer/profile" element={<Navigate to="/customer" replace />} />
         <Route path="/customer/manage" element={<Navigate to="/customer" replace />} />
         <Route path="/book" element={<BookAppointment />} />
-        <Route path="/stylists" element={<Stylists />} />
+        <Route path="/stylists" element={<Navigate to="/services" replace />} />
         <Route path="/services" element={<Services />} />
         
         {/* Protected admin routes */}
@@ -68,7 +66,7 @@ const App = () => {
           path="/admin/manage/stylists"
           element={
             <ProtectedRoute allowedTypes={['admin']}>
-              <ManageStylists />
+              <Navigate to="/admin/dashboard" replace />
             </ProtectedRoute>
           }
         />
@@ -80,7 +78,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="/admin/manage/managers" element={<Navigate to="/admin/manage/stylists" replace />} />
+        <Route path="/admin/manage/managers" element={<Navigate to="/admin/dashboard" replace />} />
         <Route
           path="/admin/appointments"
           element={

@@ -67,7 +67,7 @@ class CustomerOtpSessionFlowTest extends TestCase
         ])->getJson('/api/manage-booking/appointments')
             ->assertOk()
             ->assertJsonCount(1, 'appointments')
-            ->assertJsonPath('appointments.0.stylist_name', 'Stylist');
+            ->assertJsonPath('appointments.0.stylist_name', 'Salon Team');
     }
 
     public function test_returning_booking_verification_stores_customer_session(): void

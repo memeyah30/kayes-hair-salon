@@ -229,7 +229,6 @@ const Home = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
   const [services, setServices] = useState([])
-  const [stylists, setStylists] = useState([])
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const activeServiceCategory = 'all'
@@ -244,14 +243,12 @@ const Home = () => {
 
   const loadData = async () => {
     try {
-      const [servicesRes, stylistsRes, ratingsRes] = await Promise.all([
+      const [servicesRes, ratingsRes] = await Promise.all([
         api.get('/services'),
-        api.get('/stylists'),
         api.get('/public/ratings')
       ])
       
       setServices(asArray(servicesRes?.data?.data || servicesRes?.data))
-      setStylists(asArray(stylistsRes?.data?.data || stylistsRes?.data).filter((s) => s?.active))
       
       // Handle potential wrapping in a 'data' key
       const rawRatings = ratingsRes?.data?.data || ratingsRes?.data
@@ -494,7 +491,7 @@ const Home = () => {
               Book Your Salon Appointment Online
             </h1>
             <p className="home-hero__subtitle">
-              Enjoy premium hair, nail, and beauty services with professional stylists.
+              Enjoy premium hair, nail, and beauty services with our salon team.
             </p>
             <div className="home-hero__actions flex flex-col sm:flex-row gap-4 justify-center">
               <button

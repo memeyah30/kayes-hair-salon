@@ -34,7 +34,7 @@ export const rejectStaff = (id, reason) => api.patch(`/admin/staff/${id}/reject`
   rejected_reason: reason,
 }, adminRequestConfig)
 
-export const getStylists = () => api.get('/stylists')
+export const getStylists = () => Promise.resolve({ data: [] })
 
 export default {
   createStaff,
@@ -42,5 +42,4 @@ export default {
   getPendingStaff,
   approveStaff,
   rejectStaff,
-  getStylists,
 }

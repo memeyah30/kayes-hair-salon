@@ -6,7 +6,6 @@ use App\Http\Controllers\AdminCustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceVariantController;
-use App\Http\Controllers\StylistController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\CustomerRatingController;
 use App\Http\Controllers\PaymentAccountController;
@@ -84,12 +83,8 @@ Route::get('/services', function (Request $request) use ($serveFrontend) {
 
     return $serveFrontend();
 });
-Route::get('/stylists', function (Request $request) use ($serveFrontend) {
-    if ($request->expectsJson() || $request->wantsJson()) {
-        return app(StylistController::class)->index($request);
-    }
-
-    return $serveFrontend();
+Route::get('/stylists', function () {
+    return redirect('/services');
 });
 Route::get('/public/ratings', function (Request $request) use ($serveFrontend) {
     if ($request->expectsJson() || $request->wantsJson()) {
@@ -99,7 +94,6 @@ Route::get('/public/ratings', function (Request $request) use ($serveFrontend) {
     return $serveFrontend();
 });
 
-Route::get('/stylists/{stylist}/availability', [StylistController::class, 'availability']);
 Route::get('/appointments/availability', [AppointmentController::class, 'availability']);
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
 Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
@@ -116,8 +110,8 @@ Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public -
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth.any');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth.any');
-Route::post('/me/profile-photo', [AuthController::class, 'updateProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
-Route::delete('/me/profile-photo', [AuthController::class, 'removeProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
+Route::post('/me/profile-photo', [AuthController::class, 'updateProfilePhoto'])->middleware(['auth.any', 'userType:manager']);
+Route::delete('/me/profile-photo', [AuthController::class, 'removeProfilePhoto'])->middleware(['auth.any', 'userType:manager']);
 
 // Manager staff request routes (web/session auth)
 Route::middleware(['auth.any', 'userType:manager'])->group(function () {
@@ -148,7 +142,9 @@ Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () use
 });
 
 Route::middleware(['auth.any', 'userType:admin'])->group(function () use ($serveFrontend) {
-    Route::get('/admin/manage/stylists', $serveFrontend);
+    Route::get('/admin/manage/stylists', function () {
+        return redirect('/admin/dashboard');
+    });
     Route::get('/admin/manage/services', $serveFrontend);
     Route::get('/admin/payment-accounts', $serveFrontend);
     Route::get('/admin/sales', $serveFrontend);
@@ -161,14 +157,6 @@ Route::middleware(['auth.any', 'userType:manager'])->group(function () use ($ser
 
 // Admin-only routes
 Route::middleware(['auth.any', 'userType:admin'])->group(function () {
-    // Stylists (staff) management + time-offs
-    Route::get('/stylists/{stylist}', [StylistController::class, 'show']);
-    Route::post('/stylists', [StylistController::class, 'store']);
-    Route::match(['patch', 'post'], '/stylists/{stylist}', [StylistController::class, 'update'])->where('stylist', '[0-9]+');
-    Route::delete('/stylists/{stylist}', [StylistController::class, 'destroy']);
-    Route::post('/stylists/{stylist}/time-offs', [StylistController::class, 'addTimeOff']);
-    Route::delete('/stylists/{stylist}/time-offs/{timeOff}', [StylistController::class, 'removeTimeOff']);
-
     // Services management
     Route::post('/services', [ServiceController::class, 'store']);
     Route::match(['patch', 'post'], '/services/{service}', [ServiceController::class, 'update'])->where('service', '[0-9]+');
@@ -240,7 +228,7 @@ Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
 });
 
 // Shared management routes
-Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(function () {
+Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/appointments', [AppointmentController::class, 'index']);
     Route::get('/appointments/history', [AppointmentController::class, 'history']);
     Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update']);
@@ -259,15 +247,6 @@ Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(functio
     Route::patch('/holidays/{holiday}', [HolidayController::class, 'update']);
     Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy']);
 
-});
-
-// Stylist-only routes
-Route::middleware(['auth.any', 'userType:stylist'])->group(function () {
-    Route::get('/dashboard/stylist/stats', [DashboardController::class, 'stylistStats']);
-    Route::get('/appointments/assigned', [AppointmentController::class, 'index']); // Only assigned appointments
-    Route::get('/appointments/history', [AppointmentController::class, 'history']); // Appointment history
-    Route::get('/appointments/rescheduled', [AppointmentController::class, 'index']); // Rescheduled appointments
-    Route::get('/stylist/ratings', [CustomerRatingController::class, 'index']); // View own ratings
 });
 
 // Verified customer stats

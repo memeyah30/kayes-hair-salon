@@ -19,12 +19,12 @@ class AuthenticateAnyGuard
 
     /**
      * Handle an incoming request.
-     * Checks if user is authenticated via any guard (admin, manager, stylist, web)
+     * Checks if user is authenticated via any guard (admin, manager, web)
      */
     public function handle(Request $request, Closure $next)
     {
         $hint = strtolower((string) ($request->header('X-User-Type') ?: $request->query('type', '')));
-        $hintGuard = in_array($hint, ['admin', 'manager', 'stylist'], true) ? $hint : null;
+        $hintGuard = in_array($hint, ['admin', 'manager'], true) ? $hint : null;
 
         // If a tab explicitly asks for a guard, resolve only that guard.
         if ($hintGuard) {
@@ -45,7 +45,6 @@ class AuthenticateAnyGuard
             $activeGuard,
             'admin',
             'manager',
-            'stylist',
             'web',
         ])));
         

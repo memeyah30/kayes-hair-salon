@@ -53,7 +53,7 @@ class StoreStaffRequest extends FormRequest
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:150'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'role' => ['required', Rule::in(['stylist', 'manager'])],
+            'role' => ['required', Rule::in(['manager'])],
             'specialization_ids' => ['nullable', 'array'],
             'specialization_ids.*' => ['integer', 'exists:services,id'],
             'specialization' => ['nullable', 'array'],

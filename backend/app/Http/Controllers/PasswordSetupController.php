@@ -4,14 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Manager;
 use App\Models\PasswordSetupToken;
-use App\Models\Service;
-use App\Models\Staff;
-use App\Models\Stylist;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 
 class PasswordSetupController extends Controller
 {
@@ -124,45 +120,7 @@ class PasswordSetupController extends Controller
             return;
         }
 
-        $stylist = Stylist::query()
-            ->where('email', $user->email)
-            ->first();
-
-        if (!$stylist) {
-            $stylist = Stylist::create([
-                'name' => $name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'password' => $user->password,
-                'image' => $image,
-                'active' => true,
-                'role' => 'stylist',
-            ]);
-        } else {
-            $stylist->update([
-                'name' => $name,
-                'email' => $user->email,
-                'phone' => $user->phone ?: $stylist->phone,
-                'password' => $user->password,
-                'image' => $image ?: $stylist->image,
-                'active' => true,
-                'role' => 'stylist',
-            ]);
-        }
-
-        $approvedStaffRequest = Staff::query()
-            ->where('email', $user->email)
-            ->where('role', 'stylist')
-            ->whereIn('status', ['approved', 'pending_password'])
-            ->latest()
-            ->first();
-
-        $this->syncStylistServicesFromStaff($stylist, $approvedStaffRequest);
-
-        $approvedStaffRequest?->update([
-            'user_id' => $stylist->id,
-            'status' => 'approved',
-        ]);
+        return;
     }
 
     private function resolveLoginPath(User $user): string
@@ -170,32 +128,5 @@ class PasswordSetupController extends Controller
         return $user->role === 'manager'
             ? '/login/manager'
             : '/login';
-    }
-
-    private function syncStylistServicesFromStaff(Stylist $stylist, ?Staff $staff): void
-    {
-        if (!$staff || !Schema::hasTable('stylist_services')) {
-            return;
-        }
-
-        $specializationNames = collect(is_array($staff->specialization) ? $staff->specialization : [])
-            ->map(fn ($value) => trim((string) $value))
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($specializationNames->isEmpty()) {
-            $stylist->services()->sync([]);
-            return;
-        }
-
-        $serviceIds = Service::query()
-            ->whereIn('name', $specializationNames->all())
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
-
-        $stylist->services()->sync($serviceIds);
     }
 }

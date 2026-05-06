@@ -20,7 +20,6 @@ class SaleController extends Controller
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date_format:Y-m-d'],
             'transaction_type' => ['nullable', 'in:service,product,both'],
-            'stylist_id' => ['nullable', 'integer', 'exists:stylists,id'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
             'paginate' => ['nullable'],
@@ -31,7 +30,7 @@ class SaleController extends Controller
         ]);
 
         $timezone = 'Asia/Manila';
-        $query = Sale::with(['appointment', 'inventory', 'stylist']);
+        $query = Sale::with(['appointment', 'inventory']);
 
         // Filter by date range
         if ($request->filled('start_date')) {
@@ -98,7 +97,6 @@ class SaleController extends Controller
             'payment_status' => 'nullable|in:pending,paid,refunded',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:255',
-            'stylist_id' => 'nullable|exists:stylists,id',
             'notes' => 'nullable|string',
         ]);
 
@@ -127,7 +125,7 @@ class SaleController extends Controller
                 return $sale;
             });
 
-            return response()->json($sale->load(['appointment', 'inventory', 'stylist']), 201);
+            return response()->json($sale->load(['appointment', 'inventory']), 201);
         } catch (\RuntimeException $e) {
             if ((int) $e->getCode() === 422) {
                 return response()->json(['message' => $e->getMessage()], 422);
@@ -138,7 +136,7 @@ class SaleController extends Controller
 
     public function show(Sale $sale)
     {
-        return $sale->load(['appointment', 'inventory', 'stylist']);
+        return $sale->load(['appointment', 'inventory']);
     }
 
     public function update(Request $request, Sale $sale)
@@ -149,7 +147,7 @@ class SaleController extends Controller
         ]);
 
         $sale->update($data);
-        return $sale->fresh()->load(['appointment', 'inventory', 'stylist']);
+        return $sale->fresh()->load(['appointment', 'inventory']);
     }
 
     public function destroy(Request $request, Sale $sale, InventoryWorkflowService $inventoryWorkflowService)
@@ -286,7 +284,7 @@ class SaleController extends Controller
         ]);
 
         $timezone = 'Asia/Manila';
-        $query = Sale::with(['appointment', 'inventory', 'stylist']);
+        $query = Sale::with(['appointment', 'inventory']);
 
         // Filter by date range
         if ($request->filled('start_date')) {
@@ -334,11 +332,6 @@ class SaleController extends Controller
         $totalSales = $sales->sum('total_amount_cents');
         $salesByType = $sales->groupBy('transaction_type')->map->sum('total_amount_cents');
         
-        $stylist = null;
-        if ($request->filled('stylist_id')) {
-            $stylist = \App\Models\Stylist::find($request->stylist_id);
-        }
-
         // Fetch appointments for the same period to get summary counts
         $appointmentsQuery = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc]);
         

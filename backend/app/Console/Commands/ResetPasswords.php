@@ -2,8 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Admin;
-use App\Models\Stylist;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -11,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 class ResetPasswords extends Command
 {
     protected $signature = 'passwords:reset';
-    protected $description = 'Reset admin and stylist passwords';
+    protected $description = 'Reset admin passwords';
 
     public function handle()
     {

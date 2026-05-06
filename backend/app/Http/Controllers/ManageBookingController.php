@@ -229,7 +229,7 @@ class ManageBookingController extends Controller
         $email = $this->normalizeEmail((string) $request->attributes->get('customer_verified_email', ''));
 
         $appointments = Appointment::query()
-            ->with(['service.variants', 'services.variants', 'stylist:id,name'])
+            ->with(['service.variants', 'services.variants'])
             ->whereRaw('LOWER(customer_email) = ?', [$email])
             ->orderByDesc('start_datetime')
             ->get();
@@ -291,7 +291,7 @@ class ManageBookingController extends Controller
                 'payment_method' => $appointment->payment_method,
                 'mode_of_payment' => $appointment->mode_of_payment,
                 'service_name' => $serviceName,
-                'stylist_name' => $appointment->stylist?->name ?? 'Stylist',
+                'stylist_name' => 'Salon Team',
                 'appointment_date' => $start->format('Y-m-d'),
                 'appointment_time' => $start->format('H:i'),
                 'status' => $this->mapStatusForCustomer((string) $appointment->status),
@@ -388,17 +388,9 @@ class ManageBookingController extends Controller
         $newStartUtc = $newStartManila->copy()->setTimezone('UTC');
         $newEndUtc = $newStartUtc->copy()->addMinutes($durationMinutes);
 
-        $hasConflict = Appointment::query()
-            ->where('id', '!=', $appointment->id)
-            ->where('stylist_id', $appointment->stylist_id)
-            ->whereIn('status', ['booked', 'pending', 'confirmed'])
-            ->where(function ($query) use ($newStartUtc, $newEndUtc) {
-                $query->where('start_datetime', '<', $newEndUtc)
-                    ->where('end_datetime', '>', $newStartUtc);
-            })
-            ->exists();
+        $capacitySlot = $this->validateCapacitySlotForManageBooking($date, $time, $durationMinutes, $appointment->id);
 
-        if ($hasConflict) {
+        if (!$capacitySlot['available']) {
             return response()->json([
                 'message' => 'Selected time is unavailable. Please choose another time.',
             ], 409);
@@ -488,8 +480,7 @@ class ManageBookingController extends Controller
         CustomerRating::query()->updateOrCreate(
             ['appointment_id' => $appointment->id],
             [
-                // Ratings should still work for completed appointments that remain unassigned.
-                'stylist_id' => $appointment->stylist_id,
+                'stylist_id' => null,
                 'customer_name' => $appointment->customer_name,
                 'customer_email' => $email,
                 'rating' => max(1, min(5, $overallRating)),
@@ -501,6 +492,74 @@ class ManageBookingController extends Controller
             'message' => 'Rating submitted successfully.',
             'rating' => $rating,
         ], 201);
+    }
+
+    private function validateCapacitySlotForManageBooking(string $date, string $time, int $durationMinutes, ?int $ignoreAppointmentId = null): array
+    {
+        $slotStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$time}", 'Asia/Manila');
+        $slotEnd = $slotStart->copy()->addMinutes($durationMinutes);
+        $window = $this->businessWindow($date);
+
+        if ($slotStart->lt($window['start']) || $slotEnd->gt($window['end'])) {
+            return [
+                'available' => false,
+                'start' => $slotStart,
+                'end' => $slotEnd,
+                'booked_count' => self::OTP_MAX_ATTEMPTS,
+                'remaining_slots' => 0,
+                'capacity' => self::OTP_MAX_ATTEMPTS,
+            ];
+        }
+
+        $appointments = $this->activeCapacityAppointmentsForManageBooking($date, $ignoreAppointmentId);
+        $bookedCount = $appointments->filter(function (array $appointment) use ($slotStart) {
+            return $appointment['start']->gte($slotStart->copy()->setTimezone('UTC'))
+                && $appointment['start']->lt($slotStart->copy()->addMinutes(30)->setTimezone('UTC'));
+        })->count();
+
+        return [
+            'available' => $bookedCount < 5,
+            'start' => $slotStart,
+            'end' => $slotEnd,
+            'booked_count' => $bookedCount,
+            'remaining_slots' => max(0, 5 - $bookedCount),
+            'capacity' => 5,
+        ];
+    }
+
+    private function businessWindow(string $date): array
+    {
+        $targetDate = Carbon::createFromFormat('Y-m-d', $date, 'Asia/Manila')->startOfDay();
+
+        return [
+            'start' => $targetDate->copy()->setTime(9, 30, 0),
+            'end' => $targetDate->copy()->setTime(17, 30, 0),
+        ];
+    }
+
+    private function activeCapacityAppointmentsForManageBooking(string $date, ?int $ignoreAppointmentId = null)
+    {
+        $targetDate = Carbon::createFromFormat('Y-m-d', $date, 'Asia/Manila');
+        $businessStartUtc = $targetDate->copy()->setTime(9, 30, 0)->setTimezone('UTC');
+        $businessEndUtc = $targetDate->copy()->setTime(17, 30, 0)->setTimezone('UTC');
+
+        $query = Appointment::query()
+            ->select(['id', 'start_datetime', 'end_datetime', 'status'])
+            ->whereIn('status', ['booked', 'pending', 'confirmed'])
+            ->where('start_datetime', '<', $businessEndUtc)
+            ->where('end_datetime', '>', $businessStartUtc);
+
+        if ($ignoreAppointmentId) {
+            $query->where('id', '!=', $ignoreAppointmentId);
+        }
+
+        return $query->get()->map(function (Appointment $appointment) {
+            return [
+                'id' => $appointment->id,
+                'start' => Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC'),
+                'end' => Carbon::parse($appointment->getRawOriginal('end_datetime'), 'UTC'),
+            ];
+        });
     }
 
     private function normalizeEmail(string $email): string

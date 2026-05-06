@@ -8,7 +8,6 @@ use App\Models\CustomerRating;
 use App\Models\Inventory;
 use App\Models\Sale;
 use App\Models\Service;
-use App\Models\Stylist;
 use App\Services\MissedAppointmentService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -61,7 +60,7 @@ class DashboardController extends Controller
         $user = $request->user();
         $requestedType = strtolower((string) ($request->header('X-User-Type') ?: $request->query('type', '')));
         $resolvedUserType = strtolower((string) $request->attributes->get('resolved_user_type', ''));
-        $effectiveUserType = in_array($resolvedUserType, ['admin', 'manager', 'stylist'], true)
+        $effectiveUserType = in_array($resolvedUserType, ['admin', 'manager'], true)
             ? $resolvedUserType
             : $requestedType;
 
@@ -83,7 +82,7 @@ class DashboardController extends Controller
             return Carbon::parse($value, 'UTC')->setTimezone($timezone);
         };
 
-        $appointments = Appointment::with(['stylist', 'service.variants', 'services.variants'])->get();
+        $appointments = Appointment::with(['service.variants', 'services.variants'])->get();
         
         $todayAppointments = $appointments->filter(function ($apt) use ($toManila, $todayStart, $todayEnd) {
             $start = $toManila($apt->start_datetime);
@@ -236,79 +235,13 @@ class DashboardController extends Controller
                     'week_series' => array_values($weekRevenueSeries),
                 ],
             'stylists' => [
-                'active' => Stylist::where('active', true)->count(),
-                'total' => Stylist::count(),
+                'active' => 0,
+                'total' => 0,
             ],
             'customers' => $customers,
             'services' => Service::count(),
             'status_summary' => $statusSummary,
             'inventory' => $inventoryStats,
-        ]);
-    }
-
-    public function stylistStats(Request $request)
-    {
-        app(MissedAppointmentService::class)->markOverdueAppointmentsAsMissed();
-
-        $user = $request->user();
-        if (!($user instanceof \App\Models\Stylist)) {
-            $user = \Illuminate\Support\Facades\Auth::guard('stylist')->user();
-        }
-        
-        // The user should be a Stylist model instance when logged in as stylist
-        if (!$user || !($user instanceof \App\Models\Stylist)) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-        
-        $stylist = $user;
-
-        $timezone = 'Asia/Manila';
-        $now = Carbon::now($timezone);
-        $today = $now->copy()->startOfDay();
-        $weekStart = $now->copy()->startOfWeek();
-        $monthStart = $now->copy()->startOfMonth();
-
-        $appointments = Appointment::where('stylist_id', $stylist->id)
-            ->with(['service', 'services', 'stylist'])
-            ->get();
-
-        $todayAppointments = $appointments->filter(function ($apt) use ($today) {
-            return Carbon::parse($apt->start_datetime)->isSameDay($today);
-        });
-
-        $completed = $appointments->where('status', 'completed')->count();
-        $upcoming = $appointments->where('status', 'booked')
-            ->filter(function ($apt) {
-                return Carbon::parse($apt->start_datetime)->isFuture();
-            })
-            ->count();
-
-        $sumSalesForRange = function (Carbon $from, Carbon $to) use ($stylist, $timezone) {
-            return Sale::where('stylist_id', $stylist->id)
-                ->where('transaction_type', 'service')
-                ->whereBetween('created_at', [
-                    $from->copy()->setTimezone($timezone)->setTimezone('UTC'),
-                    $to->copy()->setTimezone($timezone)->setTimezone('UTC'),
-                ])
-                ->sum('total_amount_cents');
-        };
-
-        $salesDay = $sumSalesForRange($today->copy(), $today->copy()->endOfDay());
-        $salesWeek = $sumSalesForRange($weekStart->copy(), $now->copy()->endOfDay());
-        $salesMonth = $sumSalesForRange($monthStart->copy(), $now->copy()->endOfDay());
-
-        return response()->json([
-            'today_appointments' => $todayAppointments->values()->map(function ($apt) {
-                return $this->formatAppointmentForResponse($apt);
-            }),
-            'total_completed' => $completed,
-            'upcoming' => $upcoming,
-            'total' => $appointments->count(),
-            'sales' => [
-                'day' => (int) $salesDay,
-                'week' => (int) $salesWeek,
-                'month' => (int) $salesMonth,
-            ],
         ]);
     }
 
@@ -322,7 +255,7 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Customer OTP authentication is required.'], 401);
         }
 
-        $query = Appointment::with(['stylist', 'service', 'services.variants'])
+        $query = Appointment::with(['service', 'services.variants'])
             ->whereRaw('LOWER(TRIM(customer_email)) = ?', [$email]);
 
         $appointments = $query->orderBy('start_datetime', 'asc')->get();
@@ -383,7 +316,7 @@ class DashboardController extends Controller
                     [
                         'appointment_id' => $apt->id,
                         'service_name' => $serviceName,
-                        'stylist_name' => $apt->stylist?->name ?? 'Stylist',
+                        'stylist_name' => 'Salon Team',
                         'appointment_date' => $start->format('Y-m-d'),
                         'appointment_time' => $start->format('H:i'),
                     ],

@@ -30,14 +30,14 @@ class EnsureUserType
     }
 
     /**
-     * @param  array<int, string>  ...$types  Allowed types: admin, manager, stylist
+     * @param  array<int, string>  ...$types  Allowed types: admin, manager
      */
     public function handle(Request $request, Closure $next, ...$types)
     {
         $user = null;
         $userType = null;
         $hint = strtolower((string) ($request->header('X-User-Type') ?: $request->query('type', '')));
-        $hintGuard = in_array($hint, ['admin', 'manager', 'stylist'], true) ? $hint : null;
+        $hintGuard = in_array($hint, ['admin', 'manager'], true) ? $hint : null;
 
         // If a tab explicitly requests a user type, enforce it first.
         if ($hintGuard) {
@@ -63,11 +63,11 @@ class EnsureUserType
 
         // Prefer explicit active guard, then guards requested by route.
         $activeGuard = $request->session()->get('active_guard');
-        $preferred = $types ?: ['admin', 'manager', 'stylist'];
+        $preferred = $types ?: ['admin', 'manager'];
         $allGuards = array_unique(array_merge(
             array_filter([$activeGuard]),
             $preferred,
-            ['admin', 'manager', 'stylist']
+            ['admin', 'manager']
         ));
 
         foreach ($allGuards as $guardName) {
@@ -110,7 +110,6 @@ class EnsureUserType
     {
         if ($user instanceof Admin) return 'admin';
         if ($user instanceof Manager) return 'manager';
-        if ($user instanceof Stylist) return 'stylist';
         return null;
     }
 }

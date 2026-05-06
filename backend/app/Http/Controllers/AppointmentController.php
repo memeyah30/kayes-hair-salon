@@ -9,11 +9,9 @@ use App\Models\Appointment;
 use App\Models\Manager;
 use App\Models\Notification;
 use App\Models\Service;
-use App\Models\Stylist;
 use App\Models\Holiday;
 use App\Services\InventoryWorkflowService;
 use App\Services\MissedAppointmentService;
-use App\Services\Scheduler;
 use App\Services\CustomerProfileService;
 use App\Services\AppointmentNotificationService;
 use App\Support\UploadStorage;
@@ -114,7 +112,7 @@ class AppointmentController extends Controller
             'paginate' => 'nullable',
         ]);
 
-        $query = Appointment::with(['stylist', 'service', 'services.variants']);
+        $query = Appointment::with(['service', 'services.variants']);
 
         if (!empty($data['status']) && $data['status'] !== 'all') {
             $status = strtolower(trim((string) $data['status']));
@@ -195,11 +193,11 @@ class AppointmentController extends Controller
     public function show(Appointment $appointment)
     {
         $appointment = $this->refreshMissedStatus($appointment);
-        $appointment = $appointment->load(['stylist', 'service', 'services.variants']);
+        $appointment = $appointment->load(['service', 'services.variants']);
         return $this->formatAppointmentForResponse($appointment);
     }
 
-    public function store(Request $request, Scheduler $scheduler, CustomerProfileService $customerProfiles)
+    public function store(Request $request, CustomerProfileService $customerProfiles)
     {
         $data = $request->validate([
             'customer_name' => 'required|string',
@@ -210,8 +208,6 @@ class AppointmentController extends Controller
             'service_ids' => 'nullable|array', // New: array of service IDs
             'service_ids.*' => 'exists:services,id',
             'service_variants' => 'nullable|string', // JSON string of service_id => variant_id mapping
-            'stylist_id' => 'nullable|exists:stylists,id',
-            'auto_assigned_stylist_id' => 'nullable|exists:stylists,id',
             'date' => 'required|date',
             'preferred_time' => 'nullable|date_format:H:i',
             'payment_method' => 'nullable|in:on_hand,online',
@@ -453,7 +449,6 @@ class AppointmentController extends Controller
                 $servicesWithVariants
             ) {
                 $appointment = Appointment::create([
-                    'stylist_id' => null,
                     'service_id' => $services->first()->id, // Keep for backward compatibility
                     'customer_name' => $customer->name ?? $data['customer_name'],
                     'customer_email' => $customer->email ?? ($data['customer_email'] ?? null),
@@ -497,7 +492,7 @@ class AppointmentController extends Controller
         }
     }
 
-    public function update(Request $request, Appointment $appointment, Scheduler $scheduler, CustomerProfileService $customerProfiles)
+    public function update(Request $request, Appointment $appointment, CustomerProfileService $customerProfiles)
     {
         $appointment = $this->refreshMissedStatus($appointment);
         if ($this->isMissed($appointment)) {
@@ -556,7 +551,6 @@ class AppointmentController extends Controller
             if ($services->isEmpty() && $appointment->service) {
                 $services = collect([$appointment->service]);
             }
-            $stylist = $appointment->stylist;
             $durationMinutes = max(
                 15,
                 Carbon::parse($appointment->getRawOriginal('start_datetime'), 'UTC')
@@ -573,33 +567,17 @@ class AppointmentController extends Controller
                 $newStartUtc = $newStartManila->copy()->setTimezone('UTC');
                 $newEndUtc = $newEndManila->copy()->setTimezone('UTC');
 
-                if ($stylist) {
-                    $hasConflict = Appointment::query()
-                        ->where('id', '!=', $appointment->id)
-                        ->where('stylist_id', $stylist->id)
-                        ->whereIn('status', self::ACTIVE_SLOT_STATUSES)
-                        ->where(function ($query) use ($newStartUtc, $newEndUtc) {
-                            $query->where('start_datetime', '<', $newEndUtc)
-                                ->where('end_datetime', '>', $newStartUtc);
-                        })
-                        ->exists();
+                $capacitySlot = $this->validateCapacitySlot(
+                    $targetDate,
+                    $targetTime,
+                    $durationMinutes,
+                    $appointment->id
+                );
 
-                    if ($hasConflict) {
-                        return response()->json(['message' => 'Selected time is unavailable. Please choose another time.'], 409);
-                    }
-                } else {
-                    $capacitySlot = $this->validateCapacitySlot(
-                        $targetDate,
-                        $targetTime,
-                        $durationMinutes,
-                        $appointment->id
-                    );
-
-                    if (!$capacitySlot['available']) {
-                        return response()->json([
-                            'message' => 'This time slot is already fully booked. Please select another time.',
-                        ], 409);
-                    }
+                if (!$capacitySlot['available']) {
+                    return response()->json([
+                        'message' => 'This time slot is already fully booked. Please select another time.',
+                    ], 409);
                 }
 
                 $updateData = $this->resetNotificationStateOnRebooking([
@@ -612,9 +590,7 @@ class AppointmentController extends Controller
                     'reschedule_reason' => $data['reschedule_reason'] ?? null,
                 ]);
             } else {
-                $slot = $stylist
-                    ? $scheduler->findSlotForServices($stylist, $services->all(), $targetDate, $targetTime)
-                    : $this->firstAvailableCapacitySlot($targetDate, $durationMinutes, $appointment->id);
+            $slot = $this->firstAvailableCapacitySlot($targetDate, $durationMinutes, $appointment->id);
 
                 if (!$slot) {
                     return response()->json(['message' => 'No slots available'], 409);
@@ -677,7 +653,7 @@ class AppointmentController extends Controller
 
         $appointment->update($updateData);
 
-        $appointment = $appointment->fresh()->load('stylist', 'service', 'services.variants');
+        $appointment = $appointment->fresh()->load('service', 'services.variants');
         return $this->formatAppointmentForResponse($appointment);
     }
 
@@ -699,7 +675,7 @@ class AppointmentController extends Controller
 
         // Check if appointment is already completed to avoid duplicate sales or stock deduction.
         if ($appointment->status === 'completed') {
-            $appointment = $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
+            $appointment = $appointment->fresh()->load(['service', 'services.variants']);
             return $this->formatAppointmentForResponse($appointment);
         }
 
@@ -735,7 +711,7 @@ class AppointmentController extends Controller
                 $appointment->refresh();
 
                 // Load appointment with all relationships
-                $appointment->load(['stylist', 'service', 'services.variants']);
+                $appointment->load(['service', 'services.variants']);
 
                 // Create sales records for each service in the appointment
                 $appointmentServices = $appointment->services->count() > 0
@@ -777,7 +753,6 @@ class AppointmentController extends Controller
                             'payment_status' => $salePaymentStatus,
                             'customer_name' => $appointment->customer_name,
                             'customer_phone' => $appointment->customer_phone,
-                            'stylist_id' => $appointment->stylist_id,
                             'notes' => 'Completed appointment service',
                         ]);
                     }
@@ -856,7 +831,7 @@ class AppointmentController extends Controller
         }
 
         return $this->formatAppointmentForResponse(
-            $appointment->fresh()->load(['stylist', 'service', 'services.variants'])
+            $appointment->fresh()->load(['service', 'services.variants'])
         );
     }
 
@@ -898,7 +873,7 @@ class AppointmentController extends Controller
         }
 
         $appointment->update($updateData);
-        $appointment = $appointment->fresh()->load(['stylist', 'service', 'services.variants']);
+        $appointment = $appointment->fresh()->load(['service', 'services.variants']);
 
         if (!$wasConfirmed || !$appointment->approval_email_sent_at) {
             try {
@@ -913,13 +888,13 @@ class AppointmentController extends Controller
             }
         }
 
-        return $appointment->load(['stylist', 'service', 'services.variants']);
+        return $appointment->load(['service', 'services.variants']);
     }
 
     public function receipt(Appointment $appointment)
     {
         $appointment = $this->refreshMissedStatus($appointment);
-        $appointment->load(['stylist', 'service', 'services.variants']);
+        $appointment->load(['service', 'services.variants']);
         $appointment = $this->formatAppointmentForResponse($appointment);
     
         return response()->json([
@@ -941,7 +916,7 @@ class AppointmentController extends Controller
     }
     
 
-    public function reschedule(Request $request, Appointment $appointment, Scheduler $scheduler)
+    public function reschedule(Request $request, Appointment $appointment)
     {
         $appointment = $this->refreshMissedStatus($appointment);
         if ($this->isMissed($appointment)) {
@@ -981,7 +956,6 @@ class AppointmentController extends Controller
         if ($services->isEmpty() && $appointment->service) {
             $services = collect([$appointment->service]);
         }
-        $stylist = $appointment->stylist;
         $user = $request->user();
         $durationMinutes = max(
             15,
@@ -998,33 +972,17 @@ class AppointmentController extends Controller
             $newStartUtc = $newStartManila->copy()->setTimezone('UTC');
             $newEndUtc = $newEndManila->copy()->setTimezone('UTC');
 
-            if ($stylist) {
-                $hasConflict = Appointment::query()
-                    ->where('id', '!=', $appointment->id)
-                    ->where('stylist_id', $stylist->id)
-                    ->whereIn('status', self::ACTIVE_SLOT_STATUSES)
-                    ->where(function ($query) use ($newStartUtc, $newEndUtc) {
-                        $query->where('start_datetime', '<', $newEndUtc)
-                            ->where('end_datetime', '>', $newStartUtc);
-                    })
-                    ->exists();
+            $capacitySlot = $this->validateCapacitySlot(
+                $date,
+                $data['preferred_time'],
+                $durationMinutes,
+                $appointment->id
+            );
 
-                if ($hasConflict) {
-                    return response()->json(['message' => 'Selected time is unavailable. Please choose another time.'], 409);
-                }
-            } else {
-                $capacitySlot = $this->validateCapacitySlot(
-                    $date,
-                    $data['preferred_time'],
-                    $durationMinutes,
-                    $appointment->id
-                );
-
-                if (!$capacitySlot['available']) {
-                    return response()->json([
-                        'message' => 'This time slot is already fully booked. Please select another time.',
-                    ], 409);
-                }
+            if (!$capacitySlot['available']) {
+                return response()->json([
+                    'message' => 'This time slot is already fully booked. Please select another time.',
+                ], 409);
             }
 
             $updatePayload = $this->resetNotificationStateOnRebooking([
@@ -1037,9 +995,7 @@ class AppointmentController extends Controller
                 'reschedule_reason' => $data['reschedule_reason'] ?? null,
             ]);
         } else {
-            $slot = $stylist
-                ? $scheduler->findSlotForServices($stylist, $services->all(), $date, $data['preferred_time'] ?? null)
-                : $this->firstAvailableCapacitySlot($date, $durationMinutes, $appointment->id);
+            $slot = $this->firstAvailableCapacitySlot($date, $durationMinutes, $appointment->id);
 
             if (!$slot) {
                 return response()->json(['message' => 'No slots available'], 409);
@@ -1062,7 +1018,7 @@ class AppointmentController extends Controller
 
         $appointment->update($updatePayload);
 
-        $appointment = $appointment->fresh()->load('stylist', 'service', 'services.variants');
+        $appointment = $appointment->fresh()->load('service', 'services.variants');
         $appointment = $this->formatAppointmentForResponse($appointment);
         return response()->json([
             'message' => 'Appointment rescheduled successfully',
@@ -1117,14 +1073,14 @@ class AppointmentController extends Controller
 
         return response()->json([
             'message' => 'Appointment rejected and customer notified.',
-            'appointment' => $this->formatAppointmentForResponse($appointment->fresh()->load(['stylist', 'service', 'services.variants']))
+            'appointment' => $this->formatAppointmentForResponse($appointment->fresh()->load(['service', 'services.variants']))
         ]);
     }
 
     public function history(Request $request)
     {
         $this->syncMissedAppointments();
-        $query = Appointment::with(['stylist', 'service', 'services']);
+        $query = Appointment::with(['service', 'services']);
 
         // Filter by status if provided
         if ($request->has('status')) {
@@ -1134,12 +1090,6 @@ class AppointmentController extends Controller
         // Include missed appointments
         if ($request->has('include_missed')) {
             // Already included in all statuses
-        }
-
-        // Filter by stylist if user is a stylist
-        $user = $request->user();
-        if ($user instanceof \App\Models\Stylist) {
-            $query->where('stylist_id', $user->id);
         }
 
         return $query->latest('start_datetime')->get();
@@ -1212,7 +1162,7 @@ class AppointmentController extends Controller
 
     private function bookingStoreResponse(Appointment $appointment)
     {
-        $appointment->loadMissing(['stylist', 'service', 'services.variants']);
+        $appointment->loadMissing(['service', 'services.variants']);
         $appointment = $this->formatAppointmentForResponse($appointment);
 
         $response = $appointment->toArray();
@@ -1446,119 +1396,4 @@ class AppointmentController extends Controller
         ];
     }
 
-    private function resolveBookingStylist(
-        ?int $selectedStylistId,
-        ?int $preferredAutoAssignedStylistId,
-        $services,
-        string $date,
-        ?string $preferredTime,
-        int $totalDurationMinutes,
-        Scheduler $scheduler
-    ): ?Stylist {
-        if ($selectedStylistId) {
-            return Stylist::findOrFail($selectedStylistId);
-        }
-
-        $candidateStylists = $this->resolveAutoAssignCandidates();
-        if ($candidateStylists->isEmpty()) {
-            return null;
-        }
-
-        if ($preferredTime) {
-            $candidateStylists = $candidateStylists
-                ->filter(fn (Stylist $stylist) => $this->stylistCanTakeRequestedSlot(
-                    $stylist,
-                    $date,
-                    $preferredTime,
-                    $totalDurationMinutes,
-                    $scheduler
-                ))
-                ->values();
-        } else {
-            $candidateStylists = $candidateStylists
-                ->filter(fn (Stylist $stylist) => (bool) $scheduler->findSlotForServices(
-                    $stylist,
-                    $services->all(),
-                    $date,
-                    null
-                ))
-                ->values();
-        }
-
-        if ($candidateStylists->isEmpty()) {
-            return null;
-        }
-
-        if ($preferredAutoAssignedStylistId) {
-            $preferredStylist = $candidateStylists->firstWhere('id', $preferredAutoAssignedStylistId);
-            if ($preferredStylist) {
-                return $preferredStylist;
-            }
-        }
-
-        return $this->pickAutoAssignedStylist($candidateStylists, $date);
-    }
-
-    private function resolveAutoAssignCandidates()
-    {
-        return Stylist::query()
-            ->where('active', true)
-            ->where(function ($query) {
-                $query->where('role', 'stylist')
-                    ->orWhereNull('role');
-            })
-            ->get()
-            ->values();
-    }
-
-    private function stylistCanTakeRequestedSlot(
-        Stylist $stylist,
-        string $date,
-        string $preferredTime,
-        int $totalDurationMinutes,
-        Scheduler $scheduler
-    ): bool {
-        $timezone = 'Asia/Manila';
-        $requestedStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$preferredTime}", $timezone);
-        $requestedEnd = $requestedStart->copy()->addMinutes($totalDurationMinutes);
-
-        return $scheduler->freeBlocksForDate($stylist, $date)->contains(function ($block) use ($requestedStart, $requestedEnd) {
-            return $requestedStart->greaterThanOrEqualTo($block['start'])
-                && $requestedEnd->lessThanOrEqualTo($block['end']);
-        });
-    }
-
-    private function pickAutoAssignedStylist($stylists, string $date): Stylist
-    {
-        if ($stylists->count() === 1) {
-            return $stylists->first();
-        }
-
-        $timezone = 'Asia/Manila';
-        $dayStartUtc = Carbon::createFromFormat('Y-m-d', $date, $timezone)->startOfDay()->setTimezone('UTC');
-        $dayEndUtc = Carbon::createFromFormat('Y-m-d', $date, $timezone)->endOfDay()->setTimezone('UTC');
-
-        $bookingCounts = Appointment::query()
-            ->selectRaw('stylist_id, COUNT(*) as total')
-            ->whereIn('stylist_id', $stylists->pluck('id'))
-            ->where('status', 'booked')
-            ->whereBetween('start_datetime', [$dayStartUtc, $dayEndUtc])
-            ->groupBy('stylist_id')
-            ->pluck('total', 'stylist_id');
-
-        $lowestCount = $stylists->map(fn (Stylist $stylist) => (int) ($bookingCounts[$stylist->id] ?? 0))->min();
-
-        // Rotate auto-assigned bookings among currently available stylists instead of
-        // repeatedly defaulting to the same first stylist. Stylists within one booking
-        // of the lightest load join the rotation pool, then one is picked at random.
-        $rotationPool = $stylists
-            ->filter(fn (Stylist $stylist) => (int) ($bookingCounts[$stylist->id] ?? 0) <= ($lowestCount + 1))
-            ->values();
-
-        if ($rotationPool->isEmpty()) {
-            $rotationPool = $stylists->values();
-        }
-
-        return $rotationPool->shuffle()->first();
-    }
 }

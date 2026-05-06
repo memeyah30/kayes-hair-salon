@@ -63,7 +63,7 @@ class AdminCustomerController extends Controller
             $phone = trim((string) ($customer->customer_phone ?? ''));
 
             $appointments = Appointment::query()
-                ->with(['stylist', 'service.variants', 'services.variants'])
+                ->with(['service.variants', 'services.variants'])
                 ->whereRaw('TRIM(customer_name) = ?', [$name])
                 ->whereRaw("COALESCE(NULLIF(TRIM(customer_email), ''), '') = ?", [$email])
                 ->whereRaw("COALESCE(NULLIF(TRIM(customer_phone), ''), '') = ?", [$phone])

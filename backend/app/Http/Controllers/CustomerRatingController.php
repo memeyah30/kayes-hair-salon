@@ -17,7 +17,6 @@ class CustomerRatingController extends Controller
         $this->syncAppointmentRatingsToCustomerRatings();
 
         $request->validate([
-            'stylist_id' => ['nullable', 'integer', 'exists:stylists,id'],
             'appointment_id' => ['nullable', 'integer', 'exists:appointments,id'],
             'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -25,11 +24,7 @@ class CustomerRatingController extends Controller
             'paginate' => ['nullable'],
         ]);
 
-        $query = CustomerRating::with(['appointment', 'stylist']);
-
-        if ($request->filled('stylist_id')) {
-            $query->where('stylist_id', $request->stylist_id);
-        }
+        $query = CustomerRating::with(['appointment']);
 
         if ($request->filled('appointment_id')) {
             $query->where('appointment_id', $request->appointment_id);
@@ -73,11 +68,11 @@ class CustomerRatingController extends Controller
     public function publicIndex()
     {
         // Safe, public endpoint for the landing page (Home.jsx)
-        $ratings = CustomerRating::with('stylist')
+        $ratings = CustomerRating::query()
             ->where('rating', '>=', 4)
             ->whereNotNull('comment')
             ->latest()
-            ->get(['id', 'stylist_id', 'customer_name', 'rating', 'comment', 'created_at']);
+            ->get(['id', 'customer_name', 'rating', 'comment', 'created_at']);
 
         return response()->json($ratings);
     }
@@ -107,20 +102,18 @@ class CustomerRatingController extends Controller
 
         $rating = CustomerRating::create([
             'appointment_id' => $data['appointment_id'],
-            // Ratings must remain available even when an appointment has not been assigned to a stylist yet.
-            'stylist_id' => $appointment->stylist_id,
             'customer_name' => $appointment->customer_name,
             'customer_email' => $appointment->customer_email,
             'rating' => $data['rating'],
             'comment' => $data['comment'] ?? null,
         ]);
 
-        return response()->json($rating->load(['appointment', 'stylist']), 201);
+        return response()->json($rating->load(['appointment']), 201);
     }
 
     public function show(CustomerRating $customerRating)
     {
-        return $customerRating->load(['appointment', 'stylist']);
+        return $customerRating->load(['appointment']);
     }
 
     public function destroy(CustomerRating $customerRating)
@@ -154,9 +147,7 @@ class CustomerRatingController extends Controller
 
             CustomerRating::query()->updateOrCreate(
                 ['appointment_id' => $appointment->id],
-                [
-                    // Keep sync backward-compatible with older and unassigned appointments.
-                    'stylist_id' => $appointment->stylist_id,
+                    [
                     'customer_name' => $appointment->customer_name,
                     'customer_email' => $appointment->customer_email ?: $appointmentRating->customer_email,
                     'rating' => max(1, min(5, $overallRating)),

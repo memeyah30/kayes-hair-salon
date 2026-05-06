@@ -14,7 +14,7 @@ const RatingModal = ({ open, appointment, onClose, onSubmit, submitting = false 
     setError('')
 
     if (serviceRating < 1 || stylistRating < 1) {
-      setError('Please provide both service and stylist ratings.')
+      setError('Please provide both service and salon ratings.')
       return
     }
 
@@ -36,7 +36,7 @@ const RatingModal = ({ open, appointment, onClose, onSubmit, submitting = false 
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h3 className="text-lg font-semibold text-[#3b2f2a]">Rate Appointment</h3>
-            <p className="text-sm text-[#8f7a6f]">{appointment.service_name} with {appointment.stylist_name}</p>
+            <p className="text-sm text-[#8f7a6f]">{appointment.service_name}</p>
           </div>
           <button
             type="button"
@@ -58,7 +58,7 @@ const RatingModal = ({ open, appointment, onClose, onSubmit, submitting = false 
           <StarRating
             value={stylistRating}
             onChange={setStylistRating}
-            label="Stylist Rating"
+            label="Salon Rating"
           />
 
           <div>

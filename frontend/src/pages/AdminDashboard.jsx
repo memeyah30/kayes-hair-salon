@@ -894,7 +894,7 @@ const AdminDashboard = () => {
                   <tr className="text-left text-xs uppercase text-[#8a75b9]">
                     <th className="pb-2">Customer</th>
                     <th className="pb-2">Service</th>
-                    <th className="pb-2">Stylist</th>
+                    <th className="pb-2">Team</th>
                     <th className="pb-2">Date</th>
                     <th className="pb-2">Status</th>
                   </tr>
@@ -911,7 +911,7 @@ const AdminDashboard = () => {
                     <tr key={appointment.id} className="border-t border-[#ece2ff]">
                       <td className="py-3 font-medium">{appointment.customer_name}</td>
                       <td className="py-3">{getAppointmentServices(appointment)[0]?.name || '-'}</td>
-                      <td className="py-3">{appointment.stylist?.name || '-'}</td>
+                      <td className="py-3">{appointment.stylist_name || appointment.stylist?.name || 'Salon Team'}</td>
                       <td className="py-3">{formatDateTime(appointment.start_datetime_pht || appointment.start_datetime)}</td>
                       <td className="py-3">
                         <span
@@ -933,4 +933,3 @@ const AdminDashboard = () => {
 }
 
 export default AdminDashboard
-

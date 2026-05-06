@@ -5,10 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RejectStaffRequest;
 use App\Models\Staff;
-use App\Models\Stylist;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class StaffApprovalController extends Controller
 {
@@ -34,59 +31,21 @@ class StaffApprovalController extends Controller
             ], 409);
         }
 
-        DB::transaction(function () use ($staff, $admin) {
-            if ($staff->role === 'stylist') {
-                $name = trim($staff->first_name . ' ' . $staff->last_name);
-                $photoPath = null;
-                if (!empty($staff->photo_path)) {
-                    $normalized = ltrim((string) $staff->photo_path, '/');
-                    $photoPath = str_starts_with($normalized, 'storage/')
-                        ? substr($normalized, 8)
-                        : $normalized;
-                }
+        $staff->user_id = $staff->user_id ?: null;
+        $staff->save();
 
-                $stylist = null;
-                if ($staff->user_id) {
-                    $stylist = Stylist::query()->find($staff->user_id);
-                }
-                if (!$stylist && !empty($staff->email)) {
-                    $stylist = Stylist::query()->where('email', $staff->email)->first();
-                }
+        $staff->refresh();
 
-                if (!$stylist) {
-                    $stylist = Stylist::create([
-                        'name' => $name,
-                        'email' => $staff->email,
-                        'phone' => $staff->phone,
-                        'password' => Str::random(16),
-                        'image' => $photoPath,
-                        'active' => true,
-                        'role' => 'stylist',
-                    ]);
-                } else {
-                    $stylist->update([
-                        'name' => $name,
-                        'email' => $staff->email ?: $stylist->email,
-                        'phone' => $staff->phone ?: $stylist->phone,
-                        'image' => $photoPath ?: $stylist->image,
-                        'active' => true,
-                        'role' => 'stylist',
-                    ]);
-                }
+        $staff->status = 'approved';
+        $staff->approved_by_admin_id = $admin->id;
+        $staff->approved_at = now();
+        $staff->rejected_reason = null;
+        $staff->save();
 
-                $staff->user_id = $stylist->id;
-            }
-
-            $staff->status = 'approved';
-            $staff->approved_by_admin_id = $admin->id;
-            $staff->approved_at = now();
-            $staff->rejected_reason = null;
-            $staff->save();
-        });
-
+        $staff = $staff->fresh(['createdByManager:id,name,username', 'approvedByAdmin:id,name']);
         return response()->json([
             'message' => 'Staff approved successfully.',
-            'staff' => $staff->fresh(['createdByManager:id,name,username', 'approvedByAdmin:id,name', 'user']),
+            'staff' => $staff,
         ]);
     }
 

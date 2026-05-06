@@ -6,7 +6,6 @@ use App\Http\Controllers\AdminCustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceVariantController;
-use App\Http\Controllers\StylistController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\CustomerRatingController;
@@ -20,7 +19,6 @@ use App\Http\Controllers\ManageBookingController;
 use App\Http\Controllers\ReturningBookingController;
 use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
 use App\Http\Controllers\Admin\StaffApprovalController;
-use App\Http\Controllers\Public\StylistController as PublicStylistController;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
@@ -40,9 +38,12 @@ Route::get('/health', function () {
 
 // Public routes
 Route::get('/services', [ServiceController::class, 'index']);
-Route::get('/stylists', [PublicStylistController::class, 'index']);
-Route::get('/stylists/by-services', [PublicStylistController::class, 'byServices']);
-Route::get('/stylists/{stylist}/availability', [StylistController::class, 'availability']);
+Route::get('/stylists', function () {
+    return response()->json([]);
+});
+Route::get('/stylists/by-services', function () {
+    return response()->json([]);
+});
 Route::get('/appointments/availability', [AppointmentController::class, 'availability']);
 Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
 Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
@@ -83,8 +84,8 @@ Route::middleware(StartSession::class)->group(function () {
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth.any');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth.any');
-Route::post('/me/profile-photo', [AuthController::class, 'updateProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
-Route::delete('/me/profile-photo', [AuthController::class, 'removeProfilePhoto'])->middleware(['auth.any', 'userType:manager,stylist']);
+Route::post('/me/profile-photo', [AuthController::class, 'updateProfilePhoto'])->middleware(['auth.any', 'userType:manager']);
+Route::delete('/me/profile-photo', [AuthController::class, 'removeProfilePhoto'])->middleware(['auth.any', 'userType:manager']);
 
 // Manager staff request routes
 Route::middleware(['auth.any', 'userType:manager'])->group(function () {
@@ -101,14 +102,6 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
 
 // Admin-only routes
 Route::middleware(['auth.any', 'userType:admin'])->group(function () {
-    // Stylists (staff) management + time-offs
-    Route::get('/stylists/{stylist}', [StylistController::class, 'show']);
-    Route::post('/stylists', [StylistController::class, 'store']);
-    Route::match(['patch', 'post'], '/stylists/{stylist}', [StylistController::class, 'update'])->where('stylist', '[0-9]+');
-    Route::delete('/stylists/{stylist}', [StylistController::class, 'destroy']);
-    Route::post('/stylists/{stylist}/time-offs', [StylistController::class, 'addTimeOff']);
-    Route::delete('/stylists/{stylist}/time-offs/{timeOff}', [StylistController::class, 'removeTimeOff']);
-
     // Managers management
     Route::get('/managers', [ManagerController::class, 'index']);
     Route::post('/managers', [ManagerController::class, 'store']);
@@ -180,7 +173,7 @@ Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
 });
 
 // Admin + Manager routes (shared management permissions)
-Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(function () {
+Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/appointments', [AppointmentController::class, 'index']);
     Route::get('/appointments/history', [AppointmentController::class, 'history']);
     Route::post('/appointments/{appointment}/reschedule', [AppointmentController::class, 'reschedule']);
@@ -199,15 +192,6 @@ Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(functio
     Route::patch('/holidays/{holiday}', [HolidayController::class, 'update']);
     Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy']);
 
-});
-
-// Stylist-only routes
-Route::middleware(['auth.any', 'userType:stylist'])->group(function () {
-    Route::get('/dashboard/stylist/stats', [DashboardController::class, 'stylistStats']);
-    Route::get('/appointments/assigned', [AppointmentController::class, 'index']); // Only assigned appointments
-    Route::get('/appointments/history', [AppointmentController::class, 'history']); // Appointment history
-    Route::get('/appointments/rescheduled', [AppointmentController::class, 'index']); // Rescheduled appointments
-    Route::get('/stylist/ratings', [CustomerRatingController::class, 'index']); // View own ratings
 });
 
 // Verified customer stats

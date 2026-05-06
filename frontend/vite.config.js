@@ -30,7 +30,7 @@ export default defineConfig({
       },
       // Proxy API calls to Laravel backend
       // Only proxy requests that are clearly API calls (POST/PUT/PATCH/DELETE or have JSON accept header)
-      '^/(api|csrf-token|login|logout|me|services|stylists|appointments|dashboard|admin|manager|inventory|sales|ratings|public|holidays|payment-accounts|locations|managers)': {
+      '^/(api|csrf-token|login|logout|me|services|appointments|dashboard|admin|manager|inventory|sales|ratings|public|holidays|payment-accounts|locations|managers)': {
         target: backendOrigin,
         changeOrigin: true,
         secure: false,

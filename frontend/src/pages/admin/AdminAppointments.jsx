@@ -1696,7 +1696,7 @@ const AdminAppointments = () => {
                     </div>
                   )}
                   {selectedAppointment.stylist?.name && (
-                    <p className="mt-1 text-sm text-[#6B6B6B]">Stylist: {selectedAppointment.stylist.name}</p>
+                    <p className="mt-1 text-sm text-[#6B6B6B]">Team: {selectedAppointment.stylist.name}</p>
                   )}
                 </div>
                 <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">

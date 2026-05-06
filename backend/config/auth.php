@@ -48,10 +48,6 @@ return [
             'driver' => 'session',
             'provider' => 'managers',
         ],
-        'stylist' => [
-            'driver' => 'session',
-            'provider' => 'stylists',
-        ],
     ],
 
     /*
@@ -83,10 +79,6 @@ return [
         'managers' => [
             'driver' => 'eloquent',
             'model' => App\Models\Manager::class,
-        ],
-        'stylists' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\Stylist::class,
         ],
 
         // 'users' => [

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Admin;
 use App\Models\Manager;
-use App\Models\Stylist;
 use App\Support\PasswordHash;
 use App\Support\UploadStorage;
 use Illuminate\Http\Request;
@@ -17,14 +16,13 @@ class AuthController extends Controller
     {
         $activeGuard = $request->session()->get('active_guard');
         $typeHint = $request->header('X-User-Type') ?: $request->query('type');
-        $hintGuard = in_array($typeHint, ['admin', 'manager', 'stylist'], true) ? $typeHint : null;
+        $hintGuard = in_array($typeHint, ['admin', 'manager'], true) ? $typeHint : null;
 
         $guards = array_values(array_unique(array_filter([
             $hintGuard,
             $activeGuard,
             'admin',
             'manager',
-            'stylist',
         ])));
 
         foreach ($guards as $guard) {
@@ -43,9 +41,6 @@ class AuthController extends Controller
         }
         if ($user instanceof \App\Models\Manager) {
             return 'manager';
-        }
-        if ($user instanceof \App\Models\Stylist) {
-            return 'stylist';
         }
         return null;
     }
@@ -114,7 +109,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         // Logout all guards to ensure clean session state.
-        foreach (['admin', 'manager', 'stylist', 'web'] as $guard) {
+        foreach (['admin', 'manager', 'web'] as $guard) {
             Auth::guard($guard)->logout();
         }
         
@@ -150,15 +145,15 @@ class AuthController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        if (!($user instanceof Manager || $user instanceof Stylist)) {
-            return response()->json(['message' => 'Profile photo editing is only available for manager and staff accounts'], 403);
+        if (!($user instanceof Manager)) {
+            return response()->json(['message' => 'Profile photo editing is only available for manager accounts'], 403);
         }
 
         $data = $request->validate([
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $folder = $user instanceof Manager ? 'uploads/managers' : 'uploads/stylists';
+        $folder = 'uploads/managers';
         $oldPath = $user->getRawOriginal('image');
         $user->image = UploadStorage::store($data['image'], $folder);
         $user->save();
@@ -181,8 +176,8 @@ class AuthController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        if (!($user instanceof Manager || $user instanceof Stylist)) {
-            return response()->json(['message' => 'Profile photo editing is only available for manager and staff accounts'], 403);
+        if (!($user instanceof Manager)) {
+            return response()->json(['message' => 'Profile photo editing is only available for manager accounts'], 403);
         }
 
         $oldPath = $user->getRawOriginal('image');
