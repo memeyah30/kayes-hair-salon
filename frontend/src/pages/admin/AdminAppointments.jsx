@@ -979,14 +979,14 @@ const AdminAppointments = () => {
   }
   const shouldShowPaymentStatusBadge = (method, status, appointmentStatus) =>
     !shouldHidePaymentStatusBadge(method, appointmentStatus)
-  const openProofFile = (url) => {
+  const handleOpenImageModal = (url) => {
     setImageModalUrl(url)
     setShowImageModal(true)
   }
+
   const resolveProofUrl = (url) => {
     if (!url) return null
     return resolveAssetUrl(url)
-  }
   }
 
   const selectedAppointmentServices = selectedAppointment ? getAppointmentServices(selectedAppointment) : []
@@ -1777,7 +1777,11 @@ const AdminAppointments = () => {
                         />
                         <button
                           type="button"
-                          onClick={() => openProofFile(selectedProofUrl)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenImageModal(selectedProofUrl);
+                          }}
                           className="tap-safe rounded-lg border border-[#7B5CF5] px-4 py-2 text-sm text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
                         >
                           Open Full Image
