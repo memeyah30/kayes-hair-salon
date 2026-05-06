@@ -1534,9 +1534,12 @@ const AdminAppointments = () => {
                               Rescheduled
                             </span>
                           )}
-                          {normalizedStatus === 'cancelled' && apt.rejection_reason && (
-                            <span className="text-xs text-[#DC2626] max-w-[150px] truncate" title={apt.rejection_reason}>
-                              Reason: {apt.rejection_reason}
+                          {normalizedStatus === 'cancelled' && (
+                            <span
+                              className="text-xs text-[#DC2626] max-w-[150px] truncate"
+                              title={apt.rejection_reason || 'No reason recorded.'}
+                            >
+                              Reason: {apt.rejection_reason || 'No reason recorded.'}
                             </span>
                           )}
                         </div>
@@ -1720,11 +1723,11 @@ const AdminAppointments = () => {
                 </div>
               </div>
 
-              {selectedAppointment.status === 'cancelled' && selectedAppointment.rejection_reason && (
+              {selectedAppointment.status === 'cancelled' && (
                 <div className="mt-4 rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-3">
                   <p className="text-xs uppercase tracking-[0.12em] text-[#DC2626]">Cancellation Reason</p>
                   <div className="mt-2 text-sm text-[#991B1B]">
-                    {selectedAppointment.rejection_reason}
+                    {selectedAppointment.rejection_reason || 'No reason recorded.'}
                   </div>
                 </div>
               )}
@@ -2012,6 +2015,4 @@ const AdminAppointments = () => {
 }
 
 export default AdminAppointments
-
-
 
