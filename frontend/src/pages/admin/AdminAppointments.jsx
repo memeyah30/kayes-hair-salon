@@ -147,6 +147,27 @@ const formatRescheduledTimestampLabel = (value) => {
   })
 }
 
+const getCustomerInitials = (name) => {
+  if (!name) return '?'
+  const parts = name.split(' ')
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name[0].toUpperCase()
+}
+
+const getCustomerColor = (name) => {
+  const colors = [
+    { bg: '#E0E7FF', text: '#4338CA' }, // Indigo
+    { bg: '#FCE7F3', text: '#BE185D' }, // Pink
+    { bg: '#FEF3C7', text: '#B45309' }, // Amber
+    { bg: '#DCFCE7', text: '#15803D' }, // Green
+    { bg: '#DBEAFE', text: '#1D4ED8' }, // Blue
+    { bg: '#F3E8FF', text: '#7E22CE' }, // Purple
+  ]
+  if (!name) return colors[0]
+  const charCode = name.charCodeAt(0)
+  return colors[charCode % colors.length]
+}
+
 const buildMonthGrid = (monthDate) => {
   const year = monthDate.getFullYear()
   const monthIndex = monthDate.getMonth()
@@ -1047,7 +1068,10 @@ const AdminAppointments = () => {
                 end="#5a3dbd"
                 icon={
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v4M17 3v4M4 9h16M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7Z" />
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
                   </svg>
                 }
               />
@@ -1061,21 +1085,23 @@ const AdminAppointments = () => {
                 onClick={() => applyStatusOnlyFilter('booked')}
                 icon={
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3 3M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16Z" />
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
                   </svg>
                 }
               />
               <GradientMetricCard
                 title="Completed"
                 value={monthlyStats.completed}
-                note="Finished today"
+                note="Completed"
                 start="#74a0ae"
                 end="#547f91"
                 delay={200}
                 onClick={() => applyStatusOnlyFilter('completed')}
                 icon={
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m5 12 4 4L19 6" />
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
                   </svg>
                 }
               />
@@ -1083,14 +1109,14 @@ const AdminAppointments = () => {
                 <GradientMetricCard
                   title="Revenue"
                   value={currency(monthlyStats.revenueCents)}
-                  note={tableDateWindow ? 'Selected range' : 'All time'}
+                  note="Selected range"
                   start="#958bf4"
                   end="#6f67d7"
                   delay={300}
                   icon={
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                      <rect x="4" y="6" width="16" height="12" rx="2" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 10h16M9 14h2" />
+                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                      <line x1="1" y1="10" x2="23" y2="10" />
                     </svg>
                   }
                 />
@@ -1211,7 +1237,7 @@ const AdminAppointments = () => {
                   <div className="relative flex-[2]">
                     <input
                       type="text"
-                      placeholder="Search customer, service..."
+                      placeholder="Search..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="tap-safe w-full rounded-xl border border-[#DDD6FE] bg-white py-2.5 pl-4 pr-10 text-sm text-[#2D2D2D] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
@@ -1259,53 +1285,71 @@ const AdminAppointments = () => {
                 const normalizedStatus = normalizeStatus(apt.status)
                 const statusBadgeStyle = getStatusBadgeStyle(normalizedStatus)
                 const isProcessingAction = processingAppointmentId === apt.id
+                const initials = getCustomerInitials(apt.customer_name)
+                const color = getCustomerColor(apt.customer_name)
+                const isRescheduled = isRescheduledAppointment(apt)
+                const rescheduledLabel = formatRescheduledTimestampLabel(apt.rescheduled_at_pht || apt.rescheduled_at)
                 
                 return (
                   <article
                     key={apt.id}
-                    className="overflow-hidden rounded-[24px] border border-white/40 bg-white/80 p-5 shadow-[0_12px_32px_rgba(59,31,114,0.08)] backdrop-blur-sm animate-fadeInUp"
+                    className="overflow-hidden rounded-[24px] border border-white/40 bg-white/80 p-4 shadow-[0_12px_32px_rgba(59,31,114,0.06)] backdrop-blur-sm animate-fadeInUp"
                   >
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-lg font-bold text-[#2d1f4f]">
-                          {apt.customer_name || 'Customer'}
-                        </h3>
-                        <p className="text-xs text-[#856fb4] mt-0.5">
-                          {apt.customer_phone || apt.customer_email || 'No contact info'}
-                        </p>
-                      </div>
-                      <span 
-                        className="shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider"
-                        style={statusBadgeStyle}
+                    <div className="flex gap-4">
+                      {/* Avatar */}
+                      <div 
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-sm"
+                        style={{ backgroundColor: color.bg, color: color.text }}
                       >
-                        {normalizedStatus === 'booked' ? 'PENDING' : normalizedStatus.toUpperCase()}
-                      </span>
-                    </div>
+                        {initials}
+                      </div>
 
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-widest text-[#a28ed4]">Service</div>
-                          <div className="mt-1 text-sm font-semibold text-[#4a3481]">
-                            {getServiceName(appointmentServices[0])}
+                      <div className="flex-1 min-w-0">
+                        {/* Header: Name and Status */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-base font-bold text-[#2d1f4f]">
+                              {apt.customer_name || 'Customer'}
+                            </h3>
+                            <p className="text-[11px] text-[#856fb4]">
+                              {apt.customer_phone || 'No phone'}
+                            </p>
+                          </div>
+                          <span 
+                            className="shrink-0 rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                            style={statusBadgeStyle}
+                          >
+                            {normalizedStatus === 'booked' ? 'PENDING' : normalizedStatus.toUpperCase()}
+                          </span>
+                        </div>
+
+                        {/* Service and Price Row */}
+                        <div className="mt-3 flex items-end justify-between gap-2">
+                          <div>
+                            <div className="text-[12px] font-bold text-[#4a3481]">
+                              {getServiceName(appointmentServices[0]).toUpperCase()}
+                            </div>
                             {appointmentServices.length > 1 && (
-                              <span className="ml-1 text-[10px] opacity-60">+{appointmentServices.length - 1} more</span>
+                              <div className="text-[10px] text-[#856fb4]">+{appointmentServices.length - 1} more service</div>
                             )}
                           </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-widest text-[#a28ed4]">Schedule</div>
-                          <div className="mt-1 text-sm font-semibold text-[#4a3481]">
-                            {dateLabel}
-                            <span className="ml-1 opacity-60 text-xs">{timeLabel}</span>
+                          <div className="text-right">
+                            <div className="text-base font-black text-[#5c40cc]">
+                              {currency(totalPrice)}
+                            </div>
+                            <div className="text-[10px] text-[#856fb4] leading-none">
+                              {appointmentServices.length > 1 ? 'Total' : 'Service price'}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-widest text-[#a28ed4]">Payment</div>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
+                        {/* Schedule row */}
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-[#4a3481]">{dateLabel}</span>
+                            <span className="text-[11px] text-[#856fb4]">{timeLabel}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
                             <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-tighter ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
                               {paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)}
                             </span>
@@ -1316,82 +1360,79 @@ const AdminAppointments = () => {
                             )}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-widest text-[#a28ed4]">Price</div>
-                          <div className="mt-1 text-lg font-black text-[#5c40cc]">
-                            {currency(totalPrice)}
+
+                        {/* Rescheduled Info */}
+                        {isRescheduled && (
+                          <div className="mt-2 rounded-lg bg-[#F6F2FF] p-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="rounded px-1.5 py-0.5 bg-[#7B5CF5]/10 text-[#7B5CF5] text-[9px] font-bold uppercase">Rescheduled</span>
+                              <span className="text-[10px] text-[#7B5CF5] font-medium">{rescheduledLabel} PHT</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Footer Actions */}
+                        <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#f2edff] pt-3">
+                           <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAppointment(apt)}
+                              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff]"
+                              title="View Details"
+                            >
+                              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => !isProcessingAction && handleDelete(apt)}
+                              disabled={isProcessingAction}
+                              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff0f3] text-[#cc6b84] transition hover:bg-[#ffe4e9]"
+                              title="Delete"
+                            >
+                              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          <div className="flex gap-2">
+                            {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => !isProcessingAction && handleAction(apt.id, 'reject')}
+                                  disabled={isProcessingAction}
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EF4444] text-white shadow-sm transition hover:bg-[#DC2626]"
+                                  title="Reject"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
+                                  disabled={isProcessingAction}
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#7B5CF5] text-white shadow-sm transition hover:bg-[#6846E8]"
+                                  title="Confirm"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                </button>
+                              </>
+                            )}
+                            {normalizedStatus === 'confirmed' && (
+                              <button
+                                type="button"
+                                onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
+                                disabled={isProcessingAction}
+                                className="rounded-lg bg-[#7B5CF5] px-4 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#6846E8]"
+                              >
+                                COMPLETE
+                              </button>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#f2edff] pt-4">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedAppointment(apt)}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff]"
-                          title="View Details"
-                        >
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => !isProcessingAction && handleDelete(apt)}
-                          disabled={isProcessingAction}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff0f3] text-[#cc6b84] transition hover:bg-[#ffe4e9]"
-                          title="Delete"
-                        >
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-
-                      <div className="flex gap-2">
-                        {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => !isProcessingAction && handleAction(apt.id, 'reject')}
-                              disabled={isProcessingAction}
-                              className="rounded-full bg-[#cc6b84] px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-[#b45a72]"
-                            >
-                              REJECT
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
-                              disabled={isProcessingAction}
-                              className="rounded-full bg-[#7B5CF5] px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-[#6846E8]"
-                            >
-                              CONFIRM
-                            </button>
-                          </>
-                        )}
-                        {normalizedStatus === 'confirmed' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => !isProcessingAction && handleRescheduleClick(apt)}
-                              disabled={isProcessingAction}
-                              className="rounded-full bg-[#f2efff] border border-[#7B5CF5] px-4 py-2 text-xs font-bold text-[#7B5CF5] transition hover:bg-[#e6e0ff]"
-                            >
-                              RESCHEDULE
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
-                              disabled={isProcessingAction}
-                              className="rounded-full bg-[#7B5CF5] px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-[#6846E8]"
-                            >
-                              COMPLETE
-                            </button>
-                          </>
-                        )}
                       </div>
                     </div>
                   </article>
@@ -1605,7 +1646,6 @@ const AdminAppointments = () => {
               />
             )}
           </div>
-          )}
         </div>
         {selectedAppointment && (
           <div
