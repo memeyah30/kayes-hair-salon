@@ -3849,11 +3849,7 @@ const BookAppointment = () => {
                 max={totalAmount}
                 step="0.01"
                 required
-                className={`tap-safe w-full border rounded px-3 py-2 text-gray-900 ${
-                  selectedPaymentType === 'downpayment' && payment.amount && parseFloat(payment.amount) < minDownpayment
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                }`}
+                className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-blue-500"
                 value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount)}
                 readOnly={selectedPaymentType === 'full'}
                 onChange={(e) => {
@@ -3864,11 +3860,7 @@ const BookAppointment = () => {
                 }}
                 placeholder={`Enter amount (Minimum: ${currency(Math.round(totalAmountCents * 0.1))})`}
               />
-              {selectedPaymentType === 'downpayment' && payment.amount && parseFloat(payment.amount) < minDownpayment && (
-                <p className="text-red-500 text-xs mt-1">
-                  Amount must be at least {currency(Math.round(totalAmountCents * 0.1))}
-                </p>
-              )}
+
               <p className="text-xs text-[#9b857a] mt-1">
                 {selectedPaymentType === 'full'
                   ? <>Full payment selected | Remaining: {currency(0)}</>
@@ -4055,8 +4047,7 @@ const BookAppointment = () => {
                 disabled={(
                   bookingInProgress ||
                   !payment.proofFile ||
-                  (paymentAccounts.length > 0 && !payment.selectedAccount) ||
-                  (selectedPaymentType !== 'full' && (!payment.amount || parseFloat(payment.amount) < minDownpayment))
+                  (paymentAccounts.length > 0 && !payment.selectedAccount)
                 )}
                 className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
               >
