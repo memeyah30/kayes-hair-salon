@@ -19,7 +19,6 @@ const isDesktopViewport = () => (
 
 const Sidebar = ({ userType = 'customer', onLogout }) => {
   const [isOpen, setIsOpen] = useState(getInitialSidebarState)
-  const [showInventoryModal, setShowInventoryModal] = useState(false)
 
   const adminLinks = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -211,21 +210,11 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     }
 
     mediaQuery.addEventListener('change', handleViewportChange)
-    return () => mediaQuery.removeEventListener('change', handleViewportChange)
+    return () => mediaQuery.addEventListener('change', handleViewportChange)
   }, [])
 
   const handleSidebarLinkClick = (event, link, shouldCloseMenu = false) => {
     const shouldCloseSidebar = shouldCloseMenu && !isDesktopViewport()
-
-    if (link.comingSoon) {
-      event.preventDefault()
-      event.stopPropagation()
-      if (shouldCloseSidebar) {
-        setIsOpen(false)
-      }
-      setShowInventoryModal(true)
-      return
-    }
 
     if (shouldCloseSidebar) {
       setIsOpen(false)
@@ -375,49 +364,6 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
           </div>
         )}
       </aside>
-
-      {showInventoryModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-[#120628]/55"
-            onClick={() => setShowInventoryModal(false)}
-            aria-hidden="true"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="inventory-coming-soon-title"
-            className="relative w-full max-w-md rounded-[22px] border border-[#DDD6FE] bg-white p-5 shadow-[0_22px_44px_rgba(27,18,55,0.22)] sm:p-6"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 id="inventory-coming-soon-title" className="text-xl font-semibold text-[#24173f]">
-                  Feature Not Available
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[#6B6B6B]">
-                  The Inventory module is reserved for future enhancements and is not included in the current system scope.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowInventoryModal(false)}
-                className="rounded-full border border-[#DDD6FE] px-3 py-1 text-sm text-[#6F4ED0] transition hover:bg-[#F6F2FF]"
-              >
-                Close
-              </button>
-            </div>
-            <div className="mt-6 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowInventoryModal(false)}
-                className="rounded-xl bg-gradient-to-r from-[#6f4ed0] to-[#8867df] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_28px_rgba(43,20,97,0.24)] transition hover:from-[#6546c4] hover:to-[#7b5cd2]"
-              >
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

@@ -10,11 +10,11 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\CustomerRatingController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\LocationController;
-use App\Http\Controllers\InventoryController;
+
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordSetupController;
 use App\Http\Controllers\SaleController;
-use App\Http\Controllers\ServiceInventoryRequirementController;
+
 use App\Http\Controllers\ManageBookingController;
 use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
 use App\Http\Controllers\Admin\StaffApprovalController;
@@ -189,18 +189,9 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     // Ratings management (delete remains admin-only)
     Route::delete('/ratings/{customerRating}', [CustomerRatingController::class, 'destroy']);
 
-    // Inventory management
-    Route::get('/inventory', [InventoryController::class, 'index']);
-    Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
-    Route::get('/inventory/stats', [InventoryController::class, 'stats']);
-    Route::get('/inventory/usage-logs', [InventoryController::class, 'usageLogs']);
-    Route::post('/inventory', [InventoryController::class, 'store']);
-    Route::patch('/inventory/{inventory}', [InventoryController::class, 'update']);
-    Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy']);
 
-    // Service-to-product usage mapping
-    Route::get('/services/{service}/inventory-requirements', [ServiceInventoryRequirementController::class, 'index']);
-    Route::put('/services/{service}/inventory-requirements', [ServiceInventoryRequirementController::class, 'sync']);
+
+
 
     // Sales management
     Route::get('/sales', [SaleController::class, 'index']);

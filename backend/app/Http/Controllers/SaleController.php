@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\InteractsWithPagination;
 use App\Models\Sale;
-use App\Models\Inventory;
-use App\Services\InventoryWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -30,7 +28,7 @@ class SaleController extends Controller
         ]);
 
         $timezone = 'Asia/Manila';
-        $query = Sale::with(['appointment', 'inventory']);
+        $query = Sale::with(['appointment']);
 
         // Filter by date range
         if ($request->filled('start_date')) {
@@ -84,11 +82,10 @@ class SaleController extends Controller
         return $query->get();
     }
 
-    public function store(Request $request, InventoryWorkflowService $inventoryWorkflowService)
+    public function store(Request $request)
     {
         $data = $request->validate([
             'appointment_id' => 'nullable|exists:appointments,id',
-            'inventory_id' => 'nullable|exists:inventory,id',
             'transaction_type' => 'required|in:service,product,both',
             'item_name' => 'required|string|max:255',
             'quantity' => 'required|integer|min:1',
@@ -100,43 +97,20 @@ class SaleController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Calculate total amount
         $data['total_amount_cents'] = $data['quantity'] * $data['unit_price_cents'];
         $data['payment_status'] = $data['payment_status'] ?? 'paid';
 
         try {
-            $sale = DB::transaction(function () use ($data, $inventoryWorkflowService, $request) {
-                $sale = Sale::create($data);
-
-                // If inventory item is sold, reduce quantity and log usage.
-                if (!empty($data['inventory_id'])) {
-                    $inventory = Inventory::findOrFail($data['inventory_id']);
-                    $inventoryWorkflowService->applyStockChange(
-                        $inventory,
-                        -((int) $data['quantity']),
-                        'stock_deducted',
-                        'sale',
-                        (int) $sale->id,
-                        $request->user()?->id,
-                        'Inventory sold'
-                    );
-                }
-
-                return $sale;
-            });
-
-            return response()->json($sale->load(['appointment', 'inventory']), 201);
-        } catch (\RuntimeException $e) {
-            if ((int) $e->getCode() === 422) {
-                return response()->json(['message' => $e->getMessage()], 422);
-            }
-            throw $e;
+            $sale = Sale::create($data);
+            return response()->json($sale->load(['appointment']), 201);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to record sale.'], 500);
         }
     }
 
     public function show(Sale $sale)
     {
-        return $sale->load(['appointment', 'inventory']);
+        return $sale->load(['appointment']);
     }
 
     public function update(Request $request, Sale $sale)
@@ -147,31 +121,12 @@ class SaleController extends Controller
         ]);
 
         $sale->update($data);
-        return $sale->fresh()->load(['appointment', 'inventory']);
+        return $sale->fresh()->load(['appointment']);
     }
 
-    public function destroy(Request $request, Sale $sale, InventoryWorkflowService $inventoryWorkflowService)
+    public function destroy(Sale $sale)
     {
-        DB::transaction(function () use ($request, $sale, $inventoryWorkflowService) {
-            // If inventory item was sold, restore quantity and log.
-            if ($sale->inventory_id) {
-                $inventory = Inventory::find($sale->inventory_id);
-                if ($inventory) {
-                    $inventoryWorkflowService->applyStockChange(
-                        $inventory,
-                        (int) $sale->quantity,
-                        'stock_added',
-                        'sale',
-                        (int) $sale->id,
-                        $request->user()?->id,
-                        'Sale deleted, stock restored'
-                    );
-                }
-            }
-
-            $sale->delete();
-        });
-
+        $sale->delete();
         return response()->json(['message' => 'Sale deleted successfully']);
     }
 
@@ -276,7 +231,7 @@ class SaleController extends Controller
         $request->validate([
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date_format:Y-m-d'],
-            'transaction_type' => ['nullable', 'in:service,product,both'],
+
             'payment_method' => ['nullable', 'string'],
             'payment_status' => ['nullable', 'string'],
             'appointment_status' => ['nullable', 'string'],
@@ -284,7 +239,7 @@ class SaleController extends Controller
         ]);
 
         $timezone = 'Asia/Manila';
-        $query = Sale::with(['appointment', 'inventory']);
+        $query = Sale::with(['appointment']);
 
         // Filter by date range
         if ($request->filled('start_date')) {
@@ -330,7 +285,7 @@ class SaleController extends Controller
 
         // Calculate stats (reusing logic from stats method but on the filtered collection)
         $totalSales = $sales->sum('total_amount_cents');
-        $salesByType = $sales->groupBy('transaction_type')->map->sum('total_amount_cents');
+
         
         // Fetch appointments for the same period to get summary counts
         $appointmentsQuery = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc]);
@@ -361,7 +316,6 @@ class SaleController extends Controller
             'start_date' => $startUtc->setTimezone($timezone)->format('M d, Y'),
             'end_date' => $endUtc->setTimezone($timezone)->format('M d, Y'),
             'filters' => [
-                'transaction_type' => $request->transaction_type,
                 'payment_method' => $request->payment_method,
                 'payment_status' => $request->payment_status,
                 'appointment_status' => $request->appointment_status,

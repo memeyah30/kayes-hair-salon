@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\AppointmentRating;
 use App\Models\CustomerRating;
-use App\Models\Inventory;
 use App\Models\Sale;
 use App\Models\Service;
 use App\Services\MissedAppointmentService;
@@ -200,20 +199,6 @@ class DashboardController extends Controller
             'cancelled' => $monthAppointments->where('status', 'cancelled')->count(),
         ];
 
-        $inventoryStats = [
-            'total_items' => (int) Inventory::query()->where('is_active', true)->count(),
-            'low_stock_items' => (int) Inventory::query()
-                ->where('is_active', true)
-                ->lowStock()
-                ->count(),
-            'low_stock_alerts' => Inventory::query()
-                ->where('is_active', true)
-                ->lowStock()
-                ->orderBy('quantity')
-                ->limit(10)
-                ->get(['id', 'name', 'quantity', 'min_stock_level']),
-        ];
-
         return response()->json([
             'appointments' => [
                 'today' => $todayAppointments->count(),
@@ -241,7 +226,6 @@ class DashboardController extends Controller
             'customers' => $customers,
             'services' => Service::count(),
             'status_summary' => $statusSummary,
-            'inventory' => $inventoryStats,
         ]);
     }
 

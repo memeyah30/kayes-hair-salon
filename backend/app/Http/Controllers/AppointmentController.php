@@ -10,7 +10,7 @@ use App\Models\Manager;
 use App\Models\Notification;
 use App\Models\Service;
 use App\Models\Holiday;
-use App\Services\InventoryWorkflowService;
+
 use App\Services\MissedAppointmentService;
 use App\Services\CustomerProfileService;
 use App\Services\AppointmentNotificationService;
@@ -665,7 +665,7 @@ class AppointmentController extends Controller
         ], 403);
     }
 
-    public function complete(Appointment $appointment, Request $request, InventoryWorkflowService $inventoryWorkflowService)
+    public function complete(Appointment $appointment, Request $request)
     {
         $appointment = $this->refreshMissedStatus($appointment);
         if ($this->isMissed($appointment)) {
@@ -693,11 +693,9 @@ class AppointmentController extends Controller
         // Admin/manager completing an appointment means service is done and payment is settled.
         $newPaymentStatus = 'paid';
 
-        try {
             DB::transaction(function () use (
                 $appointment,
                 $request,
-                $inventoryWorkflowService,
                 $newPaymentStatus,
                 $salePaymentMethod
             ) {
@@ -744,8 +742,6 @@ class AppointmentController extends Controller
                     if (!$existingSale) {
                         \App\Models\Sale::create([
                             'appointment_id' => $appointment->id,
-                            'inventory_id' => null, // Services don't have inventory
-                            'transaction_type' => 'service',
                             'item_name' => $serviceName,
                             'quantity' => 1,
                             'unit_price_cents' => $servicePrice,
@@ -759,12 +755,7 @@ class AppointmentController extends Controller
                     }
                 }
 
-                // Deduct inventory based on service-product mapping.
-                $inventoryWorkflowService->deductForCompletedAppointment(
-                    $appointment,
-                    $appointmentServices,
-                    $request->user()?->id
-                );
+
             });
         } catch (\RuntimeException $e) {
             if ((int) $e->getCode() === 422) {
@@ -773,7 +764,7 @@ class AppointmentController extends Controller
                 ], 422);
             }
 
-            Log::error('Failed to complete appointment with inventory deduction', [
+            Log::error('Failed to complete appointment', [
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),
             ]);

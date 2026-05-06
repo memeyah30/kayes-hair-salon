@@ -12,7 +12,6 @@ class Sale extends Model
 
     protected $fillable = [
         'appointment_id',
-        'inventory_id',
         'transaction_type',
         'item_name',
         'quantity',
@@ -34,11 +33,6 @@ class Sale extends Model
     public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class);
-    }
-
-    public function inventory(): BelongsTo
-    {
-        return $this->belongsTo(Inventory::class);
     }
 
 }

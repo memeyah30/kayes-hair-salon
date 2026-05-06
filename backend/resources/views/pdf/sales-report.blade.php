@@ -154,8 +154,8 @@
             <tr>
                 <td><strong>Search Keyword:</strong></td>
                 <td>{{ $filters['search_keyword'] ?? 'None' }}</td>
-                <td><strong>Payment Type:</strong></td>
-                <td>{{ ucfirst($filters['transaction_type'] ?? 'All') }}</td>
+                <td></td>
+                <td></td>
             </tr>
         </table>
     </div>
