@@ -2016,7 +2016,11 @@ const BookAppointment = () => {
         if (normalizedPaymentType === 'full') {
           paymentAmountCents = totalAmountCents
         } else {
-          paymentAmountCents = payment.amount ? Math.round(parseFloat(payment.amount) * 100) : Math.round(totalAmountCents * 0.1)
+          // Use entered amount, or fallback to 10% minimum if empty
+          paymentAmountCents = payment.amount 
+            ? Math.round(parseFloat(payment.amount) * 100) 
+            : Math.round(totalAmountCents * 0.1)
+            
           const minDepositCents = Math.round(totalAmountCents * 0.1)
           if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
             toast.warn(`Minimum GCash downpayment is ${currency(minDepositCents)}`)
@@ -2024,12 +2028,11 @@ const BookAppointment = () => {
           }
         }
       } else if (payment.method === 'on_hand') {
-        if (!payment.amount) {
-          // Downpayment only - default to 10%
-          paymentAmountCents = Math.round(totalAmountCents * 0.1)
-        } else {
-          paymentAmountCents = Math.round(parseFloat(payment.amount) * 100)
-        }
+        // For cash, use entered amount, fallback to 10% minimum
+        paymentAmountCents = payment.amount 
+          ? Math.round(parseFloat(payment.amount) * 100) 
+          : Math.round(totalAmountCents * 0.1)
+          
         const minDepositCents = Math.round(totalAmountCents * 0.1)
         if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
           toast.warn(`Minimum cash deposit is ${currency(minDepositCents)}`)
@@ -3702,7 +3705,12 @@ const BookAppointment = () => {
         // Calculate payment amount based on type
         const paymentAmount = selectedPaymentType === 'full'
           ? totalAmount
-          : (Number.isFinite(parsedPaymentAmount) ? parsedPaymentAmount : minDownpayment)
+          : (Number.isFinite(parsedPaymentAmount) ? parsedPaymentAmount : 0)
+        
+        // Final amount to be sent to backend
+        const effectivePaymentAmount = selectedPaymentType === 'full'
+          ? totalAmount
+          : (paymentAmount >= minDownpayment ? paymentAmount : minDownpayment)
         
         return (
           <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
@@ -3841,26 +3849,30 @@ const BookAppointment = () => {
                 max={totalAmount}
                 step="0.01"
                 required
-                className="tap-safe w-full border rounded px-3 py-2 text-gray-900"
-                value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || minDownpayment.toFixed(2))}
+                className={`tap-safe w-full border rounded px-3 py-2 text-gray-900 ${
+                  selectedPaymentType === 'downpayment' && payment.amount && parseFloat(payment.amount) < minDownpayment
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+                value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount)}
                 readOnly={selectedPaymentType === 'full'}
                 onChange={(e) => {
                   if (selectedPaymentType === 'full') {
                     return
                   }
-                  const value = parseFloat(e.target.value) || 0
-                  if (value >= minDownpayment && value <= totalAmount) {
-                    setPayment({ ...payment, amount: e.target.value })
-                  } else if (value < minDownpayment) {
-                    toast.warn(`Minimum downpayment is ${currency(Math.round(totalAmountCents * 0.1))}`)
-                  }
+                  setPayment({ ...payment, amount: e.target.value })
                 }}
-                placeholder={selectedPaymentType === 'full' ? currency(totalAmountCents) : `Minimum: ${currency(Math.round(totalAmountCents * 0.1))}`}
+                placeholder={`Enter amount (Minimum: ${currency(Math.round(totalAmountCents * 0.1))})`}
               />
+              {selectedPaymentType === 'downpayment' && payment.amount && parseFloat(payment.amount) < minDownpayment && (
+                <p className="text-red-500 text-xs mt-1">
+                  Amount must be at least {currency(Math.round(totalAmountCents * 0.1))}
+                </p>
+              )}
               <p className="text-xs text-[#9b857a] mt-1">
                 {selectedPaymentType === 'full'
                   ? <>Full payment selected | Remaining: {currency(0)}</>
-                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.1))} | Remaining: {currency(Math.round((totalAmount - paymentAmount) * 100))}</>}
+                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.1))} | Remaining: {currency(Math.max(0, Math.round((totalAmount - paymentAmount) * 100)))}</>}
               </p>
             </div>
 
@@ -4044,7 +4056,7 @@ const BookAppointment = () => {
                   bookingInProgress ||
                   !payment.proofFile ||
                   (paymentAccounts.length > 0 && !payment.selectedAccount) ||
-                  (selectedPaymentType !== 'full' && payment.amount && parseFloat(payment.amount) < totalAmount * 0.2)
+                  (selectedPaymentType !== 'full' && (!payment.amount || parseFloat(payment.amount) < minDownpayment))
                 )}
                 className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
               >
