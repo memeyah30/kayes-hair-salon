@@ -849,6 +849,7 @@ class AppointmentController extends Controller
             $totalAmountCents = (int) ($appointment->total_amount_cents ?? 0);
             $minDeposit = (int) round($totalAmountCents * 0.1);
             $deposit = (int) ($appointment->downpayment_amount_cents ?? 0);
+
             if ($deposit < $minDeposit) {
                 return response()->json([
                     'message' => 'A minimum 10% deposit is required before confirming this appointment.'
