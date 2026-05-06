@@ -183,13 +183,13 @@ Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
 Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(function () {
     Route::get('/appointments', [AppointmentController::class, 'index']);
     Route::get('/appointments/history', [AppointmentController::class, 'history']);
-    Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update']);
     Route::post('/appointments/{appointment}/reschedule', [AppointmentController::class, 'reschedule']);
     Route::post('/appointments/{appointment}/cancel', [AppointmentController::class, 'cancel']);
     Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'complete']);
     Route::post('/appointments/{appointment}/missed', [AppointmentController::class, 'markMissed']);
     Route::post('/appointments/{appointment}/confirm', [AppointmentController::class, 'confirm']);
-    Route::patch('/appointments/{appointment}/reject', [AppointmentController::class, 'reject']);
+    Route::post('/appointments/{appointment}/reject', [AppointmentController::class, 'reject']);
+    Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update']);
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy']);
 
     // Holidays management (admin and manager)

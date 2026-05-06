@@ -675,7 +675,7 @@ const AdminAppointments = () => {
 
     try {
       setIsRejecting(true)
-      const response = await api.patch(`/appointments/${rejectingAppointmentId}/reject`, {
+      const response = await api.post(`/appointments/${rejectingAppointmentId}/reject`, {
         reason: rejectionReason.trim(),
       })
 
