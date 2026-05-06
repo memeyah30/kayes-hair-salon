@@ -188,7 +188,7 @@ Route::middleware(['auth.any', 'userType:admin,manager,stylist'])->group(functio
     Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'complete']);
     Route::post('/appointments/{appointment}/missed', [AppointmentController::class, 'markMissed']);
     Route::post('/appointments/{appointment}/confirm', [AppointmentController::class, 'confirm']);
-    Route::post('/appointments/{appointment}/reject', [AppointmentController::class, 'reject']);
+    Route::post('/appointments-reject/{appointment}', [AppointmentController::class, 'reject']);
     Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update']);
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy']);
 
