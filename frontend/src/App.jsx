@@ -18,10 +18,11 @@ import ManageHolidays from './pages/admin/ManageHolidays'
 import ManagePaymentAccounts from './pages/admin/ManagePaymentAccounts'
 import ManageInventory from './pages/admin/ManageInventory'
 import SalesMonitoring from './pages/admin/SalesMonitoring'
-import ManagerProfiles from './pages/admin/ManagerProfiles'
+import PendingStaffApprovals from './pages/admin/PendingStaffApprovals'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
 import AddStaff from './pages/manager/AddStaff'
+import StaffRequests from './pages/manager/StaffRequests'
 
 const App = () => {
   return (
@@ -70,11 +71,12 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="/admin/manage/managers" element={<Navigate to="/manager/staff/add" replace />} />
         <Route
-          path="/admin/manage/managers"
+          path="/admin/staff/pending"
           element={
             <ProtectedRoute allowedTypes={['admin']}>
-              <ManagerProfiles />
+              <PendingStaffApprovals />
             </ProtectedRoute>
           }
         />
@@ -131,6 +133,22 @@ const App = () => {
           element={
             <ProtectedRoute allowedTypes={['admin']}>
               <SalesMonitoring />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/staff/add"
+          element={
+            <ProtectedRoute allowedTypes={['manager']}>
+              <AddStaff />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/staff/requests"
+          element={
+            <ProtectedRoute allowedTypes={['manager']}>
+              <StaffRequests />
             </ProtectedRoute>
           }
         />
