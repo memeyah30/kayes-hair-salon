@@ -980,6 +980,7 @@ const AdminAppointments = () => {
   const shouldShowPaymentStatusBadge = (method, status, appointmentStatus) =>
     !shouldHidePaymentStatusBadge(method, appointmentStatus)
   const handleOpenImageModal = (url) => {
+    if (!url) return
     setImageModalUrl(url)
     setShowImageModal(true)
   }
@@ -1772,8 +1773,9 @@ const AdminAppointments = () => {
                         <img
                           src={selectedProofUrl}
                           alt="Payment proof"
-                          className="w-full max-h-72 rounded-lg border border-[#DDD6FE] bg-white object-contain"
+                          className="w-full max-h-72 rounded-lg border border-[#DDD6FE] bg-white object-contain cursor-zoom-in hover:opacity-90 transition-opacity"
                           onError={() => setSelectedProofLoadError(true)}
+                          onClick={() => handleOpenImageModal(selectedProofUrl)}
                         />
                         <button
                           type="button"
@@ -1941,10 +1943,22 @@ const AdminAppointments = () => {
 
       {/* Full Image Viewer Modal */}
       {showImageModal && (
-        <div 
-          className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/90 p-4 backdrop-blur-md"
-          onClick={() => setShowImageModal(false)}
-        >
+          <style>{`
+            @keyframes fadeInUp {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes fadeInScale {
+              from { opacity: 0; transform: scale(0.95); }
+              to { opacity: 1; transform: scale(1); }
+            }
+            .animate-fadeInUp { animation: fadeInUp 0.4s ease-out forwards; }
+            .animate-fadeInScale { animation: fadeInScale 0.3s ease-out forwards; }
+          `}</style>
+          <div 
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 p-4 backdrop-blur-xl"
+            onClick={() => setShowImageModal(false)}
+          >
           <button
             type="button"
             className="absolute right-6 top-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
