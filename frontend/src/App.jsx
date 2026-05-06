@@ -18,6 +18,7 @@ import ManageHolidays from './pages/admin/ManageHolidays'
 import ManagePaymentAccounts from './pages/admin/ManagePaymentAccounts'
 import ManageInventory from './pages/admin/ManageInventory'
 import SalesMonitoring from './pages/admin/SalesMonitoring'
+import ManagerProfiles from './pages/admin/ManagerProfiles'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
 import AddStaff from './pages/manager/AddStaff'
@@ -69,7 +70,14 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="/admin/manage/managers" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route
+          path="/admin/manage/managers"
+          element={
+            <ProtectedRoute allowedTypes={['admin']}>
+              <ManagerProfiles />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/appointments"
           element={

@@ -1507,17 +1507,6 @@ const AdminAppointments = () => {
                       </td>
                       <td className="px-4 py-4">
                         <div className="font-medium text-[#2D2D2D]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
-                        {apt.team_name && (
-                          <div className="mt-1 flex items-center gap-1 text-xs text-[#6B6B6B]">
-                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#F2EDFF] text-[#7B5CF5]">
-                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                                <circle cx="12" cy="8" r="3" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c1.5-3 5-5 7-5s5.5 2 7 5" />
-                              </svg>
-                            </span>
-                            <span>{apt.team_name}</span>
-                          </div>
-                        )}
                       </td>
                       <td className="px-4 py-4">
                         <div className="font-medium text-[#2D2D2D]">{dateLabel}</div>
@@ -1701,9 +1690,6 @@ const AdminAppointments = () => {
                         </span>
                       )}
                     </div>
-                  )}
-                  {selectedAppointment.team_name && (
-                    <p className="mt-1 text-sm text-[#6B6B6B]">Team: {selectedAppointment.team_name}</p>
                   )}
                 </div>
                 <div className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
@@ -2026,7 +2012,6 @@ const AdminAppointments = () => {
 }
 
 export default AdminAppointments
-
 
 
 
