@@ -181,82 +181,109 @@ const Login = () => {
 
   return (
     <motion.div
-      className="flex min-h-screen items-center justify-center bg-[#dfe4f3] p-3 sm:p-4 md:p-8"
+      className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#edf1fb_0%,_#dce3f2_42%,_#d5dcef_100%)] p-3 sm:p-4 md:p-8"
       initial="hidden"
       animate="visible"
       variants={shellReveal}
     >
       <motion.div
-        className="w-full max-w-6xl overflow-hidden rounded-2xl border border-[#d3daee] bg-[#eef2fb] shadow-[0_22px_60px_rgba(58,79,133,0.2)] md:rounded-[30px]"
+        className="w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/70 bg-white/60 shadow-[0_24px_72px_rgba(58,79,133,0.18)] backdrop-blur-xl md:rounded-[34px]"
         variants={shellReveal}
       >
-        <div className="grid lg:grid-cols-[1fr_1fr]">
+        <div className="grid lg:grid-cols-[0.94fr_1.06fr]">
           <motion.section
-            className="relative overflow-hidden bg-gradient-to-br from-[#8ea3f1] via-[#7d95e8] to-[#6c84dc] px-5 py-8 text-white sm:px-8 sm:py-10 lg:min-h-[700px] lg:rounded-r-[220px] lg:px-12 lg:py-14"
+            className="relative isolate overflow-hidden bg-[linear-gradient(180deg,#8ea3f1_0%,#7b93e7_45%,#6780d9_100%)] px-5 py-8 text-white sm:px-8 sm:py-10 lg:min-h-[700px] lg:px-12 lg:py-14"
             variants={leftPanelReveal}
           >
             <motion.div
               aria-hidden="true"
-              className="absolute -right-14 top-8 h-44 w-44 rounded-full bg-white/12 blur-sm"
+              className="absolute -right-20 top-10 h-56 w-56 rounded-full bg-white/12 blur-sm"
               animate={
                 shouldReduceMotion
                   ? undefined
-                  : { x: [0, -20, 0], y: [0, 18, 0], scale: [1, 1.08, 1] }
+                  : { x: [0, -18, 0], y: [0, 16, 0], scale: [1, 1.08, 1] }
               }
               transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
             />
             <motion.div
               aria-hidden="true"
-              className="absolute bottom-[-3.5rem] left-[-2rem] h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0)_70%)]"
+              className="absolute bottom-[-4rem] left-[-3rem] h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0)_70%)]"
               animate={
                 shouldReduceMotion
                   ? undefined
-                  : { x: [0, 18, 0], y: [0, -16, 0], scale: [1, 1.1, 1] }
+                  : { x: [0, 18, 0], y: [0, -16, 0], scale: [1, 1.08, 1] }
               }
               transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 0.35 }}
             />
-
             <motion.div
-              className="relative flex h-full flex-col justify-between gap-12"
+              aria-hidden="true"
+              className="absolute left-[16%] top-[18%] h-32 w-32 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm"
+              animate={
+                shouldReduceMotion
+                  ? undefined
+                  : { y: [0, 12, 0], x: [0, -8, 0] }
+              }
+              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <motion.div
+              className="relative flex min-h-[520px] flex-col justify-center lg:min-h-[700px]"
               variants={staggerChildren}
             >
-              <motion.div variants={fadeUp}>
-                <motion.div 
-                  className="mb-6 flex items-center gap-4"
-                  initial={shouldReduceMotion ? false : { opacity: 0, x: -20 }}
-                  animate={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, ease: easeOut }}
+              <motion.div className="mx-auto flex w-full max-w-md flex-col items-center text-center" variants={staggerChildren}>
+                <motion.div
+                  className="relative mb-7 flex flex-col items-center gap-4 rounded-[32px] border border-white/20 bg-white/10 px-6 py-6 shadow-[0_22px_60px_rgba(27,43,96,0.14)] backdrop-blur-md"
+                  variants={fadeUp}
+                  whileHover={shouldReduceMotion ? undefined : { y: -4, scale: 1.01 }}
+                  transition={{ type: 'spring', stiffness: 180, damping: 18 }}
                 >
                   <motion.div
+                    className="absolute inset-x-6 top-4 h-px bg-gradient-to-r from-transparent via-white/55 to-transparent"
+                    animate={shouldReduceMotion ? undefined : { opacity: [0.45, 0.9, 0.45] }}
+                    transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut' }}
+                    aria-hidden="true"
+                  />
+                  <motion.div
                     className="relative"
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ type: 'spring', stiffness: 300 }}
+                    animate={
+                      shouldReduceMotion
+                        ? undefined
+                        : { y: [0, -6, 0], rotate: [0, 1.2, 0] }
+                    }
+                    transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    <div className="absolute inset-0 rounded-full bg-white/20 blur-md" />
-                    <img
-                      src="/logo-transparent.png"
-                      alt="Logo"
-                      className="relative h-16 w-16 object-contain drop-shadow-lg"
-                      onError={(e) => { e.target.src = '/logo.png' }}
-                    />
+                    <div className="absolute inset-0 rounded-full bg-white/20 blur-xl" />
+                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white p-2 shadow-[0_16px_32px_rgba(20,35,76,0.24)]">
+                      <img
+                        src="/logo-transparent.png"
+                        alt="Kaye's Salon Logo"
+                        className="h-full w-full object-contain"
+                        onError={(e) => { e.currentTarget.src = '/logo.png' }}
+                      />
+                    </div>
                   </motion.div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">Professional Care</span>
-                    <span className="text-xl font-bold tracking-tight text-white">Kaye&apos;s Salon</span>
+
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[0.7rem] font-bold uppercase tracking-[0.34em] text-white/70">Professional Care</span>
+                    <span className="text-[clamp(1.8rem,4.4vw,2.4rem)] font-semibold tracking-tight text-white">Kaye&apos;s Salon</span>
                   </div>
                 </motion.div>
 
                 <motion.h1
-                  className="text-[clamp(2rem,8vw,3.25rem)] font-semibold leading-none"
-                  initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
-                  animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-                  transition={{ duration: 0.58, ease: easeOut, delay: 0.16 }}
+                  className="text-[clamp(2.3rem,7vw,3.75rem)] font-semibold leading-[0.95] tracking-tight text-white"
+                  variants={fadeUp}
                 >
                   Welcome!
                 </motion.h1>
-                
+
+                <motion.p
+                  className="mt-2 max-w-sm text-sm leading-6 text-white/90 sm:text-base"
+                  variants={fadeUp}
+                >
+                  Manage salon access with a calm, polished entry point designed for faster daily operations.
+                </motion.p>
+
                 <motion.div
-                  className="mt-8 flex flex-wrap gap-3"
+                  className="mt-8 flex flex-wrap justify-center gap-3"
                   variants={staggerChildren}
                 >
                   {['Secure access', 'Fast scheduling', 'Live updates'].map((label) => (
@@ -270,13 +297,15 @@ const Login = () => {
                   ))}
                 </motion.div>
               </motion.div>
-
-              <motion.div variants={fadeUp}>
-                <p className="mb-4 text-sm md:text-base text-white/90">Need customer booking instead?</p>
+              <motion.div
+                className="mt-10 flex flex-col items-center gap-4 text-center lg:absolute lg:bottom-10 lg:left-12 lg:mt-0 lg:items-start lg:text-left"
+                variants={fadeUp}
+              >
+                <p className="text-sm md:text-base text-white/90">Need customer booking instead?</p>
                 <motion.button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="tap-safe rounded-xl border border-white/70 px-6 py-3 text-sm font-semibold text-white hover:bg-white hover:text-[#5f74d0]"
+                  className="tap-safe rounded-xl border border-white/70 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-[#5f74d0]"
                   whileHover={shouldReduceMotion ? undefined : { y: -3, scale: 1.02 }}
                   whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
                 >
@@ -287,11 +316,11 @@ const Login = () => {
           </motion.section>
 
           <motion.section
-            className="px-4 py-7 sm:px-6 sm:py-8 lg:px-12 lg:py-14"
+            className="px-4 py-8 sm:px-6 sm:py-10 lg:px-12 lg:py-16"
             variants={panelReveal}
           >
             <motion.div
-              className="mx-auto w-full max-w-md"
+              className="mx-auto w-full max-w-md rounded-[28px] border border-white/60 bg-white/70 p-6 shadow-[0_18px_48px_rgba(58,79,133,0.08)] backdrop-blur-sm sm:p-8 lg:p-10"
               variants={staggerChildren}
             >
               <motion.div className="flex items-start gap-3" variants={fadeUp}>
@@ -301,9 +330,7 @@ const Login = () => {
                 </div>
               </motion.div>
 
-
-
-              <motion.form onSubmit={handleSubmit} className="mt-6 space-y-4" variants={staggerChildren}>
+              <motion.form onSubmit={handleSubmit} className="mt-7 space-y-4" variants={staggerChildren}>
                 <motion.div variants={fadeUp}>
                   <label className="mb-1 block text-sm font-medium text-[#5d698f]">{loginLabel}</label>
                   <div className="relative">
@@ -381,4 +408,3 @@ const Login = () => {
 }
 
 export default Login
-
