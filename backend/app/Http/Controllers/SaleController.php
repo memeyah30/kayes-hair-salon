@@ -166,6 +166,10 @@ class SaleController extends Controller
         $request->validate([
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date_format:Y-m-d'],
+            'payment_method' => ['nullable', 'string'],
+            'payment_status' => ['nullable', 'string'],
+            'appointment_status' => ['nullable', 'string'],
+            'q' => ['nullable', 'string'],
         ]);
 
         $timezone = 'Asia/Manila';
@@ -190,6 +194,30 @@ class SaleController extends Controller
 
         // Filter using Manila day boundaries converted to UTC to avoid date drift.
         $baseQuery = Sale::whereBetween('created_at', [$startUtc, $endUtc]);
+
+        // Apply filters identical to index()
+        if ($request->filled('payment_method')) {
+            $baseQuery->where('payment_method', $request->payment_method);
+        }
+
+        if ($request->filled('payment_status')) {
+            $baseQuery->where('payment_status', $request->payment_status);
+        }
+
+        if ($request->filled('appointment_status')) {
+            $baseQuery->whereHas('appointment', function($q) use ($request) {
+                $q->where('status', $request->appointment_status);
+            });
+        }
+
+        if ($request->filled('q')) {
+            $keyword = $request->q;
+            $baseQuery->where(function($q) use ($keyword) {
+                $q->where('item_name', 'like', "%{$keyword}%")
+                  ->orWhere('customer_name', 'like', "%{$keyword}%")
+                  ->orWhere('appointment_id', $keyword);
+            });
+        }
 
         // Total sales
         $totalSales = (clone $baseQuery)->sum('total_amount_cents');

@@ -1365,7 +1365,8 @@ class AppointmentController extends Controller
             // But ensure existing sales have the correct payment status
             \App\Models\Sale::where('appointment_id', $appointment->id)->update([
                 'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'partially_paid',
-                'payment_method' => $appointment->payment_method ?: 'cash'
+                'payment_method' => $appointment->payment_method ?: 'cash',
+                'created_at' => $appointment->created_at
             ]);
             return;
         }

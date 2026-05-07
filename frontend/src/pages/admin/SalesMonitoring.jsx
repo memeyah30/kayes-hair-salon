@@ -134,6 +134,10 @@ const SalesMonitoring = () => {
       const params = new URLSearchParams()
       if (dateRange.start_date) params.append('start_date', dateRange.start_date)
       if (dateRange.end_date) params.append('end_date', dateRange.end_date)
+      if (filters.payment_method) params.append('payment_method', filters.payment_method)
+      if (filters.payment_status) params.append('payment_status', filters.payment_status)
+      if (filters.appointment_status) params.append('appointment_status', filters.appointment_status)
+      if (filters.q) params.append('q', filters.q)
 
       const res = await api.get(`/sales/stats?${params.toString()}`)
       setStats(res.data)
