@@ -3864,10 +3864,10 @@ const BookAppointment = () => {
                 placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.1)).replace('PHP ', '')}`}
               />
 
-              <p className="text-xs text-[#9b857a] mt-1">
+              <p className={`text-xs mt-1 ${selectedPaymentType === 'downpayment' && (parseFloat(payment.amount) < minDownpayment || !payment.amount) ? 'text-red-500 font-medium' : 'text-[#9b857a]'}`}>
                 {selectedPaymentType === 'full'
                   ? <>Full payment selected | Remaining: {currency(0)}</>
-                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.1))} | Remaining: {currency(Math.max(0, Math.round((totalAmount - paymentAmount) * 100)))}</>}
+                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.1))} | Remaining: {currency(Math.max(0, Math.round((totalAmount - (parseFloat(payment.amount) || 0)) * 100)))}</>}
               </p>
             </div>
 
@@ -3938,6 +3938,16 @@ const BookAppointment = () => {
                 onChange={async (e) => {
                     const file = e.target.files[0]
                     if (file) {
+                      // Validate amount before allowing upload
+                      const currentAmount = parseFloat(payment.amount)
+                      if (selectedPaymentType === 'downpayment' && (isNaN(currentAmount) || currentAmount < minDownpayment)) {
+                        toast.error(`Please enter at least the minimum deposit requirement of ${currency(Math.round(totalAmountCents * 0.1))} before uploading payment proof.`, {
+                          toastId: 'min-deposit-error'
+                        })
+                        e.target.value = '' // Clear the file input
+                        return
+                      }
+
                       if (file.size > 15 * 1024 * 1024) {
                         toast.error('File size must be less than 15MB before compression')
                         return
