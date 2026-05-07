@@ -37,9 +37,9 @@ const getStatusBadgeStyle = (status) => {
   }
 }
 
-const glassPanelClass = 'rounded-[24px] border border-white/32 bg-white/76 p-4 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md animate-fadeInUp'
-const statCardClass = 'rounded-[20px] border border-white/32 bg-white/76 p-4 shadow-[0_16px_34px_rgba(59,31,114,0.12)] backdrop-blur-md animate-fadeInUp'
-const emptyStateClass = 'py-12 text-center text-[#856fb4] font-medium'
+const glassPanelClass = 'rounded-[20px] sm:rounded-[24px] border border-white/32 bg-white/76 p-3 sm:p-4 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md animate-fadeInUp'
+const statCardClass = 'rounded-[18px] sm:rounded-[20px] border border-white/32 bg-white/76 p-3 sm:p-4 shadow-[0_16px_34px_rgba(59,31,114,0.12)] backdrop-blur-md animate-fadeInUp'
+const emptyStateClass = 'py-8 sm:py-12 text-center text-[#856fb4] font-medium text-sm sm:text-base'
 
 const titleCaseStatus = (s) => {
   if (!s) return 'Unknown'
@@ -61,19 +61,19 @@ const GradientMetricCard = ({ title, value, note, icon, start, end, onClick, del
     <Wrapper
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-[22px] border border-white/18 p-4 text-left text-white shadow-[0_12px_28px_rgba(39,19,88,0.18)] transition duration-200 animate-fadeInUp ${delayClass} ${
+      className={`relative overflow-hidden rounded-[18px] sm:rounded-[22px] border border-white/18 p-3 sm:p-4 text-left text-white shadow-[0_12px_28px_rgba(39,19,88,0.18)] transition duration-200 animate-fadeInUp ${delayClass} ${
         onClick ? 'hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(39,19,88,0.22)]' : ''
       }`}
       style={{ background: `linear-gradient(135deg, ${start}, ${end})` }}
     >
       <div className="relative z-10 flex h-full flex-col justify-between">
         <div className="flex items-start justify-between gap-2">
-          <div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/85">{title}</div>
-            <div className="mt-1 text-xl font-bold leading-none">{value}</div>
-            {note && <div className="mt-1 text-[10px] opacity-75">{note}</div>}
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] font-medium uppercase tracking-[0.12em] text-white/85 truncate">{title}</div>
+            <div className="mt-1 text-lg sm:text-xl font-bold leading-none">{value}</div>
+            {note && <div className="mt-1 text-[9px] sm:text-[10px] opacity-75 truncate">{note}</div>}
           </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/16 text-white shadow-sm">
+          <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-white/16 text-white shadow-sm">
             {icon}
           </div>
         </div>

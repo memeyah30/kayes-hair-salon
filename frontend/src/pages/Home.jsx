@@ -532,7 +532,7 @@ const Home = () => {
               <div className="text-center py-16 text-[#6b5b95] text-lg">No services available in this category yet.</div>
             ) : (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                   {previewServices.map((service) => {
                   const serviceImage = service.image_url || service.image
                   const cardPrice = resolveCardPrice(service)

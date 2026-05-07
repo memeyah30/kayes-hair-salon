@@ -242,6 +242,17 @@
 
   .tap-safe {
     min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-card-padding {
+    @apply p-4 sm:p-6 md:p-8;
+  }
+
+  .responsive-container {
+    @apply px-4 sm:px-6 lg:px-8 mx-auto max-w-7xl;
   }
 }
 

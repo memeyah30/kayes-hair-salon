@@ -241,13 +241,17 @@
 
 @media (max-width: 768px) {
   .home-hero::before {
-    top: 12%;
-    left: -5rem;
+    top: 8%;
+    left: -4rem;
+    width: 20rem;
+    height: 20rem;
   }
 
   .home-hero::after {
-    right: -4.5rem;
-    bottom: 20%;
+    right: -4rem;
+    bottom: 18%;
+    width: 16rem;
+    height: 16rem;
   }
 
   .home-hero__nav-shell {

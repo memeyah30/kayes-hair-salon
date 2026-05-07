@@ -222,7 +222,7 @@ const Login = () => {
       >
         <div className="grid lg:grid-cols-[0.94fr_1.06fr]">
           <motion.section
-            className="relative isolate overflow-hidden bg-gradient-to-br from-[#7B5CF5] via-[#8B71F7] to-[#A78BFA] px-5 py-8 text-white sm:px-8 sm:py-10 lg:min-h-[720px] lg:px-12 lg:py-14"
+            className="relative isolate overflow-hidden bg-gradient-to-br from-[#7B5CF5] via-[#8B71F7] to-[#A78BFA] px-4 py-10 text-white sm:px-8 sm:py-10 lg:min-h-[720px] lg:px-12 lg:py-14"
             variants={leftPanelReveal}
           >
             {/* Inner panel decorative shapes */}
@@ -246,12 +246,12 @@ const Login = () => {
             />
 
             <motion.div
-              className="relative flex min-h-[520px] flex-col justify-center lg:min-h-[720px]"
+              className="relative flex min-h-[380px] flex-col justify-center lg:min-h-[720px]"
               variants={staggerChildren}
             >
               <motion.div className="mx-auto flex w-full max-w-md flex-col items-center text-center" variants={staggerChildren}>
                 <motion.div
-                  className="relative mb-8 flex flex-col items-center gap-4 rounded-[36px] border border-white/25 bg-white/10 px-7 py-7 shadow-[0_24px_64px_rgba(0,0,0,0.1)] backdrop-blur-md"
+                  className="relative mb-6 flex flex-col items-center gap-4 rounded-[32px] border border-white/25 bg-white/10 px-5 py-5 shadow-[0_24px_64px_rgba(0,0,0,0.1)] backdrop-blur-md sm:mb-8 sm:px-7 sm:py-7"
                   variants={fadeUp}
                   whileHover={shouldReduceMotion ? undefined : { y: -5, scale: 1.02 }}
                   transition={{ type: 'spring', stiffness: 200, damping: 15 }}
@@ -271,7 +271,7 @@ const Login = () => {
                     transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
                   >
                     <div className="absolute inset-0 rounded-full bg-[#7B5CF5]/30 blur-2xl" />
-                    <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-white p-2.5 shadow-[0_20px_40px_rgba(20,30,80,0.2)]">
+                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white p-2 sm:h-24 sm:w-24 sm:p-2.5 shadow-[0_20px_40px_rgba(20,30,80,0.2)]">
                       <img
                         src="/logo-transparent.png"
                         alt="Logo"
@@ -281,14 +281,14 @@ const Login = () => {
                     </div>
                   </motion.div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[0.75rem] font-bold uppercase tracking-[0.4em] text-white/75">Professional Care</span>
-                    <span className="text-[clamp(1.8rem,4.5vw,2.5rem)] font-bold tracking-tight text-white">Kaye&apos;s Salon</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[0.65rem] font-bold uppercase tracking-[0.4em] text-white/75 sm:text-[0.75rem]">Professional Care</span>
+                    <span className="text-[clamp(1.4rem,5vw,2.5rem)] font-bold tracking-tight text-white">Kaye&apos;s Salon</span>
                   </div>
                 </motion.div>
 
                 <motion.h1
-                  className="text-[clamp(2.5rem,7.5vw,4rem)] font-bold leading-[0.9] tracking-tight text-white"
+                  className="text-[clamp(2rem,8vw,4rem)] font-bold leading-[0.9] tracking-tight text-white"
                   variants={fadeUp}
                 >
                   Welcome!
@@ -310,14 +310,14 @@ const Login = () => {
               </motion.div>
 
               <motion.div
-                className="mt-12 flex flex-col items-center gap-5 text-center lg:absolute lg:bottom-12 lg:left-14 lg:mt-0 lg:items-start lg:text-left"
+                className="mt-8 flex flex-col items-center gap-5 text-center lg:absolute lg:bottom-12 lg:left-14 lg:mt-0 lg:items-start lg:text-left"
                 variants={fadeUp}
               >
                 <p className="text-sm font-medium text-white/85">Need customer booking instead?</p>
                 <motion.button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="tap-safe group relative overflow-hidden rounded-2xl border border-white/80 px-8 py-3.5 text-sm font-bold text-white transition-all hover:bg-white hover:text-[#7B5CF5] hover:shadow-lg"
+                  className="tap-safe group relative overflow-hidden rounded-2xl border border-white/80 px-8 py-3 text-sm font-bold text-white transition-all hover:bg-white hover:text-[#7B5CF5] hover:shadow-lg sm:py-3.5"
                   whileHover={shouldReduceMotion ? undefined : { y: -3, scale: 1.02 }}
                   whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
                 >
@@ -329,17 +329,17 @@ const Login = () => {
           </motion.section>
 
           <motion.section
-            className="flex items-center px-4 py-10 sm:px-8 sm:py-12 lg:px-14 lg:py-20"
+            className="flex items-center px-4 py-8 sm:px-8 sm:py-12 lg:px-14 lg:py-20"
             variants={panelReveal}
           >
             <motion.div
-              className="mx-auto w-full max-w-md rounded-[32px] border border-white/80 bg-white/70 p-8 shadow-[0_24px_64px_rgba(123,92,245,0.08)] backdrop-blur-md sm:p-10"
+              className="mx-auto w-full max-w-md rounded-[28px] border border-white/80 bg-white/70 p-6 shadow-[0_24px_64px_rgba(123,92,245,0.08)] backdrop-blur-md sm:rounded-[32px] sm:p-10"
               variants={staggerChildren}
             >
-              <motion.div className="flex flex-col gap-2" variants={fadeUp}>
-                <h2 className="text-[clamp(2.2rem,8vw,3.2rem)] font-bold tracking-tight text-[#2d1f4f]">Sign in</h2>
-                <div className="h-1.5 w-16 rounded-full bg-gradient-to-r from-[#7B5CF5] to-[#A78BFA]" />
-                <p className="mt-2 text-sm font-medium text-[#6b589b]">Access your administrative dashboard</p>
+              <motion.div className="flex flex-col gap-1.5" variants={fadeUp}>
+                <h2 className="text-[clamp(1.8rem,8vw,3.2rem)] font-bold tracking-tight text-[#2d1f4f]">Sign in</h2>
+                <div className="h-1 w-12 rounded-full bg-gradient-to-r from-[#7B5CF5] to-[#A78BFA] sm:h-1.5 sm:w-16" />
+                <p className="mt-1 text-xs font-medium text-[#6b589b] sm:mt-2 sm:text-sm">Access your administrative dashboard</p>
               </motion.div>
 
               <motion.form onSubmit={handleSubmit} className="mt-9 space-y-5" variants={staggerChildren}>
@@ -355,7 +355,7 @@ const Login = () => {
                     <input
                       type="text"
                       required
-                      className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-4 pl-12 pr-4 text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10"
+                      className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-4 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:text-base"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={loginPlaceholder}
@@ -375,7 +375,7 @@ const Login = () => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
-                      className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-4 pl-12 pr-12 text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10"
+                      className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-11 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:pr-12 sm:text-base"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="********"

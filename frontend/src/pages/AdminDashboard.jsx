@@ -200,20 +200,20 @@ const StatusSummaryCard = ({ title, value, accent, icon, total, onClick, delay =
       onClick={onClick}
       className={`w-full text-left transition animate-fadeInUp ${delayClass} hover:opacity-80`}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 sm:gap-1.5">
         <div
-          className="h-6 w-6 shrink-0 rounded-lg flex items-center justify-center"
+          className="h-5 w-5 sm:h-6 sm:w-6 shrink-0 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: toRgba(accent, 0.12), color: accent }}
         >
           {icon}
         </div>
-        <div className="text-[11px] font-bold text-[#322253] truncate">{title}</div>
+        <div className="text-[10px] sm:text-[11px] font-bold text-[#322253] truncate">{title}</div>
       </div>
-      <div className="mt-2 text-2xl font-bold text-[#24173f] leading-none">{value}</div>
-      <div className="mt-3 h-1.5 w-full rounded-full bg-[#eadfff]/40">
+      <div className="mt-1.5 text-lg sm:text-2xl font-bold text-[#24173f] leading-none">{value}</div>
+      <div className="mt-2.5 h-1 w-full rounded-full bg-[#eadfff]/40 sm:mt-3 sm:h-1.5">
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${percent}%`, backgroundColor: accent }} />
       </div>
-      <div className="mt-1.5 text-[10px] font-medium text-[#856fb4]">{percent}% of total</div>
+      <div className="mt-1 text-[9px] sm:text-[10px] font-medium text-[#856fb4]">{percent}% of total</div>
     </button>
   )
 }
@@ -416,12 +416,12 @@ const AdminDashboard = () => {
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
   const canAccessSales = storedUserType === 'admin'
   const canAccessServiceManagement = storedUserType === 'admin'
-  const glassPanelClass = 'rounded-[30px] border border-white/32 bg-white/76 p-4 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md animate-fadeInUp'
-  const statCardClass = 'rounded-[24px] border border-white/32 bg-white/76 p-4 shadow-[0_16px_34px_rgba(59,31,114,0.12)] backdrop-blur-md animate-fadeInUp'
-  const lightChartShellClass = 'mt-4 h-44 rounded-[24px] border border-white/36 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,236,255,0.82))] p-2'
-  const darkChartShellClass = 'mt-4 h-44 rounded-[24px] border border-white/12 bg-gradient-to-br from-[#7050d3] via-[#5d3fbd] to-[#43257f] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
-  const accentNoteClass = 'mt-3 rounded-full bg-[#f2e9ff]/90 px-4 py-2 text-sm text-[#644fa0]'
-  const emptyStateClass = 'rounded-xl border border-dashed border-[#dccdff] bg-[#f7f1ff] p-6 text-center text-sm text-[#8b77bc]'
+  const glassPanelClass = 'rounded-[24px] sm:rounded-[30px] border border-white/32 bg-white/76 p-3 sm:p-4 shadow-[0_18px_40px_rgba(59,31,114,0.14)] backdrop-blur-md animate-fadeInUp'
+  const statCardClass = 'rounded-[20px] sm:rounded-[24px] border border-white/32 bg-white/76 p-3 sm:p-4 shadow-[0_16px_34px_rgba(59,31,114,0.12)] backdrop-blur-md animate-fadeInUp'
+  const lightChartShellClass = 'mt-3 sm:mt-4 h-40 sm:h-44 rounded-[20px] sm:rounded-[24px] border border-white/36 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,236,255,0.82))] p-1 sm:p-2'
+  const darkChartShellClass = 'mt-3 sm:mt-4 h-40 sm:h-44 rounded-[20px] sm:rounded-[24px] border border-white/12 bg-gradient-to-br from-[#7050d3] via-[#5d3fbd] to-[#43257f] p-1 sm:p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
+  const accentNoteClass = 'mt-3 rounded-full bg-[#f2e9ff]/90 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm text-[#644fa0]'
+  const emptyStateClass = 'rounded-xl border border-dashed border-[#dccdff] bg-[#f7f1ff] p-4 sm:p-6 text-center text-xs sm:text-sm text-[#8b77bc]'
 
   useEffect(() => {
     loadStats()

@@ -14,11 +14,11 @@ import {
   setManageBookingVerifiedName,
 } from '../utils/customerVerification'
 
-const primaryActionButtonClass = 'tap-safe rounded-[30px] bg-[#7b5cf5] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(40,28,110,0.3)] transition hover:-translate-y-px hover:bg-[#8a6cf8] disabled:opacity-60'
-const secondaryActionButtonClass = 'tap-safe rounded-[30px] border border-[#ddd3ee] bg-white px-5 py-2.5 text-sm font-semibold text-[#5c4b68] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#cfc0ec] hover:bg-[#faf6fd]'
-const logoutActionButtonClass = 'tap-safe rounded-[30px] border border-[#efd5df] bg-white px-5 py-2.5 text-sm font-semibold text-[#a24f69] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#e8c6d2] hover:bg-[#fff5f8] disabled:opacity-60'
-const backButtonClass = 'tap-safe w-fit rounded-2xl border border-white/36 bg-white/82 px-3 py-2 text-lg font-bold text-[#654abf] shadow-[0_14px_28px_rgba(43,20,97,0.12)] hover:bg-white'
-const customerPanelClass = 'rounded-[28px] border border-white/40 bg-white/82 shadow-[0_14px_32px_rgba(59,31,114,0.12)] backdrop-blur-md'
+const primaryActionButtonClass = 'tap-safe rounded-[30px] bg-[#7b5cf5] px-4 sm:px-5 py-2 sm:py-2.5 text-[13px] sm:text-sm font-semibold text-white shadow-[0_14px_30px_rgba(40,28,110,0.3)] transition hover:-translate-y-px hover:bg-[#8a6cf8] disabled:opacity-60'
+const secondaryActionButtonClass = 'tap-safe rounded-[30px] border border-[#ddd3ee] bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-[13px] sm:text-sm font-semibold text-[#5c4b68] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#cfc0ec] hover:bg-[#faf6fd]'
+const logoutActionButtonClass = 'tap-safe rounded-[30px] border border-[#efd5df] bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-[13px] sm:text-sm font-semibold text-[#a24f69] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#e8c6d2] hover:bg-[#fff5f8] disabled:opacity-60'
+const backButtonClass = 'tap-safe w-fit rounded-2xl border border-white/36 bg-white/82 px-2.5 py-1.5 sm:px-3 sm:py-2 text-base sm:text-lg font-bold text-[#654abf] shadow-[0_14px_28px_rgba(43,20,97,0.12)] hover:bg-white'
+const customerPanelClass = 'rounded-[24px] sm:rounded-[28px] border border-white/40 bg-white/82 shadow-[0_14px_32px_rgba(59,31,114,0.12)] backdrop-blur-md'
 
 const statusClasses = {
   pending: 'bg-amber-100 text-amber-800',
@@ -421,22 +421,22 @@ const CustomerDashboard = () => {
     return (
       <div key={appointment.id} className="rounded-[24px] border border-[#eee4ff] bg-white/90 p-4 shadow-[0_10px_24px_rgba(44,19,56,0.06)]">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="flex-1">
-            <div className="font-semibold text-lg">{serviceSummary.title}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-base sm:text-lg truncate">{serviceSummary.title}</div>
             {serviceSummary.items.length > 0 && (
-              <div className="text-sm text-[#6f5b7e] mt-1">
-                <ul className="list-disc list-inside ml-2 space-y-0.5">
+              <div className="text-xs sm:text-sm text-[#6f5b7e] mt-1">
+                <ul className="list-disc list-inside ml-1 sm:ml-2 space-y-0.5">
                   {serviceSummary.items.map((item) => (
-                    <li key={`${appointment.id}-${item}`}>{item}</li>
+                    <li key={`${appointment.id}-${item}`} className="truncate">{item}</li>
                   ))}
                 </ul>
               </div>
             )}
-            <div className="text-sm text-[#6f5b7e] mt-1">
+            <div className="text-xs sm:text-sm text-[#6f5b7e] mt-1">
               {new Date(`${appointment.appointment_date}T${appointment.appointment_time}:00`).toLocaleDateString('en-US', {
-                weekday: 'long',
+                weekday: 'short',
                 year: 'numeric',
-                month: 'long',
+                month: 'short',
                 day: 'numeric',
               })}{' '}
               at{' '}
