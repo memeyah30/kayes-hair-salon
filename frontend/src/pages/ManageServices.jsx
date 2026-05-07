@@ -493,16 +493,22 @@ const ManageServices = () => {
                         <button
                           type="button"
                           onClick={() => handleEditVariant(variant)}
-                          className="rounded-lg border border-[#7B5CF5] px-3 py-1.5 text-xs font-medium text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff] shadow-sm"
+                          title="Edit Category"
                         >
-                          Edit
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteVariant(variant.id, variant.name)}
-                          className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-1.5 text-xs font-medium text-[#B91C1C] transition hover:bg-[#FEE2E2]"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0f3] text-[#B91C1C] transition hover:bg-[#ffe4e9] shadow-sm"
+                          title="Delete Category"
                         >
-                          Delete
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -690,9 +696,12 @@ const ManageServices = () => {
                     <div className="mt-4 flex items-center gap-2">
                       <button
                         onClick={() => handleEdit(s)}
-                        className="flex-1 rounded-lg border border-[#7B5CF5] bg-transparent px-3 py-2 text-sm font-medium text-[#7B5CF5] transition hover:bg-[#F6F2FF]"
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff] shadow-sm"
+                        title="Edit Service"
                       >
-                        Edit
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
                       </button>
                       <button
                         onClick={async () => {
@@ -715,9 +724,12 @@ const ManageServices = () => {
                             }
                           }
                         }}
-                        className="flex-1 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-sm font-medium text-[#B91C1C] transition hover:bg-[#FEE2E2]"
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fff0f3] text-[#B91C1C] transition hover:bg-[#ffe4e9] shadow-sm"
+                        title="Delete Service"
                       >
-                        Delete
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   </div>

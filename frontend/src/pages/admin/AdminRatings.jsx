@@ -133,7 +133,7 @@ const AdminRatings = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
+                className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
                 aria-label="Return to Dashboard"
                 title="Return to Dashboard"
               >&larr;</button>
@@ -241,10 +241,10 @@ const AdminRatings = () => {
                           <button
                             type="button"
                             onClick={() => handleDelete(rating.id)}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#fff0f3] text-[#cc6b84] transition hover:bg-[#ffe4e9]"
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0f3] text-[#cc6b84] transition hover:bg-[#ffe4e9] shadow-sm"
                             title="Delete rating"
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           </button>

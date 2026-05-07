@@ -260,7 +260,7 @@ const ManageHolidays = () => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate('/admin/dashboard')}
-                  className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-lg font-bold"
+                  className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
                   aria-label="Return to Dashboard"
                   title="Return to Dashboard"
                 >&larr;</button>
@@ -273,7 +273,7 @@ const ManageHolidays = () => {
                     setFormData(DEFAULT_HOLIDAY_FORM)
                     setShowModal(true)
                   }}
-                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#7B5CF5] text-white rounded-xl font-semibold shadow-[0_8px_20px_rgba(123,92,245,0.24)] transition hover:bg-[#6846E8] text-sm"
                 >
                   + Add Holiday
                 </button>

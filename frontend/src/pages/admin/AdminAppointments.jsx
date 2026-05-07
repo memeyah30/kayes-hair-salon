@@ -1409,22 +1409,22 @@ const AdminAppointments = () => {
                             <button
                               type="button"
                               onClick={() => setSelectedAppointment(apt)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff]"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff] shadow-sm"
                               title="View Details"
                             >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                                <circle cx="12" cy="7" r="3" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" />
                               </svg>
                             </button>
                             <button
                               type="button"
                               onClick={() => !isProcessingAction && handleDelete(apt)}
                               disabled={isProcessingAction}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#fff0f3] text-[#cc6b84] transition hover:bg-[#ffe4e9]"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0f3] text-[#cc6b84] transition hover:bg-[#ffe4e9] shadow-sm"
                               title="Delete"
                             >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
@@ -1570,10 +1570,10 @@ const AdminAppointments = () => {
                               type="button"
                               onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
                               disabled={isProcessingAction}
-                              className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#7B5CF5] text-white hover:bg-[#6846E8]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                              className={`tap-safe flex h-8 w-8 items-center justify-center rounded-full transition shadow-sm ${!isProcessingAction ? 'bg-[#DCFCE7] text-[#15803D] hover:bg-[#befad4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
                               title="Confirm Booking"
                             >
-                              {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>}
+                              {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                             </button>
                           )}
                           {normalizedStatus === 'booked' && (
@@ -1581,10 +1581,10 @@ const AdminAppointments = () => {
                               type="button"
                               onClick={() => !isProcessingAction && handleAction(apt.id, 'reject')}
                               disabled={isProcessingAction}
-                              className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#EF4444] text-white hover:bg-[#DC2626]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                              className={`tap-safe flex h-8 w-8 items-center justify-center rounded-full transition shadow-sm ${!isProcessingAction ? 'bg-[#FEE2E2] text-[#B91C1C] hover:bg-[#fecaca]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
                               title="Reject Booking"
                             >
-                              {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>}
+                              {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>}
                             </button>
                           )}
                           {normalizedStatus === 'confirmed' && (
@@ -1593,19 +1593,19 @@ const AdminAppointments = () => {
                                 type="button"
                                 onClick={() => !isProcessingAction && handleRescheduleClick(apt)}
                                 disabled={isProcessingAction}
-                                className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg border border-[#7B5CF5] text-[#7B5CF5] transition hover:bg-[#F6F2FF]`}
+                                className={`tap-safe flex h-8 w-8 items-center justify-center rounded-full bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff] shadow-sm`}
                                 title="Reschedule"
                               >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => !isProcessingAction && handleAction(apt.id, 'complete')}
                                 disabled={isProcessingAction}
-                                className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${!isProcessingAction ? 'bg-[#6846E8] text-white hover:bg-[#5B3CC4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
+                                className={`tap-safe flex h-8 w-8 items-center justify-center rounded-full transition shadow-sm ${!isProcessingAction ? 'bg-[#DCFCE7] text-[#15803D] hover:bg-[#befad4]' : 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]'}`}
                                 title="Complete"
                               >
-                                {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                                {isProcessingAction && processingAppointmentId === apt.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                               </button>
                             </>
                           )}
@@ -1613,10 +1613,10 @@ const AdminAppointments = () => {
                             type="button"
                             onClick={() => !isProcessingAction && handleDelete(apt)}
                             disabled={isProcessingAction}
-                            className={`tap-safe flex h-8 w-8 items-center justify-center rounded-lg transition ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#EF4444] text-white hover:bg-[#DC2626]'}`}
+                            className={`tap-safe flex h-8 w-8 items-center justify-center rounded-full transition shadow-sm ${isProcessingAction ? 'cursor-not-allowed bg-[#E5E7EB] text-[#9CA3AF]' : 'bg-[#FEE2E2] text-[#B91C1C] hover:bg-[#fecaca]'}`}
                             title="Delete"
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           </button>
                         </div>
                       </td>

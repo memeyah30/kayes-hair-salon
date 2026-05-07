@@ -274,20 +274,20 @@ const AdminManagers = () => {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => openEditModal(manager)}
-                            className="rounded-lg p-2 text-[#7a6794] transition hover:bg-[#EEE7FF] hover:text-[#6d4de6]"
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2efff] text-[#6d4de6] transition hover:bg-[#e6e0ff] shadow-sm"
                             title="Edit Manager"
                           >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
                           </button>
                           <button
                             onClick={() => handleDelete(manager)}
                             disabled={actionLoadingId === manager.id}
-                            className="rounded-lg p-2 text-rose-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0f3] text-rose-600 transition hover:bg-[#ffe4e9] shadow-sm disabled:opacity-50"
                             title="Delete Manager"
                           >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           </button>
