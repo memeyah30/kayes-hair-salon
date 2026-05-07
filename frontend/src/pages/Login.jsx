@@ -221,9 +221,33 @@ const Login = () => {
               variants={staggerChildren}
             >
               <motion.div variants={fadeUp}>
-               
+                <motion.div 
+                  className="mb-6 flex items-center gap-4"
+                  initial={shouldReduceMotion ? false : { opacity: 0, x: -20 }}
+                  animate={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
+                  transition={{ duration: 0.8, ease: easeOut }}
+                >
+                  <motion.div
+                    className="relative"
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ type: 'spring', stiffness: 300 }}
+                  >
+                    <div className="absolute inset-0 rounded-full bg-white/20 blur-md" />
+                    <img
+                      src="/logo-transparent.png"
+                      alt="Logo"
+                      className="relative h-16 w-16 object-contain drop-shadow-lg"
+                      onError={(e) => { e.target.src = '/logo.png' }}
+                    />
+                  </motion.div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">Professional Care</span>
+                    <span className="text-xl font-bold tracking-tight text-white">Kaye&apos;s Salon</span>
+                  </div>
+                </motion.div>
+
                 <motion.h1
-                  className="mt-6 text-[clamp(2rem,8vw,3.25rem)] font-semibold leading-none"
+                  className="text-[clamp(2rem,8vw,3.25rem)] font-semibold leading-none"
                   initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
                   animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
                   transition={{ duration: 0.58, ease: easeOut, delay: 0.16 }}
