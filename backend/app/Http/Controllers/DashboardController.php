@@ -204,7 +204,7 @@ class DashboardController extends Controller
                 'today' => $todayAppointments->count(),
                 'week' => $weekAppointments->count(),
                 'month' => $monthAppointments->count(),
-                'total' => $appointments->count(),
+                'total' => $appointments->whereIn('status', ['booked', 'confirmed', 'completed'])->count(),
             ],
             'revenue' => $canViewSales
                 ? [

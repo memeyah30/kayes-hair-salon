@@ -25,18 +25,9 @@ import Loader from './components/Loader'
 import { useState, useEffect } from 'react'
 
 const App = () => {
-  const [initialLoading, setInitialLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(false)
   const [pageLoading, setPageLoading] = useState(false)
   const location = useLocation()
-
-  useEffect(() => {
-    // Initial load timer
-    const timer = setTimeout(() => {
-      setInitialLoading(false)
-    }, 1500)
-
-    return () => clearTimeout(timer)
-  }, [])
 
   // Show loader ONLY on specific dashboard entry routes
   useEffect(() => {

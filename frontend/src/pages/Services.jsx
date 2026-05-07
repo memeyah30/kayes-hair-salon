@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import api from '../utils/api'
 import { resolveAssetUrl } from '../utils/runtime'
+import LandingFooter from '../components/LandingFooter'
 
 const AUDIENCE_OPTIONS = [
   { key: 'all', label: 'All' },
@@ -485,6 +486,7 @@ const Services = () => {
           </div>
         )}
       </section>
+      <LandingFooter />
 
       {isOptionsOpen && optionsService && (
         <div

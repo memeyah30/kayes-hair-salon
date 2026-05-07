@@ -93,6 +93,11 @@ const ManageBookingDashboard = () => {
     [appointments]
   )
 
+  const successfulAppointmentsCount = useMemo(
+    () => appointments.filter((appointment) => ['pending', 'confirmed', 'booked', 'completed'].includes(appointment.status)).length,
+    [appointments]
+  )
+
   const clearLocalSessionAndGoToStart = () => {
     clearManageBookingVerification()
     navigate('/manage-booking/start')
@@ -425,7 +430,7 @@ const ManageBookingDashboard = () => {
               }`}
             >
               <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
-              <div className="text-2xl font-bold text-emerald-700">{appointments.length}</div>
+              <div className="text-2xl font-bold text-emerald-700">{successfulAppointmentsCount}</div>
               <div className="text-sm text-[#6f5b7e] mt-2 break-all">
                 {historyAppointments.length > 0
                   ? 'Click to view booking history'

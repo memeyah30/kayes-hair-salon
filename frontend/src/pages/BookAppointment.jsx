@@ -1904,7 +1904,6 @@ const BookAppointment = () => {
     if (!payment.policyAgreed) {
       const policyErrorMessage = 'You must agree to the Non-Refundable Payment Policy before continuing.'
       setFormErrors((prev) => ({ ...prev, paymentPolicy: policyErrorMessage }))
-      toast.warn(policyErrorMessage)
       return
     }
 
@@ -2331,20 +2330,7 @@ const BookAppointment = () => {
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            {!hasManageBookingSession && (
-            <button
-              onClick={() => navigate('/customer')}
-              className="tap-safe booking-outline-btn"
-            >
-              Manage My Booking
-            </button>
-            )}
-            <button
-              onClick={() => navigate(freshBookingRoute)}
-              className="tap-safe booking-cta-pill"
-            >
-              Book Appointment
-            </button>
+            {/* Navigation buttons removed for cleaner interface */}
           </div>
         </div>
       </header>
