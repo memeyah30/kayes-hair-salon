@@ -307,6 +307,8 @@ const AdminAppointments = () => {
   const [isRejecting, setIsRejecting] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
   const [imageModalUrl, setImageModalUrl] = useState('')
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [confirmModalConfig, setConfirmModalConfig] = useState({ title: '', message: '', onConfirm: () => {} })
 
   const getStart = (appointment) => appointment.start_datetime_pht || appointment.start_datetime
   const getAppointmentServices = (appointment) =>
@@ -618,16 +620,22 @@ const AdminAppointments = () => {
     )
   }
 
-  const handleAction = async (id, action) => {
+  const handleAction = async (id, action, skipConfirm = false) => {
     if (processingAppointmentId === id) return
+
+    if (action === 'complete' && !skipConfirm) {
+      setConfirmModalConfig({
+        title: 'Complete Appointment',
+        message: 'Mark this appointment as completed? This will also mark the remaining balance as paid.',
+        onConfirm: () => handleAction(id, 'complete', true)
+      })
+      setShowConfirmModal(true)
+      return
+    }
+
     try {
       setProcessingAppointmentId(id)
       if (action === 'complete') {
-        const confirmComplete = window.confirm('Mark this appointment as completed? This will also mark the remaining balance as paid.')
-        if (!confirmComplete) {
-          setProcessingAppointmentId(null)
-          return
-        }
         const response = await api.post(`/appointments/${id}/complete`)
         if (response?.data?.id) {
           updateAppointmentInState(id, () => response.data)
@@ -751,9 +759,12 @@ const AdminAppointments = () => {
       `Date: ${new Date(getStart(apt)).toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} PHT\n\n` +
       `This action cannot be undone.`
     
-    if (window.confirm(confirmMessage)) {
-      await handleAction(apt.id, 'delete')
-    }
+    setConfirmModalConfig({
+      title: 'Delete Appointment',
+      message: confirmMessage,
+      onConfirm: () => handleAction(apt.id, 'delete', true)
+    })
+    setShowConfirmModal(true)
   }
 
   const monthKey = formatManilaDate(new Date()).slice(0, 7)
@@ -1936,6 +1947,47 @@ const AdminAppointments = () => {
           </div>
           </div>
         </>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1B1237]/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-[24px] border border-[#DDD6FE] bg-white shadow-[0_24px_48px_rgba(41,21,93,0.18)] animate-fadeInScale">
+            <div className="border-b border-[#F2EDFF] bg-[#F9F7FF] px-6 py-4">
+              <h2 className="text-lg font-bold text-[#2D1F4F]">{confirmModalConfig.title}</h2>
+            </div>
+            
+            <div className="p-6">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#5F4A8B]">
+                {confirmModalConfig.message}
+              </p>
+              
+              <div className="mt-8 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 rounded-xl border border-[#DDD6FE] py-3 text-sm font-bold text-[#6B6B6B] transition hover:bg-[#F9F7FF]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConfirmModal(false)
+                    confirmModalConfig.onConfirm()
+                  }}
+                  className={`flex-1 rounded-xl py-3 text-sm font-bold text-white transition shadow-lg ${
+                    confirmModalConfig.title.toLowerCase().includes('delete')
+                      ? 'bg-[#EF4444] hover:bg-[#DC2626] shadow-[#EF4444]/20'
+                      : 'bg-[#7B5CF5] hover:bg-[#6D4DE6] shadow-[#7B5CF5]/20'
+                  }`}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
     </AdminLayout>
