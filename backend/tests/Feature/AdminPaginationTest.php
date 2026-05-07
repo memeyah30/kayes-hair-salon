@@ -70,6 +70,49 @@ class AdminPaginationTest extends TestCase
             ->assertJsonCount(2, 'data');
     }
 
+    public function test_sales_endpoint_includes_booked_and_confirmed_appointments_with_deposits(): void
+    {
+        $admin = $this->createAdmin();
+        $service = $this->createService();
+        $today = Carbon::now('Asia/Manila')->format('Y-m-d');
+
+        $bookedAppointment = $this->createAppointment($service, [
+            'customer_name' => 'Booked Deposit Customer',
+            'customer_email' => 'booked@example.com',
+            'status' => 'booked',
+            'payment_status' => 'pending',
+            'downpayment_amount_cents' => 5000,
+        ]);
+
+        $confirmedAppointment = $this->createAppointment($service, [
+            'customer_name' => 'Confirmed Deposit Customer',
+            'customer_email' => 'confirmed@example.com',
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+            'downpayment_amount_cents' => 5000,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$today}&end_date={$today}&appointment_status=booked", ['X-User-Type' => 'admin'])
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.appointment.status', 'booked')
+            ->assertJsonPath('data.0.payment_status', 'partially_paid');
+
+        $this->actingAs($admin, 'admin')
+            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$today}&end_date={$today}&appointment_status=confirmed", ['X-User-Type' => 'admin'])
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.appointment.status', 'confirmed')
+            ->assertJsonPath('data.0.payment_status', 'partially_paid');
+
+        $this->actingAs($admin, 'admin')
+            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$today}&end_date={$today}", ['X-User-Type' => 'admin'])
+            ->assertOk()
+            ->assertJsonPath('total', 2)
+            ->assertJsonCount(2, 'data');
+    }
+
     public function test_customer_endpoint_returns_paginated_customer_summaries(): void
     {
         $admin = $this->createAdmin();

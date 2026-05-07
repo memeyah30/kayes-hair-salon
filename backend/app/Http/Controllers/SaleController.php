@@ -139,7 +139,12 @@ class SaleController extends Controller
      */
     private function syncMissingSales()
     {
-        $appointments = \App\Models\Appointment::whereIn('payment_status', ['paid', 'downpayment', 'verified'])
+        // Include bookings that already collected money, even if they are still booked or confirmed.
+        $appointments = \App\Models\Appointment::whereIn('status', ['booked', 'confirmed', 'completed'])
+            ->where(function ($query) {
+                $query->whereIn('payment_status', ['paid', 'downpayment', 'verified'])
+                    ->orWhere('downpayment_amount_cents', '>', 0);
+            })
             ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('sales')
