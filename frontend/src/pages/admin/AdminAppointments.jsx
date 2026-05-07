@@ -1301,141 +1301,60 @@ const AdminAppointments = () => {
                 return (
                   <article
                     key={apt.id}
-                    className="overflow-hidden rounded-[24px] border border-white/40 bg-white/80 p-4 shadow-[0_12px_32px_rgba(59,31,114,0.06)] backdrop-blur-sm animate-fadeInUp"
+                    className="flex items-center gap-3 rounded-2xl border border-white/40 bg-white/80 p-2.5 shadow-sm backdrop-blur-sm animate-fadeInUp cursor-pointer active:scale-[0.98] transition-transform"
+                    onClick={() => setSelectedAppointment(apt)}
                   >
-                    <div className="flex gap-3">
-                      {/* Avatar */}
-                      <div 
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[13px] font-bold shadow-sm"
-                        style={{ backgroundColor: color.bg, color: color.text }}
-                      >
-                        {initials}
-                      </div>
+                    {/* Avatar */}
+                    <div 
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold shadow-sm"
+                      style={{ backgroundColor: color.bg, color: color.text }}
+                    >
+                      {initials}
+                    </div>
 
-                      <div className="flex-1 min-w-0">
-                        {/* Top Info Grid */}
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                          <div className="min-w-0">
-                            <h3 className="truncate text-sm font-bold text-[#2d1f4f]">
-                              {apt.customer_name || 'Customer'}
-                            </h3>
-                            <p className="text-[10px] text-[#856fb4]">
-                              {apt.customer_phone || 'No phone'}
-                            </p>
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-[11px] font-bold text-[#4a3481]">{dateLabel}</div>
-                            <div className="text-[10px] text-[#856fb4]">{timeLabel}</div>
-                          </div>
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="truncate text-sm font-bold text-[#2d1f4f]">
+                            {apt.customer_name || 'Customer'}
+                          </h3>
+                          <span 
+                            className="shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider"
+                            style={statusBadgeStyle}
+                          >
+                            {normalizedStatus === 'booked' ? 'PENDING' : normalizedStatus.toUpperCase()}
+                          </span>
                         </div>
-
-                        {/* Service and Price Row */}
-                        <div className="mt-2.5 flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="text-[11px] font-extrabold uppercase tracking-tight text-[#4a3481]">
-                              {getServiceName(appointmentServices[0])}
-                            </div>
-                            {appointmentServices.length > 1 && (
-                              <div className="text-[9px] text-[#856fb4] leading-tight">+{appointmentServices.length - 1} more service</div>
-                            )}
-                            
-                            <div className="mt-1.5 flex flex-wrap gap-1">
-                              <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-tight ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
-                                {paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)}
-                              </span>
-                              {shouldShowPaymentStatusBadge(apt.payment_method, apt.payment_status, apt.status) && (
-                                <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-tight ${paymentStatusClass(apt.payment_status, apt.status, apt.payment_method)}`}>
-                                  {paymentStatusLabel(apt.payment_status, apt.status, apt.payment_method)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="text-right shrink-0">
-                            <div className="text-[10px] font-bold text-[#856fb4] leading-none mb-0.5">PHP</div>
-                            <div className="text-sm font-black text-[#5c40cc]">
-                              {currency(totalPrice).replace('PHP', '').trim()}
-                            </div>
-                            <div className="text-[9px] text-[#856fb4] leading-none mt-0.5">
-                              {appointmentServices.length > 1 ? 'Total' : 'Service price'}
-                            </div>
-                          </div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-[#856fb4] truncate">
+                          <span className="font-semibold text-[#4a3481]">{getServiceName(appointmentServices[0])}</span>
+                          <span>•</span>
+                          <span>{timeLabel}</span>
                         </div>
-
-                        {/* Rescheduled Info */}
-                        {isRescheduled && (
-                          <div className="mt-2 rounded-lg bg-[#F6F2FF] p-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="rounded px-1 py-0.5 bg-[#7B5CF5]/10 text-[#7B5CF5] text-[8px] font-bold uppercase">Rescheduled</span>
-                              <span className="text-[9px] text-[#7B5CF5] font-medium truncate">{rescheduledLabel} PHT</span>
-                            </div>
-                          </div>
-                        )}
                       </div>
+                      
+                      <div className="text-right shrink-0">
+                        <div className="text-xs font-black text-[#5c40cc]">
+                          {currency(totalPrice).replace('PHP', '').trim()}
+                        </div>
+                        <div className="flex items-center justify-end gap-1 mt-0.5">
+                          <span className={`rounded-full px-1 py-px text-[7px] font-bold uppercase ${paymentChoiceClass(apt.payment_method, apt.payment_status, apt.status)}`}>
+                            {paymentChoiceLabel(apt.payment_method, apt.payment_status, apt.status)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-                      {/* Right Status & Quick Actions */}
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        <span 
-                          className="rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider shadow-sm"
-                          style={statusBadgeStyle}
+                    <div className="shrink-0 flex gap-1">
+                      {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); !isProcessingAction && handleAction(apt.id, 'confirm') }}
+                          disabled={isProcessingAction}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7B5CF5] text-white shadow-sm"
                         >
-                          {normalizedStatus === 'booked' ? 'PENDING' : normalizedStatus.toUpperCase()}
-                        </span>
-                        {normalizedStatus === 'cancelled' && apt.rejection_reason && (
-                          <div className="text-[9px] text-[#DC2626] text-right max-w-[80px] truncate" title={apt.rejection_reason}>
-                            {apt.rejection_reason}
-                          </div>
-                        )}
-                        
-                        <div className="mt-auto flex flex-col gap-1.5">
-                          {(normalizedStatus === 'booked' || normalizedStatus === 'pending') && (
-                            <div className="flex gap-1">
-                              <button
-                                type="button"
-                                onClick={() => !isProcessingAction && handleAction(apt.id, 'confirm')}
-                                disabled={isProcessingAction}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7B5CF5] text-white shadow-sm transition hover:bg-[#6846E8]"
-                                title="Confirm"
-                              >
-                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => !isProcessingAction && handleAction(apt.id, 'reject')}
-                                disabled={isProcessingAction}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EF4444] text-white shadow-sm transition hover:bg-[#DC2626]"
-                                title="Reject"
-                              >
-                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                              </button>
-                            </div>
-                          )}
-                          <div className="flex gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedAppointment(apt)}
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff] shadow-sm"
-                              title="View Details"
-                            >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
-                                <circle cx="12" cy="7" r="3" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => !isProcessingAction && handleDelete(apt)}
-                              disabled={isProcessingAction}
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0f3] text-[#cc6b84] transition hover:bg-[#ffe4e9] shadow-sm"
-                              title="Delete"
-                            >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        </button>
+                      )}
                     </div>
                   </article>
                 )

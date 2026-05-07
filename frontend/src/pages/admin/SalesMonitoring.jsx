@@ -428,77 +428,38 @@ const SalesMonitoring = () => {
                 <div className="md:hidden space-y-4">
                   {groupedSales.map((sale) => {
                     const apt = sale.appointment
-                    const total = apt ? apt.total_amount_cents : sale.computed_total_cents
                     const paid = apt ? apt.amount_paid_cents : sale.computed_total_cents
-                    const balance = apt ? apt.remaining_balance_cents : 0
-                    const dp = apt ? (apt.downpayment_amount_cents || 0) : 0
                     const servicesLabel = sale.items.length > 1 
                       ? `${sale.items[0].item_name} + ${sale.items.length - 1} more`
                       : (sale.items[0]?.item_name || 'Service')
 
                     return (
-                      <div key={sale.id} className="rounded-2xl border border-[#DDD6FE] bg-white p-4 shadow-sm">
-                        <div className="flex items-center justify-between border-b border-[#F0EDFF] pb-3 mb-3">
-                          <div>
-                            <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Booking #{sale.appointment_id || 'N/A'}</div>
-                            <div className="text-sm font-bold text-[#2D2D2D]">{sale.customer_name}</div>
-                          </div>
-                          <button 
-                            onClick={() => { setSelectedSale(sale); setShowModal(true); }}
-                            className="text-xs font-semibold text-[#7B5CF5] hover:underline"
-                          >
-                            Details
-                          </button>
+                      <div 
+                        key={sale.id} 
+                        className="rounded-xl border border-[#F0EDFF] bg-white p-2.5 shadow-sm flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+                        onClick={() => { setSelectedSale(sale); setShowModal(true); }}
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5F3FF] text-[#7B5CF5] text-[10px] font-bold">
+                          #{sale.id}
                         </div>
                         
-                        <div className="space-y-3">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-[#6B6B6B]">Services:</span>
-                            <span className="font-medium text-right max-w-[180px]">{servicesLabel}</span>
+                        <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-bold text-[13px] text-[#2D2D2D] truncate">{sale.customer_name}</div>
+                            <div className="text-[10px] text-[#6B6B6B] truncate">{servicesLabel}</div>
                           </div>
                           
-                          <div className="rounded-xl bg-[#F9F8FF] p-3 space-y-1.5">
-                            <div className="flex justify-between text-xs">
-                              <span className="text-[#6B6B6B]">Total:</span>
-                              <span className="font-bold">{currency(total)}</span>
-                            </div>
-                            {dp > 0 && (
-                              <div className="flex justify-between text-xs">
-                                <span className="text-[#6B6B6B]">Deposit:</span>
-                                <span>{currency(dp)}</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between text-xs text-green-600">
-                              <span className="font-medium">Paid:</span>
-                              <span className="font-bold">{currency(paid)}</span>
-                            </div>
-                            {balance > 0 && (
-                              <div className="flex justify-between text-xs text-orange-600 border-t border-[#EEEBFF] pt-1.5">
-                                <span className="font-medium">Balance:</span>
-                                <span className="font-bold">{currency(balance)}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between pt-1">
-                            <div className="flex gap-2">
-                              <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
+                          <div className="text-right shrink-0">
+                            <div className="text-xs font-black text-[#5c40cc]">{currency(paid)}</div>
+                            <div className="flex items-center justify-end gap-1 mt-0.5">
+                              <span className={`rounded-full px-1.5 py-0.5 text-[7px] font-bold uppercase ${
                                 (apt?.status === 'completed' || sale.payment_status === 'paid') ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                (balance > 0 || sale.payment_status === 'downpayment') ? 'bg-[#FEF3C7] text-[#B45309]' :
+                                (apt?.remaining_balance_cents > 0 || sale.payment_status === 'downpayment') ? 'bg-[#FEF3C7] text-[#B45309]' :
                                 'bg-[#F3F4F6] text-[#6B6B6B]'
                               }`}>
-                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : (balance > 0 || sale.payment_status === 'downpayment') ? 'Partially Paid' : sale.payment_status}
-                              </span>
-                              <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
-                                apt?.status === 'completed' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                (apt?.status === 'booked' || apt?.status === 'confirmed') ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                                apt?.status === 'cancelled' ? 'bg-[#FDE8E8] text-[#9B1C1C]' :
-                                'bg-[#F3F4F6] text-[#6B6B6B]'
-                              }`}>
-                                {apt?.status || 'Completed'}
+                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : (apt?.remaining_balance_cents > 0 || sale.payment_status === 'downpayment') ? 'Partial' : sale.payment_status}
                               </span>
                             </div>
-                            <span className="text-[10px] text-[#6B6B6B]">{formatDate(sale.created_at)}</span>
                           </div>
                         </div>
                       </div>
