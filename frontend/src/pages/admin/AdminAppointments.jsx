@@ -768,12 +768,16 @@ const AdminAppointments = () => {
     appointments.forEach((apt) => {
       const aptDate = toManilaDate(getStart(apt))
       if (!range || (aptDate && aptDate >= range.start && aptDate <= range.end)) {
-        total += 1
-        if (apt.status === 'completed') {
+        const status = (apt.status || '').toLowerCase()
+        if (['pending', 'booked', 'confirmed', 'completed'].includes(status)) {
+          total += 1
+        }
+        
+        if (status === 'completed') {
           completed += 1
           revenueCents += getAppointmentTotalPriceCents(apt)
         }
-        if (apt.status === 'booked' || apt.status === 'confirmed') {
+        if (status === 'booked' || status === 'confirmed' || status === 'pending') {
           pending += 1
         }
       }

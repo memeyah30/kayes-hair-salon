@@ -81,7 +81,8 @@ class DashboardController extends Controller
             return Carbon::parse($value, 'UTC')->setTimezone($timezone);
         };
 
-        $appointments = Appointment::with(['service.variants', 'services.variants'])->get();
+        $appointments = Appointment::with(['service', 'services'])->get();
+        $appointments->load(['service.variants', 'services.variants']);
         
         $todayAppointments = $appointments->filter(function ($apt) use ($toManila, $todayStart, $todayEnd) {
             $start = $toManila($apt->start_datetime);
@@ -203,8 +204,8 @@ class DashboardController extends Controller
             'appointments' => [
                 'today' => $todayAppointments->count(),
                 'week' => $weekAppointments->count(),
-                'month' => $monthAppointments->count(),
-                'total' => $appointments->whereIn('status', ['booked', 'confirmed', 'completed'])->count(),
+                'month' => $monthAppointments->whereIn('status', ['pending', 'booked', 'confirmed', 'completed'])->count(),
+                'total' => $appointments->whereIn('status', ['pending', 'booked', 'confirmed', 'completed'])->count(),
             ],
             'revenue' => $canViewSales
                 ? [
@@ -239,10 +240,11 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Customer OTP authentication is required.'], 401);
         }
 
-        $query = Appointment::with(['service', 'services.variants'])
+        $query = Appointment::with(['service', 'services'])
             ->whereRaw('LOWER(TRIM(customer_email)) = ?', [$email]);
-
+        
         $appointments = $query->orderBy('start_datetime', 'asc')->get();
+        $appointments->load(['service.variants', 'services.variants']);
         $appointmentIds = $appointments->pluck('id');
 
         $appointmentRatingsById = AppointmentRating::query()

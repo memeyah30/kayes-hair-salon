@@ -392,7 +392,7 @@ const Services = () => {
 
   return (
     <div className="min-h-screen bg-[#f4edff] px-4 md:px-8 py-10">
-      <section className="max-w-7xl mx-auto">
+      <section className="max-w-7xl mx-auto min-h-[70vh]">
         <div className="flex items-center gap-2 mb-6">
           <button
             onClick={() => navigate('/')}
@@ -486,7 +486,7 @@ const Services = () => {
           </div>
         )}
       </section>
-      <LandingFooter />
+      {!loading && <LandingFooter />}
 
       {isOptionsOpen && optionsService && (
         <div
