@@ -305,6 +305,7 @@ const SalesMonitoring = () => {
                   <option value="">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="verified">Verified</option>
+                  <option value="partially_paid">Partially Paid</option>
                   <option value="paid">Paid</option>
                   <option value="rejected">Rejected</option>
                 </select>

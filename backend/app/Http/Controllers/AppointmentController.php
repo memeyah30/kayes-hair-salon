@@ -1364,7 +1364,7 @@ class AppointmentController extends Controller
         if (\App\Models\Sale::where('appointment_id', $appointment->id)->exists()) {
             // But ensure existing sales have the correct payment status
             \App\Models\Sale::where('appointment_id', $appointment->id)->update([
-                'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'pending',
+                'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'partially_paid',
                 'payment_method' => $appointment->payment_method ?: 'cash'
             ]);
             return;
@@ -1390,10 +1390,11 @@ class AppointmentController extends Controller
                 'unit_price_cents' => $priceCents,
                 'total_amount_cents' => $priceCents,
                 'payment_method' => $appointment->payment_method ?: 'cash',
-                'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'pending',
+                'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'partially_paid',
                 'customer_name' => $appointment->customer_name,
                 'customer_phone' => $appointment->customer_phone,
                 'notes' => 'Recorded from booking payment/confirmation',
+                'created_at' => $appointment->created_at,
             ]);
         }
     }

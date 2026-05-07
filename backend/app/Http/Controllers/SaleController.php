@@ -95,7 +95,7 @@ class SaleController extends Controller
             'quantity' => 'required|integer|min:1',
             'unit_price_cents' => 'required|integer|min:0',
             'payment_method' => 'required|in:cash,gcash,paymaya,card,other',
-            'payment_status' => 'nullable|in:pending,paid,refunded',
+            'payment_status' => 'nullable|in:pending,paid,refunded,partially_paid,downpayment',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
@@ -120,7 +120,7 @@ class SaleController extends Controller
     public function update(Request $request, Sale $sale)
     {
         $data = $request->validate([
-            'payment_status' => 'sometimes|in:pending,paid,refunded',
+            'payment_status' => 'sometimes|in:pending,paid,refunded,partially_paid,downpayment',
             'notes' => 'nullable|string',
         ]);
 
