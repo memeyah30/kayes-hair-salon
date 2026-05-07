@@ -26,19 +26,54 @@ import { useState, useEffect } from 'react'
 
 const App = () => {
   const [initialLoading, setInitialLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(false)
+  const [apiLoading, setApiLoading] = useState(false)
+  const location = useLocation()
 
   useEffect(() => {
     // Initial load timer
     const timer = setTimeout(() => {
       setInitialLoading(false)
-    }, 350)
+    }, 1500)
+
+    // Global API loading listener with debounce to prevent flickering
+    let loadingTimer
+    const handleStart = () => {
+      clearTimeout(loadingTimer)
+      loadingTimer = setTimeout(() => {
+        setApiLoading(true)
+      }, 400) // Only show if loading takes more than 400ms
+    }
+
+    const handleFinish = () => {
+      clearTimeout(loadingTimer)
+      setApiLoading(false)
+    }
+
+    window.addEventListener('global-loading-start', handleStart)
+    window.addEventListener('global-loading-finish', handleFinish)
+
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(loadingTimer)
+      window.removeEventListener('global-loading-start', handleStart)
+      window.removeEventListener('global-loading-finish', handleFinish)
+    }
+  }, [])
+
+  // Show loader on route change
+  useEffect(() => {
+    setPageLoading(true)
+    const timer = setTimeout(() => {
+      setPageLoading(false)
+    }, 800) // Brief loader for page transitions
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [location.pathname])
 
   return (
     <>
-      <Loader isLoading={initialLoading} />
+      <Loader isLoading={initialLoading || pageLoading || apiLoading} />
       <ScrollToTop />
       <Routes>
         {/* Public landing page */}
