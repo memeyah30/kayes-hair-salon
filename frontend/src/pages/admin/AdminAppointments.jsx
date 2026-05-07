@@ -61,12 +61,12 @@ const GradientMetricCard = ({ title, value, note, icon, start, end, onClick, del
     <Wrapper
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-[18px] sm:rounded-[22px] border border-white/18 p-3 sm:p-4 text-left text-white shadow-[0_12px_28px_rgba(39,19,88,0.18)] transition duration-200 animate-fadeInUp ${delayClass} ${
+      className={`relative h-full w-full overflow-hidden rounded-[18px] sm:rounded-[22px] border border-white/18 p-3 sm:p-4 text-left text-white shadow-[0_12px_28px_rgba(39,19,88,0.18)] transition duration-200 animate-fadeInUp ${delayClass} ${
         onClick ? 'hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(39,19,88,0.22)]' : ''
       }`}
       style={{ background: `linear-gradient(135deg, ${start}, ${end})` }}
     >
-      <div className="relative z-10 flex h-full flex-col justify-between">
+      <div className="relative z-10 flex h-full min-h-[104px] flex-col justify-between">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="text-[9px] sm:text-[10px] font-medium uppercase tracking-[0.12em] text-white/85 truncate">{title}</div>
@@ -1082,7 +1082,7 @@ const AdminAppointments = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${canAccessSales ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} items-stretch`}>
               <GradientMetricCard
                 title={`Total ${tableDateWindow ? 'in Period' : 'All Time'}`}
                 value={monthlyStats.total}
@@ -1995,4 +1995,3 @@ const AdminAppointments = () => {
 }
 
 export default AdminAppointments
-
