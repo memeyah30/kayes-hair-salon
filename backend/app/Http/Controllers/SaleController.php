@@ -54,9 +54,7 @@ class SaleController extends Controller
         }
 
         // Filter by payment status
-        if ($request->filled('payment_status')) {
-            $query->where('payment_status', $request->payment_status);
-        }
+        $this->applyPaymentStatusFilter($query, $request->payment_status ?? null);
 
         // Filter by appointment status
         if ($request->filled('appointment_status')) {
@@ -205,9 +203,7 @@ class SaleController extends Controller
             $baseQuery->where('payment_method', $request->payment_method);
         }
 
-        if ($request->filled('payment_status')) {
-            $baseQuery->where('payment_status', $request->payment_status);
-        }
+        $this->applyPaymentStatusFilter($baseQuery, $request->payment_status ?? null);
 
         if ($request->filled('appointment_status')) {
             $baseQuery->whereHas('appointment', function($q) use ($request) {
@@ -340,9 +336,7 @@ class SaleController extends Controller
         }
 
         // Filter by payment status
-        if ($request->filled('payment_status')) {
-            $query->where('payment_status', $request->payment_status);
-        }
+        $this->applyPaymentStatusFilter($query, $request->payment_status ?? null);
 
         // Filter by appointment status
         if ($request->filled('appointment_status')) {
@@ -431,5 +425,21 @@ class SaleController extends Controller
         $filename = 'sales_report_' . $startUtc->setTimezone($timezone)->format('Ymd') . '_to_' . $endUtc->setTimezone($timezone)->format('Ymd') . '.pdf';
         
         return $pdf->download($filename);
+    }
+
+    private function applyPaymentStatusFilter($query, ?string $paymentStatus): void
+    {
+        $status = strtolower(trim((string) $paymentStatus));
+
+        if ($status === '') {
+            return;
+        }
+
+        if (in_array($status, ['downpayment', 'partially_paid'], true)) {
+            $query->whereIn('payment_status', ['downpayment', 'partially_paid']);
+            return;
+        }
+
+        $query->where('payment_status', $status);
     }
 }

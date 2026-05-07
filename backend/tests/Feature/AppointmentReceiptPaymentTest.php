@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\AppointmentController;
 use App\Models\Appointment;
+use App\Models\Sale;
 use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,6 +65,40 @@ class AppointmentReceiptPaymentTest extends TestCase
         ])
             ->assertStatus(422)
             ->assertJsonPath('errors.downpayment_amount_cents.0', 'Amount paid cannot be greater than the total amount.');
+    }
+
+    public function test_record_sales_normalizes_booking_payment_fields_for_sales_storage(): void
+    {
+        $service = $this->createService(120000);
+        $start = Carbon::tomorrow('Asia/Manila')->setTime(14, 0);
+        $end = $start->copy()->addMinutes(30);
+
+        $appointment = Appointment::create([
+            'stylist_id' => null,
+            'service_id' => $service->id,
+            'customer_name' => 'Sale Mapping Customer',
+            'customer_email' => 'sales-mapping@example.com',
+            'customer_phone' => '09123456789',
+            'payment_method' => 'online',
+            'payment_status' => 'downpayment',
+            'downpayment_amount_cents' => 50000,
+            'total_amount_cents' => 120000,
+            'start_datetime' => $start->copy()->setTimezone('UTC'),
+            'end_datetime' => $end->copy()->setTimezone('UTC'),
+            'status' => 'confirmed',
+        ]);
+
+        $appointment->services()->attach($service->id, ['service_variant_id' => null]);
+
+        app(AppointmentController::class)->recordSales(
+            $appointment->fresh()->load(['service', 'services.variants'])
+        );
+
+        $sale = Sale::query()->where('appointment_id', $appointment->id)->first();
+
+        $this->assertNotNull($sale);
+        $this->assertSame('gcash', $sale->payment_method);
+        $this->assertSame('downpayment', $sale->payment_status);
     }
 
     private function createService(int $priceCents = 10000): Service

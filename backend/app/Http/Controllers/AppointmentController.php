@@ -713,7 +713,7 @@ class AppointmentController extends Controller
 
                 // Refresh appointment to get updated status
                 $appointment->refresh();
-                $this->recordSales($appointment);
+                $this->recordSales($appointment, $salePaymentMethod, $newPaymentStatus);
 
 
             });
@@ -1358,14 +1358,17 @@ class AppointmentController extends Controller
      * Record sales for each service in an appointment.
      * Only records if sales have not been previously recorded for this appointment.
      */
-    public function recordSales($appointment)
+    public function recordSales($appointment, ?string $paymentMethod = null, ?string $paymentStatus = null)
     {
+        $salePaymentMethod = $this->normalizeSalePaymentMethod($paymentMethod ?? $appointment->payment_method ?? null);
+        $salePaymentStatus = $this->normalizeSalePaymentStatus($paymentStatus ?? $appointment->payment_status ?? null, $appointment);
+
         // Skip if already recorded
         if (\App\Models\Sale::where('appointment_id', $appointment->id)->exists()) {
             // But ensure existing sales have the correct payment status
             \App\Models\Sale::where('appointment_id', $appointment->id)->update([
-                'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'partially_paid',
-                'payment_method' => $appointment->payment_method ?: 'cash',
+                'payment_status' => $salePaymentStatus,
+                'payment_method' => $salePaymentMethod,
                 'created_at' => $appointment->created_at
             ]);
             return;
@@ -1406,13 +1409,41 @@ class AppointmentController extends Controller
                 'quantity' => 1,
                 'unit_price_cents' => $priceCents,
                 'total_amount_cents' => $priceCents,
-                'payment_method' => $appointment->payment_method ?: 'cash',
-                'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'partially_paid',
+                'payment_method' => $salePaymentMethod,
+                'payment_status' => $salePaymentStatus,
                 'customer_name' => $appointment->customer_name,
                 'customer_phone' => $appointment->customer_phone,
                 'notes' => 'Recorded from booking payment/confirmation',
                 'created_at' => $appointment->created_at,
             ]);
         }
+    }
+
+    private function normalizeSalePaymentMethod(?string $paymentMethod): string
+    {
+        return match (strtolower(trim((string) $paymentMethod))) {
+            'online', 'gcash' => 'gcash',
+            'on_hand', 'cash' => 'cash',
+            'paymaya' => 'paymaya',
+            'card' => 'card',
+            'other' => 'other',
+            default => 'cash',
+        };
+    }
+
+    private function normalizeSalePaymentStatus(?string $paymentStatus, ?Appointment $appointment = null): string
+    {
+        $normalizedStatus = strtolower(trim((string) $paymentStatus));
+
+        return match ($normalizedStatus) {
+            'paid' => 'paid',
+            'downpayment', 'partially_paid', 'verified' => 'downpayment',
+            'pending' => ($appointment && (int) ($appointment->downpayment_amount_cents ?? 0) > 0)
+                ? 'downpayment'
+                : 'pending',
+            default => ($appointment && (int) ($appointment->downpayment_amount_cents ?? 0) > 0)
+                ? 'downpayment'
+                : 'pending',
+        };
     }
 }
