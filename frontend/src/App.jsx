@@ -27,7 +27,6 @@ import { useState, useEffect } from 'react'
 const App = () => {
   const [initialLoading, setInitialLoading] = useState(true)
   const [pageLoading, setPageLoading] = useState(false)
-  const [apiLoading, setApiLoading] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -36,44 +35,24 @@ const App = () => {
       setInitialLoading(false)
     }, 1500)
 
-    // Global API loading listener with debounce to prevent flickering
-    let loadingTimer
-    const handleStart = () => {
-      clearTimeout(loadingTimer)
-      loadingTimer = setTimeout(() => {
-        setApiLoading(true)
-      }, 400) // Only show if loading takes more than 400ms
-    }
-
-    const handleFinish = () => {
-      clearTimeout(loadingTimer)
-      setApiLoading(false)
-    }
-
-    window.addEventListener('global-loading-start', handleStart)
-    window.addEventListener('global-loading-finish', handleFinish)
-
-    return () => {
-      clearTimeout(timer)
-      clearTimeout(loadingTimer)
-      window.removeEventListener('global-loading-start', handleStart)
-      window.removeEventListener('global-loading-finish', handleFinish)
-    }
+    return () => clearTimeout(timer)
   }, [])
 
-  // Show loader on route change
+  // Show loader ONLY on specific dashboard entry routes
   useEffect(() => {
-    setPageLoading(true)
-    const timer = setTimeout(() => {
-      setPageLoading(false)
-    }, 800) // Brief loader for page transitions
-
-    return () => clearTimeout(timer)
+    const dashboardPaths = ['/admin/dashboard', '/customer', '/customer/dashboard']
+    if (dashboardPaths.includes(location.pathname)) {
+      setPageLoading(true)
+      const timer = setTimeout(() => {
+        setPageLoading(false)
+      }, 1000) // Branded entry feel for dashboards
+      return () => clearTimeout(timer)
+    }
   }, [location.pathname])
 
   return (
     <>
-      <Loader isLoading={initialLoading || pageLoading || apiLoading} />
+      <Loader isLoading={initialLoading || pageLoading} />
       <ScrollToTop />
       <Routes>
         {/* Public landing page */}

@@ -44,11 +44,9 @@ const getCsrfToken = async () => {
 
 // Add CSRF token to all requests
 api.interceptors.request.use(async (config) => {
-  window.dispatchEvent(new CustomEvent('global-loading-start'))
   if (config.url) {
     config.url = normalizeApiPath(config.url)
   }
-
   const currentUserType = localStorage.getItem('userType')
   if (currentUserType && !config.headers['X-User-Type']) {
     config.headers['X-User-Type'] = currentUserType
@@ -76,11 +74,9 @@ api.interceptors.request.use(async (config) => {
 // Handle errors
 api.interceptors.response.use(
   (response) => {
-    window.dispatchEvent(new CustomEvent('global-loading-finish'))
     return response
   },
   async (error) => {
-    window.dispatchEvent(new CustomEvent('global-loading-finish'))
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || ''
       const isSessionProbe = requestUrl.includes('/me')
