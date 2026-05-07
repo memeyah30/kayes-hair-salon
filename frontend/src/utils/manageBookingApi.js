@@ -1,16 +1,20 @@
 import axios from 'axios'
-import { resolveApiBaseUrl } from './apiConfig'
+import { normalizeApiPath } from './apiConfig'
 
 export const CUSTOMER_BOOKING_TOKEN_KEY = 'customer_manage_booking_token'
 export const CUSTOMER_BOOKING_EMAIL_KEY = 'customer_manage_booking_email'
 export const CUSTOMER_BOOKING_PENDING_EMAIL_KEY = 'customer_manage_booking_pending_email'
 
 const manageBookingApi = axios.create({
-  baseURL: resolveApiBaseUrl({ withApiPrefix: true }),
+  baseURL: '',
   withCredentials: true,
 })
 
 manageBookingApi.interceptors.request.use((config) => {
+  if (config.url) {
+    config.url = normalizeApiPath(config.url)
+  }
+
   const token = localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY)
   const email = localStorage.getItem(CUSTOMER_BOOKING_EMAIL_KEY)
 

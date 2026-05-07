@@ -22,41 +22,45 @@ use App\Http\Controllers\Admin\StaffApprovalController;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/test', function () {
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Laravel API is working'
-    ]);
-});
-
-Route::get('/health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'message' => 'Laravel API is running'
-    ]);
-});
-
-// Public routes
-Route::get('/services', [ServiceController::class, 'index']);
-Route::get('/stylists', function () {
-    return response()->json([]);
-});
-Route::get('/stylists/by-services', function () {
-    return response()->json([]);
-});
-Route::get('/appointments/availability', [AppointmentController::class, 'availability']);
-Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
-Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
-Route::get('/appointments/{appointment}/receipt', [AppointmentController::class, 'receipt']); // Public receipt
-Route::get('/holidays/calendar', [HolidayController::class, 'calendar']); // Calendar closed dates
-Route::get('/holidays/check', [HolidayController::class, 'checkDate']); // Check if date is holiday
-Route::get('/payment-accounts', [PaymentAccountController::class, 'index']); // Public payment accounts
-Route::get('/locations', [LocationController::class, 'index']); // Public locations
-
-Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public - customers can rate
-Route::get('/public/ratings', [CustomerRatingController::class, 'publicIndex']); // Public - reviews for homepage
-
 Route::middleware(StartSession::class)->group(function () {
+    Route::get('/test', function () {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Laravel API is working'
+        ]);
+    });
+
+    Route::get('/health', function () {
+        return response()->json([
+            'status' => 'ok',
+            'message' => 'Laravel API is running'
+        ]);
+    });
+
+    Route::get('/csrf-token', function () {
+        return response()->json(['csrf_token' => csrf_token()]);
+    });
+
+    // Public routes
+    Route::get('/services', [ServiceController::class, 'index']);
+    Route::get('/stylists', function () {
+        return response()->json([]);
+    });
+    Route::get('/stylists/by-services', function () {
+        return response()->json([]);
+    });
+    Route::get('/appointments/availability', [AppointmentController::class, 'availability']);
+    Route::post('/appointments', [AppointmentController::class, 'store']); // Public booking
+    Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']); // Public view (for receipt)
+    Route::get('/appointments/{appointment}/receipt', [AppointmentController::class, 'receipt']); // Public receipt
+    Route::get('/holidays/calendar', [HolidayController::class, 'calendar']); // Calendar closed dates
+    Route::get('/holidays/check', [HolidayController::class, 'checkDate']); // Check if date is holiday
+    Route::get('/payment-accounts', [PaymentAccountController::class, 'index']); // Public payment accounts
+    Route::get('/locations', [LocationController::class, 'index']); // Public locations
+
+    Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public - customers can rate
+    Route::get('/public/ratings', [CustomerRatingController::class, 'publicIndex']); // Public - reviews for homepage
+
     // Customer manage-booking OTP routes
     Route::post('/manage-booking/send-otp', [ManageBookingController::class, 'sendOtp']);
     Route::post('/manage-booking/verify-otp', [ManageBookingController::class, 'verifyOtp']);
@@ -78,8 +82,6 @@ Route::middleware(StartSession::class)->group(function () {
         Route::post('/manage-booking/appointments/{id}/cancel', [ManageBookingController::class, 'cancel']);
         Route::post('/manage-booking/appointments/{id}/rate', [ManageBookingController::class, 'rate']);
     });
-});
-
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth.any');
@@ -187,3 +189,4 @@ Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerSt
 Route::get('/debug-proofs', function () { return response()->json(['storage_path' => storage_path('app/public/payment-proofs'), 'exists' => is_dir(storage_path('app/public/payment-proofs')), 'files' => is_dir(storage_path('app/public/payment-proofs')) ? scandir(storage_path('app/public/payment-proofs')) : [], 'public_storage_symlink_exists' => is_link(public_path('storage')), 'public_storage_target' => is_link(public_path('storage')) ? readlink(public_path('storage')) : null]); });
 
 Route::get('/debug-appt', function () { return response()->json(App\Models\Appointment::orderBy('id', 'desc')->first()); });
+});

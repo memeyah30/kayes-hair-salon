@@ -1,10 +1,8 @@
 import axios from 'axios'
-import { resolveApiBaseUrl } from './apiConfig'
-
-const baseURL = resolveApiBaseUrl()
+import { normalizeApiPath } from './apiConfig'
 
 const api = axios.create({
-  baseURL,
+  baseURL: '',
   withCredentials: true, // Important for session-based auth
 })
 
@@ -29,9 +27,7 @@ const getCsrfToken = async () => {
   }
   
   // Fetch new token
-  const csrfBaseURL = resolveApiBaseUrl()
-  
-  csrfTokenPromise = axios.get(`${csrfBaseURL}/csrf-token`, {
+  csrfTokenPromise = axios.get(normalizeApiPath('/csrf-token'), {
     withCredentials: true
   }).then(response => {
     csrfToken = response.data.csrf_token
@@ -48,6 +44,10 @@ const getCsrfToken = async () => {
 
 // Add CSRF token to all requests
 api.interceptors.request.use(async (config) => {
+  if (config.url) {
+    config.url = normalizeApiPath(config.url)
+  }
+
   const currentUserType = localStorage.getItem('userType')
   if (currentUserType && !config.headers['X-User-Type']) {
     config.headers['X-User-Type'] = currentUserType

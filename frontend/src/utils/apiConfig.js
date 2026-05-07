@@ -4,6 +4,28 @@ const stripApiSuffix = (value) => trimTrailingSlashes(value).replace(/\/api$/i, 
 
 const getConfiguredApiUrl = () => trimTrailingSlashes(import.meta.env.VITE_API_URL || '')
 
+export const normalizeApiPath = (path) => {
+  const value = String(path || '')
+
+  if (!value) {
+    return '/api'
+  }
+
+  if (/^[a-z][a-z\d+\-.]*:\/\//i.test(value) || value.startsWith('//')) {
+    return value
+  }
+
+  if (value === '/api' || value.startsWith('/api/')) {
+    return value
+  }
+
+  if (value.startsWith('/')) {
+    return `/api${value}`
+  }
+
+  return `/api/${value}`
+}
+
 export const resolveApiOrigin = () => {
   const configured = getConfiguredApiUrl()
 
