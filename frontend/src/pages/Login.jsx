@@ -125,7 +125,7 @@ const Login = () => {
         email,
         password,
       })
-      
+
       // Persistent auth - use localStorage so it survives page reloads reliably.
       const serializedUser = JSON.stringify(res.data.user)
       localStorage.setItem('user', serializedUser)
@@ -138,18 +138,18 @@ const Login = () => {
       }
 
       toast.success(`Welcome, ${res.data.user.name}!`)
-      
+
       // Determine redirect path
       const redirectPath = '/admin/dashboard'
-      
+
       console.log('Login successful, redirecting to:', redirectPath)
       console.log('User type:', res.data.type)
       console.log('User data stored in localStorage')
-      
+
       // Check if we're on Vite dev server (localhost:5173) or Laravel (localhost:8000 or 127.0.0.1:8000)
       const currentOrigin = window.location.origin
       const isDevServer = currentOrigin.includes(':5173')
-      
+
       // If on dev server, redirect to Laravel backend
       // Preserve the hostname (localhost or 127.0.0.1) to maintain cookie domain consistency
       // Otherwise, use relative path (will stay on same origin)
@@ -157,11 +157,11 @@ const Login = () => {
       if (isDevServer) {
         finalRedirectPath = `${resolveBackendOrigin()}${redirectPath}`
       }
-      
+
       console.log('Current origin:', currentOrigin)
       console.log('Is dev server:', isDevServer)
       console.log('Final redirect path:', finalRedirectPath)
-      
+
       // Force a full page reload to ensure session cookie is properly set and recognized
       // This is necessary for session-based authentication to work correctly
       // Use immediate redirect - localStorage is already set, ProtectedRoute will allow access
@@ -189,7 +189,7 @@ const Login = () => {
       {/* Dynamic Background Elements */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <motion.div
-          animate={shouldReduceMotion ? undefined : { 
+          animate={shouldReduceMotion ? undefined : {
             scale: [1, 1.2, 1],
             x: [0, 40, 0],
             y: [0, -30, 0]
@@ -198,7 +198,7 @@ const Login = () => {
           className="absolute -left-[10%] -top-[10%] h-[500px] w-[500px] rounded-full bg-[#e4d6fd]/40 blur-[80px]"
         />
         <motion.div
-          animate={shouldReduceMotion ? undefined : { 
+          animate={shouldReduceMotion ? undefined : {
             scale: [1, 1.1, 1],
             x: [0, -50, 0],
             y: [0, 60, 0]
@@ -207,7 +207,7 @@ const Login = () => {
           className="absolute -bottom-[15%] -right-[5%] h-[600px] w-[600px] rounded-full bg-[#7B5CF5]/10 blur-[100px]"
         />
         <motion.div
-          animate={shouldReduceMotion ? undefined : { 
+          animate={shouldReduceMotion ? undefined : {
             scale: [1, 1.3, 1],
             rotate: [0, 45, 0]
           }}
@@ -229,7 +229,7 @@ const Login = () => {
             <motion.div
               aria-hidden="true"
               className="absolute -right-20 top-10 h-64 w-64 rounded-full bg-white/10 blur-md"
-              animate={shouldReduceMotion ? undefined : { 
+              animate={shouldReduceMotion ? undefined : {
                 scale: [1, 1.1, 1],
                 rotate: [0, 90, 0]
               }}
@@ -238,7 +238,7 @@ const Login = () => {
             <motion.div
               aria-hidden="true"
               className="absolute bottom-[-5rem] left-[-4rem] h-80 w-80 rounded-full bg-white/5 blur-xl"
-              animate={shouldReduceMotion ? undefined : { 
+              animate={shouldReduceMotion ? undefined : {
                 y: [0, -20, 0],
                 x: [0, 15, 0]
               }}
@@ -261,10 +261,10 @@ const Login = () => {
                     animate={shouldReduceMotion ? undefined : { opacity: [0.4, 0.9, 0.4] }}
                     transition={{ duration: 3.5, repeat: Infinity }}
                   />
-                  
+
                   <motion.div
                     className="relative"
-                    animate={shouldReduceMotion ? undefined : { 
+                    animate={shouldReduceMotion ? undefined : {
                       y: [0, -8, 0],
                       scale: [1, 1.03, 1]
                     }}
@@ -305,15 +305,7 @@ const Login = () => {
                   className="mt-10 flex flex-wrap justify-center gap-3.5"
                   variants={staggerChildren}
                 >
-                  {['Secure access', 'Fast scheduling', 'Live updates'].map((label) => (
-                    <motion.span
-                      key={label}
-                      variants={fadeUp}
-                      className="inline-flex items-center rounded-full border border-white/30 bg-white/15 px-4 py-2 text-[0.75rem] font-semibold tracking-wide text-white backdrop-blur-sm shadow-sm"
-                    >
-                      {label}
-                    </motion.span>
-                  ))}
+
                 </motion.div>
               </motion.div>
 
