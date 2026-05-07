@@ -39,13 +39,20 @@ const resolveImageUrl = (imagePath) => {
 }
 
 const Navbar = ({
+  userType: propUserType,
   title = 'Dashboard',
   hideUserBadge = false,
   onMenuClick,
   userBadgeName = '',
   userBadgeSubtitle = '',
 }) => {
-  const [userType, setUserType] = useState(getStoredUserType)
+  const [userType, setUserType] = useState(propUserType || getStoredUserType)
+
+  useEffect(() => {
+    if (propUserType) {
+      setUserType(propUserType)
+    }
+  }, [propUserType])
   const [user, setUser] = useState(parseStoredUser)
   const [menuOpen, setMenuOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
