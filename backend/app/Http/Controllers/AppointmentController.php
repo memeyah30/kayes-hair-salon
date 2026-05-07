@@ -1371,16 +1371,32 @@ class AppointmentController extends Controller
             return;
         }
 
-        $appointmentServices = $appointment->services()->with('pivot.variant')->get();
+        // Ensure services are loaded with their variants
+        if (!$appointment->relationLoaded('services')) {
+            $appointment->load(['services.variants', 'service.variants']);
+        }
+
+        $appointmentServices = $appointment->services;
         if ($appointmentServices->isEmpty() && $appointment->service) {
             $appointmentServices = collect([$appointment->service]);
         }
 
         foreach ($appointmentServices as $service) {
-            $variant = $service->pivot && $service->pivot->service_variant_id 
-                ? \App\Models\ServiceVariant::find($service->pivot->service_variant_id) 
-                : null;
+            $variantId = null;
+            if (isset($service->pivot)) {
+                $variantId = $service->pivot->service_variant_id;
+            }
+
+            $variant = null;
+            if ($variantId && $service->relationLoaded('variants')) {
+                $variant = $service->variants->firstWhere('id', $variantId);
+            }
             
+            // Fallback to manual find if not in preloaded variants
+            if ($variantId && !$variant) {
+                $variant = \App\Models\ServiceVariant::find($variantId);
+            }
+
             $priceCents = $variant ? $variant->price_cents : $service->price_cents;
             
             \App\Models\Sale::create([

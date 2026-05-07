@@ -28,7 +28,12 @@ class DashboardController extends Controller
             return 0;
         }
 
-        $variantId = $service->pivot?->service_variant_id;
+        $variantId = null;
+        // The 'pivot' property only exists if the model was loaded via a belongsToMany relationship.
+        if ($service->relationLoaded('pivot') || isset($service->pivot)) {
+            $variantId = $service->pivot->service_variant_id ?? null;
+        }
+
         if ($variantId && $service->relationLoaded('variants') && $service->variants) {
             $variant = $service->variants->firstWhere('id', $variantId);
             if ($variant && isset($variant->price_cents)) {
