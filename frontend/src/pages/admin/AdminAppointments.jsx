@@ -623,6 +623,11 @@ const AdminAppointments = () => {
     try {
       setProcessingAppointmentId(id)
       if (action === 'complete') {
+        const confirmComplete = window.confirm('Mark this appointment as completed? This will also mark the remaining balance as paid.')
+        if (!confirmComplete) {
+          setProcessingAppointmentId(null)
+          return
+        }
         const response = await api.post(`/appointments/${id}/complete`)
         if (response?.data?.id) {
           updateAppointmentInState(id, () => response.data)

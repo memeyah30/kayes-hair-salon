@@ -154,6 +154,29 @@ const SalesMonitoring = () => {
     })
   }
 
+  const [selectedSale, setSelectedSale] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+
+  const groupSalesByAppointment = (salesList) => {
+    const grouped = {}
+    salesList.forEach((sale) => {
+      const key = sale.appointment_id ? `apt-${sale.appointment_id}` : `sale-${sale.id}`
+      if (!grouped[key]) {
+        grouped[key] = {
+          ...sale,
+          items: [sale],
+          computed_total_cents: sale.total_amount_cents,
+        }
+      } else {
+        grouped[key].items.push(sale)
+        grouped[key].computed_total_cents += sale.total_amount_cents
+      }
+    })
+    return Object.values(grouped)
+  }
+
+  const groupedSales = groupSalesByAppointment(sales)
+
   const [exporting, setExporting] = useState(false)
 
   const handleExportPdf = async () => {
@@ -397,40 +420,84 @@ const SalesMonitoring = () => {
               <div className="text-center py-8">Loading...</div>
             ) : (
               <>
-                <div className="md:hidden space-y-3">
-                  {sales.map((sale) => (
-                    <div key={sale.id} className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-4 shadow-sm">
-                      <div className="flex items-start justify-between border-b border-[#F0EDFF] pb-2 mb-2">
-                        <div>
-                          <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Sales ID: #{sale.id}</div>
-                          <div className="text-sm font-bold text-[#2D2D2D]">{sale.customer_name}</div>
+                <div className="md:hidden space-y-4">
+                  {groupedSales.map((sale) => {
+                    const apt = sale.appointment
+                    const total = apt ? apt.total_amount_cents : sale.computed_total_cents
+                    const paid = apt ? apt.amount_paid_cents : sale.computed_total_cents
+                    const balance = apt ? apt.remaining_balance_cents : 0
+                    const dp = apt ? (apt.downpayment_amount_cents || 0) : 0
+                    const servicesLabel = sale.items.length > 1 
+                      ? `${sale.items[0].item_name} + ${sale.items.length - 1} more`
+                      : (sale.items[0]?.item_name || 'Service')
+
+                    return (
+                      <div key={sale.id} className="rounded-2xl border border-[#DDD6FE] bg-white p-4 shadow-sm">
+                        <div className="flex items-center justify-between border-b border-[#F0EDFF] pb-3 mb-3">
+                          <div>
+                            <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Booking #{sale.appointment_id || 'N/A'}</div>
+                            <div className="text-sm font-bold text-[#2D2D2D]">{sale.customer_name}</div>
+                          </div>
+                          <button 
+                            onClick={() => { setSelectedSale(sale); setShowModal(true); }}
+                            className="text-xs font-semibold text-[#7B5CF5] hover:underline"
+                          >
+                            Details
+                          </button>
                         </div>
-                        <div className="text-right">
-                          <div className="text-[10px] text-[#6B6B6B]">Booking ID</div>
-                          <div className="text-xs font-bold text-[#2D2D2D]">#{sale.appointment_id}</div>
+                        
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-[#6B6B6B]">Services:</span>
+                            <span className="font-medium text-right max-w-[180px]">{servicesLabel}</span>
+                          </div>
+                          
+                          <div className="rounded-xl bg-[#F9F8FF] p-3 space-y-1.5">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-[#6B6B6B]">Total:</span>
+                              <span className="font-bold">{currency(total)}</span>
+                            </div>
+                            {dp > 0 && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-[#6B6B6B]">Deposit:</span>
+                                <span>{currency(dp)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-xs text-green-600">
+                              <span className="font-medium">Paid:</span>
+                              <span className="font-bold">{currency(paid)}</span>
+                            </div>
+                            {balance > 0 && (
+                              <div className="flex justify-between text-xs text-orange-600 border-t border-[#EEEBFF] pt-1.5">
+                                <span className="font-medium">Balance:</span>
+                                <span className="font-bold">{currency(balance)}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1">
+                            <div className="flex gap-2">
+                              <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
+                                (apt?.status === 'completed' || sale.payment_status === 'paid') ? 'bg-[#DCFCE7] text-[#15803D]' :
+                                balance > 0 ? 'bg-[#FEF3C7] text-[#B45309]' :
+                                'bg-[#F3F4F6] text-[#6B6B6B]'
+                              }`}>
+                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : balance > 0 ? 'Partially Paid' : sale.payment_status}
+                              </span>
+                              <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
+                                apt?.status === 'completed' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                                apt?.status === 'booked' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                                'bg-[#F3F4F6] text-[#6B6B6B]'
+                              }`}>
+                                {apt?.status || 'Completed'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-[#6B6B6B]">{formatDate(sale.created_at)}</span>
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#6B6B6B]">Date:</span>
-                          <span className="font-medium">{formatDate(sale.created_at)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#6B6B6B]">Services:</span>
-                          <span className="font-medium text-right ml-4">{sale.item_name}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#6B6B6B]">Payment Method:</span>
-                          <span className="uppercase font-bold text-[#7B5CF5]">{sale.payment_method}</span>
-                        </div>
-                        <div className="flex justify-between text-sm pt-1 border-t border-[#F0EDFF]">
-                          <span className="font-bold">Total:</span>
-                          <span className="font-bold text-[#7B5CF5]">{currency(sale.total_amount_cents)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
 
                 <div className="hidden md:block overflow-x-auto">
@@ -442,69 +509,96 @@ const SalesMonitoring = () => {
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Customer</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Services</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Date</th>
-                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Type</th>
-                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Method</th>
-                        <th className="p-3 text-right text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Total</th>
-                        <th className="p-3 text-right text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Paid</th>
-                        <th className="p-3 text-right text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Balance</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Payment Summary</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">P. Status</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">A. Status</th>
+                        <th className="p-3 text-center text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#DDD6FE]">
-                      {sales.map(sale => (
-                        <tr key={sale.id} className="transition hover:bg-[#F6F2FF] text-xs">
-                          <td className="p-3 text-[#7B5CF5] font-bold">#{sale.id}</td>
-                          <td className="p-3 font-medium">#{sale.appointment_id}</td>
-                          <td className="p-3 font-semibold text-[#2D2D2D]">{sale.customer_name}</td>
-                          <td className="p-3">
-                            <div className="max-w-[150px] truncate" title={sale.item_name}>
-                              {sale.item_name}
-                            </div>
-                          </td>
-                          <td className="p-3 text-[#6B6B6B]">
-                            {sale.appointment ? formatDate(sale.appointment.start_datetime_pht || sale.appointment.start_datetime) : formatDate(sale.created_at)}
-                          </td>
-                          <td className="p-3">
-                            <span className="uppercase text-[10px] font-bold text-[#6B6B6B]">
-                              {sale.appointment?.mode_of_payment || 'Full'}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            <span className="uppercase text-[10px] font-bold text-[#7B5CF5]">
-                              {sale.payment_method}
-                            </span>
-                          </td>
-                          <td className="p-3 text-right font-bold text-[#2D2D2D]">{currency(sale.total_amount_cents)}</td>
-                          <td className="p-3 text-right text-[#10B981] font-bold">
-                            {sale.appointment ? currency(sale.appointment.amount_paid_cents) : currency(sale.total_amount_cents)}
-                          </td>
-                          <td className="p-3 text-right text-[#F59E0B] font-bold">
-                            {sale.appointment ? currency(sale.appointment.remaining_balance_cents) : '₱0.00'}
-                          </td>
-                          <td className="p-3">
-                             <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
-                              sale.payment_status === 'paid' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                              sale.payment_status === 'pending' ? 'bg-[#FEF3C7] text-[#B45309]' :
-                              'bg-[#F3F4F6] text-[#6B6B6B]'
-                            }`}>
-                              {sale.payment_status || 'Paid'}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            {sale.appointment && (
-                              <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
-                                sale.appointment.status === 'completed' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                sale.appointment.status === 'booked' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                                sale.appointment.status === 'cancelled' ? 'bg-[#FDE8E8] text-[#9B1C1C]' :
+                      {groupedSales.map(sale => {
+                        const apt = sale.appointment
+                        const total = apt ? apt.total_amount_cents : sale.computed_total_cents
+                        const paid = apt ? apt.amount_paid_cents : sale.computed_total_cents
+                        const balance = apt ? apt.remaining_balance_cents : 0
+                        const dp = apt ? (apt.downpayment_amount_cents || 0) : 0
+                        const servicesLabel = sale.items.length > 1 
+                          ? `${sale.items[0].item_name} + ${sale.items.length - 1} more`
+                          : (sale.items[0]?.item_name || 'Service')
+
+                        return (
+                          <tr key={sale.id} className="transition hover:bg-[#F6F2FF] text-xs">
+                            <td className="p-3 text-[#7B5CF5] font-bold">#{sale.id}</td>
+                            <td className="p-3 font-medium">#{sale.appointment_id || 'N/A'}</td>
+                            <td className="p-3 font-semibold text-[#2D2D2D]">{sale.customer_name}</td>
+                            <td className="p-3">
+                              <div className="max-w-[150px] truncate" title={sale.items.map(i => i.item_name).join(', ')}>
+                                {servicesLabel}
+                              </div>
+                            </td>
+                            <td className="p-3 text-[#6B6B6B]">
+                              {formatDate(sale.created_at)}
+                            </td>
+                            <td className="p-3">
+                              <div className="text-[10px] space-y-0.5 min-w-[120px]">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Total:</span>
+                                  <span className="font-bold">{currency(total)}</span>
+                                </div>
+                                {dp > 0 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Deposit:</span>
+                                    <span>{currency(dp)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between text-green-600">
+                                  <span className="font-medium">Paid:</span>
+                                  <span className="font-bold">{currency(paid)}</span>
+                                </div>
+                                {balance > 0 && (
+                                  <div className="flex justify-between text-orange-600 border-t border-gray-100 mt-0.5 pt-0.5">
+                                    <span className="font-medium">Balance:</span>
+                                    <span className="font-bold">{currency(balance)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                               <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
+                                (apt?.status === 'completed' || sale.payment_status === 'paid') ? 'bg-[#DCFCE7] text-[#15803D]' :
+                                balance > 0 ? 'bg-[#FEF3C7] text-[#B45309]' :
                                 'bg-[#F3F4F6] text-[#6B6B6B]'
                               }`}>
-                                {sale.appointment.status}
+                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : balance > 0 ? 'Partially Paid' : sale.payment_status}
                               </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="p-3">
+                              {apt && (
+                                <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
+                                  apt.status === 'completed' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                                  apt.status === 'booked' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                                  apt.status === 'cancelled' ? 'bg-[#FDE8E8] text-[#9B1C1C]' :
+                                  'bg-[#F3F4F6] text-[#6B6B6B]'
+                                }`}>
+                                  {apt.status}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-center">
+                              <button
+                                onClick={() => { setSelectedSale(sale); setShowModal(true); }}
+                                className="tap-safe inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#e6e0ff] shadow-sm"
+                                title="View Details"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                                  <circle cx="12" cy="7" r="3" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -522,6 +616,94 @@ const SalesMonitoring = () => {
             )}
           </div>
       </div>
+
+      {showModal && selectedSale && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-[#1B1237]/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative w-full max-w-lg rounded-[24px] border border-[#DDD6FE] bg-white p-6 shadow-2xl animate-fadeInUp">
+            <div className="mb-6 flex items-center justify-between border-b border-[#F0EDFF] pb-4">
+              <h3 className="text-xl font-bold text-[#2D2D2D]">Transaction Details</h3>
+              <button onClick={() => setShowModal(false)} className="rounded-full p-2 text-gray-400 hover:bg-gray-100">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Booking ID</div>
+                  <div className="text-sm font-semibold">#{selectedSale.appointment_id || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Transaction Date</div>
+                  <div className="text-sm font-semibold">{formatDate(selectedSale.created_at)}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[10px] font-bold text-[#7B5CF5] uppercase mb-2">Customer Information</div>
+                <div className="rounded-xl border border-[#F0EDFF] bg-[#F9F8FF] p-3">
+                  <div className="font-bold text-[#2D2D2D]">{selectedSale.customer_name}</div>
+                  {selectedSale.customer_phone && <div className="text-xs text-[#6B6B6B]">{selectedSale.customer_phone}</div>}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[10px] font-bold text-[#7B5CF5] uppercase mb-2">Services Availed</div>
+                <div className="space-y-2">
+                  {selectedSale.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                      <span className="text-[#2D2D2D]">{item.item_name}</span>
+                      <span className="font-semibold">{currency(item.total_amount_cents)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-[#F0EDFF] pt-4">
+                <div className="text-[10px] font-bold text-[#7B5CF5] uppercase mb-2">Payment Breakdown</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6B6B6B]">Total Amount</span>
+                    <span className="font-bold">{currency(selectedSale.appointment?.total_amount_cents || selectedSale.computed_total_cents)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6B6B6B]">Downpayment / Deposit</span>
+                    <span>{currency(selectedSale.appointment?.downpayment_amount_cents || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span className="font-medium">Total Paid</span>
+                    <span className="font-bold">{currency(selectedSale.appointment?.amount_paid_cents || selectedSale.computed_total_cents)}</span>
+                  </div>
+                  {selectedSale.appointment?.remaining_balance_cents > 0 && (
+                    <div className="flex justify-between text-sm text-orange-600 font-bold border-t border-[#F0EDFF] pt-2">
+                      <span>Remaining Balance</span>
+                      <span>{currency(selectedSale.appointment.remaining_balance_cents)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Payment Method</div>
+                  <div className="text-xs font-bold uppercase text-[#7B5CF5]">{selectedSale.payment_method}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Payment Status</div>
+                  <div className="text-xs font-bold uppercase">{selectedSale.payment_status}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <button onClick={() => setShowModal(false)} className="w-full rounded-xl bg-[#7B5CF5] py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#6846E8]">
+                Close Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }
