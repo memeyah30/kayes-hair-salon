@@ -607,7 +607,7 @@ const AdminDashboard = () => {
             </h1>
           </div>
 
-          <div className={`grid gap-4 grid-cols-2 lg:grid-cols-3 ${canAccessSales ? '2xl:grid-cols-7 xl:grid-cols-4' : '2xl:grid-cols-5 xl:grid-cols-3'} animate-slideUpStagger animation-delay-100`}>
+          <div className={`grid gap-4 grid-cols-2 lg:grid-cols-3 ${canAccessSales ? 'xl:grid-cols-6' : 'xl:grid-cols-4'} animate-slideUpStagger animation-delay-100`}>
             {canAccessSales ? (
               <>
                 <GradientMetricCard
