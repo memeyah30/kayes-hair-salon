@@ -27,19 +27,31 @@ import { useState, useEffect } from 'react'
 
 const App = () => {
   const [initialLoading, setInitialLoading] = useState(true)
+  const [globalLoading, setGlobalLoading] = useState(false)
 
   useEffect(() => {
-    // Show loader for at least 1.5 seconds to give it a premium feel
+    // Initial load timer
     const timer = setTimeout(() => {
       setInitialLoading(false)
     }, 1500)
 
-    return () => clearTimeout(timer)
+    // Listen for global progress bar events to show the logo loader
+    const handleStart = () => setGlobalLoading(true)
+    const handleFinish = () => setGlobalLoading(false)
+
+    window.addEventListener('top-bar-start', handleStart)
+    window.addEventListener('top-bar-finish', handleFinish)
+
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('top-bar-start', handleStart)
+      window.removeEventListener('top-bar-finish', handleFinish)
+    }
   }, [])
 
   return (
     <>
-      <Loader isLoading={initialLoading} />
+      <Loader isLoading={initialLoading || globalLoading} />
       <TopProgressBar />
       <ScrollToTop />
       <Routes>
