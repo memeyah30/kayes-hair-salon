@@ -3097,7 +3097,7 @@ const BookAppointment = () => {
               <div className="flex flex-col gap-2">
                 {isRescheduleFlow ? (
                   <button
-                    onClick={() => navigate('/customer')}
+                    onClick={() => navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start')}
                     className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
                   >
                     Cancel Reschedule
@@ -3455,7 +3455,7 @@ const BookAppointment = () => {
                         <button
                           onClick={() => {
                             setRescheduling(null)
-                            navigate('/customer', { replace: true })
+                            navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start', { replace: true })
                           }}
                           className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
                         >
@@ -3600,7 +3600,7 @@ const BookAppointment = () => {
                 <button
                   onClick={() => {
                     setRescheduling(null)
-                    navigate('/customer', { replace: true })
+                    navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start', { replace: true })
                   }}
                   className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
                 >
@@ -4075,7 +4075,7 @@ const BookAppointment = () => {
             setBooking({ name: '', email: booking.email, phone: booking.phone, address: '', privacyConsent: false })
             setFormErrors({ email: '', phone: '', payment: '', privacy: '' })
             window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-            navigate('/customer', { replace: true })
+            navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start', { replace: true })
           }} 
         />
       )}

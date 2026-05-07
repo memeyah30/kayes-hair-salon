@@ -36,7 +36,7 @@ const App = () => {
       setPageLoading(true)
       const timer = setTimeout(() => {
         setPageLoading(false)
-      }, 1000) // Branded entry feel for dashboards
+      }, 800) // Branded entry feel for dashboards
       return () => clearTimeout(timer)
     }
   }, [location.pathname])

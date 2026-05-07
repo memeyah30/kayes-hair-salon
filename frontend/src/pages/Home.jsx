@@ -4,6 +4,7 @@ import api from '../utils/api'
 import { resolveAssetUrl } from '../utils/runtime'
 import HowToBookSection from '../components/HowToBookSection'
 import LandingFooter from '../components/LandingFooter'
+import { isManageBookingVerified } from '../utils/customerVerification'
 import './HomeHero.css'
 
 const currency = (cents) => `PHP ${(Number(cents || 0) / 100).toFixed(2)}`
@@ -414,7 +415,11 @@ const Home = () => {
 
   const handleManageBooking = () => {
     setMobileMenuOpen(false)
-    navigate('/customer')
+    if (isManageBookingVerified()) {
+      navigate('/customer')
+    } else {
+      navigate('/manage-booking/start')
+    }
   }
 
   const heroBackgroundImage = `url(${imageUrl('hero-salon-interior.png')})`
