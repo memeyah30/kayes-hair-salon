@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { resolveApiBaseUrl } from './apiConfig'
+import { progressBar } from '../components/TopProgressBar'
 
 const baseURL = resolveApiBaseUrl()
 
@@ -48,6 +49,7 @@ const getCsrfToken = async () => {
 
 // Add CSRF token to all requests
 api.interceptors.request.use(async (config) => {
+  progressBar.start()
   const currentUserType = localStorage.getItem('userType')
   if (currentUserType && !config.headers['X-User-Type']) {
     config.headers['X-User-Type'] = currentUserType
@@ -74,8 +76,12 @@ api.interceptors.request.use(async (config) => {
 
 // Handle errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    progressBar.finish()
+    return response
+  },
   async (error) => {
+    progressBar.finish()
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || ''
       const isSessionProbe = requestUrl.includes('/me')

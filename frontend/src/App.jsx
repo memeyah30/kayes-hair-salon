@@ -21,10 +21,26 @@ import SalesMonitoring from './pages/admin/SalesMonitoring'
 import AdminManagers from './pages/admin/AdminManagers'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
+import Loader from './components/Loader'
+import TopProgressBar from './components/TopProgressBar'
+import { useState, useEffect } from 'react'
 
 const App = () => {
+  const [initialLoading, setInitialLoading] = useState(true)
+
+  useEffect(() => {
+    // Show loader for at least 1.5 seconds to give it a premium feel
+    const timer = setTimeout(() => {
+      setInitialLoading(false)
+    }, 1500)
+
+    return () => clearTimeout(timer)
+  }, [])
+
   return (
     <>
+      <Loader isLoading={initialLoading} />
+      <TopProgressBar />
       <ScrollToTop />
       <Routes>
         {/* Public landing page */}
