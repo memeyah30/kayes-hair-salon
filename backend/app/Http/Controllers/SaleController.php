@@ -28,6 +28,10 @@ class SaleController extends Controller
         ]);
 
         $timezone = 'Asia/Manila';
+        
+        // Lazy-sync: Ensure all appointments with payments have sale records before querying
+        $this->syncMissingSales();
+
         $query = Sale::with(['appointment']);
 
         // Filter by date range
@@ -130,6 +134,33 @@ class SaleController extends Controller
         return response()->json(['message' => 'Sale deleted successfully']);
     }
 
+    /**
+     * Finds appointments with payments that are missing sales records and creates them.
+     */
+    private function syncMissingSales()
+    {
+        $appointments = \App\Models\Appointment::whereIn('payment_status', ['paid', 'downpayment', 'verified'])
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('sales')
+                    ->whereRaw('sales.appointment_id = appointments.id');
+            })
+            ->get();
+
+        if ($appointments->isEmpty()) {
+            return;
+        }
+
+        $appointmentController = new \App\Http\Controllers\AppointmentController();
+        foreach ($appointments as $appointment) {
+            try {
+                $appointmentController->recordSales($appointment);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to sync sale for appointment {$appointment->id}: " . $e->getMessage());
+            }
+        }
+    }
+
     public function stats(Request $request)
     {
         $request->validate([
@@ -138,6 +169,10 @@ class SaleController extends Controller
         ]);
 
         $timezone = 'Asia/Manila';
+        
+        // Lazy-sync: Ensure all appointments with payments have sale records before querying
+        $this->syncMissingSales();
+
         $nowManila = Carbon::now($timezone);
         $startManila = $request->filled('start_date')
             ? Carbon::createFromFormat('Y-m-d', $request->start_date, $timezone)->startOfDay()

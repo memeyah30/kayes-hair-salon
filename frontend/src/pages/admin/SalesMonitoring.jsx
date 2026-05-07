@@ -479,14 +479,15 @@ const SalesMonitoring = () => {
                             <div className="flex gap-2">
                               <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
                                 (apt?.status === 'completed' || sale.payment_status === 'paid') ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                balance > 0 ? 'bg-[#FEF3C7] text-[#B45309]' :
+                                (balance > 0 || sale.payment_status === 'downpayment') ? 'bg-[#FEF3C7] text-[#B45309]' :
                                 'bg-[#F3F4F6] text-[#6B6B6B]'
                               }`}>
-                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : balance > 0 ? 'Partially Paid' : sale.payment_status}
+                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : (balance > 0 || sale.payment_status === 'downpayment') ? 'Partially Paid' : sale.payment_status}
                               </span>
                               <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
                                 apt?.status === 'completed' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                apt?.status === 'booked' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                                (apt?.status === 'booked' || apt?.status === 'confirmed') ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                                apt?.status === 'cancelled' ? 'bg-[#FDE8E8] text-[#9B1C1C]' :
                                 'bg-[#F3F4F6] text-[#6B6B6B]'
                               }`}>
                                 {apt?.status || 'Completed'}
@@ -566,17 +567,17 @@ const SalesMonitoring = () => {
                             <td className="p-3">
                                <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
                                 (apt?.status === 'completed' || sale.payment_status === 'paid') ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                balance > 0 ? 'bg-[#FEF3C7] text-[#B45309]' :
+                                (balance > 0 || sale.payment_status === 'downpayment') ? 'bg-[#FEF3C7] text-[#B45309]' :
                                 'bg-[#F3F4F6] text-[#6B6B6B]'
                               }`}>
-                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : balance > 0 ? 'Partially Paid' : sale.payment_status}
+                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : (balance > 0 || sale.payment_status === 'downpayment') ? 'Partially Paid' : sale.payment_status}
                               </span>
                             </td>
                             <td className="p-3">
                               {apt && (
                                 <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
                                   apt.status === 'completed' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                  apt.status === 'booked' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                                  (apt.status === 'booked' || apt.status === 'confirmed') ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
                                   apt.status === 'cancelled' ? 'bg-[#FDE8E8] text-[#9B1C1C]' :
                                   'bg-[#F3F4F6] text-[#6B6B6B]'
                                 }`}>
@@ -584,6 +585,7 @@ const SalesMonitoring = () => {
                                 </span>
                               )}
                             </td>
+>
                             <td className="p-3 text-center">
                               <button
                                 onClick={() => { setSelectedSale(sale); setShowModal(true); }}

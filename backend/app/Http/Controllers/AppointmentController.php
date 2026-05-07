@@ -651,8 +651,12 @@ class AppointmentController extends Controller
         }
 
         if (isset($data['payment_status'])) $updateData['payment_status'] = $data['payment_status'];
-
         $appointment->update($updateData);
+
+        // If payment status was updated to a paid status, record the sale
+        if (isset($data['payment_status']) && in_array($data['payment_status'], ['paid', 'downpayment', 'verified'])) {
+            $this->recordSales($appointment);
+        }
 
         $appointment = $appointment->fresh()->load('service', 'services.variants');
         return $this->formatAppointmentForResponse($appointment);
@@ -709,52 +713,7 @@ class AppointmentController extends Controller
 
                 // Refresh appointment to get updated status
                 $appointment->refresh();
-
-                // Load appointment with all relationships
-                $appointment->load(['service', 'services.variants']);
-
-                // Create sales records for each service in the appointment
-                $appointmentServices = $appointment->services->count() > 0
-                    ? $appointment->services
-                    : ($appointment->service ? collect([$appointment->service]) : collect());
-
-                $salePaymentStatus = $appointment->payment_status === 'paid' ? 'paid' : 'pending';
-
-                foreach ($appointmentServices as $service) {
-                    // Get the variant if one was selected
-                    $variantId = $service->pivot?->service_variant_id;
-                    $variant = null;
-                    $serviceName = $service->name;
-                    $servicePrice = $service->price_cents;
-
-                    if ($variantId && $service->variants) {
-                        $variant = $service->variants->find($variantId);
-                        if ($variant) {
-                            $serviceName = $service->name . ' - ' . $variant->name;
-                            $servicePrice = $variant->price_cents;
-                        }
-                    }
-
-                    // Check if a sale record already exists for this appointment and service
-                    $existingSale = \App\Models\Sale::where('appointment_id', $appointment->id)
-                        ->where('item_name', $serviceName)
-                        ->first();
-
-                    if (!$existingSale) {
-                        \App\Models\Sale::create([
-                            'appointment_id' => $appointment->id,
-                            'item_name' => $serviceName,
-                            'quantity' => 1,
-                            'unit_price_cents' => $servicePrice,
-                            'total_amount_cents' => $servicePrice,
-                            'payment_method' => $salePaymentMethod,
-                            'payment_status' => $salePaymentStatus,
-                            'customer_name' => $appointment->customer_name,
-                            'customer_phone' => $appointment->customer_phone,
-                            'notes' => 'Completed appointment service',
-                        ]);
-                    }
-                }
+                $this->recordSales($appointment);
 
 
             });
@@ -868,6 +827,11 @@ class AppointmentController extends Controller
 
         $appointment->update($updateData);
         $appointment = $appointment->fresh()->load(['service', 'services.variants']);
+
+        // Record sale if payment is collected (even if just downpayment)
+        if (in_array($appointment->payment_status, ['paid', 'downpayment', 'verified'])) {
+            $this->recordSales($appointment);
+        }
 
         if (!$wasConfirmed || !$appointment->approval_email_sent_at) {
             try {
@@ -1390,4 +1354,47 @@ class AppointmentController extends Controller
         ];
     }
 
+    /**
+     * Record sales for each service in an appointment.
+     * Only records if sales have not been previously recorded for this appointment.
+     */
+    public function recordSales($appointment)
+    {
+        // Skip if already recorded
+        if (\App\Models\Sale::where('appointment_id', $appointment->id)->exists()) {
+            // But ensure existing sales have the correct payment status
+            \App\Models\Sale::where('appointment_id', $appointment->id)->update([
+                'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'pending',
+                'payment_method' => $appointment->payment_method ?: 'cash'
+            ]);
+            return;
+        }
+
+        $appointmentServices = $appointment->services()->with('pivot.variant')->get();
+        if ($appointmentServices->isEmpty() && $appointment->service) {
+            $appointmentServices = collect([$appointment->service]);
+        }
+
+        foreach ($appointmentServices as $service) {
+            $variant = $service->pivot && $service->pivot->service_variant_id 
+                ? \App\Models\ServiceVariant::find($service->pivot->service_variant_id) 
+                : null;
+            
+            $priceCents = $variant ? $variant->price_cents : $service->price_cents;
+            
+            \App\Models\Sale::create([
+                'appointment_id' => $appointment->id,
+                'transaction_type' => 'service',
+                'item_name' => $service->name . ($variant ? " ({$variant->name})" : ""),
+                'quantity' => 1,
+                'unit_price_cents' => $priceCents,
+                'total_amount_cents' => $priceCents,
+                'payment_method' => $appointment->payment_method ?: 'cash',
+                'payment_status' => $appointment->payment_status === 'paid' ? 'paid' : 'pending',
+                'customer_name' => $appointment->customer_name,
+                'customer_phone' => $appointment->customer_phone,
+                'notes' => 'Recorded from booking payment/confirmation',
+            ]);
+        }
+    }
 }
