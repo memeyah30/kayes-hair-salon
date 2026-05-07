@@ -22,12 +22,13 @@ import AdminManagers from './pages/admin/AdminManagers'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
 import Loader from './components/Loader'
-import TopProgressBar from './components/TopProgressBar'
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 
 const App = () => {
   const [initialLoading, setInitialLoading] = useState(true)
-  const [globalLoading, setGlobalLoading] = useState(false)
+  const [pageLoading, setPageLoading] = useState(false)
+  const location = useLocation()
 
   useEffect(() => {
     // Initial load timer
@@ -35,24 +36,22 @@ const App = () => {
       setInitialLoading(false)
     }, 1500)
 
-    // Listen for global progress bar events to show the logo loader
-    const handleStart = () => setGlobalLoading(true)
-    const handleFinish = () => setGlobalLoading(false)
-
-    window.addEventListener('top-bar-start', handleStart)
-    window.addEventListener('top-bar-finish', handleFinish)
-
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('top-bar-start', handleStart)
-      window.removeEventListener('top-bar-finish', handleFinish)
-    }
+    return () => clearTimeout(timer)
   }, [])
+
+  // Show loader on route change
+  useEffect(() => {
+    setPageLoading(true)
+    const timer = setTimeout(() => {
+      setPageLoading(false)
+    }, 800) // Brief loader for page transitions
+
+    return () => clearTimeout(timer)
+  }, [location.pathname])
 
   return (
     <>
-      <Loader isLoading={initialLoading || globalLoading} />
-      <TopProgressBar />
+      <Loader isLoading={initialLoading || pageLoading} />
       <ScrollToTop />
       <Routes>
         {/* Public landing page */}
