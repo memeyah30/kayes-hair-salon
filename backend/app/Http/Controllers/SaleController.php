@@ -274,6 +274,10 @@ class SaleController extends Controller
         ]);
 
         $timezone = 'Asia/Manila';
+        
+        // Lazy-sync: Ensure all appointments with payments have sale records before exporting
+        $this->syncMissingSales();
+
         $query = Sale::with(['appointment']);
 
         // Filter by date range
@@ -307,6 +311,13 @@ class SaleController extends Controller
             $query->where('payment_status', $request->payment_status);
         }
 
+        // Filter by appointment status
+        if ($request->filled('appointment_status')) {
+            $query->whereHas('appointment', function($q) use ($request) {
+                $q->where('status', $request->appointment_status);
+            });
+        }
+
         // Filter by search keyword
         if ($request->filled('q')) {
             $keyword = $request->q;
@@ -318,14 +329,35 @@ class SaleController extends Controller
 
         $sales = $query->orderBy('created_at', 'desc')->get();
 
-        // Calculate stats (reusing logic from stats method but on the filtered collection)
-        $totalSales = $sales->sum('total_amount_cents');
+        // Group sales by appointment_id for the report
+        $groupedSales = $sales->groupBy(function($sale) {
+            return $sale->appointment_id ? 'apt-' . $sale->appointment_id : 'sale-' . $sale->id;
+        })->map(function($items) {
+            $first = $items->first();
+            $appointment = $first->appointment;
+            
+            return [
+                'id' => $first->id,
+                'appointment_id' => $first->appointment_id,
+                'customer_name' => $first->customer_name,
+                'payment_method' => $first->payment_method,
+                'payment_status' => $first->payment_status,
+                'created_at' => $first->created_at,
+                'appointment' => $appointment,
+                'items' => $items,
+                'total_amount_cents' => $appointment ? $appointment->total_amount_cents : $items->sum('total_amount_cents'),
+                'amount_paid_cents' => $appointment ? $appointment->amount_paid_cents : $items->sum('total_amount_cents'),
+                'remaining_balance_cents' => $appointment ? $appointment->remaining_balance_cents : 0,
+                'downpayment_amount_cents' => $appointment ? ($appointment->downpayment_amount_cents ?: 0) : 0,
+            ];
+        });
 
+        // Calculate stats
+        $totalSales = $sales->sum('total_amount_cents');
         
         // Fetch appointments for the same period to get summary counts
         $appointmentsQuery = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc]);
         
-        // Apply status filter if provided (though sales are usually only for completed)
         if ($request->filled('appointment_status')) {
             $appointmentsQuery->where('status', $request->appointment_status);
         }
@@ -356,7 +388,7 @@ class SaleController extends Controller
                 'appointment_status' => $request->appointment_status,
                 'search_keyword' => $request->q,
             ],
-            'sales' => $sales->load('appointment'),
+            'sales' => $groupedSales,
             'total_sales_cents' => $totalSales,
             'appointments_summary' => $appointmentsSummary,
         ];

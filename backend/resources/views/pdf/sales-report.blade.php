@@ -114,7 +114,9 @@
         }
         .status-completed { background: #DEF7EC; color: #03543F; }
         .status-booked { background: #E1EFFE; color: #1E429F; }
+        .status-confirmed { background: #E1EFFE; color: #1E429F; }
         .status-cancelled { background: #FDE8E8; color: #9B1C1C; }
+        .status-missed { background: #F3F4F6; color: #6B7280; }
         .footer {
             margin-top: 30px;
             text-align: center;
@@ -178,43 +180,26 @@
         <tbody>
             @foreach($sales as $sale)
                 <tr>
-                    <td>#{{ $sale->appointment_id ?? 'N/A' }}</td>
-                    <td>{{ $sale->customer_name }}</td>
+                    <td>#{{ $sale['appointment_id'] ?? 'N/A' }}</td>
+                    <td>{{ $sale['customer_name'] }}</td>
                     <td>
-                        {{ $sale->item_name }}
-                        @if($sale->appointment && $sale->appointment->services)
-                            <div style="font-size: 8px; color: #6B7280;">
-                                ({{ $sale->appointment->services->pluck('name')->join(', ') }})
-                            </div>
-                        @endif
+                        {{ $sale['items']->pluck('item_name')->join(', ') }}
                     </td>
                     <td>
-                        @if($sale->appointment)
-                            {{ \Carbon\Carbon::parse($sale->appointment->start_datetime_pht ?? $sale->appointment->start_datetime)->format('M d, Y') }}
+                        @if($sale['appointment'])
+                            {{ \Carbon\Carbon::parse($sale['appointment']['start_datetime_pht'] ?? $sale['appointment']['start_datetime'])->format('M d, Y') }}
                         @else
-                            {{ \Carbon\Carbon::parse($sale->created_at)->format('M d, Y') }}
+                            {{ \Carbon\Carbon::parse($sale['created_at'])->format('M d, Y') }}
                         @endif
                     </td>
-                    <td>{{ strtoupper($sale->payment_method) }}</td>
-                    <td class="text-right"><span class="currency">₱</span>{{ number_format($sale->total_amount_cents / 100, 2) }}</td>
-                    <td class="text-right">
-                        @if($sale->appointment)
-                            <span class="currency">₱</span>{{ number_format($sale->appointment->amount_paid_cents / 100, 2) }}
-                        @else
-                            <span class="currency">₱</span>{{ number_format($sale->total_amount_cents / 100, 2) }}
-                        @endif
-                    </td>
-                    <td class="text-right">
-                        @if($sale->appointment)
-                            <span class="currency">₱</span>{{ number_format($sale->appointment->remaining_balance_cents / 100, 2) }}
-                        @else
-                            <span class="currency">₱</span>0.00
-                        @endif
-                    </td>
+                    <td>{{ strtoupper($sale['payment_method']) }}</td>
+                    <td class="text-right"><span class="currency">₱</span>{{ number_format($sale['total_amount_cents'] / 100, 2) }}</td>
+                    <td class="text-right"><span class="currency">₱</span>{{ number_format($sale['amount_paid_cents'] / 100, 2) }}</td>
+                    <td class="text-right"><span class="currency">₱</span>{{ number_format($sale['remaining_balance_cents'] / 100, 2) }}</td>
                     <td>
-                        @if($sale->appointment)
-                            <span class="status-badge status-{{ $sale->appointment->status }}">
-                                {{ $sale->appointment->status }}
+                        @if($sale['appointment'])
+                            <span class="status-badge status-{{ $sale['appointment']['status'] }}">
+                                {{ $sale['appointment']['status'] }}
                             </span>
                         @else
                             <span class="status-badge status-completed">Completed</span>
