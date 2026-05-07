@@ -445,8 +445,8 @@ const SalesMonitoring = () => {
                         
                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <div className="font-bold text-[13px] text-[#2D2D2D] truncate">{sale.customer_name}</div>
-                            <div className="text-[10px] text-[#6B6B6B] truncate">{servicesLabel}</div>
+                            <div className="font-bold text-[13px] text-[#2D2D2D] leading-tight">{sale.customer_name}</div>
+                            <div className="text-[10px] text-[#6B6B6B] mt-0.5">{servicesLabel}</div>
                           </div>
                           
                           <div className="text-right shrink-0">
@@ -467,8 +467,8 @@ const SalesMonitoring = () => {
                   })}
                 </div>
 
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full min-w-[640px]">
+                <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                  <table className="w-full min-w-[1000px] table-auto">
                     <thead className="bg-[#F2EDFF]">
                       <tr className="border-b border-[#DDD6FE]">
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Sales ID</th>
@@ -497,9 +497,9 @@ const SalesMonitoring = () => {
                           <tr key={sale.id} className="transition hover:bg-[#F6F2FF] text-xs">
                             <td className="p-3 text-[#7B5CF5] font-bold">#{sale.id}</td>
                             <td className="p-3 font-medium">#{sale.appointment_id || 'N/A'}</td>
-                            <td className="p-3 font-semibold text-[#2D2D2D]">{sale.customer_name}</td>
+                            <td className="p-3 font-bold text-[#2D2D2D] leading-tight">{sale.customer_name}</td>
                             <td className="p-3">
-                              <div className="max-w-[150px] truncate" title={sale.items.map(i => i.item_name).join(', ')}>
+                              <div className="font-medium text-[#4a3481] leading-tight" title={sale.items.map(i => i.item_name).join(', ')}>
                                 {servicesLabel}
                               </div>
                             </td>

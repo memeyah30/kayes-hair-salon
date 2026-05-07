@@ -1315,7 +1315,7 @@ const AdminAppointments = () => {
                     <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <h3 className="truncate text-sm font-bold text-[#2d1f4f]">
+                          <h3 className="text-sm font-bold text-[#2d1f4f] leading-tight">
                             {apt.customer_name || 'Customer'}
                           </h3>
                           <span 
@@ -1325,7 +1325,7 @@ const AdminAppointments = () => {
                             {normalizedStatus === 'booked' ? 'PENDING' : normalizedStatus.toUpperCase()}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-[#856fb4] truncate">
+                        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-[#856fb4]">
                           <span className="font-semibold text-[#4a3481]">{getServiceName(appointmentServices[0])}</span>
                           <span>•</span>
                           <span>{timeLabel}</span>
@@ -1360,17 +1360,17 @@ const AdminAppointments = () => {
                 )
               })}
             </div>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[720px]">
+            <div className="hidden md:block overflow-x-auto custom-scrollbar">
+              <table className="w-full min-w-[900px] table-auto">
                 <thead className="bg-[#F2EDFF]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Service</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Date & Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Payment Choice</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Price</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.15em] text-[#6B6B6B]">Actions</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Customer</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Service</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Payment</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Price</th>
+                    <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#DDD6FE]">
@@ -1424,13 +1424,13 @@ const AdminAppointments = () => {
                       aria-label={`View details for appointment of ${apt.customer_name || 'customer'}`}
                     >
                       <td className="px-4 py-4">
-                        <div className="text-sm font-semibold text-[#2D2D2D]">{apt.customer_name}</div>
-                        <div className="mt-1 text-xs text-[#6B6B6B]">
+                        <div className="text-sm font-bold text-[#2D2D2D] leading-tight">{apt.customer_name}</div>
+                        <div className="mt-1 text-[11px] text-[#6B6B6B]">
                           {apt.customer_phone || apt.customer_email}
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="font-medium text-[#2D2D2D]">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
+                        <div className="text-sm font-medium text-[#2D2D2D] leading-tight">{primaryService}{extraCount > 0 ? ` +${extraCount} more` : ''}</div>
                       </td>
                       <td className="px-4 py-4">
                         <div className="font-medium text-[#2D2D2D]">{dateLabel}</div>
