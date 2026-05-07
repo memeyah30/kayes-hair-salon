@@ -74,7 +74,7 @@ class AdminPaginationTest extends TestCase
     {
         $admin = $this->createAdmin();
         $service = $this->createService();
-        $today = Carbon::now('Asia/Manila')->format('Y-m-d');
+        $reportDate = Carbon::now('Asia/Manila')->format('Y-m-d');
 
         $bookedAppointment = $this->createAppointment($service, [
             'customer_name' => 'Booked Deposit Customer',
@@ -92,22 +92,54 @@ class AdminPaginationTest extends TestCase
             'downpayment_amount_cents' => 5000,
         ]);
 
+        Sale::create([
+            'appointment_id' => $bookedAppointment->id,
+            'transaction_type' => 'service',
+            'item_name' => 'Booked Deposit Service',
+            'quantity' => 1,
+            'unit_price_cents' => 15000,
+            'total_amount_cents' => 15000,
+            'payment_method' => 'gcash',
+            'payment_status' => 'pending',
+            'customer_name' => $bookedAppointment->customer_name,
+            'customer_phone' => $bookedAppointment->customer_phone,
+            'created_at' => Carbon::createFromFormat('Y-m-d', $reportDate, 'Asia/Manila')->setTimezone('UTC'),
+            'updated_at' => Carbon::createFromFormat('Y-m-d', $reportDate, 'Asia/Manila')->setTimezone('UTC'),
+        ]);
+
+        Sale::create([
+            'appointment_id' => $confirmedAppointment->id,
+            'transaction_type' => 'service',
+            'item_name' => 'Confirmed Deposit Service',
+            'quantity' => 1,
+            'unit_price_cents' => 15000,
+            'total_amount_cents' => 15000,
+            'payment_method' => 'gcash',
+            'payment_status' => 'pending',
+            'customer_name' => $confirmedAppointment->customer_name,
+            'customer_phone' => $confirmedAppointment->customer_phone,
+            'created_at' => Carbon::createFromFormat('Y-m-d', $reportDate, 'Asia/Manila')->setTimezone('UTC'),
+            'updated_at' => Carbon::createFromFormat('Y-m-d', $reportDate, 'Asia/Manila')->setTimezone('UTC'),
+        ]);
+
         $this->actingAs($admin, 'admin')
-            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$today}&end_date={$today}&appointment_status=booked", ['X-User-Type' => 'admin'])
+            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$reportDate}&end_date={$reportDate}&appointment_status=booked", ['X-User-Type' => 'admin'])
             ->assertOk()
             ->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.appointment.status', 'booked')
-            ->assertJsonPath('data.0.payment_status', 'partially_paid');
+            ->assertJsonPath('data.0.appointment.amount_paid_cents', 5000)
+            ->assertJsonPath('data.0.appointment.remaining_balance_cents', 10000);
 
         $this->actingAs($admin, 'admin')
-            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$today}&end_date={$today}&appointment_status=confirmed", ['X-User-Type' => 'admin'])
+            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$reportDate}&end_date={$reportDate}&appointment_status=confirmed", ['X-User-Type' => 'admin'])
             ->assertOk()
             ->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.appointment.status', 'confirmed')
-            ->assertJsonPath('data.0.payment_status', 'partially_paid');
+            ->assertJsonPath('data.0.appointment.amount_paid_cents', 5000)
+            ->assertJsonPath('data.0.appointment.remaining_balance_cents', 10000);
 
         $this->actingAs($admin, 'admin')
-            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$today}&end_date={$today}", ['X-User-Type' => 'admin'])
+            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$reportDate}&end_date={$reportDate}", ['X-User-Type' => 'admin'])
             ->assertOk()
             ->assertJsonPath('total', 2)
             ->assertJsonCount(2, 'data');

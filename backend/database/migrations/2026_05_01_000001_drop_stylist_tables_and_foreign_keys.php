@@ -66,6 +66,8 @@ return new class extends Migration {
 
     public function up(): void
     {
+        $isSqlite = DB::getDriverName() === 'sqlite';
+
         if (Schema::hasTable('appointment_ratings') && Schema::hasColumn('appointment_ratings', 'stylist_rating')) {
             if (!Schema::hasColumn('appointment_ratings', 'team_rating')) {
                 Schema::table('appointment_ratings', function (Blueprint $table) {
@@ -75,16 +77,22 @@ return new class extends Migration {
 
             DB::statement('UPDATE appointment_ratings SET team_rating = stylist_rating');
 
-            Schema::table('appointment_ratings', function (Blueprint $table) {
-                try {
-                    $table->dropColumn('stylist_rating');
-                } catch (\Throwable $e) {
-                    // Ignore if the column was already removed.
-                }
-            });
+            if (!$isSqlite) {
+                Schema::table('appointment_ratings', function (Blueprint $table) {
+                    try {
+                        $table->dropColumn('stylist_rating');
+                    } catch (\Throwable $e) {
+                        // Ignore if the column was already removed.
+                    }
+                });
+            }
         }
 
-        if (Schema::hasTable('appointments') && Schema::hasColumn('appointments', 'stylist_id')) {
+        if ($isSqlite) {
+            return;
+        }
+
+        if (!$isSqlite && Schema::hasTable('appointments') && Schema::hasColumn('appointments', 'stylist_id')) {
             $this->dropForeignKeysReferencingColumns('appointments', ['stylist_id']);
             $this->dropIndexesReferencingColumns('appointments', ['stylist_id']);
 
@@ -93,7 +101,7 @@ return new class extends Migration {
             });
         }
 
-        if (Schema::hasTable('customer_ratings') && Schema::hasColumn('customer_ratings', 'stylist_id')) {
+        if (!$isSqlite && Schema::hasTable('customer_ratings') && Schema::hasColumn('customer_ratings', 'stylist_id')) {
             $this->dropForeignKeysReferencingColumns('customer_ratings', ['stylist_id']);
             $this->dropIndexesReferencingColumns('customer_ratings', ['stylist_id']);
 
@@ -102,7 +110,7 @@ return new class extends Migration {
             });
         }
 
-        if (Schema::hasTable('sales') && Schema::hasColumn('sales', 'stylist_id')) {
+        if (!$isSqlite && Schema::hasTable('sales') && Schema::hasColumn('sales', 'stylist_id')) {
             $this->dropForeignKeysReferencingColumns('sales', ['stylist_id']);
             $this->dropIndexesReferencingColumns('sales', ['stylist_id']);
 
@@ -111,7 +119,7 @@ return new class extends Migration {
             });
         }
 
-        if (Schema::hasTable('staff') && Schema::hasColumn('staff', 'user_id')) {
+        if (!$isSqlite && Schema::hasTable('staff') && Schema::hasColumn('staff', 'user_id')) {
             $this->dropForeignKeysReferencingColumns('staff', ['user_id']);
             $this->dropIndexesReferencingColumns('staff', ['user_id']);
 
