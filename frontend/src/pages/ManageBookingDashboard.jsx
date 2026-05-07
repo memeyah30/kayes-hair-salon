@@ -423,7 +423,7 @@ const ManageBookingDashboard = () => {
             <button
               type="button"
               onClick={openBookingHistory}
-              className={`bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-left transition ${
+              className={`bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4 text-left transition flex flex-col ${
                 appointments.length > 0
                   ? 'tap-safe hover:-translate-y-px hover:border-[#d9cdf0] cursor-pointer'
                   : 'cursor-default'

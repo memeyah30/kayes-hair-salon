@@ -629,7 +629,7 @@ const CustomerDashboard = () => {
               type="button"
               onClick={openBookingHistory}
               disabled={appointments.length === 0}
-              className={`${customerPanelClass} p-5 text-left transition ${
+              className={`${customerPanelClass} p-5 text-left transition flex flex-col ${
                 appointments.length > 0
                   ? 'tap-safe hover:-translate-y-px hover:border-[#d9cdf0] cursor-pointer'
                   : 'cursor-default'
