@@ -588,9 +588,46 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen app-admin-bg flex items-center justify-center text-[#2d1f4f]">
-        <div>Loading...</div>
-      </div>
+      <AdminLayout
+        userType={storedUserType}
+        onLogout={handleLogout}
+        title={canAccessSales ? 'Dashboard Overview' : 'Manager Overview'}
+      >
+        <div className="app-mobile-shell space-y-7">
+          <div className="animate-pulse">
+            <div className="h-8 w-64 rounded-full bg-white/50" />
+            <div className="mt-3 h-4 w-96 max-w-full rounded-full bg-white/35" />
+          </div>
+
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {Array.from({ length: canAccessSales ? 6 : 4 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="rounded-[24px] border border-white/40 bg-white/65 p-4 shadow-[0_16px_34px_rgba(59,31,114,0.1)] backdrop-blur-md animate-pulse"
+              >
+                <div className="h-3 w-20 rounded-full bg-[#e3d8ff]" />
+                <div className="mt-4 h-8 w-28 rounded-full bg-[#dbcfff]" />
+                <div className="mt-3 h-3 w-32 rounded-full bg-[#eee7ff]" />
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <div className="rounded-[30px] border border-white/40 bg-white/70 p-5 shadow-[0_18px_40px_rgba(59,31,114,0.12)] backdrop-blur-md">
+              <div className="h-5 w-40 rounded-full bg-[#e2d7ff] animate-pulse" />
+              <div className="mt-4 h-56 rounded-[24px] bg-gradient-to-b from-[#f5efff] to-[#efe6ff] animate-pulse" />
+            </div>
+            <div className="rounded-[30px] border border-white/40 bg-white/70 p-5 shadow-[0_18px_40px_rgba(59,31,114,0.12)] backdrop-blur-md">
+              <div className="h-5 w-48 rounded-full bg-[#e2d7ff] animate-pulse" />
+              <div className="mt-4 space-y-3">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <div key={idx} className="h-12 rounded-2xl bg-[#f4edff] animate-pulse" />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </AdminLayout>
     )
   }
 

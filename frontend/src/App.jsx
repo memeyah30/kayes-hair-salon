@@ -23,35 +23,22 @@ import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
 import Loader from './components/Loader'
 import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
 
 const App = () => {
   const [initialLoading, setInitialLoading] = useState(true)
-  const [pageLoading, setPageLoading] = useState(false)
-  const location = useLocation()
 
   useEffect(() => {
     // Initial load timer
     const timer = setTimeout(() => {
       setInitialLoading(false)
-    }, 1500)
+    }, 350)
 
     return () => clearTimeout(timer)
   }, [])
 
-  // Show loader on route change
-  useEffect(() => {
-    setPageLoading(true)
-    const timer = setTimeout(() => {
-      setPageLoading(false)
-    }, 800) // Brief loader for page transitions
-
-    return () => clearTimeout(timer)
-  }, [location.pathname])
-
   return (
     <>
-      <Loader isLoading={initialLoading || pageLoading} />
+      <Loader isLoading={initialLoading} />
       <ScrollToTop />
       <Routes>
         {/* Public landing page */}
