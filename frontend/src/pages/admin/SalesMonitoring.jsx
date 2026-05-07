@@ -585,7 +585,6 @@ const SalesMonitoring = () => {
                                 </span>
                               )}
                             </td>
->
                             <td className="p-3 text-center">
                               <button
                                 onClick={() => { setSelectedSale(sale); setShowModal(true); }}
