@@ -931,7 +931,6 @@ const AdminDashboard = () => {
                   <tr className="text-left text-xs uppercase text-[#8a75b9]">
                     <th className="pb-2">Customer</th>
                     <th className="pb-2">Service</th>
-                    <th className="pb-2">Team</th>
                     <th className="pb-2">Date</th>
                     <th className="pb-2">Status</th>
                   </tr>
@@ -939,7 +938,7 @@ const AdminDashboard = () => {
                 <tbody>
                   {recentAppointments.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="py-6 text-center text-xs text-[#9a86c7]">
+                      <td colSpan="4" className="py-6 text-center text-xs text-[#9a86c7]">
                         No recent appointments yet.
                       </td>
                     </tr>
@@ -948,7 +947,6 @@ const AdminDashboard = () => {
                     <tr key={appointment.id} className="border-t border-[#ece2ff]">
                       <td className="py-3 font-medium">{appointment.customer_name}</td>
                       <td className="py-3">{getAppointmentServices(appointment)[0]?.name || '-'}</td>
-                      <td className="py-3">{appointment.team_name || 'Salon Team'}</td>
                       <td className="py-3">{formatDateTime(appointment.start_datetime_pht || appointment.start_datetime)}</td>
                       <td className="py-3">
                         <span
