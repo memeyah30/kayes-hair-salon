@@ -437,18 +437,25 @@ const Services = () => {
                   key={service.id}
                   className="group flex flex-col h-full rounded-3xl border border-[#d8cbff] bg-white shadow-[0_12px_28px_rgba(70,45,130,0.12)] overflow-hidden transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_34px_rgba(70,45,130,0.2)]"
                 >
-                  <div className="w-full h-32 sm:h-40 md:h-48 shrink-0 overflow-hidden relative">
+                  <div className="w-full h-48 sm:h-56 shrink-0 overflow-hidden relative bg-gray-50">
                     {serviceImage ? (
-                      <img
-                        src={imageUrl(serviceImage)}
-                        alt={service.name}
-                        className="absolute inset-0 w-full h-full object-contain transition duration-500"
-                        onError={(event) => {
-                          event.currentTarget.style.display = 'none'
-                          const fallback = event.currentTarget.nextSibling
-                          if (fallback) fallback.style.display = 'flex'
-                        }}
-                      />
+                      <>
+                        <img
+                          src={imageUrl(serviceImage)}
+                          className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110"
+                          aria-hidden="true"
+                        />
+                        <img
+                          src={imageUrl(serviceImage)}
+                          alt={service.name}
+                          className="relative w-full h-full object-contain z-10 transition duration-500"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none'
+                            const fallback = event.currentTarget.nextSibling
+                            if (fallback) fallback.style.display = 'flex'
+                          }}
+                        />
+                      </>
                     ) : null}
                     <div
                       className={`w-full h-full absolute inset-0 ${serviceImage ? 'hidden' : 'flex'} items-center justify-center bg-[#ede5ff] text-[#6b5b95] text-sm font-medium`}
@@ -514,15 +521,22 @@ const Services = () => {
               </div>
 
               <div className="p-5 md:p-6">
-                <div className="rounded-2xl overflow-hidden border border-[#ece3ff] bg-[#f8f4ff] mb-5">
+                <div className="rounded-2xl overflow-hidden border border-[#ece3ff] bg-[#f8f4ff] mb-5 relative h-56 md:h-64">
                   {optionsService.image_url || optionsService.image ? (
-                    <img
-                      src={imageUrl(optionsService.image_url || optionsService.image)}
-                      alt={optionsService.name}
-                      className="w-full h-40 object-contain"
-                    />
+                    <>
+                      <img
+                        src={imageUrl(optionsService.image_url || optionsService.image)}
+                        className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110"
+                        aria-hidden="true"
+                      />
+                      <img
+                        src={imageUrl(optionsService.image_url || optionsService.image)}
+                        alt={optionsService.name}
+                        className="relative w-full h-full object-contain z-10"
+                      />
+                    </>
                   ) : (
-                    <div className="w-full h-40 flex items-center justify-center text-[#6b5b95] text-sm">
+                    <div className="w-full h-full flex items-center justify-center text-[#6b5b95] text-sm">
                       Service Image
                     </div>
                   )}
