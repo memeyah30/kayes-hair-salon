@@ -247,7 +247,7 @@ const AdminManagers = () => {
 
         {/* Data Table Section */}
         <div className="overflow-hidden rounded-[24px] border border-white/40 bg-white/80 shadow-[0_18px_40px_rgba(59,31,114,0.12)] backdrop-blur-md">
-          <div className="overflow-x-auto">
+          <div className="table-mobile-scroll">
             <table className="w-full text-left text-sm text-[#57476e]">
               <thead className="bg-[#F8F5FF] text-xs uppercase tracking-wider text-[#7a6794]">
                 <tr>

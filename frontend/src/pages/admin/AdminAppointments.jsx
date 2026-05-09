@@ -1279,7 +1279,7 @@ const AdminAppointments = () => {
           </div>
 
           <div className="overflow-hidden rounded-[24px] border border-[#DDD6FE] bg-white shadow-[0_8px_32px_rgba(59,31,114,0.1)]">
-            <div className="md:hidden space-y-4 p-4">
+            <div className="hidden space-y-4 p-4">
               {paginatedAppointments.length === 0 && !tableLoading && (
                 <div className={emptyStateClass}>
                   No appointments found for the selected filters.
@@ -1376,7 +1376,7 @@ const AdminAppointments = () => {
                 )
               })}
             </div>
-            <div className="hidden md:block overflow-x-auto custom-scrollbar">
+            <div className="table-mobile-scroll custom-scrollbar">
               <table className="w-full min-w-[900px] table-auto">
                 <thead className="bg-[#F2EDFF]">
                   <tr>

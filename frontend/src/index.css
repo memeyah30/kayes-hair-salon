@@ -267,3 +267,34 @@
 .datatable-container .dataTables_paginate .paginate_button { @apply rounded-lg border border-[#DDD6FE] bg-white px-3 py-1 mx-1 text-[#7B5CF5] hover:bg-[#F6F2FF] hover:border-[#7B5CF5] !important; }
 .datatable-container .dataTables_paginate .paginate_button.current { @apply bg-[#7B5CF5] text-white border-[#7B5CF5] !important; }
 .datatable-container .dataTables_filter input { @apply rounded-xl border border-[#DDD6FE] px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] !important; }
+
+/* Mobile Table Scrolling Utility */
+@media (max-width: 768px) {
+    .table-mobile-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        position: relative;
+        /* Scroll indicator (right shadow) */
+        background: linear-gradient(to right, white 30%, rgba(255, 255, 255, 0)),
+                    linear-gradient(to right, rgba(255, 255, 255, 0), white 70%) 0 100%,
+                    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)),
+                    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)) 0 100%;
+        background-repeat: no-repeat;
+        background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+        background-attachment: local, local, scroll, scroll;
+    }
+
+    .table-mobile-scroll table {
+        min-width: 650px;
+        border-collapse: collapse;
+    }
+
+    /* Keep headers visible while scrolling long lists on mobile */
+    .table-mobile-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #F2EDFF; /* Matches the standard header color */
+    }
+}

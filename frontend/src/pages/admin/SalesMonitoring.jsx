@@ -387,7 +387,7 @@ const SalesMonitoring = () => {
           {stats?.top_selling_items && stats.top_selling_items.length > 0 && (
             <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
               <h2 className="mb-4 text-xl font-semibold text-[#2D2D2D]">Top Services</h2>
-              <div className="md:hidden space-y-2">
+              <div className="hidden space-y-2">
                 {stats.top_selling_items.map((item, idx) => (
                   <div key={idx} className="rounded-xl border border-[#DDD6FE] bg-[#FCFBFF] p-3">
                     <div className="font-medium text-[#2D2D2D]">{item.item_name}</div>
@@ -398,7 +398,7 @@ const SalesMonitoring = () => {
                   </div>
                 ))}
               </div>
-              <div className="hidden md:block overflow-x-auto">
+              <div className="table-mobile-scroll">
                 <table className="w-full min-w-[640px]">
                   <thead className="bg-[#F2EDFF]">
                     <tr className="border-b border-[#DDD6FE]">
@@ -428,7 +428,7 @@ const SalesMonitoring = () => {
               <div className="text-center py-8">Loading...</div>
             ) : (
               <>
-                <div className="md:hidden space-y-4">
+                <div className="hidden space-y-4">
                   {groupedSales.map((sale) => {
                     const apt = sale.appointment
                     const paid = apt ? apt.amount_paid_cents : sale.computed_total_cents
@@ -470,7 +470,7 @@ const SalesMonitoring = () => {
                   })}
                 </div>
 
-                <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                <div className="table-mobile-scroll custom-scrollbar">
                   <table className="w-full min-w-[1000px] table-auto">
                     <thead className="bg-[#F2EDFF]">
                       <tr className="border-b border-[#DDD6FE]">

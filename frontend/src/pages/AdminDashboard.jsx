@@ -886,7 +886,7 @@ const AdminDashboard = () => {
               <h3 className="text-lg font-bold text-[#2f2252]">Recent Appointments</h3>
               <button type="button" onClick={() => navigate('/admin/appointments')} className="text-xs font-semibold text-[#6143c5] hover:underline">View all</button>
             </div>
-            <div className="md:hidden space-y-1">
+            <div className="hidden space-y-1">
               {recentAppointments.length === 0 && (
                 <div className={emptyStateClass}>
                   No recent appointments yet.
@@ -925,7 +925,7 @@ const AdminDashboard = () => {
                 </div>
               ))}
             </div>
-            <div className="hidden md:block mt-4 overflow-x-auto">
+            <div className="table-mobile-scroll mt-4">
               <table className="w-full min-w-[520px] text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase text-[#8a75b9]">

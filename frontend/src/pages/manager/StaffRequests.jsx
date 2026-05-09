@@ -72,7 +72,7 @@ const StaffRequests = () => {
             </div>
           </div>
 
-          <div className="md:hidden space-y-3">
+          <div className="hidden space-y-3">
             {loading && (
               <div className="rounded-xl border border-[#eadfd5] bg-white/80 p-4 text-sm text-[#8f7a6f]">
                 Loading requests...
@@ -102,7 +102,7 @@ const StaffRequests = () => {
             ))}
           </div>
 
-          <div className="hidden md:block bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] overflow-x-auto">
+          <div className="table-mobile-scroll bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)]">
             <table className="min-w-full text-sm">
               <thead className="bg-[#f7f1ec] text-[#6f5b50] uppercase tracking-wide text-xs">
                 <tr>

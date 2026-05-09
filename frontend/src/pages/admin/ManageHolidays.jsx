@@ -291,7 +291,7 @@ const ManageHolidays = () => {
             </div>
 
             <div className="bg-white/80 rounded-2xl border border-[#eadfd5] shadow-[0_8px_24px_rgba(92,64,51,0.08)] overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="table-mobile-scroll">
                 <table className="w-full min-w-[640px]">
                   <thead className="bg-gray-50">
                     <tr>
