@@ -20,6 +20,7 @@ use App\Http\Controllers\ReturningBookingController;
 use App\Http\Controllers\Manager\StaffController as ManagerStaffController;
 use App\Http\Controllers\Admin\StaffApprovalController;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(StartSession::class)->group(function () {
@@ -193,4 +194,20 @@ Route::get('/dashboard/customer/stats', [DashboardController::class, 'customerSt
 Route::get('/debug-proofs', function () { return response()->json(['storage_path' => storage_path('app/public/payment-proofs'), 'exists' => is_dir(storage_path('app/public/payment-proofs')), 'files' => is_dir(storage_path('app/public/payment-proofs')) ? scandir(storage_path('app/public/payment-proofs')) : [], 'public_storage_symlink_exists' => is_link(public_path('storage')), 'public_storage_target' => is_link(public_path('storage')) ? readlink(public_path('storage')) : null]); });
 
 Route::get('/debug-appt', function () { return response()->json(App\Models\Appointment::orderBy('id', 'desc')->first()); });
+});
+
+// Temporary Migration Route for Railway (Delete after use)
+Route::get('/admin/run-migrations', function() {
+    try {
+        Artisan::call('migrate', ['--force' => true]);
+        Artisan::call('db:seed', ['--class' => 'SettingSeeder', '--force' => true]);
+        return response()->json([
+            'message' => 'Migrations and Seeding successful!',
+            'output' => Artisan::output()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage()
+        ], 500);
+    }
 });
