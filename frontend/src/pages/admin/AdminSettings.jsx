@@ -117,6 +117,21 @@ const AdminSettings = () => {
   return (
     <AdminLayout userType={storedUserType} onLogout={handleLogout} title="Salon Settings">
       <div className="app-mobile-shell max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="mb-6 flex items-center gap-4">
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="group flex h-10 w-10 items-center justify-center rounded-full bg-[#f2efff] text-[#5f3eb4] transition hover:bg-[#5f3eb4] hover:text-white shadow-sm"
+            title="Back to Dashboard"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-[#2d1b4a]">Salon Settings</h1>
+            <p className="text-sm text-[#7a6794]">Configure your salon's business rules and preferences.</p>
+          </div>
+        </div>
         <div className="flex flex-col md:flex-row gap-8">
           {/* Tabs Sidebar */}
           <div className="w-full md:w-64 shrink-0">

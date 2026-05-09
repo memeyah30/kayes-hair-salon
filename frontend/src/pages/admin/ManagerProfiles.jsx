@@ -101,9 +101,20 @@ const ManagerProfiles = () => {
       <div className="space-y-6">
         <div className="rounded-[24px] border border-white/40 bg-white/80 p-5 shadow-[0_18px_40px_rgba(59,31,114,0.12)] backdrop-blur-md">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-[#2d1b4a]">Manager accounts</h2>
-              <p className="text-sm text-[#7a6794]">Search, activate, or remove manager profiles.</p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className="group flex h-10 w-10 items-center justify-center rounded-full bg-[#f2efff] text-[#6d4de6] transition hover:bg-[#6d4de6] hover:text-white shadow-sm"
+                title="Back to Dashboard"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div>
+                <h2 className="text-xl font-semibold text-[#2d1b4a]">Manager accounts</h2>
+                <p className="text-sm text-[#7a6794]">Search, activate, or remove manager profiles.</p>
+              </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <div className="relative">

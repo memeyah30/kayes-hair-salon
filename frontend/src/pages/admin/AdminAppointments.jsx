@@ -1063,11 +1063,12 @@ const AdminAppointments = () => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate('/admin/dashboard')}
-                  className="tap-safe flex h-11 w-11 items-center justify-center rounded-full border border-[#DDD6FE] bg-white text-xl font-bold text-[#7B5CF5] shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:bg-[#F6F2FF] hover:text-[#6846E8]"
-                  aria-label="Return to Dashboard"
-                  title="Return to Dashboard"
+                  className="group flex h-10 w-10 items-center justify-center rounded-full bg-[#f2efff] text-[#7B5CF5] transition hover:bg-[#7B5CF5] hover:text-white shadow-sm"
+                  title="Back to Dashboard"
                 >
-                  &larr;
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
                 <div>
                   <h1 className="text-2xl font-semibold">Appointment Management</h1>

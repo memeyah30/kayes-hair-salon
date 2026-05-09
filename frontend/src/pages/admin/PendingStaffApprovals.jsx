@@ -84,10 +84,12 @@ const PendingStaffApprovals = () => {
           <div className="flex flex-col sm:flex-row sm:items-start gap-3">
             <button
               onClick={() => navigate('/admin/dashboard')}
-              className="tap-safe w-fit px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-lg font-bold"
-              title="Back to dashboard"
+              className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f2efff] text-blue-600 transition hover:bg-blue-600 hover:text-white shadow-sm"
+              title="Back to Dashboard"
             >
-              &larr;
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
             <div>
               <h1 className="text-2xl font-bold">Pending Staff Approvals</h1>

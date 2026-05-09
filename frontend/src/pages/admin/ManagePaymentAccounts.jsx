@@ -162,10 +162,13 @@ const ManagePaymentAccounts = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin/dashboard')}
-                className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-lg font-bold"
-                aria-label="Return to Dashboard"
-                title="Return to Dashboard"
-              >&larr;</button>
+                className="group flex h-10 w-10 items-center justify-center rounded-full bg-[#f2efff] text-[#3b82f6] transition hover:bg-[#3b82f6] hover:text-white shadow-sm"
+                title="Back to Dashboard"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
               <h1 className="text-2xl font-bold">Manage Payment Accounts</h1>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
