@@ -288,7 +288,19 @@
     .table-mobile-scroll table {
         min-width: 650px;
         border-collapse: collapse;
+        font-size: 12px !important;
     }
+
+    /* Reduce cell padding for density */
+    .table-mobile-scroll th,
+    .table-mobile-scroll td {
+        padding: 8px 6px !important;
+    }
+
+    /* Targeted overrides for Tailwind text classes */
+    .table-mobile-scroll .text-sm { font-size: 11.5px !important; }
+    .table-mobile-scroll .text-xs { font-size: 10px !important; }
+    .table-mobile-scroll .font-bold { font-weight: 600 !important; }
 
     /* Keep headers visible while scrolling long lists on mobile */
     .table-mobile-scroll thead th {
