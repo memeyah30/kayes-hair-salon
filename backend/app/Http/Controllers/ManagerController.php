@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Manager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ManagerController extends Controller
 {
@@ -73,6 +74,18 @@ class ManagerController extends Controller
         $manager->delete();
 
         return response()->json(['message' => 'Manager deleted']);
+    }
+
+    public function resetPassword(Manager $manager)
+    {
+        $tempPassword = Str::random(10);
+        $manager->password = $tempPassword;
+        $manager->save();
+
+        return response()->json([
+            'message' => 'Password reset successfully',
+            'temporary_password' => $tempPassword
+        ]);
     }
 
     private function normalizeActive($value): bool

@@ -23,6 +23,8 @@ import AdminSettings from './pages/admin/AdminSettings'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
 import Loader from './components/Loader'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import { useState, useEffect } from 'react'
 
 const App = () => {
@@ -55,6 +57,8 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/login/admin" element={<Login userType="admin" />} />
         <Route path="/login/manager" element={<Login userType="manager" />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         {/* Customer manage-booking routes (public OTP flow) */}
         <Route path="/my-appointments" element={<Navigate to="/" replace />} />

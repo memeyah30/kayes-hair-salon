@@ -398,6 +398,15 @@ const Login = () => {
                       )}
                     </button>
                   </div>
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/forgot-password')}
+                      className="text-xs font-semibold text-[#7B5CF5] transition hover:text-[#5b3cc4] hover:underline"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
                 </motion.div>
 
                 <motion.button

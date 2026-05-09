@@ -24,6 +24,12 @@ const AdminManagers = () => {
   const [formErrors, setFormErrors] = useState({})
   const [isSaving, setIsSaving] = useState(false)
 
+  // Reset password state
+  const [resetModalOpen, setResetModalOpen] = useState(false)
+  const [tempPassword, setTempPassword] = useState('')
+  const [resetManager, setResetManager] = useState(null)
+  const [isResetting, setIsResetting] = useState(false)
+
   const navigate = useNavigate()
   const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
@@ -160,6 +166,24 @@ const AdminManagers = () => {
     }
   }
 
+  const handleResetPassword = async (manager) => {
+    const confirmed = window.confirm(`Are you sure you want to reset the password for "${manager.name}"? A temporary password will be generated.`)
+    if (!confirmed) return
+
+    try {
+      setIsResetting(true)
+      const { data } = await api.post(`/managers/${manager.id}/reset-password`)
+      setTempPassword(data.temporary_password)
+      setResetManager(manager)
+      setResetModalOpen(true)
+      toast.success('Password reset successfully.')
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reset password.')
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
   const handleLogout = () => {
     api.post('/logout').finally(() => {
       localStorage.clear()
@@ -282,6 +306,16 @@ const AdminManagers = () => {
                             </svg>
                           </button>
                           <button
+                            onClick={() => handleResetPassword(manager)}
+                            disabled={isResetting || actionLoadingId === manager.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f9ff] text-sky-600 transition hover:bg-[#e0f2fe] shadow-sm disabled:opacity-50"
+                            title="Reset Password"
+                          >
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                          </button>
+                          <button
                             onClick={() => handleDelete(manager)}
                             disabled={actionLoadingId === manager.id}
                             className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0f3] text-rose-600 transition hover:bg-[#ffe4e9] shadow-sm disabled:opacity-50"
@@ -399,6 +433,53 @@ const AdminManagers = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Result Modal */}
+      {resetModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2d1b4a]/60 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md overflow-hidden rounded-[32px] bg-white p-8 shadow-2xl">
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-[#2d1b4a]">Password Reset!</h3>
+              <p className="mt-2 text-[#7a6794]">
+                A temporary password has been generated for <span className="font-semibold text-[#6d4de6]">{resetManager?.name}</span>.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border-2 border-dashed border-[#DDD6FE] bg-[#F8F5FF] p-6 text-center">
+              <p className="text-xs uppercase tracking-widest text-[#7a6794]">Temporary Password</p>
+              <div className="mt-2 flex items-center justify-center gap-3">
+                <span className="text-3xl font-mono font-bold tracking-wider text-[#6d4de6]">{tempPassword}</span>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(tempPassword)
+                    toast.info('Password copied to clipboard!')
+                  }}
+                  className="rounded-lg bg-white p-2 text-[#6d4de6] shadow-sm hover:bg-[#F0EBFF]"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-4 text-center text-sm text-[#7a6794]">
+              <p>Please share this temporary password with the manager. They should change it after logging in.</p>
+              <button
+                onClick={() => setResetModalOpen(false)}
+                className="w-full rounded-2xl bg-[#6d4de6] py-4 font-bold text-white shadow-lg shadow-[#6d4de6]/20 transition hover:bg-[#5b3cc4] hover:shadow-xl"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

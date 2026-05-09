@@ -83,6 +83,10 @@ Route::middleware(StartSession::class)->group(function () {
         Route::post('/manage-booking/appointments/{id}/cancel', [ManageBookingController::class, 'cancel']);
         Route::post('/manage-booking/appointments/{id}/rate', [ManageBookingController::class, 'rate']);
     });
+    // Password recovery routes
+    Route::post('/forgot-password', [\App\Http\Controllers\PasswordResetController::class, 'sendResetLinkEmail']);
+    Route::post('/reset-password', [\App\Http\Controllers\PasswordResetController::class, 'reset']);
+
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth.any');
@@ -109,6 +113,7 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     Route::get('/managers', [ManagerController::class, 'index']);
     Route::post('/managers', [ManagerController::class, 'store']);
     Route::match(['patch', 'post'], '/managers/{manager}', [ManagerController::class, 'update'])->where('manager', '[0-9]+');
+    Route::post('/managers/{manager}/reset-password', [ManagerController::class, 'resetPassword'])->where('manager', '[0-9]+');
     Route::delete('/managers/{manager}', [ManagerController::class, 'destroy']);
 
     // Services management
