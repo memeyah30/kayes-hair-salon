@@ -118,6 +118,11 @@ class CustomerRatingController extends Controller
 
     public function destroy(CustomerRating $customerRating)
     {
+        // Also delete the source appointment rating if it exists to prevent re-sync
+        if ($customerRating->appointment_id) {
+            AppointmentRating::where('appointment_id', $customerRating->appointment_id)->delete();
+        }
+
         $customerRating->delete();
         return response()->json(['message' => 'Rating deleted successfully']);
     }
