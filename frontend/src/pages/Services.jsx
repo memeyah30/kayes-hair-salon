@@ -442,7 +442,7 @@ const Services = () => {
                       <img
                         src={imageUrl(serviceImage)}
                         alt={service.name}
-                        className="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-110"
+                        className="absolute inset-0 w-full h-full object-contain transition duration-500"
                         onError={(event) => {
                           event.currentTarget.style.display = 'none'
                           const fallback = event.currentTarget.nextSibling
@@ -519,7 +519,7 @@ const Services = () => {
                     <img
                       src={imageUrl(optionsService.image_url || optionsService.image)}
                       alt={optionsService.name}
-                      className="w-full h-40 object-cover"
+                      className="w-full h-40 object-contain"
                     />
                   ) : (
                     <div className="w-full h-40 flex items-center justify-center text-[#6b5b95] text-sm">
