@@ -968,7 +968,7 @@ const BookAppointment = () => {
         // Skip service selection for reschedule flow
         if (rescheduling || initialEntryAppointmentId) {
           setStep(3)
-        } else {
+        } else if (step === 1) {
           setStep(2)
         }
       }
