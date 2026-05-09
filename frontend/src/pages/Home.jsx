@@ -754,7 +754,9 @@ const Home = () => {
                       ))}
                     </div>
                     
-                    <p className="relative z-10 text-[#5f4f8f] italic flex-1 mb-6 leading-relaxed">&quot;{review.comment}&quot;</p>
+                    <p className="relative z-10 text-[#5f4f8f] italic flex-1 mb-6 leading-relaxed">
+                      {review.comment ? `"${review.comment}"` : "No comment provided."}
+                    </p>
                     
                     <div className="relative z-10 flex items-center gap-3 mt-auto pt-4 border-t border-[#f5f0ff]">
                       <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#d8ccff] to-[#bca8ff] flex items-center justify-center text-[#4a3ba7] font-bold shadow-inner group-hover:rotate-12 transition-transform duration-300">

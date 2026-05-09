@@ -69,8 +69,6 @@ class CustomerRatingController extends Controller
     {
         // Safe, public endpoint for the landing page (Home.jsx)
         $ratings = CustomerRating::query()
-            ->where('rating', '>=', 4)
-            ->whereNotNull('comment')
             ->latest()
             ->get(['id', 'customer_name', 'rating', 'comment', 'created_at']);
 
