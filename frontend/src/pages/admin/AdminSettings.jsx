@@ -151,7 +151,7 @@ const AdminSettings = () => {
                     <input
                       type="text"
                       className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                      value={settings.general.salon_name || ''}
+                      value={settings?.general?.salon_name || ''}
                       onChange={(e) => handleInputChange('general', 'salon_name', e.target.value)}
                     />
                   </div>
@@ -160,7 +160,7 @@ const AdminSettings = () => {
                     <textarea
                       rows="3"
                       className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                      value={settings.general.salon_address || ''}
+                      value={settings?.general?.salon_address || ''}
                       onChange={(e) => handleInputChange('general', 'salon_address', e.target.value)}
                     />
                   </div>
@@ -170,7 +170,7 @@ const AdminSettings = () => {
                       <input
                         type="text"
                         className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                        value={settings.general.salon_contact || ''}
+                        value={settings?.general?.salon_contact || ''}
                         onChange={(e) => handleInputChange('general', 'salon_contact', e.target.value)}
                       />
                     </div>
@@ -179,7 +179,7 @@ const AdminSettings = () => {
                       <input
                         type="email"
                         className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                        value={settings.general.salon_email || ''}
+                        value={settings?.general?.salon_email || ''}
                         onChange={(e) => handleInputChange('general', 'salon_email', e.target.value)}
                       />
                     </div>
@@ -195,7 +195,7 @@ const AdminSettings = () => {
                       <input
                         type="time"
                         className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                        value={settings.appointment.open_time || ''}
+                        value={settings?.appointment?.open_time || ''}
                         onChange={(e) => handleInputChange('appointment', 'open_time', e.target.value)}
                       />
                     </div>
@@ -204,7 +204,7 @@ const AdminSettings = () => {
                       <input
                         type="time"
                         className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                        value={settings.appointment.close_time || ''}
+                        value={settings?.appointment?.close_time || ''}
                         onChange={(e) => handleInputChange('appointment', 'close_time', e.target.value)}
                       />
                     </div>
@@ -215,7 +215,7 @@ const AdminSettings = () => {
                       <label className="block text-sm font-semibold text-[#543b8d] mb-1.5">Time Slot Interval (Minutes)</label>
                       <select
                         className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                        value={settings.appointment.slot_interval || 30}
+                        value={settings?.appointment?.slot_interval || 30}
                         onChange={(e) => handleInputChange('appointment', 'slot_interval', parseInt(e.target.value))}
                       >
                         <option value={15}>15 Minutes</option>
@@ -232,7 +232,7 @@ const AdminSettings = () => {
                         min="1"
                         max="20"
                         className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                        value={settings.appointment.slot_capacity || 1}
+                        value={settings?.appointment?.slot_capacity || 1}
                         onChange={(e) => handleInputChange('appointment', 'slot_capacity', parseInt(e.target.value))}
                       />
                       <p className="mt-2 text-xs text-[#8b77bc]">Maximum number of appointments allowed at the same time.</p>
@@ -265,26 +265,26 @@ const AdminSettings = () => {
                       <p className="text-sm text-[#8b77bc]">Force customers to pay a deposit before booking.</p>
                     </div>
                     <button
-                      onClick={() => handleInputChange('payment', 'require_downpayment', !settings.payment.require_downpayment)}
+                      onClick={() => handleInputChange('payment', 'require_downpayment', !settings?.payment?.require_downpayment)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                        settings.payment.require_downpayment ? 'bg-[#5f3eb4]' : 'bg-gray-300'
+                        settings?.payment?.require_downpayment ? 'bg-[#5f3eb4]' : 'bg-gray-300'
                       }`}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                          settings.payment.require_downpayment ? 'translate-x-6' : 'translate-x-1'
+                          settings?.payment?.require_downpayment ? 'translate-x-6' : 'translate-x-1'
                         }`}
                       />
                     </button>
                   </div>
 
-                  {settings.payment.require_downpayment && (
+                  {settings?.payment?.require_downpayment && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-fadeIn">
                       <div>
                         <label className="block text-sm font-semibold text-[#543b8d] mb-1.5">Downpayment Type</label>
                         <select
                           className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                          value={settings.payment.downpayment_type || 'percentage'}
+                          value={settings?.payment?.downpayment_type || 'percentage'}
                           onChange={(e) => handleInputChange('payment', 'downpayment_type', e.target.value)}
                         >
                           <option value="percentage">Percentage (%)</option>
@@ -293,17 +293,17 @@ const AdminSettings = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-[#543b8d] mb-1.5">
-                          {settings.payment.downpayment_type === 'percentage' ? 'Percentage' : 'Amount'}
+                          {settings?.payment?.downpayment_type === 'percentage' ? 'Percentage' : 'Amount'}
                         </label>
                         <div className="relative">
                           <input
                             type="number"
                             className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                            value={settings.payment.downpayment_value || 0}
+                            value={settings?.payment?.downpayment_value || 0}
                             onChange={(e) => handleInputChange('payment', 'downpayment_value', parseFloat(e.target.value))}
                           />
                           <span className="absolute right-4 top-3.5 text-[#8b77bc] font-medium">
-                            {settings.payment.downpayment_type === 'percentage' ? '%' : 'PHP'}
+                            {settings?.payment?.downpayment_type === 'percentage' ? '%' : 'PHP'}
                           </span>
                         </div>
                       </div>
@@ -314,12 +314,12 @@ const AdminSettings = () => {
                     <label className="block text-sm font-semibold text-[#543b8d] mb-3">Accepted Payment Methods</label>
                     <div className="flex flex-wrap gap-3">
                       {['cash', 'gcash', 'paymaya', 'bank_transfer'].map((method) => {
-                        const isSelected = settings.payment.payment_methods?.includes(method)
+                        const isSelected = settings?.payment?.payment_methods?.includes(method)
                         return (
                           <button
                             key={method}
                             onClick={() => {
-                              const current = settings.payment.payment_methods || []
+                              const current = settings?.payment?.payment_methods || []
                               const updated = isSelected
                                 ? current.filter((m) => m !== method)
                                 : [...current, method]
@@ -348,14 +348,14 @@ const AdminSettings = () => {
                       <p className="text-sm text-[#8b77bc]">Send email notifications for new bookings and status changes.</p>
                     </div>
                     <button
-                      onClick={() => handleInputChange('notification', 'email_notifications_enabled', !settings.notification.email_notifications_enabled)}
+                      onClick={() => handleInputChange('notification', 'email_notifications_enabled', !settings?.notification?.email_notifications_enabled)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                        settings.notification.email_notifications_enabled ? 'bg-[#5f3eb4]' : 'bg-gray-300'
+                        settings?.notification?.email_notifications_enabled ? 'bg-[#5f3eb4]' : 'bg-gray-300'
                       }`}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                          settings.notification.email_notifications_enabled ? 'translate-x-6' : 'translate-x-1'
+                          settings?.notification?.email_notifications_enabled ? 'translate-x-6' : 'translate-x-1'
                         }`}
                       />
                     </button>
@@ -366,7 +366,7 @@ const AdminSettings = () => {
                     <input
                       type="email"
                       className="w-full px-4 py-3 rounded-2xl border border-[#e2d7ff] focus:border-[#5f3eb4] focus:ring-2 focus:ring-[#5f3eb4]/10 transition outline-none text-[#2d1f4f]"
-                      value={settings.notification.admin_notification_email || ''}
+                      value={settings?.notification?.admin_notification_email || ''}
                       onChange={(e) => handleInputChange('notification', 'admin_notification_email', e.target.value)}
                       placeholder="admin@example.com"
                     />
