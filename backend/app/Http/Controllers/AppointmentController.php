@@ -30,8 +30,8 @@ class AppointmentController extends Controller
     use InteractsWithPagination;
 
     // These will now act as defaults if settings are missing
-    private const DEFAULT_SLOT_INTERVAL_MINUTES = 30;
-    private const DEFAULT_MAX_SLOTS_PER_TIME = 5;
+    private const SLOT_INTERVAL_MINUTES = 30;
+    private const MAX_SLOTS_PER_TIME = 5;
     private const ACTIVE_SLOT_STATUSES = ['booked', 'pending', 'confirmed'];
     private const BOOKING_SUBMISSION_PROCESSING_TTL_SECONDS = 45;
     private const BOOKING_SUBMISSION_RESULT_TTL_SECONDS = 90;
@@ -74,7 +74,8 @@ class AppointmentController extends Controller
             return response()->json([]);
         }
 
-        $slotInterval = Setting::getValue('slot_interval', self::DEFAULT_SLOT_INTERVAL_MINUTES);
+        $slotInterval = (int) Setting::getValue('slot_interval', self::SLOT_INTERVAL_MINUTES);
+        if ($slotInterval < 15) $slotInterval = 30; // Safety fallback
         $durationMinutes = $this->normalizeDurationMinutes($data['service_duration'] ?? $slotInterval);
         $appointments = $this->activeCapacityAppointments($date, $data['exclude_appointment_id'] ?? null);
         $window = $this->businessWindow($date);
@@ -92,7 +93,7 @@ class AppointmentController extends Controller
                 'available' => !$capacity['full'],
                 'booked_count' => $capacity['booked'],
                 'remaining_slots' => $capacity['remaining'],
-                'capacity' => Setting::getValue('slot_capacity', self::DEFAULT_MAX_SLOTS_PER_TIME),
+                'capacity' => (int) Setting::getValue('slot_capacity', self::MAX_SLOTS_PER_TIME),
             ];
 
             $cursor->addMinutes($slotInterval);
@@ -412,7 +413,7 @@ class AppointmentController extends Controller
                 }
             }
 
-            $slotInterval = Setting::getValue('slot_interval', self::DEFAULT_SLOT_INTERVAL_MINUTES);
+            $slotInterval = (int) Setting::getValue('slot_interval', self::SLOT_INTERVAL_MINUTES);
             $totalDuration = $this->normalizeDurationMinutes($services->count() * $slotInterval);
             $slot = null;
 

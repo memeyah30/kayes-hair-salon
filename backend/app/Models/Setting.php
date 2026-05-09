@@ -20,13 +20,18 @@ class Setting extends Model
      */
     public static function getValue(string $key, $default = null)
     {
-        $setting = self::where('key', $key)->first();
+        try {
+            $setting = self::where('key', $key)->first();
 
-        if (!$setting) {
+            if (!$setting) {
+                return $default;
+            }
+
+            return self::castValue($setting->value, $setting->type);
+        } catch (\Exception $e) {
+            // Fallback to default if table doesn't exist yet or other DB error
             return $default;
         }
-
-        return self::castValue($setting->value, $setting->type);
     }
 
     /**
