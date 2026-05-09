@@ -61,6 +61,7 @@ Route::middleware(StartSession::class)->group(function () {
 
     Route::post('/ratings', [CustomerRatingController::class, 'store']); // Public - customers can rate
     Route::get('/public/ratings', [CustomerRatingController::class, 'publicIndex']); // Public - reviews for homepage
+    Route::get('/public/settings', [\App\Http\Controllers\SettingController::class, 'publicIndex']); // Public - settings for homepage
 
     // Customer manage-booking OTP routes
     Route::post('/manage-booking/send-otp', [ManageBookingController::class, 'sendOtp']);
@@ -165,8 +166,7 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
 // Admin + Manager dashboard stats
 Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
-    Route::get('/public/ratings', [CustomerRatingController::class, 'index']);
-    Route::get('/public/settings', [\App\Http\Controllers\SettingController::class, 'publicIndex']);
+    Route::get('/ratings', [CustomerRatingController::class, 'index']);
     Route::get('/customers', [AdminCustomerController::class, 'index']);
     Route::get('/admin/notifications', [NotificationController::class, 'index']);
     Route::patch('/admin/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
