@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use App\Mail\AppointmentApprovedMail;
 use App\Mail\ReminderMail;
 use App\Models\Appointment;
@@ -103,7 +104,7 @@ class AppointmentNotificationService
         $appointment = $this->loadAppointmentForMail($appointment);
         $email = $this->normalizedEmail($appointment->customer_email);
 
-        if ($email === '') {
+        if ($email === '' || !Setting::getValue('email_notifications_enabled', true)) {
             return;
         }
 
@@ -119,7 +120,7 @@ class AppointmentNotificationService
         $appointment = $this->loadAppointmentForMail($appointment);
         $email = $this->normalizedEmail($appointment->customer_email);
 
-        if ($email === '') {
+        if ($email === '' || !Setting::getValue('email_notifications_enabled', true)) {
             return;
         }
 

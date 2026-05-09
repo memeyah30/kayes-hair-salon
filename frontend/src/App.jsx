@@ -19,6 +19,7 @@ import ManagePaymentAccounts from './pages/admin/ManagePaymentAccounts'
 
 import SalesMonitoring from './pages/admin/SalesMonitoring'
 import AdminManagers from './pages/admin/AdminManagers'
+import AdminSettings from './pages/admin/AdminSettings'
 import ManageBookingEmail from './pages/ManageBookingEmail'
 import VerifyOtp from './pages/VerifyOtp'
 import Loader from './components/Loader'
@@ -142,6 +143,15 @@ const App = () => {
           element={
             <ProtectedRoute allowedTypes={['admin']}>
               <SalesMonitoring />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute allowedTypes={['admin']}>
+              <AdminSettings />
             </ProtectedRoute>
           }
         />

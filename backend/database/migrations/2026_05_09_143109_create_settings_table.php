@@ -1,0 +1,31 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('settings', function (Blueprint $col) {
+            $col->id();
+            $col->string('key')->unique();
+            $col->text('value')->nullable();
+            $col->string('group')->default('general'); // general, appointment, payment, notification
+            $col->string('type')->default('string'); // string, integer, boolean, json, array
+            $col->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('settings');
+    }
+};

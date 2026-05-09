@@ -150,6 +150,10 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     Route::get('/sales/{sale}', [SaleController::class, 'show']);
     Route::patch('/sales/{sale}', [SaleController::class, 'update']);
     Route::delete('/sales/{sale}', [SaleController::class, 'destroy']);
+
+    // Settings management
+    Route::get('/settings', [\App\Http\Controllers\SettingController::class, 'index']);
+    Route::post('/settings', [\App\Http\Controllers\SettingController::class, 'update']);
 });
 
 // Admin + Manager dashboard stats

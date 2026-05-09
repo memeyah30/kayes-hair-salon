@@ -22,14 +22,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Collection;
+use App\Models\Setting;
 use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
     use InteractsWithPagination;
 
-    private const SLOT_INTERVAL_MINUTES = 30;
-    private const MAX_SLOTS_PER_TIME = 5;
+    // These will now act as defaults if settings are missing
+    private const DEFAULT_SLOT_INTERVAL_MINUTES = 30;
+    private const DEFAULT_MAX_SLOTS_PER_TIME = 5;
     private const ACTIVE_SLOT_STATUSES = ['booked', 'pending', 'confirmed'];
     private const BOOKING_SUBMISSION_PROCESSING_TTL_SECONDS = 45;
     private const BOOKING_SUBMISSION_RESULT_TTL_SECONDS = 90;
@@ -72,7 +74,8 @@ class AppointmentController extends Controller
             return response()->json([]);
         }
 
-        $durationMinutes = $this->normalizeDurationMinutes($data['service_duration'] ?? self::SLOT_INTERVAL_MINUTES);
+        $slotInterval = Setting::getValue('slot_interval', self::DEFAULT_SLOT_INTERVAL_MINUTES);
+        $durationMinutes = $this->normalizeDurationMinutes($data['service_duration'] ?? $slotInterval);
         $appointments = $this->activeCapacityAppointments($date, $data['exclude_appointment_id'] ?? null);
         $window = $this->businessWindow($date);
         $cursor = $window['start']->copy();
@@ -89,10 +92,10 @@ class AppointmentController extends Controller
                 'available' => !$capacity['full'],
                 'booked_count' => $capacity['booked'],
                 'remaining_slots' => $capacity['remaining'],
-                'capacity' => self::MAX_SLOTS_PER_TIME,
+                'capacity' => Setting::getValue('slot_capacity', self::DEFAULT_MAX_SLOTS_PER_TIME),
             ];
 
-            $cursor->addMinutes(self::SLOT_INTERVAL_MINUTES);
+            $cursor->addMinutes($slotInterval);
         }
 
         return response()->json($slots);
@@ -282,13 +285,17 @@ class AppointmentController extends Controller
         $serviceIds = array_values(array_map('intval', $serviceIds));
         sort($serviceIds);
 
-        // Validate time is between 8 AM and 7:59 PM (business hours: 8 AM - 8 PM)
+        // Validate time is within business hours from settings
         if ($data['preferred_time']) {
-            $time = \Carbon\Carbon::createFromFormat('H:i', $data['preferred_time']);
-            $hour = (int)$time->format('H');
-            // Allow hours 8-19 (8:00 AM to 7:59 PM) to ensure appointment can complete by 8 PM
-            if ($hour < 8 || $hour >= 20) {
-                return response()->json(['message' => 'Appointment time must be between 8:00 AM and 7:59 PM'], 422);
+            $openTime = Setting::getValue('open_time', '08:00');
+            $closeTime = Setting::getValue('close_time', '20:00');
+            
+            $time = Carbon::createFromFormat('H:i', $data['preferred_time']);
+            $open = Carbon::createFromFormat('H:i', $openTime);
+            $close = Carbon::createFromFormat('H:i', $closeTime);
+            
+            if ($time->lt($open) || $time->gte($close)) {
+                return response()->json(['message' => "Appointment time must be between {$openTime} and {$closeTime}"], 422);
             }
         }
 
@@ -358,7 +365,16 @@ class AppointmentController extends Controller
 
             $paymentMethod = $data['payment_method'] ?? 'on_hand';
             $downpaymentAmountCents = $data['downpayment_amount_cents'] ?? null;
-            $minDownpaymentCents = (int) round($totalAmountCents * 0.1);
+            
+            $requireDownpayment = Setting::getValue('require_downpayment', true);
+            $downpaymentType = Setting::getValue('downpayment_type', 'percentage');
+            $downpaymentValue = Setting::getValue('downpayment_value', 10);
+
+            if ($downpaymentType === 'percentage') {
+                $minDownpaymentCents = (int) round($totalAmountCents * ($downpaymentValue / 100));
+            } else {
+                $minDownpaymentCents = (int) ($downpaymentValue * 100);
+            }
 
             if ($downpaymentAmountCents !== null && (int) $downpaymentAmountCents > $totalAmountCents) {
                 return response()->json([
@@ -381,21 +397,23 @@ class AppointmentController extends Controller
                 }
             }
 
-            // Validate deposit for pay-on-hand payments
-            if ($paymentMethod === 'on_hand') {
+            // Validate deposit for pay-on-hand payments if required
+            if ($paymentMethod === 'on_hand' && $requireDownpayment) {
                 if (empty($downpaymentAmountCents) || $downpaymentAmountCents < $minDownpaymentCents) {
+                    $minFormatted = "PHP " . number_format($minDownpaymentCents / 100, 2);
                     return response()->json([
                         'message' => 'A cash deposit is required to confirm this appointment.',
                         'errors' => [
                             'downpayment_amount_cents' => [
-                                'Minimum deposit is 10% of the total amount.'
+                                "Minimum deposit is {$minFormatted}."
                             ]
                         ]
                     ], 422);
                 }
             }
 
-            $totalDuration = $this->normalizeDurationMinutes($services->count() * self::SLOT_INTERVAL_MINUTES);
+            $slotInterval = Setting::getValue('slot_interval', self::DEFAULT_SLOT_INTERVAL_MINUTES);
+            $totalDuration = $this->normalizeDurationMinutes($services->count() * $slotInterval);
             $slot = null;
 
             if (!empty($data['preferred_time'])) {
@@ -1240,10 +1258,15 @@ class AppointmentController extends Controller
     private function businessWindow(string $date): array
     {
         $targetDate = Carbon::createFromFormat('Y-m-d', $date, 'Asia/Manila')->startOfDay();
+        $openTime = Setting::getValue('open_time', '09:30');
+        $closeTime = Setting::getValue('close_time', '17:30');
+        
+        $open = explode(':', $openTime);
+        $close = explode(':', $closeTime);
 
         return [
-            'start' => $targetDate->copy()->setTime(9, 30, 0),
-            'end' => $targetDate->copy()->setTime(17, 30, 0),
+            'start' => $targetDate->copy()->setTime($open[0], $open[1] ?? 0, 0),
+            'end' => $targetDate->copy()->setTime($close[0], $close[1] ?? 0, 0),
         ];
     }
 
