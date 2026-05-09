@@ -93,6 +93,27 @@ const AdminSettings = () => {
     { id: 'notification', label: 'Notifications', icon: 'notifications' },
   ]
 
+  if (!settings) {
+    return (
+      <AdminLayout userType={storedUserType} onLogout={handleLogout} title="Salon Settings">
+        <div className="p-8 text-center">
+          <div className="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 max-w-md mx-auto">
+            <h3 className="font-bold text-lg mb-2">Configuration Error</h3>
+            <p className="text-sm opacity-90">
+              The settings could not be loaded. This usually happens if the database tables are not yet updated on the server.
+            </p>
+            <button 
+              onClick={fetchSettings}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      </AdminLayout>
+    )
+  }
+
   return (
     <AdminLayout userType={storedUserType} onLogout={handleLogout} title="Salon Settings">
       <div className="app-mobile-shell max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
