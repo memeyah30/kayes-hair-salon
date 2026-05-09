@@ -13,7 +13,7 @@ const fadeUp = {
   },
 }
 
-const LandingFooter = ({ onScrollToSection }) => {
+const LandingFooter = ({ onScrollToSection, settings }) => {
   const location = useLocation()
   const navigate = useNavigate()
   const isLandingPage = location.pathname === '/' || location.pathname === '/home'
@@ -70,7 +70,7 @@ const LandingFooter = ({ onScrollToSection }) => {
         >
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#d9ccff]">Salon</p>
-            <h3 className="mt-4 text-2xl font-semibold text-white">Kaye&apos;s Hair Salon and Spa</h3>
+            <h3 className="mt-4 text-2xl font-semibold text-white">{settings?.general?.salon_name || "Kaye's Hair Salon and Spa"}</h3>
             <p className="mt-4 max-w-sm text-sm leading-7 text-[#e8dcff]">
               Professional salon care with a modern booking experience designed to make every visit smooth and stress-free.
             </p>
@@ -113,7 +113,7 @@ const LandingFooter = ({ onScrollToSection }) => {
                     <circle cx="12" cy="10" r="2.5" />
                   </svg>
                 </span>
-                <span>Governor Perdices Street, Dumaguete City, Philippines, 6200</span>
+                <span>{settings?.general?.salon_address || "Governor Perdices Street, Dumaguete City, Philippines, 6200"}</span>
               </div>
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-white">
@@ -121,7 +121,7 @@ const LandingFooter = ({ onScrollToSection }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 4.5h3l1.4 4.1-2 1.8a16 16 0 0 0 6.2 6.2l1.8-2 4.1 1.4v3A1.5 1.5 0 0 1 18 20.5 14.5 14.5 0 0 1 3.5 6 1.5 1.5 0 0 1 5 4.5Z" />
                   </svg>
                 </span>
-                <span>0975 984 0208</span>
+                <span>{settings?.general?.salon_contact || "0975 984 0208"}</span>
               </div>
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-white">
@@ -130,7 +130,7 @@ const LandingFooter = ({ onScrollToSection }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="m5.5 7.5 6.5 5 6.5-5" />
                   </svg>
                 </span>
-                <span>managerkaye@gmail.com</span>
+                <span>{settings?.general?.salon_email || "managerkaye@gmail.com"}</span>
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ const LandingFooter = ({ onScrollToSection }) => {
           whileInView="visible"
           viewport={{ once: true, amount: 0.4 }}
         >
-          &copy; 2026 Kaye&apos;s Hair Salon and Spa. All rights reserved.
+          &copy; {new Date().getFullYear()} {settings?.general?.salon_name || "Kaye's Hair Salon and Spa"}. All rights reserved.
         </motion.div>
       </div>
     </footer>

@@ -160,7 +160,8 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
 // Admin + Manager dashboard stats
 Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::get('/dashboard/admin/stats', [DashboardController::class, 'adminStats']);
-    Route::get('/ratings', [CustomerRatingController::class, 'index']);
+    Route::get('/public/ratings', [CustomerRatingController::class, 'index']);
+    Route::get('/public/settings', [\App\Http\Controllers\SettingController::class, 'publicIndex']);
     Route::get('/customers', [AdminCustomerController::class, 'index']);
     Route::get('/admin/notifications', [NotificationController::class, 'index']);
     Route::patch('/admin/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);

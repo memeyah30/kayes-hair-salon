@@ -24,6 +24,25 @@ class SettingController extends Controller
     }
 
     /**
+     * Get public settings (General info only) for the landing page.
+     */
+    public function publicIndex()
+    {
+        // Only return General and Appointment logic groups (excluding sensitive info)
+        $publicGroups = ['general', 'appointment'];
+        
+        $settings = Setting::whereIn('group', $publicGroups)->get();
+        
+        $grouped = $settings->groupBy('group')->map(function ($items) {
+            return $items->keyBy('key')->map(function ($item) {
+                return $this->castValue($item->value, $item->type);
+            });
+        });
+
+        return response()->json($grouped);
+    }
+
+    /**
      * Update multiple settings at once.
      */
     public function update(Request $request)

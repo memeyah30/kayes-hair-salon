@@ -221,6 +221,7 @@ const Services = () => {
   const location = useLocation()
 
   const [services, setServices] = useState([])
+  const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeAudience, setActiveAudience] = useState('all')
   const [isOptionsOpen, setIsOptionsOpen] = useState(false)
@@ -239,8 +240,12 @@ const Services = () => {
     const loadData = async () => {
       try {
         setLoading(true)
-        const response = await api.get('/services')
-        setServices(response.data || [])
+        const [servicesRes, settingsRes] = await Promise.all([
+          api.get('/services'),
+          api.get('/public/settings')
+        ])
+        setServices(servicesRes.data || [])
+        setSettings(settingsRes.data)
       } catch (error) {
         toast.error(`Failed to load services: ${error.message || 'Please try again.'}`)
       } finally {
@@ -493,7 +498,7 @@ const Services = () => {
           </div>
         )}
       </section>
-      {!loading && <LandingFooter />}
+      {!loading && <LandingFooter settings={settings} />}
 
       {isOptionsOpen && optionsService && (
         <div

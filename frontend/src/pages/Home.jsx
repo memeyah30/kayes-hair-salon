@@ -231,6 +231,7 @@ const Home = () => {
   const navigate = useNavigate()
   const [services, setServices] = useState([])
   const [reviews, setReviews] = useState([])
+  const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
   const activeServiceCategory = 'all'
   const [isServiceOptionsOpen, setIsServiceOptionsOpen] = useState(false)
@@ -244,12 +245,14 @@ const Home = () => {
 
   const loadData = async () => {
     try {
-      const [servicesRes, ratingsRes] = await Promise.all([
+      const [servicesRes, ratingsRes, settingsRes] = await Promise.all([
         api.get('/services'),
-        api.get('/public/ratings')
+        api.get('/public/ratings'),
+        api.get('/public/settings')
       ])
       
       setServices(asArray(servicesRes?.data?.data || servicesRes?.data))
+      setSettings(settingsRes?.data)
       
       // Handle potential wrapping in a 'data' key
       const rawRatings = ratingsRes?.data?.data || ratingsRes?.data
@@ -442,7 +445,7 @@ const Home = () => {
               <span className="home-hero__brand-mark h-12 w-12 md:h-14 md:w-14 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center overflow-hidden">
                 <img src="/logo.png" alt="Kaye's Hair Salon logo" className="h-10 w-10 md:h-12 md:w-12 object-contain" />
               </span>
-              <span className="truncate">Kaye&apos;s Hair Salon and Spa</span>
+              <span className="truncate">{settings?.general?.salon_name || "Kaye's Hair Salon and Spa"}</span>
             </button>
 
             <div className="hidden md:flex items-center gap-7 text-lg">
@@ -496,7 +499,7 @@ const Home = () => {
               Book Your Salon Appointment Online
             </h1>
             <p className="home-hero__subtitle">
-              Enjoy premium hair, nail, and beauty services with our salon team.
+              {settings?.general?.salon_name ? `Enjoy premium hair, nail, and beauty services at ${settings.general.salon_name}.` : "Enjoy premium hair, nail, and beauty services with our salon team."}
             </p>
             <div className="home-hero__actions flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -795,7 +798,7 @@ const Home = () => {
             <h2 className="text-2xl md:text-5xl font-semibold text-[#2f245a] mb-3 md:mb-4">About Us</h2>
             <div className="space-y-3 md:space-y-4 text-sm md:text-xl text-[#5f4f8f] leading-relaxed">
               <p>
-                Kaye&apos;s Hair Salon and Spa is dedicated to helping every client feel confident, refreshed, and cared for
+                {settings?.general?.salon_name || "Kaye's Hair Salon and Spa"} is dedicated to helping every client feel confident, refreshed, and cared for
                 through modern beauty services delivered with consistency and professionalism. From hair styling and color
                 treatments to nail care and personalized salon services, we focus on creating results that match your
                 lifestyle while making each visit comfortable, clean, and relaxing from start to finish.
@@ -811,7 +814,7 @@ const Home = () => {
         </section>
       </main>
 
-      <LandingFooter onScrollToSection={scrollToSection} />
+      <LandingFooter onScrollToSection={scrollToSection} settings={settings} />
     </div>
   )
 }
