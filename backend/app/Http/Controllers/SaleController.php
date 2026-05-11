@@ -137,23 +137,21 @@ class SaleController extends Controller
      */
     private function syncMissingSales()
     {
-        // 1. Cleanup orphaned sales (sales where the appointment was deleted or cancelled)
-        $validStatuses = ['booked', 'confirmed', 'completed'];
+        // 1. Reconcile sales (ensure all valid appointments have exactly one sale record per unique service)
+        $validStatuses = ['booked', 'confirmed', 'completed', 'cancelled', 'missed'];
         
         \Illuminate\Support\Facades\DB::table('sales')
             ->leftJoin('appointments', 'sales.appointment_id', '=', 'appointments.id')
             ->whereNotNull('sales.appointment_id')
             ->where(function($query) use ($validStatuses) {
-                $query->whereNull('appointments.id') // Deleted appointments
-                      ->orWhereNotIn('appointments.status', $validStatuses); // Cancelled/Missed
+                $query->whereNull('appointments.id') // Only delete if appointment was physically DELETED from DB
+                      ->orWhereNotIn('appointments.status', $validStatuses); 
             })
-            ->where(function($query) {
-                $query->where('sales.notes', 'like', 'Recorded from booking%');
-            })
+            ->where('sales.notes', 'like', 'Recorded from booking%')
             ->delete();
 
-        // 2. Include bookings that already collected money, even if they are still booked or confirmed.
-        $appointments = \App\Models\Appointment::whereIn('status', ['booked', 'confirmed', 'completed'])
+        // 2. Include bookings that already collected money.
+        $appointments = \App\Models\Appointment::whereIn('status', $validStatuses)
             ->where(function ($query) {
                 $query->whereIn('payment_status', ['paid', 'downpayment', 'verified'])
                     ->orWhere('downpayment_amount_cents', '>', 0);
