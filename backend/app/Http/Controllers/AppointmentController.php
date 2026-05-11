@@ -1408,11 +1408,14 @@ class AppointmentController extends Controller
             return $service->id . '-' . ($variantId ?? 'none');
         });
 
-        // Reconcile existing records: If the count matches, just update the status/method.
-        // If the count is different (e.g. duplicates), we delete and re-sync.
-        $existingSalesCount = \App\Models\Sale::where('appointment_id', $appointment->id)->count();
+        $isCompleted = ($appointment->status === 'completed');
+        $expectedNote = $isCompleted ? 'Recorded from booking (Completed)' : 'Recorded from booking (' . $appointment->status . ')';
+
+        // Reconcile existing records: 
+        // We only skip if the count matches AND the recording logic (Completed vs Deposit) matches.
+        $existingSales = \App\Models\Sale::where('appointment_id', $appointment->id)->get();
         
-        if ($existingSalesCount > 0 && $existingSalesCount === $appointmentServices->count()) {
+        if ($existingSales->count() > 0 && $existingSales->count() === $appointmentServices->count() && $existingSales->first()->notes === $expectedNote) {
             \App\Models\Sale::where('appointment_id', $appointment->id)->update([
                 'payment_status' => $salePaymentStatus,
                 'payment_method' => $salePaymentMethod,
