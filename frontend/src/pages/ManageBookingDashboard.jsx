@@ -15,11 +15,11 @@ import {
 
 const statusClasses = {
   pending: 'bg-amber-100 text-amber-800',
-  confirmed: 'bg-[#fce7f1] text-[#9b2f64]',
+  confirmed: 'bg-[#f3f0ff] text-[#6b4ed1]',
   completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
   missed: 'bg-gray-200 text-gray-700',
-  booked: 'bg-[#fce7f1] text-[#9b2f64]',
+  booked: 'bg-[#f3f0ff] text-[#6b4ed1]',
 }
 
 const formatCurrency = (amount) => `PHP ${Number(amount || 0).toFixed(2)}`
@@ -417,7 +417,7 @@ const ManageBookingDashboard = () => {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.08)] p-4">
               <div className="text-[#7c688f] text-sm">Upcoming Appointments</div>
-              <div className="text-2xl font-bold text-[#E75480]">{upcomingCount}</div>
+              <div className="text-2xl font-bold text-[#7b5cf5]">{upcomingCount}</div>
               <div className="text-sm text-[#6f5b7e] mt-2">Verified booking access is active for this session.</div>
             </div>
             <button
@@ -430,7 +430,7 @@ const ManageBookingDashboard = () => {
               }`}
             >
               <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
-              <div className="text-2xl font-bold text-emerald-700">{successfulAppointmentsCount}</div>
+              <div className="text-2xl font-bold text-[#7b5cf5]">{successfulAppointmentsCount}</div>
               <div className="text-sm text-[#6f5b7e] mt-2 break-all">
                 {historyAppointments.length > 0
                   ? 'Click to view booking history'

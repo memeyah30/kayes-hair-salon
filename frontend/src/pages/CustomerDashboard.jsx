@@ -22,11 +22,11 @@ const customerPanelClass = 'rounded-[24px] sm:rounded-[28px] border border-white
 
 const statusClasses = {
   pending: 'bg-amber-100 text-amber-800',
-  confirmed: 'bg-[#fce7f1] text-[#9b2f64]',
+  confirmed: 'bg-[#f3f0ff] text-[#6b4ed1]',
   completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
   missed: 'bg-gray-200 text-gray-700',
-  booked: 'bg-[#fce7f1] text-[#9b2f64]',
+  booked: 'bg-[#f3f0ff] text-[#6b4ed1]',
 }
 
 const clearLegacyCustomerLookup = () => {
@@ -623,7 +623,7 @@ const CustomerDashboard = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <div className={`${customerPanelClass} p-5`}>
               <div className="text-[#7c688f] text-sm">Upcoming Appointments</div>
-              <div className="mt-2 text-2xl font-bold text-[#E75480]">{upcomingAppointments.length}</div>
+              <div className="mt-2 text-2xl font-bold text-[#7b5cf5]">{upcomingAppointments.length}</div>
             </div>
             <button
               type="button"
@@ -636,7 +636,7 @@ const CustomerDashboard = () => {
               }`}
             >
               <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
-              <div className="mt-2 text-2xl font-bold text-emerald-700">{successfulAppointmentsCount}</div>
+              <div className="mt-2 text-2xl font-bold text-[#7b5cf5]">{successfulAppointmentsCount}</div>
               <div className="text-sm text-[#6f5b7e] mt-2">
                 {historyAppointments.length > 0
                   ? 'Click to view booking history'
