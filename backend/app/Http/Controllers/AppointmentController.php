@@ -1387,21 +1387,11 @@ class AppointmentController extends Controller
         $salePaymentMethod = $this->normalizeSalePaymentMethod($paymentMethod ?? $appointment->payment_method ?? null);
         $salePaymentStatus = $this->normalizeSalePaymentStatus($paymentStatus ?? $appointment->payment_status ?? null, $appointment);
 
-        // Skip if already recorded
-        if (\App\Models\Sale::where('appointment_id', $appointment->id)->exists()) {
-            // But ensure existing sales have the correct payment status
-            $saleUpdate = [
-                'payment_status' => $salePaymentStatus,
-                'payment_method' => $salePaymentMethod,
-            ];
-
-            if (!$appointment->sales()->whereNotNull('recorded_at')->exists()) {
-                $saleUpdate['recorded_at'] = $appointment->updated_at ?? now();
-            }
-
-            \App\Models\Sale::where('appointment_id', $appointment->id)->update($saleUpdate);
-            return;
-        }
+        // We clear any existing automated sale records for this appointment before re-recording.
+        // This prevents duplicates and ensures the list matches the current appointment services.
+        \App\Models\Sale::where('appointment_id', $appointment->id)
+            ->where('notes', 'Recorded from booking payment/confirmation')
+            ->delete();
 
         // We now allow all appointments to be recorded as sales so they appear in the list.
         // The revenue totals are filtered in the controllers to only include completed ones.
