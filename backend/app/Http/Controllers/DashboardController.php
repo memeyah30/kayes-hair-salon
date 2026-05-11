@@ -141,6 +141,12 @@ class DashboardController extends Controller
                         $fromManila->copy()->setTimezone('UTC'),
                         $toManila->copy()->setTimezone('UTC'),
                     ])
+                    ->where(function ($query) {
+                        $query->whereNull('appointment_id')
+                            ->orWhereHas('appointment', function ($q) {
+                                $q->where('status', 'completed');
+                            });
+                    })
                     ->sum('total_amount_cents');
             };
 

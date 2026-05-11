@@ -163,6 +163,7 @@ const SalesMonitoring = () => {
   const isPartialPayment = (status) => ['downpayment', 'partially_paid'].includes(status)
   const actualSalesCents = stats?.actual_sales_cents ?? stats?.appointments_summary?.total_collected_cents ?? 0
   const grossSalesCents = stats?.total_sales_cents ?? 0
+  const totalTransactionsValueCents = stats?.total_transactions_value_cents ?? 0
 
   const groupSalesByAppointment = (salesList) => {
     const grouped = {}
@@ -351,6 +352,10 @@ const SalesMonitoring = () => {
           {/* Stats Cards */}
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Total Sales (All Status)</div>
+                <div className="text-xl font-bold text-[#2D2D2D]">{currency(totalTransactionsValueCents)}</div>
+              </div>
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                 <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Actual Revenue (Collected)</div>
                 <div className="text-xl font-bold text-[#7B5CF5]">{currency(actualSalesCents)}</div>

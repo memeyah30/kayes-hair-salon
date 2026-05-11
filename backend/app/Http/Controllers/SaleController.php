@@ -126,8 +126,8 @@ class SaleController extends Controller
      */
     private function syncMissingSales()
     {
-        // Only include bookings that are COMPLETED to avoid inflating revenue with unearned income.
-        $appointments = \App\Models\Appointment::whereIn('status', ['completed'])
+        // Include bookings that are booked, confirmed, or completed so they show up in the transactions list.
+        $appointments = \App\Models\Appointment::whereIn('status', ['booked', 'confirmed', 'completed'])
             ->where(function ($query) {
                 $query->whereIn('payment_status', ['paid', 'downpayment', 'verified'])
                     ->orWhere('downpayment_amount_cents', '>', 0);
@@ -211,7 +211,15 @@ class SaleController extends Controller
         }
 
         // Total sales
-        $totalSales = (clone $baseQuery)->sum('total_amount_cents');
+        // Gross Sales should only include COMPLETED appointments or manual sales
+        $totalSales = (clone $baseQuery)
+            ->where(function ($query) {
+                $query->whereNull('appointment_id')
+                    ->orWhereHas('appointment', function ($q) {
+                        $q->where('status', 'completed');
+                    });
+            })
+            ->sum('total_amount_cents');
 
         // Sales by type
         $salesByType = (clone $baseQuery)
@@ -281,6 +289,7 @@ class SaleController extends Controller
             ],
             'total_sales_cents' => $totalSales,
             'actual_sales_cents' => $appointmentsSummary['total_collected_cents'],
+            'total_transactions_value_cents' => (clone $baseQuery)->sum('total_amount_cents'),
             'sales_by_type' => $salesByType,
             'sales_by_payment_method' => $salesByPayment,
             'top_selling_items' => $topItems,
