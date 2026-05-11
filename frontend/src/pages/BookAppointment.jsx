@@ -2324,8 +2324,9 @@ const BookAppointment = () => {
               </span>
               <span className="truncate text-base md:text-lg font-semibold text-[#2C1338]">Kaye&apos;s Hair Salon and Spa</span>
             </button>
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-              <button onClick={() => navigate('/')} className="booking-nav-link text-[#2C1338] hover:text-[#6d4de6]">Home</button>
+            <nav className="hidden md:flex items-center gap-2 text-sm">
+              <button onClick={() => navigate('/')} className="booking-nav-link">Home</button>
+              <button onClick={() => navigate('/services')} className="booking-nav-link">Services</button>
             </nav>
           </div>
           <div className="flex items-center gap-2">
@@ -2334,15 +2335,12 @@ const BookAppointment = () => {
         </div>
       </header>
 
-      <section className="max-w-[1700px] mx-auto px-4 md:px-6 pt-8">
-        <div className="booking-hero relative overflow-hidden rounded-[2rem] px-8 md:px-16 py-12 md:py-20 text-center md:text-left bg-[#1A0B2E]">
-          <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_50%_0%,#6d4de6_0%,transparent_50%)]"></div>
-          <div className="relative z-10">
-            <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">Book Your <span className="text-[#a78bfa]">Salon Appointment</span></h1>
-            <p className="mt-4 text-lg md:text-xl text-[#d1d5db] max-w-2xl font-light">
-              Experience premium beauty services. Choose your services, date, and time for your personalized salon visit.
-            </p>
-          </div>
+      <section className="max-w-[1700px] mx-auto px-4 md:px-6 pt-6">
+        <div className="booking-hero rounded-3xl px-6 md:px-10 py-8 md:py-10 text-center md:text-left">
+          <h1 className="booking-hero-title fluid-title-lg font-bold">Book Your Salon Appointment</h1>
+          <p className="booking-hero-subtitle mt-2 text-base md:text-lg">
+            Choose your services, date, and time for your salon visit
+          </p>
         </div>
       </section>
 
@@ -2350,32 +2348,34 @@ const BookAppointment = () => {
       
       {/* Step Indicator */}
       <div className="flex items-center justify-center mb-4">
-        <div className="booking-stepper flex items-center w-full max-w-4xl px-4">
-          {[
-            { id: 1, label: 'Verify Email' },
-            { id: 2, label: 'Select Service' },
-            { id: 3, label: 'Select Date & Time' },
-            { id: 4, label: 'Confirm Booking' }
-          ].map((s, idx) => (
-            <div key={s.id} className="flex-1 flex items-center">
-              <div className="flex flex-col items-center flex-1">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                  step === s.id ? 'bg-[#6d4de6] text-white shadow-lg scale-110' : 
-                  step > s.id ? 'bg-emerald-500 text-white' : 'bg-[#e2e8f0] text-[#64748b]'
-                }`}>
-                  {step > s.id ? '✓' : s.id}
-                </div>
-                <span className={`mt-2 text-[11px] font-semibold uppercase tracking-wider text-center ${
-                  step === s.id ? 'text-[#6d4de6]' : 'text-[#64748b]'
-                }`}>{s.label}</span>
-              </div>
-              {idx < 3 && (
-                <div className={`h-[2px] flex-1 mx-2 transition-colors duration-500 ${
-                  step > s.id ? 'bg-emerald-500' : 'bg-[#e2e8f0]'
-                }`}></div>
-              )}
+        <div className="booking-stepper flex items-start">
+          <div className="booking-step-item">
+            <div className={`booking-step-circle ${step >= 1 ? 'active' : ''}`}>
+              1
             </div>
-          ))}
+            <div className="booking-step-label">Verify Email</div>
+          </div>
+          <div className={`booking-step-line ${step >= 2 ? 'active' : ''}`}></div>
+          <div className="booking-step-item">
+            <div className={`booking-step-circle ${step >= 2 ? 'active' : ''}`}>
+              2
+            </div>
+            <div className="booking-step-label">Select Service</div>
+          </div>
+          <div className={`booking-step-line ${step >= 3 ? 'active' : ''}`}></div>
+          <div className="booking-step-item">
+            <div className={`booking-step-circle ${step >= 3 ? 'active' : ''}`}>
+              3
+            </div>
+            <div className="booking-step-label">Select Date &amp; Time</div>
+          </div>
+          <div className={`booking-step-line ${step >= 4 ? 'active' : ''}`}></div>
+          <div className="booking-step-item">
+            <div className={`booking-step-circle ${step >= 4 ? 'active' : ''}`}>
+              4
+            </div>
+            <div className="booking-step-label">Confirm Booking</div>
+          </div>
         </div>
       </div>
 
