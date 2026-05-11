@@ -152,7 +152,7 @@ class SaleController extends Controller
                 ->orWhere(function ($q) {
                     // Also pick up appointments where the number of sales doesn't match the number of services
                     // This fixes duplicates or missing items in the sales table.
-                    $q->whereRaw('(SELECT COUNT(*) FROM sales WHERE sales.appointment_id = appointments.id) != (SELECT COUNT(*) FROM appointment_service WHERE appointment_service.appointment_id = appointments.id)');
+                    $q->whereRaw('(SELECT COUNT(*) FROM sales WHERE sales.appointment_id = appointments.id) != (SELECT COUNT(*) FROM appointment_services WHERE appointment_services.appointment_id = appointments.id)');
                 });
             })
             ->get();
