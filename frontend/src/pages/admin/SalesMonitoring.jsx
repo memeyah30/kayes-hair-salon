@@ -160,8 +160,9 @@ const SalesMonitoring = () => {
 
   const [selectedSale, setSelectedSale] = useState(null)
   const [showModal, setShowModal] = useState(false)
-  const actualSalesCents = stats?.actual_sales_cents ?? stats?.appointments_summary?.total_collected_cents ?? 0
   const isPartialPayment = (status) => ['downpayment', 'partially_paid'].includes(status)
+  const actualSalesCents = stats?.actual_sales_cents ?? stats?.appointments_summary?.total_collected_cents ?? 0
+  const grossSalesCents = stats?.total_sales_cents ?? 0
 
   const groupSalesByAppointment = (salesList) => {
     const grouped = {}
@@ -351,12 +352,12 @@ const SalesMonitoring = () => {
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Actual Sales</div>
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Actual Revenue (Collected)</div>
                 <div className="text-xl font-bold text-[#7B5CF5]">{currency(actualSalesCents)}</div>
               </div>
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Gross Sales</div>
-                <div className="text-xl font-bold text-[#22C55E]">{currency(stats.total_sales_cents || 0)}</div>
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Gross Revenue (Earned)</div>
+                <div className="text-xl font-bold text-[#22C55E]">{currency(grossSalesCents)}</div>
               </div>
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                 <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Remaining Balance</div>
@@ -434,9 +435,7 @@ const SalesMonitoring = () => {
                   {groupedSales.map((sale) => {
                     const apt = sale.appointment
                     const paid = apt ? apt.amount_paid_cents : sale.computed_total_cents
-                    const servicesLabel = sale.items.length > 1 
-                      ? `${sale.items[0].item_name} + ${sale.items.length - 1} more`
-                      : (sale.items[0]?.item_name || 'Service')
+                    const servicesLabel = sale.items.map(item => item.item_name).join(', ')
 
                     return (
                       <div 
@@ -494,9 +493,8 @@ const SalesMonitoring = () => {
                         const paid = apt ? apt.amount_paid_cents : sale.computed_total_cents
                         const balance = apt ? apt.remaining_balance_cents : 0
                         const dp = apt ? (apt.downpayment_amount_cents || 0) : 0
-                        const servicesLabel = sale.items.length > 1 
-                          ? `${sale.items[0].item_name} + ${sale.items.length - 1} more`
-                          : (sale.items[0]?.item_name || 'Service')
+                        const servicesLabel = sale.items.map(item => item.item_name).join(', ')
+                        const servicesTooltip = sale.items.map(i => i.item_name).join(', ')
 
                         return (
                           <tr key={sale.id} className="transition hover:bg-[#F6F2FF] text-xs">
@@ -504,7 +502,7 @@ const SalesMonitoring = () => {
                             <td className="p-3 font-medium">#{sale.appointment_id || 'N/A'}</td>
                             <td className="p-3 font-bold text-[#2D2D2D] leading-tight">{sale.customer_name}</td>
                             <td className="p-3">
-                              <div className="font-medium text-[#4a3481] leading-tight" title={sale.items.map(i => i.item_name).join(', ')}>
+                              <div className="font-medium text-[#4a3481] leading-tight" title={servicesTooltip}>
                                 {servicesLabel}
                               </div>
                             </td>

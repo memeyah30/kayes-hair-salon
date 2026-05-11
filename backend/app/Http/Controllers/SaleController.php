@@ -61,7 +61,7 @@ class SaleController extends Controller
             });
         }
 
-        $query->orderByRaw($this->saleTimestampExpression() . ' desc');
+        $query->orderByRaw($this->saleTimestampExpression() . ' asc');
 
         if ($this->shouldPaginate($request)) {
             return response()->json(
@@ -126,8 +126,8 @@ class SaleController extends Controller
      */
     private function syncMissingSales()
     {
-        // Include bookings that already collected money, even if they are still booked or confirmed.
-        $appointments = \App\Models\Appointment::whereIn('status', ['booked', 'confirmed', 'completed'])
+        // Only include bookings that are COMPLETED to avoid inflating revenue with unearned income.
+        $appointments = \App\Models\Appointment::whereIn('status', ['completed'])
             ->where(function ($query) {
                 $query->whereIn('payment_status', ['paid', 'downpayment', 'verified'])
                     ->orWhere('downpayment_amount_cents', '>', 0);
@@ -256,20 +256,22 @@ class SaleController extends Controller
             ->distinct()
             ->pluck('appointment_id');
 
-        $appointments = Appointment::query()
-            ->whereIn('id', $appointmentIds)
+        // Calculate appointmentsSummary using ALL appointments in the date range, 
+        // not just those that have a Sale record. This ensures downpayments are tracked.
+        $appointmentsInRange = Appointment::query()
+            ->whereBetween('start_datetime', [$startUtc, $endUtc])
             ->get();
 
         $appointmentsSummary = [
-            'total_downpayment_cents' => $appointments->where('mode_of_payment', 'downpayment')->sum('amount_paid_cents'),
-            'total_full_payment_cents' => $appointments->where('mode_of_payment', 'full')->sum('amount_paid_cents'),
-            'total_collected_cents' => $appointments->sum('amount_paid_cents'),
-            'total_remaining_balance_cents' => $appointments->sum('remaining_balance_cents'),
-            'count_completed' => $appointments->where('status', 'completed')->count(),
-            'count_cancelled' => $appointments->where('status', 'cancelled')->count(),
-            'count_missed' => $appointments->where('status', 'missed')->count(),
-            'count_booked' => $appointments->where('status', 'booked')->count(),
-            'count_confirmed' => $appointments->where('status', 'confirmed')->count(),
+            'total_downpayment_cents' => $appointmentsInRange->where('mode_of_payment', 'downpayment')->sum('amount_paid_cents'),
+            'total_full_payment_cents' => $appointmentsInRange->where('mode_of_payment', 'full')->sum('amount_paid_cents'),
+            'total_collected_cents' => $appointmentsInRange->sum('amount_paid_cents'),
+            'total_remaining_balance_cents' => $appointmentsInRange->sum('remaining_balance_cents'),
+            'count_completed' => $appointmentsInRange->where('status', 'completed')->count(),
+            'count_cancelled' => $appointmentsInRange->where('status', 'cancelled')->count(),
+            'count_missed' => $appointmentsInRange->where('status', 'missed')->count(),
+            'count_booked' => $appointmentsInRange->where('status', 'booked')->count(),
+            'count_confirmed' => $appointmentsInRange->where('status', 'confirmed')->count(),
         ];
 
         return response()->json([
