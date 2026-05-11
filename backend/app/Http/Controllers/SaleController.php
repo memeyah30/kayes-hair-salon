@@ -61,15 +61,38 @@ class SaleController extends Controller
             });
         }
 
+        // We group by appointment_id to ensure one row per booking in the list.
+        // For manual sales (no appointment_id), we keep them separate.
+        $query->select('sales.*')
+            ->join(DB::raw('(SELECT MIN(id) as min_id FROM sales GROUP BY COALESCE(appointment_id, CONCAT("manual-", id))) as grouped_sales'), 'sales.id', '=', 'grouped_sales.min_id');
+
         $query->orderByRaw($this->saleTimestampExpression() . ' asc');
 
         if ($this->shouldPaginate($request)) {
-            return response()->json(
-                $query->paginate($this->resolvePerPage($request))
-            );
+            $paginator = $query->paginate($this->resolvePerPage($request));
+            
+            // For each grouped sale, we need to load ALL related items for that appointment
+            $paginator->getCollection()->each(function ($sale) {
+                if ($sale->appointment_id) {
+                    $sale->setRelation('items', Sale::where('appointment_id', $sale->appointment_id)->get());
+                } else {
+                    $sale->setRelation('items', collect([$sale]));
+                }
+            });
+
+            return response()->json($paginator);
         }
 
-        return $query->get();
+        $results = $query->get();
+        $results->each(function ($sale) {
+            if ($sale->appointment_id) {
+                $sale->setRelation('items', Sale::where('appointment_id', $sale->appointment_id)->get());
+            } else {
+                $sale->setRelation('items', collect([$sale]));
+            }
+        });
+
+        return $results;
     }
 
     public function store(Request $request)

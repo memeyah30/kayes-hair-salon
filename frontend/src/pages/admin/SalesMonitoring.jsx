@@ -103,14 +103,15 @@ const SalesMonitoring = () => {
       params.append('page', String(page))
 
       const res = await api.get(`/sales?${params.toString()}`)
-      setSales(res.data?.data || [])
+      const data = res.data
+      setSales(data.data || [])
       setPagination({
-        current_page: res.data?.current_page || 1,
-        last_page: res.data?.last_page || 1,
-        per_page: res.data?.per_page || 10,
-        total: res.data?.total || 0,
-        from: res.data?.from || 0,
-        to: res.data?.to || 0,
+        current_page: data.current_page || 1,
+        last_page: data.last_page || 1,
+        per_page: data.per_page || 10,
+        total: data.total || 0,
+        from: data.from || 0,
+        to: data.to || 0,
       })
     } catch (e) {
       toast.error('Failed to load sales')
@@ -164,26 +165,7 @@ const SalesMonitoring = () => {
   const actualSalesCents = stats?.actual_sales_cents ?? stats?.appointments_summary?.total_collected_cents ?? 0
   const grossSalesCents = stats?.total_sales_cents ?? 0
   const totalTransactionsValueCents = stats?.total_transactions_value_cents ?? 0
-
-  const groupSalesByAppointment = (salesList) => {
-    const grouped = {}
-    salesList.forEach((sale) => {
-      const key = sale.appointment_id ? `apt-${sale.appointment_id}` : `sale-${sale.id}`
-      if (!grouped[key]) {
-        grouped[key] = {
-          ...sale,
-          items: [sale],
-          computed_total_cents: sale.total_amount_cents,
-        }
-      } else {
-        grouped[key].items.push(sale)
-        grouped[key].computed_total_cents += sale.total_amount_cents
-      }
-    })
-    return Object.values(grouped)
-  }
-
-  const groupedSales = groupSalesByAppointment(sales)
+  const groupedSales = sales
 
   const [exporting, setExporting] = useState(false)
 
