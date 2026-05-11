@@ -126,12 +126,9 @@ class SaleController extends Controller
      */
     private function syncMissingSales()
     {
-        // Include bookings that are booked, confirmed, or completed so they show up in the transactions list.
-        $appointments = \App\Models\Appointment::whereIn('status', ['booked', 'confirmed', 'completed'])
-            ->where(function ($query) {
-                $query->whereIn('payment_status', ['paid', 'downpayment', 'verified'])
-                    ->orWhere('downpayment_amount_cents', '>', 0);
-            })
+        // Include ALL appointments (booked, confirmed, completed, missed, cancelled) 
+        // so the Sales Monitoring list provides a complete history of all transactions.
+        $appointments = \App\Models\Appointment::whereIn('status', ['booked', 'confirmed', 'completed', 'missed', 'cancelled'])
             ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('sales')
