@@ -7,6 +7,7 @@ import imageCompression from 'browser-image-compression'
 
 const ROLE_LABELS = {
   admin: 'Admin',
+  owner: 'Admin',
   manager: 'Manager',
   customer: 'Customer',
 }
@@ -63,7 +64,8 @@ const Navbar = ({
   const roleLabel = ROLE_LABELS[userType] || 'User'
   const resolvedBadgeName = String(userBadgeName || '').trim()
   const resolvedBadgeSubtitle = String(userBadgeSubtitle || '').trim()
-  const displayName = resolvedBadgeName || user?.name || roleLabel
+  const rawDisplayName = resolvedBadgeName || user?.name || roleLabel
+  const displayName = rawDisplayName === 'Owner' ? 'Admin' : rawDisplayName
   const badgeSubtitle = resolvedBadgeSubtitle || roleLabel
   const initials = getInitials(displayName)
   const profileImageUrl = resolveImageUrl(user?.image_url || user?.image)
