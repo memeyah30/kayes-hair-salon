@@ -1403,11 +1403,8 @@ class AppointmentController extends Controller
             return;
         }
 
-        // ONLY record a new sale record if the appointment is completed.
-        // This prevents pending/booked appointments from inflating revenue.
-        if ($appointment->status !== 'completed') {
-            return;
-        }
+        // We now allow all appointments to be recorded as sales so they appear in the list.
+        // The revenue totals are filtered in the controllers to only include completed ones.
 
         // Ensure services are loaded with their variants
         if (!$appointment->relationLoaded('services')) {
