@@ -2325,8 +2325,12 @@ const BookAppointment = () => {
               <span className="truncate text-base md:text-lg font-semibold text-[#2C1338]">Kaye&apos;s Hair Salon and Spa</span>
             </button>
             <nav className="hidden md:flex items-center gap-2 text-sm">
-              <button onClick={() => navigate('/')} className="booking-nav-link">Home</button>
-              <button onClick={() => navigate('/services')} className="booking-nav-link">Services</button>
+              <button onClick={() => navigate(-1)} className="booking-nav-link flex items-center gap-1.5">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
             </nav>
           </div>
           <div className="flex items-center gap-2">
@@ -2335,14 +2339,6 @@ const BookAppointment = () => {
         </div>
       </header>
 
-      <section className="max-w-[1700px] mx-auto px-4 md:px-6 pt-6">
-        <div className="booking-hero rounded-3xl px-6 md:px-10 py-8 md:py-10 text-center md:text-left">
-          <h1 className="booking-hero-title fluid-title-lg font-bold">Book Your Salon Appointment</h1>
-          <p className="booking-hero-subtitle mt-2 text-base md:text-lg">
-            Choose your services, date, and time for your salon visit
-          </p>
-        </div>
-      </section>
 
       <div ref={bookingFlowRef} className="app-mobile-shell space-y-6 max-w-[1700px] mx-auto w-full">
       
