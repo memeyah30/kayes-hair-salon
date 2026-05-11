@@ -177,7 +177,7 @@ const Login = () => {
   }
 
   const loginLabel = 'Username or Email'
-  const loginPlaceholder = 'admin'
+  const loginPlaceholder = ''
 
   return (
     <motion.div
@@ -378,7 +378,7 @@ const Login = () => {
                       className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-11 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:pr-12 sm:text-base"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="********"
+                      placeholder=""
                     />
                     <button
                       type="button"
