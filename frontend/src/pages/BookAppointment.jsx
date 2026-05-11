@@ -2309,33 +2309,20 @@ const BookAppointment = () => {
     <div className="booking-page min-h-screen app-panel-bg">
       {/* Header */}
       <header className="booking-nav px-4 md:px-6">
-        <div className="max-w-[1700px] mx-auto py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-4 min-w-0">
-            <button
-              onClick={() => navigate('/')}
-              className="booking-brand flex items-center gap-3 min-w-0"
-            >
-              <span className="booking-logo-mark" aria-hidden="true">
-                <img
-                  src="/logo-transparent.png"
-                  alt="Kaye's Hair Salon logo"
-                  className="booking-logo-image"
-                />
-              </span>
-              <span className="truncate text-base md:text-lg font-semibold text-[#2C1338]">Kaye&apos;s Hair Salon and Spa</span>
-            </button>
-            <nav className="hidden md:flex items-center gap-2 text-sm">
-              <button onClick={() => navigate(-1)} className="booking-nav-link flex items-center gap-1.5">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back
-              </button>
-            </nav>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Navigation buttons removed for cleaner interface */}
-          </div>
+        <div className="max-w-[1700px] mx-auto py-3 flex items-center justify-center">
+          <button
+            onClick={() => navigate('/')}
+            className="booking-brand flex items-center gap-3 min-w-0"
+          >
+            <span className="booking-logo-mark" aria-hidden="true">
+              <img
+                src="/logo-transparent.png"
+                alt="Kaye's Hair Salon logo"
+                className="booking-logo-image"
+              />
+            </span>
+            <span className="truncate text-base md:text-lg font-semibold text-[#2C1338]">Kaye&apos;s Hair Salon and Spa</span>
+          </button>
         </div>
       </header>
 
@@ -2378,6 +2365,17 @@ const BookAppointment = () => {
       {/* Step 1: Email-first customer identification for new and returning bookings */}
       {step === 1 && (
         <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-6 flex items-center gap-2 text-sm font-semibold text-[#6d4de6] hover:text-[#5b3cc4] transition-colors group"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f3efff] group-hover:bg-[#ebe4ff] transition-colors">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </div>
+            Back
+          </button>
           <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">{stepOneHeading}</h2>
           <p className="text-base md:text-lg text-gray-700 mb-7">
             {stepOneDescription}
