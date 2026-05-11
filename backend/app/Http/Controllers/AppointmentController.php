@@ -1013,6 +1013,12 @@ class AppointmentController extends Controller
         }
 
         $appointment->update(['status' => 'missed']);
+        
+        // Delete any associated sales
+        \App\Models\Sale::where('appointment_id', $appointment->id)
+            ->where('notes', 'like', 'Recorded from booking%')
+            ->delete();
+
         return response()->json(['message' => 'Appointment marked as missed']);
     }
 
@@ -1033,6 +1039,11 @@ class AppointmentController extends Controller
             'status' => 'cancelled',
             'rejection_reason' => $data['reason'],
         ]);
+
+        // Delete any associated sales
+        \App\Models\Sale::where('appointment_id', $appointment->id)
+            ->where('notes', 'like', 'Recorded from booking%')
+            ->delete();
 
         if ($appointment->customer_email) {
             try {
@@ -1074,6 +1085,11 @@ class AppointmentController extends Controller
 
     public function destroy(Appointment $appointment)
     {
+        // Delete any associated sales first
+        \App\Models\Sale::where('appointment_id', $appointment->id)
+            ->where('notes', 'like', 'Recorded from booking%')
+            ->delete();
+
         $appointment->delete();
         return response()->json(['message' => 'Appointment deleted successfully']);
     }
