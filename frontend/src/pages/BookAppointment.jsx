@@ -219,7 +219,7 @@ const mergeAvailabilitySlots = (availabilityGroups = []) => {
   const slotMap = new Map()
 
   availabilityGroups.forEach(({ stylistId, slots }) => {
-    ;(slots || []).forEach((slot) => {
+    ; (slots || []).forEach((slot) => {
       const key = `${slot.start}|${slot.end}`
       const isAvailable = slot.available !== false
       const existing = slotMap.get(key)
@@ -333,7 +333,7 @@ const Calendar = ({
     const newDate = new Date(year, month + 1, 1)
     onMonthChange(newDate.getMonth(), newDate.getFullYear())
   }
-  
+
 
   // Check if previous month button should be disabled (can't go before today)
   const todayMonth = today.getMonth()
@@ -359,7 +359,7 @@ const Calendar = ({
         </button>
       </div>
       <div className="grid grid-cols-7 text-xs text-[#7c688f] mb-2">
-        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="text-center">{d}</div>)}
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d} className="text-center">{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1 text-sm">
         {days.map((day, idx) => {
@@ -369,7 +369,7 @@ const Calendar = ({
           const month = String(day.getMonth() + 1).padStart(2, '0')
           const dayNum = String(day.getDate()).padStart(2, '0')
           const iso = `${year}-${month}-${dayNum}`
-          
+
           const isSelected = selectedDate === iso
           const dayDate = new Date(day)
           dayDate.setHours(0, 0, 0, 0)
@@ -390,7 +390,7 @@ const Calendar = ({
 
             onSelect(iso)
           }
-          
+
           return (
             <button
               key={iso}
@@ -398,15 +398,14 @@ const Calendar = ({
               disabled={isPast}
               aria-disabled={isDisabled}
               title={isClosed ? closedDateInfo.message : isPast ? 'Cannot book past dates' : undefined}
-              className={`h-10 rounded flex items-center justify-center border ${
-                isPast 
-                  ? 'bg-[#f7f1ec] text-gray-400 cursor-not-allowed' 
+              className={`h-10 rounded flex items-center justify-center border ${isPast
+                  ? 'bg-[#f7f1ec] text-gray-400 cursor-not-allowed'
                   : isClosed
                     ? 'border-red-200 bg-red-50 text-red-600 cursor-not-allowed'
-                  : isSelected 
-                    ? 'bg-[#7b5cf5] text-white border-[#7b5cf5]' 
-                    : 'hover:border-[#c9bcf1] hover:bg-[#f3efff]'
-              }`}
+                    : isSelected
+                      ? 'bg-[#7b5cf5] text-white border-[#7b5cf5]'
+                      : 'hover:border-[#c9bcf1] hover:bg-[#f3efff]'
+                }`}
             >
               {day.getDate()}
             </button>
@@ -419,24 +418,24 @@ const Calendar = ({
 
 const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) => {
   const now = new Date()
-  
+
   // Minimum advance booking time: 30 minutes
   const minAdvanceMinutes = 30
   const minAdvanceTime = new Date(now.getTime() + minAdvanceMinutes * 60000)
-  
+
   // Filter out past slots and slots less than 30 minutes away
   const filteredSlots = slots.map(slot => {
     const slotTime = new Date(slot.start)
-    
+
     // Check if slot is in the past (relative to current time)
     const isPast = slotTime < now
-    
+
     // Check if slot is less than 30 minutes away (only for today or if slot is very close to now)
     const isTooSoon = slotTime < minAdvanceTime
-    
+
     // Slot is unavailable if it's in the past OR too soon
     const isUnavailable = isPast || isTooSoon
-    
+
     return {
       ...slot,
       available: slot.available !== false && !isUnavailable ? slot.available : false,
@@ -444,10 +443,10 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
       isTooSoon: isTooSoon && !isPast // Track if it's too soon (for tooltip)
     }
   })
-  
+
   const availableSlots = filteredSlots.filter(s => s.available)
   const hasSlots = slots.length > 0
-  
+
   return (
     <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_8px_24px_rgba(44,19,56,0.07)] p-4 h-full">
       <div className="font-semibold mb-3 text-[#2C1338]">Time slots (9:30 AM - 5:30 PM)</div>
@@ -465,7 +464,7 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
             {filteredSlots.map((slot, idx) => {
               // Parse the date string and convert to Asia/Manila timezone
               const slotDate = new Date(slot.start)
-              
+
               // Extract hours and minutes in Asia/Manila timezone
               const phTimeFormatter = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'Asia/Manila',
@@ -473,16 +472,16 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
                 minute: '2-digit',
                 hour12: true
               })
-              
+
               const formatted = phTimeFormatter.formatToParts(slotDate)
               const hours = parseInt(formatted.find(p => p.type === 'hour')?.value || '0')
               const minutes = formatted.find(p => p.type === 'minute')?.value.padStart(2, '0') || '00'
               const ampm = formatted.find(p => p.type === 'dayPeriod')?.value.toUpperCase() || 'AM'
-              
+
               // Format as 12-hour time with AM/PM
               const displayHour = hours % 12 || 12
               const label = `${String(displayHour).padStart(2, '0')}:${minutes} ${ampm}`
-              
+
               const selectedKey = selected?.start
               const isSelected = selectedKey && new Date(selectedKey).getTime() === slotDate.getTime()
               const isAvailable = slot.available !== false
@@ -494,7 +493,7 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
                   ? Number(slot.remaining_slots)
                   : capacity - bookedCount
               )
-              
+
               // Use the pre-calculated flags from filteredSlots
               const isPast = slot.isPast || false
               const isTooSoon = slot.isTooSoon || false
@@ -504,7 +503,7 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
                 : remainingSlots === 1
                   ? '1 slot left'
                   : `${bookedCount}/${capacity} slots booked`
-              
+
               // Generate appropriate tooltip message
               let tooltipMessage = 'This time slot is not available'
               if (isPast) {
@@ -521,19 +520,18 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
               } else {
                 tooltipMessage = `Book at ${label} (${slotAvailabilityLabel})`
               }
-              
+
               return (
                 <button
                   key={idx}
                   onClick={() => isAvailable && !isPast && !isTooSoon && onSelect(slot)}
                   disabled={isDisabled}
-                  className={`border rounded px-3 py-2 text-sm text-left transition ${
-                    isDisabled
+                  className={`border rounded px-3 py-2 text-sm text-left transition ${isDisabled
                       ? 'bg-[#f7f1ec] text-gray-400 border-gray-300 cursor-not-allowed line-through'
                       : isSelected
                         ? 'bg-[#7b5cf5] text-white border-[#7b5cf5]'
                         : 'hover:border-[#c9bcf1] hover:bg-[#f3efff]'
-                  }`}
+                    }`}
                   title={tooltipMessage}
                 >
                   <span className="block font-semibold">{label}</span>
@@ -570,28 +568,28 @@ const ImageModal = ({ src, title = "Image Preview", onClose }) => {
   }, [])
 
   return createPortal(
-    <div 
+    <div
       className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative max-w-2xl w-full bg-white rounded-2xl p-4 shadow-2xl animate-in zoom-in duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <button 
+        <button
           onClick={onClose}
           className="absolute -top-12 right-0 text-white text-3xl font-bold hover:text-gray-300 transition"
         >
           &times;
         </button>
         <div className="flex flex-col items-center gap-4">
-          <img 
-            src={src} 
-            alt={title} 
+          <img
+            src={src}
+            alt={title}
             className="w-full h-auto max-h-[75vh] object-contain rounded-lg"
           />
           <p className="text-[#2C1338] font-semibold text-lg">{title}</p>
-          <button 
+          <button
             onClick={onClose}
             className="w-full bg-[#7b5cf5] text-white font-bold py-3 rounded-xl hover:bg-[#6b4ae8] transition shadow-lg"
           >
@@ -642,17 +640,17 @@ const PolicyModal = ({ title, content, onClose }) => {
   }, [])
 
   return createPortal(
-    <div 
+    <div
       className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative max-w-2xl w-full bg-white rounded-2xl p-6 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4 border-b pb-3 border-gray-100">
           <h2 className="text-xl font-bold text-[#2C1338]">{title}</h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-800 transition text-2xl leading-none font-medium h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-100"
           >
@@ -663,7 +661,7 @@ const PolicyModal = ({ title, content, onClose }) => {
           {content}
         </div>
         <div className="mt-6 pt-4 border-t border-gray-100">
-          <button 
+          <button
             onClick={onClose}
             className="w-full bg-[#7b5cf5] text-white font-bold py-3.5 rounded-xl hover:bg-[#6b4ae8] transition shadow"
           >
@@ -1529,7 +1527,19 @@ const BookAppointment = () => {
 
   const loadAppointmentForReschedule = async (id) => {
     try {
-      const res = await api.get(`/appointments/${id}`)
+      const currentUserType = (
+        sessionStorage.getItem('userType') ||
+        localStorage.getItem('userType') ||
+        ''
+      ).trim().toLowerCase()
+      const hasDashboardSession = ['admin', 'manager', 'stylist'].includes(currentUserType)
+      const manageBookingToken = (localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) || '').trim()
+      const isManageBookingSession = !hasDashboardSession && Boolean(manageBookingToken)
+
+      const apiToUse = isManageBookingSession ? manageBookingApi : api
+      const endpoint = isManageBookingSession ? `/manage-booking/appointments/${id}` : `/appointments/${id}`
+
+      const res = await apiToUse.get(endpoint)
       const appt = res.data
       const appointmentServices = Array.isArray(appt.services) && appt.services.length > 0
         ? appt.services
@@ -1911,32 +1921,32 @@ const BookAppointment = () => {
       toast.warn('Please select a time slot')
       return
     }
-    
+
     // Validate that the selected slot is not in the past and is at least 30 minutes away
     const now = new Date()
     const slotTime = new Date(selectedSlot.start)
     const minAdvanceTime = new Date(now.getTime() + 30 * 60000) // 30 minutes from now
-    
+
     if (slotTime < now) {
       toast.error('Cannot book appointments in the past. Please select a future time slot.')
       setSelectedSlot(null)
       return
     }
-    
+
     if (slotTime < minAdvanceTime) {
       const minutesUntilSlot = Math.ceil((slotTime.getTime() - now.getTime()) / 60000)
       toast.error(`Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`)
       setSelectedSlot(null)
       return
     }
-    
+
     // Use selectedServices if available, otherwise fall back to selectedService
     const serviceIds = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
     if (serviceIds.length === 0) {
       toast.warn('Please select at least one service')
       return
     }
-    
+
     // Check if all services with variants have a variant selected
     const selectedServicesData = services.filter(s => serviceIds.includes(s.id.toString()))
     for (const service of selectedServicesData) {
@@ -1947,7 +1957,7 @@ const BookAppointment = () => {
         }
       }
     }
-    
+
     // Double-check slot is still available before booking
     if (!selectedSlot) {
       toast.error('Please select a valid time slot')
@@ -1957,7 +1967,7 @@ const BookAppointment = () => {
     if (bookingSubmitLockRef.current) {
       return
     }
-    
+
     try {
       bookingSubmitLockRef.current = true
       setBookingInProgress(true)
@@ -1971,7 +1981,7 @@ const BookAppointment = () => {
       // Use the helper function to convert to HH:MM format
       const preferredTime = toManilaHHmm(selectedSlot.start)
 
-      
+
       // Ensure date is in YYYY-MM-DD format (local date, not UTC)
       let bookingDate
       if (selectedDate instanceof Date) {
@@ -2003,7 +2013,7 @@ const BookAppointment = () => {
         }
         return sum + (s.price_cents || 0)
       }, 0)
-      
+
       // Calculate payment amount
       let paymentAmountCents = 0
       let paymentStatus = payment.method === 'online' ? 'pending' : 'unpaid'
@@ -2016,10 +2026,10 @@ const BookAppointment = () => {
           paymentAmountCents = totalAmountCents
         } else {
           // Use entered amount, or fallback to 10% minimum if empty
-          paymentAmountCents = payment.amount 
-            ? Math.round(parseFloat(payment.amount) * 100) 
+          paymentAmountCents = payment.amount
+            ? Math.round(parseFloat(payment.amount) * 100)
             : Math.round(totalAmountCents * 0.1)
-            
+
           const minDepositCents = Math.round(totalAmountCents * 0.1)
           if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
             toast.warn(`Minimum GCash downpayment is ${currency(minDepositCents)}`)
@@ -2028,10 +2038,10 @@ const BookAppointment = () => {
         }
       } else if (payment.method === 'on_hand') {
         // For cash, use entered amount, fallback to 10% minimum
-        paymentAmountCents = payment.amount 
-          ? Math.round(parseFloat(payment.amount) * 100) 
+        paymentAmountCents = payment.amount
+          ? Math.round(parseFloat(payment.amount) * 100)
           : Math.round(totalAmountCents * 0.1)
-          
+
         const minDepositCents = Math.round(totalAmountCents * 0.1)
         if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
           toast.warn(`Minimum cash deposit is ${currency(minDepositCents)}`)
@@ -2049,7 +2059,7 @@ const BookAppointment = () => {
       formData.append('privacy_consent', booking.privacyConsent ? '1' : '0')
       formData.append('service_id', serviceIds[0])
       serviceIds.forEach(id => formData.append('service_ids[]', id))
-      
+
       // Add service variants mapping (service_id => variant_id)
       const serviceVariantsMap = {}
       selectedServicesData.forEach(s => {
@@ -2065,7 +2075,7 @@ const BookAppointment = () => {
       formData.append('preferred_time', preferredTime)
       formData.append('payment_method', payment.method)
       formData.append('payment_status', paymentStatus)
-      
+
       if (payment.method === 'online') {
         formData.append('downpayment_amount_cents', paymentAmountCents)
         if (payment.proofFile) {
@@ -2093,14 +2103,14 @@ const BookAppointment = () => {
           token: manageBookingSession.token,
         })
       }
-      
+
       toast.success('Appointment booked successfully!')
 
       // Keep the booking email handy for the OTP flow without exposing history publicly.
       if (booking.email && !manageBookingSession?.token) {
         localStorage.setItem(CUSTOMER_BOOKING_PENDING_EMAIL_KEY, booking.email.trim().toLowerCase())
       }
-      
+
       // The response should already have stylist and service loaded
       // But let's fetch it again to be sure
       try {
@@ -2116,15 +2126,15 @@ const BookAppointment = () => {
         // Use response data as fallback
         setReceipt(res.data)
       }
-      
+
     } catch (e) {
       // Handle validation errors
       let errorMessage = 'Booking failed. Please try again.'
-      
+
       // Log the full error for debugging
       console.error('Booking error:', e)
       console.error('Error response:', e.response)
-      
+
       if (e.response?.data) {
         // Check for validation errors object
         if (e.response.data.errors) {
@@ -2136,22 +2146,22 @@ const BookAppointment = () => {
       } else if (e.message) {
         errorMessage = e.message
       }
-      
+
       // Show specific error for CSRF token issues
       if (e.response?.status === 419) {
         errorMessage = 'CSRF token mismatch. Please refresh the page and try again.'
       }
-      
+
       toast.error(errorMessage, {
         autoClose: 6000, // Show longer for important errors
       })
-      
+
       // If there's an overlap, refresh availability to show updated slots
       if (e.response?.status === 409) {
         fetchAvailability()
         setSelectedSlot(null) // Clear selected slot
       }
-      
+
       console.error('Booking error:', e.response?.data || e)
     } finally {
       bookingSubmitLockRef.current = false
@@ -2186,7 +2196,7 @@ const BookAppointment = () => {
           appointment_time: preferredTime,
         })
 
-        const appointmentResponse = await api.get(`/appointments/${rescheduling.id}`)
+        const appointmentResponse = await manageBookingApi.get(`/manage-booking/appointments/${rescheduling.id}`)
         updatedAppointment = appointmentResponse?.data || null
       } else {
         const res = await api.patch(`/appointments/${rescheduling.id}`, {
@@ -2328,135 +2338,257 @@ const BookAppointment = () => {
 
 
       <div ref={bookingFlowRef} className="app-mobile-shell space-y-6 max-w-[1700px] mx-auto w-full">
-      
-      {/* Step Indicator */}
-      <div className="flex items-center justify-center mb-4">
-        <div className="booking-stepper flex items-start">
-          <div className="booking-step-item">
-            <div className={`booking-step-circle ${step >= 1 ? 'active' : ''}`}>
-              1
+
+        {/* Step Indicator */}
+        <div className="flex items-center justify-center mb-4">
+          <div className="booking-stepper flex items-start">
+            <div className="booking-step-item">
+              <div className={`booking-step-circle ${step >= 1 ? 'active' : ''}`}>
+                1
+              </div>
+              <div className="booking-step-label">Verify Email</div>
             </div>
-            <div className="booking-step-label">Verify Email</div>
-          </div>
-          <div className={`booking-step-line ${step >= 2 ? 'active' : ''}`}></div>
-          <div className="booking-step-item">
-            <div className={`booking-step-circle ${step >= 2 ? 'active' : ''}`}>
-              2
+            <div className={`booking-step-line ${step >= 2 ? 'active' : ''}`}></div>
+            <div className="booking-step-item">
+              <div className={`booking-step-circle ${step >= 2 ? 'active' : ''}`}>
+                2
+              </div>
+              <div className="booking-step-label">Select Service</div>
             </div>
-            <div className="booking-step-label">Select Service</div>
-          </div>
-          <div className={`booking-step-line ${step >= 3 ? 'active' : ''}`}></div>
-          <div className="booking-step-item">
-            <div className={`booking-step-circle ${step >= 3 ? 'active' : ''}`}>
-              3
+            <div className={`booking-step-line ${step >= 3 ? 'active' : ''}`}></div>
+            <div className="booking-step-item">
+              <div className={`booking-step-circle ${step >= 3 ? 'active' : ''}`}>
+                3
+              </div>
+              <div className="booking-step-label">Select Date &amp; Time</div>
             </div>
-            <div className="booking-step-label">Select Date &amp; Time</div>
-          </div>
-          <div className={`booking-step-line ${step >= 4 ? 'active' : ''}`}></div>
-          <div className="booking-step-item">
-            <div className={`booking-step-circle ${step >= 4 ? 'active' : ''}`}>
-              4
+            <div className={`booking-step-line ${step >= 4 ? 'active' : ''}`}></div>
+            <div className="booking-step-item">
+              <div className={`booking-step-circle ${step >= 4 ? 'active' : ''}`}>
+                4
+              </div>
+              <div className="booking-step-label">Confirm Booking</div>
             </div>
-            <div className="booking-step-label">Confirm Booking</div>
           </div>
         </div>
-      </div>
 
-      {/* Step 1: Email-first customer identification for new and returning bookings */}
-      {step === 1 && (
-        <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
-          <button
-            onClick={() => navigate(-1)}
-            className="mb-6 flex items-center gap-2 text-sm font-semibold text-[#7b5cf5] hover:text-[#6b4ae8] transition-colors group"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f3efff] group-hover:bg-[#f3f0ff] transition-colors">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </div>
-            Back
-          </button>
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">{stepOneHeading}</h2>
-          <p className="text-base md:text-lg text-gray-700 mb-7">
-            {stepOneDescription}
-          </p>
-
-          <div className="space-y-5">
-            <div>
-              <label className="block text-base font-medium mb-2 text-gray-900">Email *</label>
-              <div className="booking-input-wrap">
-                <input
-                  type="email"
-                  required
-                  disabled={isEmailLocked}
-                  className={`booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500 disabled:bg-[#f7f3fb] disabled:text-[#6f5b7e] ${formErrors.email ? 'border-red-500' : ''}`}
-                  placeholder="your@email.com"
-                  value={booking.email}
-                  onChange={e => {
-                    setBooking({ ...booking, email: e.target.value })
-                    const validation = validateEmail(e.target.value)
-                    setFormErrors(prev => ({ ...prev, email: validation.message }))
-                    if (!isEmailLocked && customerLookupMessage) {
-                      setCustomerLookupMessage('')
-                    }
-                  }}
-                />
+        {/* Step 1: Email-first customer identification for new and returning bookings */}
+        {step === 1 && (
+          <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
+            <button
+              onClick={() => navigate(-1)}
+              className="mb-6 flex items-center gap-2 text-sm font-semibold text-[#7b5cf5] hover:text-[#6b4ae8] transition-colors group"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f3efff] group-hover:bg-[#f3f0ff] transition-colors">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
               </div>
-              {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
-            </div>
+              Back
+            </button>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">{stepOneHeading}</h2>
+            <p className="text-base md:text-lg text-gray-700 mb-7">
+              {stepOneDescription}
+            </p>
 
-            {shouldShowLookupBanner && (
-              <div
-                className={`rounded-2xl border px-4 py-3 text-sm ${
-                  isReturningCustomerVerified
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                    : isReturningCustomerPendingVerification
-                      ? 'border-[#ddd3ee] bg-[#f6f1ff] text-[#4c1d95]'
-                      : customerLookupState === 'new_customer'
-                        ? 'border-sky-200 bg-sky-50 text-sky-800'
-                        : 'border-[#ece6f4] bg-[#faf8fd] text-[#4e3b5b]'
-                }`}
-              >
-                {customerLookupMessage}
+            <div className="space-y-5">
+              <div>
+                <label className="block text-base font-medium mb-2 text-gray-900">Email *</label>
+                <div className="booking-input-wrap">
+                  <input
+                    type="email"
+                    required
+                    disabled={isEmailLocked}
+                    className={`booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500 disabled:bg-[#f7f3fb] disabled:text-[#6f5b7e] ${formErrors.email ? 'border-red-500' : ''}`}
+                    placeholder="your@email.com"
+                    value={booking.email}
+                    onChange={e => {
+                      setBooking({ ...booking, email: e.target.value })
+                      const validation = validateEmail(e.target.value)
+                      setFormErrors(prev => ({ ...prev, email: validation.message }))
+                      if (!isEmailLocked && customerLookupMessage) {
+                        setCustomerLookupMessage('')
+                      }
+                    }}
+                  />
+                </div>
+                {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
               </div>
-            )}
 
-            {['verification_required', 'sending_otp', 'verifying_otp'].includes(customerLookupState) && (
-              <div className="rounded-2xl border border-[#ddd3ee] bg-[#faf6fd] p-4 text-sm text-[#4c1d95] space-y-3">
-                <p>
-                  Enter the 6-digit verification code sent to{' '}
-                  <span className="font-semibold">{booking.email}</span>.
-                </p>
+              {shouldShowLookupBanner && (
+                <div
+                  className={`rounded-2xl border px-4 py-3 text-sm ${isReturningCustomerVerified
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : isReturningCustomerPendingVerification
+                        ? 'border-[#ddd3ee] bg-[#f6f1ff] text-[#4c1d95]'
+                        : customerLookupState === 'new_customer'
+                          ? 'border-sky-200 bg-sky-50 text-sky-800'
+                          : 'border-[#ece6f4] bg-[#faf8fd] text-[#4e3b5b]'
+                    }`}
+                >
+                  {customerLookupMessage}
+                </div>
+              )}
+
+              {['verification_required', 'sending_otp', 'verifying_otp'].includes(customerLookupState) && (
+                <div className="rounded-2xl border border-[#ddd3ee] bg-[#faf6fd] p-4 text-sm text-[#4c1d95] space-y-3">
+                  <p>
+                    Enter the 6-digit verification code sent to{' '}
+                    <span className="font-semibold">{booking.email}</span>.
+                  </p>
+                  <div>
+                    <label className="block text-base font-medium mb-2 text-gray-900">Verification Code *</label>
+                    <div className="booking-input-wrap">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        className="booking-input w-full border rounded-xl px-4 py-3.5 text-base tracking-[0.25em] text-gray-900 placeholder-gray-500"
+                        placeholder="000000"
+                        value={returningOtp}
+                        onChange={e => setReturningOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={handleVerifyReturningOtp}
+                      disabled={customerLookupState === 'sending_otp' || customerLookupState === 'verifying_otp'}
+                      className="booking-primary-btn flex-1 text-sm font-semibold px-5 py-3 rounded-xl disabled:opacity-60"
+                    >
+                      {customerLookupState === 'verifying_otp' ? 'Verifying...' : 'Verify Code'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResendReturningOtp}
+                      disabled={customerLookupState === 'sending_otp' || customerLookupState === 'verifying_otp'}
+                      className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd] disabled:opacity-60"
+                    >
+                      {customerLookupState === 'sending_otp' ? 'Sending Code...' : 'Resend Code'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUseDifferentEmail}
+                      className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
+                    >
+                      Use a Different Email
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isReturningCustomerVerified && !shouldShowCustomerProfileInputs && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <div className="text-sm font-semibold text-emerald-800">Verified Returning Customer</div>
+                    <div className="text-sm text-emerald-700">
+                      Your saved information is ready. You can continue directly to services or update it first.
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 text-sm text-[#2C1338]">
+                    <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3">
+                      <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Name</div>
+                      <div className="mt-1 font-semibold">{booking.name || 'Not provided'}</div>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3">
+                      <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Phone</div>
+                      <div className="mt-1 font-semibold">{booking.phone || 'Not provided'}</div>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3 sm:col-span-2">
+                      <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Address</div>
+                      <div className="mt-1 font-semibold">{booking.address || 'Not provided'}</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReturningCustomerEditMode(true)}
+                      className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
+                    >
+                      Update My Information
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUseDifferentEmail}
+                      className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
+                    >
+                      Use a Different Email
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {shouldShowCustomerProfileInputs && showNameField && (
                 <div>
-                  <label className="block text-base font-medium mb-2 text-gray-900">Verification Code *</label>
+                  <label className="block text-base font-medium mb-2 text-gray-900">Full Name *</label>
                   <div className="booking-input-wrap">
                     <input
                       type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      className="booking-input w-full border rounded-xl px-4 py-3.5 text-base tracking-[0.25em] text-gray-900 placeholder-gray-500"
-                      placeholder="000000"
-                      value={returningOtp}
-                      onChange={e => setReturningOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      required
+                      className="booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
+                      placeholder="Enter your full name"
+                      value={booking.name}
+                      onChange={e => setBooking({ ...booking, name: e.target.value })}
                     />
                   </div>
                 </div>
+              )}
+
+              {shouldShowCustomerProfileInputs && showPhoneField && (
+                <div>
+                  <label className="block text-base font-medium mb-2 text-gray-900">Contact Number *</label>
+                  <div className="booking-input-wrap">
+                    <input
+                      type="tel"
+                      required
+                      className={`booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
+                      placeholder="09XXXXXXXXX"
+                      value={booking.phone}
+                      onChange={e => {
+                        setBooking({ ...booking, phone: e.target.value })
+                        const validation = validatePhone(e.target.value)
+                        setFormErrors(prev => ({ ...prev, phone: validation.message }))
+                      }}
+                    />
+                  </div>
+                  {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
+                </div>
+              )}
+
+              {shouldShowCustomerProfileInputs && showAddressField && (
+                <div>
+                  <label className="block text-base font-medium mb-2 text-gray-900">Address</label>
+                  <div className="booking-input-wrap">
+                    <input
+                      type="text"
+                      className="booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
+                      placeholder="Your address"
+                      value={booking.address}
+                      onChange={e => setBooking({ ...booking, address: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {isReturningCustomerVerified && shouldShowCustomerProfileInputs && (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     type="button"
-                    onClick={handleVerifyReturningOtp}
-                    disabled={customerLookupState === 'sending_otp' || customerLookupState === 'verifying_otp'}
-                    className="booking-primary-btn flex-1 text-sm font-semibold px-5 py-3 rounded-xl disabled:opacity-60"
+                    onClick={() => {
+                      setReturningCustomerEditMode(false)
+                      if (returningCustomerProfile) {
+                        setBooking((previousBooking) => ({
+                          ...previousBooking,
+                          name: returningCustomerProfile.name || '',
+                          phone: returningCustomerProfile.phone || '',
+                          address: returningCustomerProfile.address || '',
+                        }))
+                      }
+                    }}
+                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
                   >
-                    {customerLookupState === 'verifying_otp' ? 'Verifying...' : 'Verify Code'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResendReturningOtp}
-                    disabled={customerLookupState === 'sending_otp' || customerLookupState === 'verifying_otp'}
-                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd] disabled:opacity-60"
-                  >
-                    {customerLookupState === 'sending_otp' ? 'Sending Code...' : 'Resend Code'}
+                    Use Saved Information
                   </button>
                   <button
                     type="button"
@@ -2466,74 +2598,133 @@ const BookAppointment = () => {
                     Use a Different Email
                   </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {isReturningCustomerVerified && !shouldShowCustomerProfileInputs && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
-                <div className="flex flex-col gap-1">
-                  <div className="text-sm font-semibold text-emerald-800">Verified Returning Customer</div>
-                  <div className="text-sm text-emerald-700">
-                    Your saved information is ready. You can continue directly to services or update it first.
+              {shouldShowPrivacyConsent && (
+                <div>
+                  <div className={`rounded-2xl border p-4 ${formErrors.privacy ? 'border-red-300 bg-red-50' : 'border-[#ece6f4] bg-[#faf8fd]'}`}>
+                    <label className="flex items-start gap-3 text-sm leading-6 text-[#4e3b5b]">
+                      <input
+                        type="checkbox"
+                        name="privacy_consent"
+                        required
+                        checked={booking.privacyConsent}
+                        onChange={(e) => {
+                          setBooking({ ...booking, privacyConsent: e.target.checked })
+                          setFormErrors((prev) => ({
+                            ...prev,
+                            privacy: e.target.checked ? '' : prev.privacy,
+                          }))
+                        }}
+                        className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
+                      />
+                      <span>
+                        I have read and agree to the Terms and Conditions and Data Privacy Policy of Kaye's Hair Salon and Spa.
+                      </span>
+                    </label>
+                    <div className="mt-3 ml-7 flex flex-col gap-2 sm:flex-row sm:gap-4">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }}
+                        className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 text-left hover:text-[#6b4ae8] transition-colors"
+                      >
+                        View Terms and Conditions
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }}
+                        className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 text-left hover:text-[#6b4ae8] transition-colors"
+                      >
+                        View Data Privacy Policy
+                      </button>
+                    </div>
                   </div>
+                  {formErrors.privacy && <p className="text-red-500 text-xs mt-1">{formErrors.privacy}</p>}
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 text-sm text-[#2C1338]">
-                  <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Name</div>
-                    <div className="mt-1 font-semibold">{booking.name || 'Not provided'}</div>
-                  </div>
-                  <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Phone</div>
-                    <div className="mt-1 font-semibold">{booking.phone || 'Not provided'}</div>
-                  </div>
-                  <div className="rounded-xl border border-white/70 bg-white/80 px-4 py-3 sm:col-span-2">
-                    <div className="text-xs uppercase tracking-[0.12em] text-[#7c688f]">Address</div>
-                    <div className="mt-1 font-semibold">{booking.address || 'Not provided'}</div>
-                  </div>
-                </div>
+              )}
+
+              {!isReturningCustomerPendingVerification && (
                 <div className="flex flex-col sm:flex-row gap-2">
+                  {isEmailLocked && (
+                    <button
+                      type="button"
+                      onClick={handleUseDifferentEmail}
+                      className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3.5 text-base font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
+                    >
+                      Use a Different Email
+                    </button>
+                  )}
                   <button
-                    type="button"
-                    onClick={() => setReturningCustomerEditMode(true)}
-                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
+                    onClick={handleNextStep}
+                    disabled={customerProfileSaving || customerLookupState === 'checking_email'}
+                    className="booking-primary-btn flex-1 mt-0 text-base font-semibold px-5 py-3.5 rounded-xl disabled:opacity-60"
                   >
-                    Update My Information
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleUseDifferentEmail}
-                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
-                  >
-                    Use a Different Email
+                    {customerLookupState === 'idle' || customerLookupState === 'checking_email'
+                      ? 'Continue'
+                      : customerLookupState === 'new_customer'
+                        ? 'Continue to Services'
+                        : shouldShowCustomerProfileInputs
+                          ? (customerProfileSaving ? 'Saving...' : 'Save and Continue')
+                          : 'Continue to Services'}
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+          </div>
+        )}
 
-            {shouldShowCustomerProfileInputs && showNameField && (
+        {/* Step 1: Customer Information */}
+        {false && step === 1 && (
+          <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Customer Information</h2>
+            <p className="text-base md:text-lg text-gray-700 mb-7">
+              Please provide your information to proceed with booking
+            </p>
+
+            <div className="space-y-5">
               <div>
                 <label className="block text-base font-medium mb-2 text-gray-900">Full Name *</label>
                 <div className="booking-input-wrap">
+                  <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€˜Â¤</span>
                   <input
                     type="text"
                     required
-                    className="booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
+                    className="booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
                     placeholder="Enter your full name"
                     value={booking.name}
                     onChange={e => setBooking({ ...booking, name: e.target.value })}
                   />
                 </div>
               </div>
-            )}
 
-            {shouldShowCustomerProfileInputs && showPhoneField && (
+              <div>
+                <label className="block text-base font-medium mb-2 text-gray-900">Email *</label>
+                <div className="booking-input-wrap">
+                  <span className="booking-input-icon" aria-hidden="true">Ã¢Å“â€°</span>
+                  <input
+                    type="email"
+                    required
+                    className={`booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.email ? 'border-red-500' : ''}`}
+                    placeholder="your@email.com"
+                    value={booking.email}
+                    onChange={e => {
+                      setBooking({ ...booking, email: e.target.value })
+                      const validation = validateEmail(e.target.value)
+                      setFormErrors(prev => ({ ...prev, email: validation.message }))
+                    }}
+                  />
+                </div>
+                {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
+              </div>
+
               <div>
                 <label className="block text-base font-medium mb-2 text-gray-900">Contact Number *</label>
                 <div className="booking-input-wrap">
+                  <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€œÅ¾</span>
                   <input
                     type="tel"
                     required
-                    className={`booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
+                    className={`booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
                     placeholder="09XXXXXXXXX"
                     value={booking.phone}
                     onChange={e => {
@@ -2545,53 +2736,21 @@ const BookAppointment = () => {
                 </div>
                 {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
               </div>
-            )}
 
-            {shouldShowCustomerProfileInputs && showAddressField && (
               <div>
                 <label className="block text-base font-medium mb-2 text-gray-900">Address</label>
                 <div className="booking-input-wrap">
+                  <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€œÂ</span>
                   <input
                     type="text"
-                    className="booking-input w-full border rounded-xl px-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
+                    className="booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
                     placeholder="Your address"
                     value={booking.address}
                     onChange={e => setBooking({ ...booking, address: e.target.value })}
                   />
                 </div>
               </div>
-            )}
 
-            {isReturningCustomerVerified && shouldShowCustomerProfileInputs && (
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setReturningCustomerEditMode(false)
-                    if (returningCustomerProfile) {
-                      setBooking((previousBooking) => ({
-                        ...previousBooking,
-                        name: returningCustomerProfile.name || '',
-                        phone: returningCustomerProfile.phone || '',
-                        address: returningCustomerProfile.address || '',
-                      }))
-                    }
-                  }}
-                  className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
-                >
-                  Use Saved Information
-                </button>
-                <button
-                  type="button"
-                  onClick={handleUseDifferentEmail}
-                  className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
-                >
-                  Use a Different Email
-                </button>
-              </div>
-            )}
-
-            {shouldShowPrivacyConsent && (
               <div>
                 <div className={`rounded-2xl border p-4 ${formErrors.privacy ? 'border-red-300 bg-red-50' : 'border-[#ece6f4] bg-[#faf8fd]'}`}>
                   <label className="flex items-start gap-3 text-sm leading-6 text-[#4e3b5b]">
@@ -2607,418 +2766,817 @@ const BookAppointment = () => {
                           privacy: e.target.checked ? '' : prev.privacy,
                         }))
                       }}
-                      className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
+                      className="mt-1 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
                     />
                     <span>
-                      I have read and agree to the Terms and Conditions and Data Privacy Policy of Kaye's Hair Salon and Spa.
+                      I agree to the{' '}
+                      <a
+                        href="/privacy-policy"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2"
+                      >
+                        Data Privacy Policy
+                      </a>{' '}
+                      and consent to the collection and processing of my personal information for appointment booking purposes.
                     </span>
                   </label>
-                  <div className="mt-3 ml-7 flex flex-col gap-2 sm:flex-row sm:gap-4">
-                    <button 
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }}
-                      className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 text-left hover:text-[#6b4ae8] transition-colors"
-                    >
-                      View Terms and Conditions
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }}
-                      className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 text-left hover:text-[#6b4ae8] transition-colors"
-                    >
-                      View Data Privacy Policy
-                    </button>
-                  </div>
                 </div>
                 {formErrors.privacy && <p className="text-red-500 text-xs mt-1">{formErrors.privacy}</p>}
               </div>
-            )}
 
-            {!isReturningCustomerPendingVerification && (
-              <div className="flex flex-col sm:flex-row gap-2">
-                {isEmailLocked && (
-                  <button
-                    type="button"
-                    onClick={handleUseDifferentEmail}
-                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3.5 text-base font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
-                  >
-                    Use a Different Email
-                  </button>
-                )}
-                <button
-                  onClick={handleNextStep}
-                  disabled={customerProfileSaving || customerLookupState === 'checking_email'}
-                  className="booking-primary-btn flex-1 mt-0 text-base font-semibold px-5 py-3.5 rounded-xl disabled:opacity-60"
-                >
-                  {customerLookupState === 'idle' || customerLookupState === 'checking_email'
-                    ? 'Continue'
-                    : customerLookupState === 'new_customer'
-                      ? 'Continue to Services'
-                      : shouldShowCustomerProfileInputs
-                        ? (customerProfileSaving ? 'Saving...' : 'Save and Continue')
-                        : 'Continue to Services'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Step 1: Customer Information */}
-      {false && step === 1 && (
-        <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Customer Information</h2>
-          <p className="text-base md:text-lg text-gray-700 mb-7">
-            Please provide your information to proceed with booking
-          </p>
-          
-          <div className="space-y-5">
-            <div>
-              <label className="block text-base font-medium mb-2 text-gray-900">Full Name *</label>
-              <div className="booking-input-wrap">
-                <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€˜Â¤</span>
-                <input
-                  type="text"
-                  required
-                  className="booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
-                  placeholder="Enter your full name"
-                  value={booking.name}
-                  onChange={e => setBooking({ ...booking, name: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-base font-medium mb-2 text-gray-900">Email *</label>
-              <div className="booking-input-wrap">
-                <span className="booking-input-icon" aria-hidden="true">Ã¢Å“â€°</span>
-                <input
-                  type="email"
-                  required
-                  className={`booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.email ? 'border-red-500' : ''}`}
-                  placeholder="your@email.com"
-                  value={booking.email}
-                  onChange={e => {
-                    setBooking({ ...booking, email: e.target.value })
-                    const validation = validateEmail(e.target.value)
-                    setFormErrors(prev => ({ ...prev, email: validation.message }))
-                  }}
-                />
-              </div>
-              {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
-            </div>
-            
-            <div>
-              <label className="block text-base font-medium mb-2 text-gray-900">Contact Number *</label>
-              <div className="booking-input-wrap">
-                <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€œÅ¾</span>
-                <input
-                  type="tel"
-                  required
-                  className={`booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500 ${formErrors.phone ? 'border-red-500' : ''}`}
-                  placeholder="09XXXXXXXXX"
-                  value={booking.phone}
-                  onChange={e => {
-                    setBooking({ ...booking, phone: e.target.value })
-                    const validation = validatePhone(e.target.value)
-                    setFormErrors(prev => ({ ...prev, phone: validation.message }))
-                  }}
-                />
-              </div>
-              {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
-            </div>
-            
-            <div>
-              <label className="block text-base font-medium mb-2 text-gray-900">Address</label>
-              <div className="booking-input-wrap">
-                <span className="booking-input-icon" aria-hidden="true">Ã°Å¸â€œÂ</span>
-                <input
-                  type="text"
-                  className="booking-input w-full border rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-500"
-                  placeholder="Your address"
-                  value={booking.address}
-                  onChange={e => setBooking({ ...booking, address: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className={`rounded-2xl border p-4 ${formErrors.privacy ? 'border-red-300 bg-red-50' : 'border-[#ece6f4] bg-[#faf8fd]'}`}>
-                <label className="flex items-start gap-3 text-sm leading-6 text-[#4e3b5b]">
-                  <input
-                    type="checkbox"
-                    name="privacy_consent"
-                    required
-                    checked={booking.privacyConsent}
-                    onChange={(e) => {
-                      setBooking({ ...booking, privacyConsent: e.target.checked })
-                      setFormErrors((prev) => ({
-                        ...prev,
-                        privacy: e.target.checked ? '' : prev.privacy,
-                      }))
-                    }}
-                    className="mt-1 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
-                  />
-                  <span>
-                    I agree to the{' '}
-                    <a
-                      href="/privacy-policy"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2"
-                    >
-                      Data Privacy Policy
-                    </a>{' '}
-                    and consent to the collection and processing of my personal information for appointment booking purposes.
-                  </span>
-                </label>
-              </div>
-              {formErrors.privacy && <p className="text-red-500 text-xs mt-1">{formErrors.privacy}</p>}
-            </div>
-            
-            <button
-              onClick={handleNextStep}
-              className="booking-primary-btn w-full mt-4 text-base font-semibold px-5 py-3.5 rounded-xl"
-            >
-              Continue to Booking
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Select Service */}
-      {step === 2 && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)] items-start">
-          <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
-            <h2 className="text-2xl font-bold text-[#2C1338]">Select Service</h2>
-            <p className="mt-2 text-sm text-[#6f5b7e]">Choose one or more services before you pick an appointment schedule.</p>
-
-            <div className="booking-panel mt-5 max-h-[620px] overflow-y-auto border border-[#ece6f4] rounded-2xl p-4 space-y-3 bg-white shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
-              {services.map(s => {
-                const serviceIdStr = s.id.toString()
-                const isSelected = selectedServices.includes(serviceIdStr) || selectedService === serviceIdStr
-
-                return (
-                  <label
-                    key={s.id}
-                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
-                      isSelected ? 'bg-[#f3efff] border-[#7b5cf5]' : 'border-[#ece6f4] hover:border-[#ddd3ee] hover:bg-[#faf6fd]'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          const newServices = [...selectedServices, serviceIdStr]
-                          setSelectedServices(newServices)
-                          if (newServices.length === 1) {
-                            setSelectedService(serviceIdStr)
-                          }
-                        } else {
-                          const newServices = selectedServices.filter(id => id !== serviceIdStr)
-                          setSelectedServices(newServices)
-                          if (selectedService === serviceIdStr) {
-                            setSelectedService(newServices[0] || '')
-                          }
-                        }
-                        setSelectedSlot(null)
-                      }}
-                      className="w-5 h-5 text-[#7b5cf5] rounded"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
-                      {s.variants && s.variants.length > 0 ? (
-                        <div className="text-sm text-[#5a4767] mt-1">
-                          <div className="font-medium text-[#7b5cf5] mb-1.5">
-                            {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
-                          </div>
-                          {isSelected && (
-                            <div className="mt-2 space-y-1">
-                              {s.variants.map(variant => (
-                                <label
-                                  key={variant.id}
-                                  className="flex items-center gap-2 p-1.5 hover:bg-[#f7f2fb] rounded-lg cursor-pointer"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <input
-                                    type="radio"
-                                    name={`variant-${s.id}`}
-                                    checked={selectedVariants[s.id] === variant.id}
-                                    onChange={() => {
-                                      setSelectedVariants({
-                                        ...selectedVariants,
-                                        [s.id]: variant.id,
-                                      })
-                                      setSelectedSlot(null)
-                                    }}
-                                    className="w-3 h-3 text-[#7b5cf5]"
-                                  />
-                                  <span className="text-sm text-[#4a3756]">
-                                    {variant.name} - {currency(variant.price_cents)}
-                                  </span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-[#5a4767]">
-                          {currency(s.price_cents)}
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
-
-            {selectedServices.length > 0 && (
-              <div className="text-sm font-semibold text-[#7b5cf5] mt-3">
-                {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected | Total: {currency(totalPriceForSummary)}
-              </div>
-            )}
-          </div>
-
-          <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
-            <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Booking Summary</label>
-            <div className="mt-3 space-y-3 text-sm">
-              <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
-                <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
-                <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
-                {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
-                {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
-              </div>
-
-              <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
-                <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
-                {selectedServicesSummaryItems.length > 0 ? (
-                  <ul className="mt-1 space-y-1">
-                    {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
-                      <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
-                        <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
-                        {' - '}
-                        <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
-                      </li>
-                    ))}
-                    {selectedServicesSummaryItems.length > 3 && (
-                      <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
-                    )}
-                  </ul>
-                ) : (
-                  <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-[#f5d6e4] bg-[#fff6fa] px-3 py-2.5">
-                <div className="text-[11px] uppercase tracking-wide text-[#8f5170]">Total Price</div>
-                <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => setStep(1)}
-                  className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
-                >
-                  Back to Customer Info
-                </button>
-                <button
-                  onClick={handleContinueFromStepTwo}
-                  disabled={!canContinueStepTwo}
-                  className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
-                >
-                  Continue to Date & Time
-                </button>
-              </div>
+              <button
+                onClick={handleNextStep}
+                className="booking-primary-btn w-full mt-4 text-base font-semibold px-5 py-3.5 rounded-xl"
+              >
+                Continue to Booking
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Step 3: Select Date & Time */}
-      {step === 3 && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)] items-start">
-          <div className="space-y-4">
+        {/* Step 2: Select Service */}
+        {step === 2 && (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)] items-start">
             <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
-              <h2 className="text-2xl font-bold text-[#2C1338]">
-                {isRescheduleFlow ? 'Select New Date & Time' : 'Select Date & Time'}
-              </h2>
-              <p className="mt-2 text-sm text-[#6f5b7e]">
-                {isRescheduleFlow
-                  ? 'Your service details are locked for this reschedule. Choose a new date and time only.'
-                  : 'Pick a schedule with available slot capacity for your selected services.'}
-              </p>
+              <h2 className="text-2xl font-bold text-[#2C1338]">Select Service</h2>
+              <p className="mt-2 text-sm text-[#6f5b7e]">Choose one or more services before you pick an appointment schedule.</p>
 
-              <div className="booking-step2-schedule-grid grid xl:grid-cols-2 gap-4 mt-5">
-                <div className="space-y-3">
-                  <Calendar
-                    month={calendarMonth}
-                    year={calendarYear}
-                    selectedDate={selectedDate}
-                    closedDateMap={closedDateMap}
-                    onSelect={(date) => {
-                      const selected = new Date(date + 'T00:00:00')
-                      const today = new Date()
-                      today.setHours(0, 0, 0, 0)
-                      if (selected >= today) {
-                        setHolidayStatusMessage('')
-                        setSelectedDate(date)
-                        setSelectedSlot(null)
-                      }
-                    }}
-                    onClosedDateSelect={handleClosedDateSelect}
-                    onMonthChange={(month, year) => {
-                      setCalendarMonth(month)
-                      setCalendarYear(year)
-                    }}
-                  />
-                  {(holidayStatusMessage || selectedClosedDateInfo?.message) && (
-                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                      {holidayStatusMessage || selectedClosedDateInfo?.message}
-                    </div>
+              <div className="booking-panel mt-5 max-h-[620px] overflow-y-auto border border-[#ece6f4] rounded-2xl p-4 space-y-3 bg-white shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
+                {services.map(s => {
+                  const serviceIdStr = s.id.toString()
+                  const isSelected = selectedServices.includes(serviceIdStr) || selectedService === serviceIdStr
+
+                  return (
+                    <label
+                      key={s.id}
+                      className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${isSelected ? 'bg-[#f3efff] border-[#7b5cf5]' : 'border-[#ece6f4] hover:border-[#ddd3ee] hover:bg-[#faf6fd]'
+                        }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const newServices = [...selectedServices, serviceIdStr]
+                            setSelectedServices(newServices)
+                            if (newServices.length === 1) {
+                              setSelectedService(serviceIdStr)
+                            }
+                          } else {
+                            const newServices = selectedServices.filter(id => id !== serviceIdStr)
+                            setSelectedServices(newServices)
+                            if (selectedService === serviceIdStr) {
+                              setSelectedService(newServices[0] || '')
+                            }
+                          }
+                          setSelectedSlot(null)
+                        }}
+                        className="w-5 h-5 text-[#7b5cf5] rounded"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
+                        {s.variants && s.variants.length > 0 ? (
+                          <div className="text-sm text-[#5a4767] mt-1">
+                            <div className="font-medium text-[#7b5cf5] mb-1.5">
+                              {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
+                            </div>
+                            {isSelected && (
+                              <div className="mt-2 space-y-1">
+                                {s.variants.map(variant => (
+                                  <label
+                                    key={variant.id}
+                                    className="flex items-center gap-2 p-1.5 hover:bg-[#f7f2fb] rounded-lg cursor-pointer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={`variant-${s.id}`}
+                                      checked={selectedVariants[s.id] === variant.id}
+                                      onChange={() => {
+                                        setSelectedVariants({
+                                          ...selectedVariants,
+                                          [s.id]: variant.id,
+                                        })
+                                        setSelectedSlot(null)
+                                      }}
+                                      className="w-3 h-3 text-[#7b5cf5]"
+                                    />
+                                    <span className="text-sm text-[#4a3756]">
+                                      {variant.name} - {currency(variant.price_cents)}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-[#5a4767]">
+                            {currency(s.price_cents)}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+
+              {selectedServices.length > 0 && (
+                <div className="text-sm font-semibold text-[#7b5cf5] mt-3">
+                  {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected | Total: {currency(totalPriceForSummary)}
+                </div>
+              )}
+            </div>
+
+            <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
+              <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Booking Summary</label>
+              <div className="mt-3 space-y-3 text-sm">
+                <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
+                  <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
+                  {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
+                  {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
+                </div>
+
+                <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
+                  {selectedServicesSummaryItems.length > 0 ? (
+                    <ul className="mt-1 space-y-1">
+                      {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
+                        <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
+                          <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
+                          {' - '}
+                          <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
+                        </li>
+                      ))}
+                      {selectedServicesSummaryItems.length > 3 && (
+                        <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
+                      )}
+                    </ul>
+                  ) : (
+                    <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
                   )}
                 </div>
 
-                <SlotList
-                  slots={availability}
-                  selected={selectedSlot}
-                  loading={availabilityLoading}
-                  ready={Boolean((selectedService || selectedServices.length > 0) && !selectedClosedDateInfo)}
-                  onSelect={(slot) => {
-                    if (slot.available === false) {
-                      toast.error('This time slot is already fully booked. Please choose another time.')
-                      return
-                    }
+                <div className="rounded-xl border border-[#f5d6e4] bg-[#fff6fa] px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wide text-[#8f5170]">Total Price</div>
+                  <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
+                </div>
 
-                    const now = new Date()
-                    const slotTime = new Date(slot.start)
-                    const minAdvanceTime = new Date(now.getTime() + 30 * 60000)
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                  >
+                    Back to Customer Info
+                  </button>
+                  <button
+                    onClick={handleContinueFromStepTwo}
+                    disabled={!canContinueStepTwo}
+                    className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
+                  >
+                    Continue to Date & Time
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-                    if (slotTime < now) {
-                      toast.error('Cannot book appointments in the past. Please select a future time slot.')
-                      return
-                    }
+        {/* Step 3: Select Date & Time */}
+        {step === 3 && (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)] items-start">
+            <div className="space-y-4">
+              <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
+                <h2 className="text-2xl font-bold text-[#2C1338]">
+                  {isRescheduleFlow ? 'Select New Date & Time' : 'Select Date & Time'}
+                </h2>
+                <p className="mt-2 text-sm text-[#6f5b7e]">
+                  {isRescheduleFlow
+                    ? 'Your service details are locked for this reschedule. Choose a new date and time only.'
+                    : 'Pick a schedule with available slot capacity for your selected services.'}
+                </p>
 
-                    if (slotTime < minAdvanceTime) {
-                      const minutesUntilSlot = Math.ceil((slotTime.getTime() - now.getTime()) / 60000)
-                      toast.error(`Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`)
-                      return
-                    }
+                <div className="booking-step2-schedule-grid grid xl:grid-cols-2 gap-4 mt-5">
+                  <div className="space-y-3">
+                    <Calendar
+                      month={calendarMonth}
+                      year={calendarYear}
+                      selectedDate={selectedDate}
+                      closedDateMap={closedDateMap}
+                      onSelect={(date) => {
+                        const selected = new Date(date + 'T00:00:00')
+                        const today = new Date()
+                        today.setHours(0, 0, 0, 0)
+                        if (selected >= today) {
+                          setHolidayStatusMessage('')
+                          setSelectedDate(date)
+                          setSelectedSlot(null)
+                        }
+                      }}
+                      onClosedDateSelect={handleClosedDateSelect}
+                      onMonthChange={(month, year) => {
+                        setCalendarMonth(month)
+                        setCalendarYear(year)
+                      }}
+                    />
+                    {(holidayStatusMessage || selectedClosedDateInfo?.message) && (
+                      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        {holidayStatusMessage || selectedClosedDateInfo?.message}
+                      </div>
+                    )}
+                  </div>
 
-                    const matchingSlot = availability.find(availSlot =>
-                      new Date(availSlot.start).getTime() === new Date(slot.start).getTime() &&
-                      availSlot.available !== false
+                  <SlotList
+                    slots={availability}
+                    selected={selectedSlot}
+                    loading={availabilityLoading}
+                    ready={Boolean((selectedService || selectedServices.length > 0) && !selectedClosedDateInfo)}
+                    onSelect={(slot) => {
+                      if (slot.available === false) {
+                        toast.error('This time slot is already fully booked. Please choose another time.')
+                        return
+                      }
+
+                      const now = new Date()
+                      const slotTime = new Date(slot.start)
+                      const minAdvanceTime = new Date(now.getTime() + 30 * 60000)
+
+                      if (slotTime < now) {
+                        toast.error('Cannot book appointments in the past. Please select a future time slot.')
+                        return
+                      }
+
+                      if (slotTime < minAdvanceTime) {
+                        const minutesUntilSlot = Math.ceil((slotTime.getTime() - now.getTime()) / 60000)
+                        toast.error(`Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`)
+                        return
+                      }
+
+                      const matchingSlot = availability.find(availSlot =>
+                        new Date(availSlot.start).getTime() === new Date(slot.start).getTime() &&
+                        availSlot.available !== false
+                      )
+
+                      if (matchingSlot) {
+                        setSelectedSlot(matchingSlot)
+                      } else {
+                        toast.error('This time slot is no longer available. Please refresh and choose another time.')
+                        fetchAvailability()
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4">
+                <h3 className="font-semibold mb-2 text-[#2C1338]">Selected Schedule</h3>
+                <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-lg bg-[#faf8fd] border border-[#efe8f5] px-3 py-2 text-[#4e3b5b]">
+                    <span className="font-medium">Date:</span> {selectedDateLabel}
+                  </div>
+                  <div className="rounded-lg bg-[#faf8fd] border border-[#efe8f5] px-3 py-2 text-[#4e3b5b]">
+                    <span className="font-medium">Time:</span> {selectedTimeLabel}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
+              <label className="text-sm text-[#2C1338] font-semibold tracking-wide">
+                {isRescheduleFlow ? 'Appointment Summary' : 'Booking Summary'}
+              </label>
+              <div className="mt-3 space-y-3 text-sm">
+                <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
+                  <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
+                  {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
+                  {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
+                </div>
+
+                <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
+                  {selectedServicesSummaryItems.length > 0 ? (
+                    <ul className="mt-1 space-y-1">
+                      {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
+                        <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
+                          <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
+                          {!isRescheduleFlow && (
+                            <>
+                              {' - '}
+                              <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                      {selectedServicesSummaryItems.length > 3 && (
+                        <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
+                      )}
+                    </ul>
+                  ) : (
+                    <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                    <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Date</div>
+                    <div className="text-xs font-medium text-[#2C1338]">{selectedDateLabel}</div>
+                  </div>
+                  <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                    <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Time</div>
+                    <div className="text-xs font-medium text-[#2C1338]">{selectedTimeLabel}</div>
+                  </div>
+                </div>
+
+                {!isRescheduleFlow && (
+                  <div className="rounded-xl border border-[#f5d6e4] bg-[#fff6fa] px-3 py-2.5">
+                    <div className="text-[11px] uppercase tracking-wide text-[#8f5170]">Total Price</div>
+                    <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  {isRescheduleFlow ? (
+                    <button
+                      onClick={() => navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start')}
+                      className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                    >
+                      Cancel Reschedule
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setStep(2)}
+                      className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                    >
+                      Back to Services
+                    </button>
+                  )}
+                  <button
+                    onClick={handleContinueFromStepThree}
+                    disabled={!canContinueStepThree}
+                    className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
+                  >
+                    Continue to Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Legacy combined booking step kept disabled to preserve old markup during transition */}
+        {false && step === 2 && (
+          <>
+            <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
+              <div className="booking-step2-layout">
+                <div className="booking-step2-column">
+                  <div>
+                    <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Stylist Selection *</label>
+                    <div className="mt-1 text-xs font-medium text-[#7b5cf5]">{stylistListHeading}</div>
+                  </div>
+                  {/* Keep select in DOM for compatibility with existing state shape and fallback behavior */}
+                  <select
+                    className="sr-only"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    value={selectedStylist}
+                    onChange={e => setSelectedStylist(e.target.value)}
+                  >
+                    <option value="">Select Stylist</option>
+                    <option value={AUTO_STYLIST_VALUE}>No Preference</option>
+                    {activeStylists.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+
+                  <div className="booking-panel mt-3 rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
+                    <input
+                      type="text"
+                      value={stylistSearch}
+                      onChange={(e) => setStylistSearch(e.target.value)}
+                      placeholder="Search stylist, role, specialty..."
+                      className="w-full border border-[#e7e1ef] rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#d9ceff] focus:border-[#7b5cf5]"
+                    />
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {stylistFilterOptions.map((option) => (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => setStylistFilter(option.key)}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition ${stylistFilter === option.key
+                              ? 'bg-gradient-to-r from-[#7b5cf5] to-[#7b5cf5] text-white border-[#7b5cf5] shadow-[0_8px_18px_rgba(109,77,230,0.18)]'
+                              : 'bg-[#faf8fd] text-[#5f4a70] border-[#e9e2f2] hover:bg-[#f3edf9]'
+                            }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 max-h-[560px] overflow-y-auto space-y-3 pr-1">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStylist(AUTO_STYLIST_VALUE)}
+                        className={`w-full rounded-lg border px-4 py-4 text-left transition ${isAutoStylistSelected
+                            ? 'border-[#7b5cf5] bg-[#f3efff]'
+                            : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
+                          }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="h-12 w-12 rounded-full bg-[#ede7ff] text-[#6b4ae8] flex items-center justify-center text-lg">
+                            Ã¢Â­Â
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-base text-[#2C1338]">No Preference (Auto-Assign Best Available)</div>
+                            <div className="text-sm text-[#6f5b7e] mt-1">The system will choose an available stylist for your selected schedule.</div>
+                          </div>
+                          <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${isAutoStylistSelected ? 'border-[#7b5cf5] bg-[#7b5cf5]' : 'border-[#c9bcf1]'
+                            }`}>
+                            {isAutoStylistSelected && <span className="h-2 w-2 rounded-full bg-white" />}
+                          </div>
+                        </div>
+                      </button>
+
+                      {visibleStylists.length === 0 && (
+                        <div className="rounded-lg border border-dashed border-[#e9e2f2] bg-[#faf8fd] px-3 py-4 text-xs text-[#7c688f] text-center">
+                          No stylists found for the current search/filter.
+                        </div>
+                      )}
+
+                      {visibleStylists.map((stylist) => {
+                        const stylistId = String(stylist.id)
+                        const status = normalizeStylistStatus(stylist)
+                        const statusLabel = getStatusLabel(status)
+                        const statusClass = getStatusClass(status)
+                        const isDisabled = (status === 'off' || status === 'fully_booked') && selectedStylist !== stylistId
+                        const isSelected = selectedStylist === stylistId
+                        const name = stylist?.name || 'Unnamed stylist'
+                        const initials = name
+                          .split(' ')
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((part) => part[0]?.toUpperCase() || '')
+                          .join('') || 'ST'
+                        const specialty = Array.isArray(stylist?.specialties)
+                          ? stylist.specialties.filter(Boolean).join(', ')
+                          : (stylist?.specialties || '')
+                        const specializationNames = Array.isArray(stylist?.specialization_names)
+                          ? stylist.specialization_names.filter(Boolean)
+                          : []
+                        const metaLabel = specialty || specializationNames.join(', ') || stylist?.role || 'Stylist'
+                        const stylistImage = stylist?.image_url || stylist?.image
+                        const imageSrc = stylistImage
+                          ? (String(stylistImage).startsWith('http')
+                            ? stylistImage
+                            : `/${String(stylistImage).replace(/^\/+/, '')}`)
+                          : null
+
+                        return (
+                          <button
+                            key={stylist.id}
+                            type="button"
+                            onClick={() => !isDisabled && setSelectedStylist(stylistId)}
+                            disabled={isDisabled}
+                            title={isDisabled ? 'No slots available today' : `Select ${name}`}
+                            className={`w-full rounded-lg border px-4 py-4 text-left transition ${isDisabled
+                                ? 'opacity-60 cursor-not-allowed bg-[#f8f4ef] border-[#eadfd5]'
+                                : isSelected
+                                  ? 'border-[#7b5cf5] bg-[#f3efff]'
+                                  : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
+                              }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="relative h-12 w-12 rounded-full bg-[#fff1f7] text-[#7b4f63] flex items-center justify-center text-sm font-semibold overflow-hidden">
+                                <span>{initials}</span>
+                                {imageSrc && (
+                                  <img
+                                    src={imageSrc}
+                                    alt={name}
+                                    className="absolute inset-0 h-full w-full object-contain bg-[#fff1f7] p-0.5"
+                                    onError={(event) => {
+                                      event.currentTarget.style.display = 'none'
+                                    }}
+                                  />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-base text-[#2C1338] truncate">{name}</div>
+                                <div className="text-sm text-[#6f5b7e] truncate">{metaLabel}</div>
+                                {specializationNames.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {specializationNames.slice(0, 3).map((serviceName) => (
+                                      <span
+                                        key={`${stylistId}-${serviceName}`}
+                                        className="px-2 py-0.5 rounded-full bg-[#f4edf9] text-[10px] font-medium text-[#614175]"
+                                      >
+                                        {serviceName}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}`}>
+                                    {statusLabel}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-[#7b5cf5] bg-[#7b5cf5]' : 'border-[#c9bcf1]'
+                                }`}>
+                                {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className="booking-step2-column">
+                  <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Service Selection * (Select one or more)</label>
+                  <div className="booking-panel mt-3 max-h-[560px] overflow-y-auto border border-[#ece6f4] rounded-2xl p-4 space-y-3 bg-white shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
+                    {services.map(s => {
+                      const serviceIdStr = s.id.toString()
+                      const isSelected = selectedServices.includes(serviceIdStr) || selectedService === serviceIdStr
+
+                      return (
+                        <label
+                          key={s.id}
+                          className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${isSelected ? 'bg-[#f3efff] border-[#7b5cf5]' : 'border-[#ece6f4] hover:border-[#ddd3ee] hover:bg-[#faf6fd]'
+                            }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                // Add to selected services
+                                const newServices = [...selectedServices, serviceIdStr]
+                                setSelectedServices(newServices)
+                                // Also update selectedService for backward compatibility
+                                if (newServices.length === 1) {
+                                  setSelectedService(serviceIdStr)
+                                }
+                              } else {
+                                // Remove from selected services
+                                const newServices = selectedServices.filter(id => id !== serviceIdStr)
+                                setSelectedServices(newServices)
+                                // Update selectedService if it was the removed one
+                                if (selectedService === serviceIdStr) {
+                                  setSelectedService(newServices[0] || '')
+                                }
+                              }
+                              setSelectedSlot(null) // Reset slot when services change
+                            }}
+                            className="w-5 h-5 text-[#7b5cf5] rounded"
+                          />
+                          <div className="flex-1">
+                            <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
+                            {s.variants && s.variants.length > 0 ? (
+                              <div className="text-sm text-[#5a4767] mt-1">
+                                <div className="font-medium text-[#7b5cf5] mb-1.5">
+                                  {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
+                                </div>
+                                {isSelected && (
+                                  <div className="mt-2 space-y-1">
+                                    {s.variants.map(variant => (
+                                      <label
+                                        key={variant.id}
+                                        className="flex items-center gap-2 p-1.5 hover:bg-[#f7f2fb] rounded-lg cursor-pointer"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="radio"
+                                          name={`variant-${s.id}`}
+                                          checked={selectedVariants[s.id] === variant.id}
+                                          onChange={() => {
+                                            setSelectedVariants({
+                                              ...selectedVariants,
+                                              [s.id]: variant.id
+                                            })
+                                            setSelectedSlot(null) // Reset slot when variant changes
+                                          }}
+                                          className="w-3 h-3 text-[#7b5cf5]"
+                                        />
+                                        <span className="text-sm text-[#4a3756]">
+                                          {variant.name} - {currency(variant.price_cents)}
+                                        </span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-[#5a4767]">
+                                {currency(s.price_cents)}
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {selectedServices.length > 0 && (() => {
+                    const selectedServicesData = services.filter(s => selectedServices.includes(s.id.toString()))
+                    // Calculate price: use variant price if selected, otherwise service price
+                    const totalPrice = selectedServicesData.reduce((sum, s) => {
+                      if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+                        const variant = s.variants.find(v => v.id === selectedVariants[s.id])
+                        return sum + (variant ? variant.price_cents : s.price_cents)
+                      }
+                      return sum + s.price_cents
+                    }, 0)
+                    return (
+                      <div className="text-sm font-semibold text-[#7b5cf5] mt-3">
+                        {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected |
+                        Total: {currency(totalPrice)}
+                      </div>
                     )
+                  })()}
+                </div>
+                <div className="booking-step2-column booking-summary-column">
+                  <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
+                    <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Booking Summary</label>
+                    <div className="mt-3 space-y-3 text-sm">
+                      <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
+                        <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
+                        <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
+                        {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
+                        {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
+                      </div>
 
-                    if (matchingSlot) {
-                      setSelectedSlot(matchingSlot)
-                    } else {
-                      toast.error('This time slot is no longer available. Please refresh and choose another time.')
-                      fetchAvailability()
+                      <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                        <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Stylist</div>
+                        <div className="font-medium text-[#2C1338]">{stylistSummaryLabel}</div>
+                      </div>
+
+                      <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                        <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
+                        {selectedServicesSummaryItems.length > 0 ? (
+                          <ul className="mt-1 space-y-1">
+                            {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
+                              <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
+                                <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
+                                {' - '}
+                                <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
+                              </li>
+                            ))}
+                            {selectedServicesSummaryItems.length > 3 && (
+                              <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
+                            )}
+                          </ul>
+                        ) : (
+                          <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                          <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Date</div>
+                          <div className="text-xs font-medium text-[#2C1338]">{selectedDateLabel}</div>
+                        </div>
+                        <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
+                          <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Time</div>
+                          <div className="text-xs font-medium text-[#2C1338]">{selectedTimeLabel}</div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-[#ddd3ee] bg-[#faf8fd] px-3 py-2.5">
+                        <div className="text-[11px] uppercase tracking-wide text-[#654abf]">Total Price</div>
+                        <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {rescheduling ? (
+                          <button
+                            onClick={() => {
+                              setRescheduling(null)
+                              navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start', { replace: true })
+                            }}
+                            className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                          >
+                            Cancel Reschedule
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setStep(1)}
+                            className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
+                          >
+                            Back to Customer Info
+                          </button>
+                        )}
+                        {rescheduling ? (
+                          <button
+                            onClick={handleReschedule}
+                            disabled={!selectedSlot}
+                            className="tap-safe bg-amber-500 text-white px-4 py-2.5 rounded-xl hover:bg-amber-600 disabled:opacity-50"
+                          >
+                            Confirm Reschedule
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleContinueFromStepTwo}
+                            disabled={!canContinueStepTwo}
+                            className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
+                          >
+                            {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment ->' : 'Confirm Booking'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="booking-step2-schedule-grid grid xl:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <Calendar
+                  month={calendarMonth}
+                  year={calendarYear}
+                  selectedDate={selectedDate}
+                  closedDateMap={closedDateMap}
+                  onSelect={(date) => {
+                    // date is already in YYYY-MM-DD format from Calendar component
+                    const selected = new Date(date + 'T00:00:00')
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    if (selected >= today) {
+                      setHolidayStatusMessage('')
+                      setSelectedDate(date)
+                      setSelectedSlot(null) // Reset slot when date changes
                     }
                   }}
+                  onClosedDateSelect={handleClosedDateSelect}
+                  onMonthChange={(month, year) => {
+                    setCalendarMonth(month)
+                    setCalendarYear(year)
+                  }}
                 />
+                {(holidayStatusMessage || selectedClosedDateInfo?.message) && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {holidayStatusMessage || selectedClosedDateInfo?.message}
+                  </div>
+                )}
               </div>
+              <SlotList
+                slots={availability}
+                selected={selectedSlot}
+                loading={availabilityLoading}
+                ready={Boolean(hasStylistSelectionContext && (selectedService || selectedServices.length > 0) && !selectedClosedDateInfo)}
+                onSelect={(slot) => {
+                  // Verify slot is available
+                  if (slot.available === false) {
+                    toast.error('This time slot is not available. Please choose another time.')
+                    return
+                  }
+
+                  // Validate that the slot is not in the past and is at least 30 minutes away
+                  const now = new Date()
+                  const slotTime = new Date(slot.start)
+                  const minAdvanceTime = new Date(now.getTime() + 30 * 60000) // 30 minutes from now
+
+                  if (slotTime < now) {
+                    toast.error('Cannot book appointments in the past. Please select a future time slot.')
+                    return
+                  }
+
+                  if (slotTime < minAdvanceTime) {
+                    const minutesUntilSlot = Math.ceil((slotTime.getTime() - now.getTime()) / 60000)
+                    toast.error(`Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`)
+                    return
+                  }
+
+                  // Double-check against availability list
+                  const isAvailable = availability.some(availSlot =>
+                    new Date(availSlot.start).getTime() === new Date(slot.start).getTime() &&
+                    availSlot.available !== false
+                  )
+                  if (isAvailable) {
+                    if (isAutoStylistSelected) {
+                      const assignedStylistId = pickAutoAssignedStylistId(slot, selectedSlot?.assignedStylistId)
+                      if (!assignedStylistId) {
+                        toast.error('No stylist is available for that slot right now. Please choose another time.')
+                        return
+                      }
+
+                      setSelectedSlot({
+                        ...slot,
+                        assignedStylistId,
+                      })
+                      return
+                    }
+
+                    setSelectedSlot({
+                      ...slot,
+                      assignedStylistId: '',
+                    })
+                  } else {
+                    toast.error('This time slot is no longer available. Please refresh and choose another time.')
+                    fetchAvailability()
+                  }
+                }}
+              />
             </div>
 
             <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4">
@@ -3032,564 +3590,8 @@ const BookAppointment = () => {
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
-            <label className="text-sm text-[#2C1338] font-semibold tracking-wide">
-              {isRescheduleFlow ? 'Appointment Summary' : 'Booking Summary'}
-            </label>
-            <div className="mt-3 space-y-3 text-sm">
-              <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
-                <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
-                <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
-                {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
-                {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
-              </div>
-
-              <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
-                <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
-                {selectedServicesSummaryItems.length > 0 ? (
-                  <ul className="mt-1 space-y-1">
-                    {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
-                      <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
-                        <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
-                        {!isRescheduleFlow && (
-                          <>
-                            {' - '}
-                            <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
-                          </>
-                        )}
-                      </li>
-                    ))}
-                    {selectedServicesSummaryItems.length > 3 && (
-                      <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
-                    )}
-                  </ul>
-                ) : (
-                  <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
-                  <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Date</div>
-                  <div className="text-xs font-medium text-[#2C1338]">{selectedDateLabel}</div>
-                </div>
-                <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
-                  <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Time</div>
-                  <div className="text-xs font-medium text-[#2C1338]">{selectedTimeLabel}</div>
-                </div>
-              </div>
-
-              {!isRescheduleFlow && (
-                <div className="rounded-xl border border-[#f5d6e4] bg-[#fff6fa] px-3 py-2.5">
-                  <div className="text-[11px] uppercase tracking-wide text-[#8f5170]">Total Price</div>
-                  <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2">
-                {isRescheduleFlow ? (
-                  <button
-                    onClick={() => navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start')}
-                    className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
-                  >
-                    Cancel Reschedule
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setStep(2)}
-                    className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
-                  >
-                    Back to Services
-                  </button>
-                )}
-                <button
-                  onClick={handleContinueFromStepThree}
-                  disabled={!canContinueStepThree}
-                  className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
-                >
-                  Continue to Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Legacy combined booking step kept disabled to preserve old markup during transition */}
-      {false && step === 2 && (
-        <>
-          <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
-            <div className="booking-step2-layout">
-              <div className="booking-step2-column">
-                <div>
-                  <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Stylist Selection *</label>
-                  <div className="mt-1 text-xs font-medium text-[#7b5cf5]">{stylistListHeading}</div>
-                </div>
-                {/* Keep select in DOM for compatibility with existing state shape and fallback behavior */}
-                <select
-                  className="sr-only"
-                  aria-hidden="true"
-                  tabIndex={-1}
-                  value={selectedStylist}
-                  onChange={e => setSelectedStylist(e.target.value)}
-                >
-                  <option value="">Select Stylist</option>
-                  <option value={AUTO_STYLIST_VALUE}>No Preference</option>
-                  {activeStylists.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-
-                <div className="booking-panel mt-3 rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
-                  <input
-                    type="text"
-                    value={stylistSearch}
-                    onChange={(e) => setStylistSearch(e.target.value)}
-                    placeholder="Search stylist, role, specialty..."
-                    className="w-full border border-[#e7e1ef] rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#d9ceff] focus:border-[#7b5cf5]"
-                  />
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {stylistFilterOptions.map((option) => (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => setStylistFilter(option.key)}
-                        className={`px-3 py-1.5 rounded-full text-xs border transition ${
-                          stylistFilter === option.key
-                            ? 'bg-gradient-to-r from-[#7b5cf5] to-[#7b5cf5] text-white border-[#7b5cf5] shadow-[0_8px_18px_rgba(109,77,230,0.18)]'
-                            : 'bg-[#faf8fd] text-[#5f4a70] border-[#e9e2f2] hover:bg-[#f3edf9]'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 max-h-[560px] overflow-y-auto space-y-3 pr-1">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStylist(AUTO_STYLIST_VALUE)}
-                      className={`w-full rounded-lg border px-4 py-4 text-left transition ${
-                        isAutoStylistSelected
-                          ? 'border-[#7b5cf5] bg-[#f3efff]'
-                          : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="h-12 w-12 rounded-full bg-[#ede7ff] text-[#6b4ae8] flex items-center justify-center text-lg">
-                          Ã¢Â­Â
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-base text-[#2C1338]">No Preference (Auto-Assign Best Available)</div>
-                          <div className="text-sm text-[#6f5b7e] mt-1">The system will choose an available stylist for your selected schedule.</div>
-                        </div>
-                        <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
-                          isAutoStylistSelected ? 'border-[#7b5cf5] bg-[#7b5cf5]' : 'border-[#c9bcf1]'
-                        }`}>
-                          {isAutoStylistSelected && <span className="h-2 w-2 rounded-full bg-white" />}
-                        </div>
-                      </div>
-                    </button>
-
-                    {visibleStylists.length === 0 && (
-                      <div className="rounded-lg border border-dashed border-[#e9e2f2] bg-[#faf8fd] px-3 py-4 text-xs text-[#7c688f] text-center">
-                        No stylists found for the current search/filter.
-                      </div>
-                    )}
-
-                    {visibleStylists.map((stylist) => {
-                      const stylistId = String(stylist.id)
-                      const status = normalizeStylistStatus(stylist)
-                      const statusLabel = getStatusLabel(status)
-                      const statusClass = getStatusClass(status)
-                      const isDisabled = (status === 'off' || status === 'fully_booked') && selectedStylist !== stylistId
-                      const isSelected = selectedStylist === stylistId
-                      const name = stylist?.name || 'Unnamed stylist'
-                      const initials = name
-                        .split(' ')
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .map((part) => part[0]?.toUpperCase() || '')
-                        .join('') || 'ST'
-                      const specialty = Array.isArray(stylist?.specialties)
-                        ? stylist.specialties.filter(Boolean).join(', ')
-                        : (stylist?.specialties || '')
-                      const specializationNames = Array.isArray(stylist?.specialization_names)
-                        ? stylist.specialization_names.filter(Boolean)
-                        : []
-                      const metaLabel = specialty || specializationNames.join(', ') || stylist?.role || 'Stylist'
-                      const stylistImage = stylist?.image_url || stylist?.image
-                      const imageSrc = stylistImage
-                        ? (String(stylistImage).startsWith('http')
-                          ? stylistImage
-                          : `/${String(stylistImage).replace(/^\/+/, '')}`)
-                        : null
-
-                      return (
-                        <button
-                          key={stylist.id}
-                          type="button"
-                          onClick={() => !isDisabled && setSelectedStylist(stylistId)}
-                          disabled={isDisabled}
-                          title={isDisabled ? 'No slots available today' : `Select ${name}`}
-                          className={`w-full rounded-lg border px-4 py-4 text-left transition ${
-                            isDisabled
-                              ? 'opacity-60 cursor-not-allowed bg-[#f8f4ef] border-[#eadfd5]'
-                              : isSelected
-                                ? 'border-[#7b5cf5] bg-[#f3efff]'
-                                : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="relative h-12 w-12 rounded-full bg-[#fff1f7] text-[#7b4f63] flex items-center justify-center text-sm font-semibold overflow-hidden">
-                              <span>{initials}</span>
-                              {imageSrc && (
-                                <img
-                                  src={imageSrc}
-                                  alt={name}
-                                  className="absolute inset-0 h-full w-full object-contain bg-[#fff1f7] p-0.5"
-                                  onError={(event) => {
-                                    event.currentTarget.style.display = 'none'
-                                  }}
-                                />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-base text-[#2C1338] truncate">{name}</div>
-                              <div className="text-sm text-[#6f5b7e] truncate">{metaLabel}</div>
-                              {specializationNames.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                  {specializationNames.slice(0, 3).map((serviceName) => (
-                                    <span
-                                      key={`${stylistId}-${serviceName}`}
-                                      className="px-2 py-0.5 rounded-full bg-[#f4edf9] text-[10px] font-medium text-[#614175]"
-                                    >
-                                      {serviceName}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                              <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}`}>
-                                  {statusLabel}
-                                </span>
-                              </div>
-                            </div>
-                            <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
-                              isSelected ? 'border-[#7b5cf5] bg-[#7b5cf5]' : 'border-[#c9bcf1]'
-                            }`}>
-                              {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
-                            </div>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div className="booking-step2-column">
-                <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Service Selection * (Select one or more)</label>
-                <div className="booking-panel mt-3 max-h-[560px] overflow-y-auto border border-[#ece6f4] rounded-2xl p-4 space-y-3 bg-white shadow-[0_8px_20px_rgba(44,19,56,0.06)]">
-                  {services.map(s => {
-                    const serviceIdStr = s.id.toString()
-                    const isSelected = selectedServices.includes(serviceIdStr) || selectedService === serviceIdStr
-                    
-                    return (
-                      <label
-                        key={s.id}
-                        className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
-                          isSelected ? 'bg-[#f3efff] border-[#7b5cf5]' : 'border-[#ece6f4] hover:border-[#ddd3ee] hover:bg-[#faf6fd]'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              // Add to selected services
-                              const newServices = [...selectedServices, serviceIdStr]
-                              setSelectedServices(newServices)
-                              // Also update selectedService for backward compatibility
-                              if (newServices.length === 1) {
-                                setSelectedService(serviceIdStr)
-                              }
-                            } else {
-                              // Remove from selected services
-                              const newServices = selectedServices.filter(id => id !== serviceIdStr)
-                              setSelectedServices(newServices)
-                              // Update selectedService if it was the removed one
-                              if (selectedService === serviceIdStr) {
-                                setSelectedService(newServices[0] || '')
-                              }
-                            }
-                            setSelectedSlot(null) // Reset slot when services change
-                          }}
-                          className="w-5 h-5 text-[#7b5cf5] rounded"
-                        />
-                        <div className="flex-1">
-                          <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
-                          {s.variants && s.variants.length > 0 ? (
-                            <div className="text-sm text-[#5a4767] mt-1">
-                              <div className="font-medium text-[#7b5cf5] mb-1.5">
-                                {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
-                              </div>
-                              {isSelected && (
-                                <div className="mt-2 space-y-1">
-                                  {s.variants.map(variant => (
-                                    <label
-                                      key={variant.id}
-                                      className="flex items-center gap-2 p-1.5 hover:bg-[#f7f2fb] rounded-lg cursor-pointer"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <input
-                                        type="radio"
-                                        name={`variant-${s.id}`}
-                                        checked={selectedVariants[s.id] === variant.id}
-                                        onChange={() => {
-                                          setSelectedVariants({
-                                            ...selectedVariants,
-                                            [s.id]: variant.id
-                                          })
-                                          setSelectedSlot(null) // Reset slot when variant changes
-                                        }}
-                                        className="w-3 h-3 text-[#7b5cf5]"
-                                      />
-                                      <span className="text-sm text-[#4a3756]">
-                                        {variant.name} - {currency(variant.price_cents)}
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-[#5a4767]">
-                              {currency(s.price_cents)}
-                            </div>
-                          )}
-                        </div>
-                      </label>
-                    )
-                  })}
-                </div>
-                {selectedServices.length > 0 && (() => {
-                  const selectedServicesData = services.filter(s => selectedServices.includes(s.id.toString()))
-                  // Calculate price: use variant price if selected, otherwise service price
-                  const totalPrice = selectedServicesData.reduce((sum, s) => {
-                    if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
-                      const variant = s.variants.find(v => v.id === selectedVariants[s.id])
-                      return sum + (variant ? variant.price_cents : s.price_cents)
-                    }
-                    return sum + s.price_cents
-                  }, 0)
-                  return (
-                    <div className="text-sm font-semibold text-[#7b5cf5] mt-3">
-                      {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected |
-                      Total: {currency(totalPrice)}
-                    </div>
-                  )
-                })()}
-              </div>
-              <div className="booking-step2-column booking-summary-column">
-                <div className="booking-panel booking-summary-panel rounded-2xl border border-[#ece6f4] bg-white p-4 shadow-[0_8px_20px_rgba(44,19,56,0.07)]">
-                  <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Booking Summary</label>
-                  <div className="mt-3 space-y-3 text-sm">
-                    <div className="rounded-xl border border-[#efe8f5] bg-[#faf8fd] px-3 py-2.5">
-                      <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Customer</div>
-                      <div className="font-semibold text-[#2C1338]">{booking.name || 'Not provided'}</div>
-                      {booking.email && <div className="text-xs text-[#645272]">{booking.email}</div>}
-                      {booking.phone && <div className="text-xs text-[#645272]">{booking.phone}</div>}
-                    </div>
-
-                    <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
-                      <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Stylist</div>
-                      <div className="font-medium text-[#2C1338]">{stylistSummaryLabel}</div>
-                    </div>
-
-                    <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
-                      <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Services</div>
-                      {selectedServicesSummaryItems.length > 0 ? (
-                        <ul className="mt-1 space-y-1">
-                          {selectedServicesSummaryItems.slice(0, 3).map((serviceItem) => (
-                            <li key={serviceItem.id} className="text-xs text-[#4e3b5b]">
-                              <span className="font-medium text-[#2C1338]">{serviceItem.label}</span>
-                              {' - '}
-                              <span className="font-semibold text-[#2C1338]">{currency(serviceItem.priceCents)}</span>
-                            </li>
-                          ))}
-                          {selectedServicesSummaryItems.length > 3 && (
-                            <li className="text-xs text-[#7c688f]">+{selectedServicesSummaryItems.length - 3} more</li>
-                          )}
-                        </ul>
-                      ) : (
-                        <div className="text-xs text-[#7c688f] mt-1">No services selected</div>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
-                        <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Date</div>
-                        <div className="text-xs font-medium text-[#2C1338]">{selectedDateLabel}</div>
-                      </div>
-                      <div className="rounded-xl border border-[#efe8f5] bg-white px-3 py-2.5">
-                        <div className="text-[11px] uppercase tracking-wide text-[#7e6b90]">Time</div>
-                        <div className="text-xs font-medium text-[#2C1338]">{selectedTimeLabel}</div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-[#ddd3ee] bg-[#faf8fd] px-3 py-2.5">
-                      <div className="text-[11px] uppercase tracking-wide text-[#654abf]">Total Price</div>
-                      <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      {rescheduling ? (
-                        <button
-                          onClick={() => {
-                            setRescheduling(null)
-                            navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start', { replace: true })
-                          }}
-                          className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
-                        >
-                          Cancel Reschedule
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setStep(1)}
-                          className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl text-sm"
-                        >
-                          Back to Customer Info
-                        </button>
-                      )}
-                      {rescheduling ? (
-                        <button
-                          onClick={handleReschedule}
-                          disabled={!selectedSlot}
-                          className="tap-safe bg-amber-500 text-white px-4 py-2.5 rounded-xl hover:bg-amber-600 disabled:opacity-50"
-                        >
-                          Confirm Reschedule
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleContinueFromStepTwo}
-                          disabled={!canContinueStepTwo}
-                          className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
-                        >
-                          {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment ->' : 'Confirm Booking'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="booking-step2-schedule-grid grid xl:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <Calendar
-                month={calendarMonth}
-                year={calendarYear}
-                selectedDate={selectedDate}
-                closedDateMap={closedDateMap}
-                onSelect={(date) => {
-                  // date is already in YYYY-MM-DD format from Calendar component
-                  const selected = new Date(date + 'T00:00:00')
-                  const today = new Date()
-                  today.setHours(0, 0, 0, 0)
-                  if (selected >= today) {
-                    setHolidayStatusMessage('')
-                    setSelectedDate(date)
-                    setSelectedSlot(null) // Reset slot when date changes
-                  }
-                }}
-                onClosedDateSelect={handleClosedDateSelect}
-                onMonthChange={(month, year) => {
-                  setCalendarMonth(month)
-                  setCalendarYear(year)
-                }}
-              />
-              {(holidayStatusMessage || selectedClosedDateInfo?.message) && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {holidayStatusMessage || selectedClosedDateInfo?.message}
-                </div>
-              )}
-            </div>
-            <SlotList 
-              slots={availability} 
-              selected={selectedSlot}
-              loading={availabilityLoading}
-              ready={Boolean(hasStylistSelectionContext && (selectedService || selectedServices.length > 0) && !selectedClosedDateInfo)}
-              onSelect={(slot) => {
-                // Verify slot is available
-                if (slot.available === false) {
-                  toast.error('This time slot is not available. Please choose another time.')
-                  return
-                }
-                
-                // Validate that the slot is not in the past and is at least 30 minutes away
-                const now = new Date()
-                const slotTime = new Date(slot.start)
-                const minAdvanceTime = new Date(now.getTime() + 30 * 60000) // 30 minutes from now
-                
-                if (slotTime < now) {
-                  toast.error('Cannot book appointments in the past. Please select a future time slot.')
-                  return
-                }
-                
-                if (slotTime < minAdvanceTime) {
-                  const minutesUntilSlot = Math.ceil((slotTime.getTime() - now.getTime()) / 60000)
-                  toast.error(`Appointments must be booked at least 30 minutes in advance. This slot is only ${minutesUntilSlot} minute${minutesUntilSlot !== 1 ? 's' : ''} away.`)
-                  return
-                }
-                
-                // Double-check against availability list
-                const isAvailable = availability.some(availSlot =>
-                  new Date(availSlot.start).getTime() === new Date(slot.start).getTime() &&
-                  availSlot.available !== false
-                )
-                if (isAvailable) {
-                  if (isAutoStylistSelected) {
-                    const assignedStylistId = pickAutoAssignedStylistId(slot, selectedSlot?.assignedStylistId)
-                    if (!assignedStylistId) {
-                      toast.error('No stylist is available for that slot right now. Please choose another time.')
-                      return
-                    }
-
-                    setSelectedSlot({
-                      ...slot,
-                      assignedStylistId,
-                    })
-                    return
-                  }
-
-                  setSelectedSlot({
-                    ...slot,
-                    assignedStylistId: '',
-                  })
-                } else {
-                  toast.error('This time slot is no longer available. Please refresh and choose another time.')
-                  fetchAvailability()
-                }
-              }}
-            />
-          </div>
-
-          <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4">
-            <h3 className="font-semibold mb-2 text-[#2C1338]">Selected Schedule</h3>
-            <div className="grid sm:grid-cols-2 gap-2 text-sm">
-              <div className="rounded-lg bg-[#faf8fd] border border-[#efe8f5] px-3 py-2 text-[#4e3b5b]">
-                <span className="font-medium">Date:</span> {selectedDateLabel}
-              </div>
-              <div className="rounded-lg bg-[#faf8fd] border border-[#efe8f5] px-3 py-2 text-[#4e3b5b]">
-                <span className="font-medium">Time:</span> {selectedTimeLabel}
-              </div>
-            </div>
-          </div>
-
-          <div className="booking-step2-mobile-actions flex flex-col sm:flex-row gap-3 xl:hidden">
+            <div className="booking-step2-mobile-actions flex flex-col sm:flex-row gap-3 xl:hidden">
               {rescheduling ? (
                 <button
                   onClick={() => {
@@ -3608,314 +3610,310 @@ const BookAppointment = () => {
                   Back
                 </button>
               )}
-            {rescheduling ? (
+              {rescheduling ? (
+                <button
+                  onClick={handleReschedule}
+                  disabled={!selectedSlot}
+                  className="tap-safe bg-amber-500 text-white px-4 py-2.5 rounded-xl hover:bg-amber-600 disabled:opacity-50"
+                >
+                  Confirm Reschedule
+                </button>
+              ) : (
+                <button
+                  onClick={handleContinueFromStepTwo}
+                  disabled={!canContinueStepTwo}
+                  className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
+                >
+                  {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment ->' : 'Confirm Booking'}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {step === 4 && rescheduling && (
+          <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Confirm Reschedule</h2>
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold mb-2 text-gray-900">Appointment Details</h3>
+              <div className="text-sm space-y-1 text-gray-700">
+                <div><strong>Customer:</strong> {booking.name || 'Not provided'}</div>
+                {booking.email && <div><strong>Email:</strong> {booking.email}</div>}
+                {booking.phone && <div><strong>Phone:</strong> {booking.phone}</div>}
+                <div><strong>Services:</strong> {selectedServicesSummaryItems.map(item => item.label).join(', ') || 'Not selected'}</div>
+                <div><strong>Date:</strong> {selectedDateLabel}</div>
+                <div><strong>Time:</strong> {selectedTimeLabel}</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setStep(3)}
+                className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
+              >
+                Back
+              </button>
               <button
                 onClick={handleReschedule}
                 disabled={!selectedSlot}
-                className="tap-safe bg-amber-500 text-white px-4 py-2.5 rounded-xl hover:bg-amber-600 disabled:opacity-50"
+                className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
               >
                 Confirm Reschedule
               </button>
-            ) : (
-              <button
-                onClick={handleContinueFromStepTwo}
-                disabled={!canContinueStepTwo}
-                className="tap-safe booking-primary-btn px-4 py-2.5 rounded-xl disabled:opacity-50"
-              >
-                {payment.method === 'online' || payment.method === 'on_hand' ? 'Continue to Payment ->' : 'Confirm Booking'}
-              </button>
-            )}
-          </div>
-        </>
-      )}
-
-      {step === 4 && rescheduling && (
-        <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold mb-4 text-gray-900">Confirm Reschedule</h2>
-          <div className="bg-blue-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold mb-2 text-gray-900">Appointment Details</h3>
-            <div className="text-sm space-y-1 text-gray-700">
-              <div><strong>Customer:</strong> {booking.name || 'Not provided'}</div>
-              {booking.email && <div><strong>Email:</strong> {booking.email}</div>}
-              {booking.phone && <div><strong>Phone:</strong> {booking.phone}</div>}
-              <div><strong>Services:</strong> {selectedServicesSummaryItems.map(item => item.label).join(', ') || 'Not selected'}</div>
-              <div><strong>Date:</strong> {selectedDateLabel}</div>
-              <div><strong>Time:</strong> {selectedTimeLabel}</div>
             </div>
           </div>
+        )}
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={() => setStep(3)}
-              className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleReschedule}
-              disabled={!selectedSlot}
-              className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
-            >
-              Confirm Reschedule
-            </button>
-          </div>
-        </div>
-      )}
+        {/* Step 4: Confirm Booking */}
+        {step === 4 && !rescheduling && (payment.method === 'online' || payment.method === 'on_hand') && (() => {
+          const serviceIdsForCalc = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
+          const selectedServicesData = services.filter(s => serviceIdsForCalc.includes(s.id.toString()))
+          // Calculate total: use variant price if selected, otherwise service price
+          const totalAmountCents = selectedServicesData.reduce((sum, s) => {
+            if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
+              const variant = s.variants.find(v => v.id === selectedVariants[s.id])
+              return sum + (variant ? variant.price_cents : s.price_cents || 0)
+            }
+            return sum + (s.price_cents || 0)
+          }, 0)
+          const totalAmount = totalAmountCents / 100
 
-      {/* Step 4: Confirm Booking */}
-      {step === 4 && !rescheduling && (payment.method === 'online' || payment.method === 'on_hand') && (() => {
-        const serviceIdsForCalc = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
-        const selectedServicesData = services.filter(s => serviceIdsForCalc.includes(s.id.toString()))
-        // Calculate total: use variant price if selected, otherwise service price
-        const totalAmountCents = selectedServicesData.reduce((sum, s) => {
-          if (s.variants && s.variants.length > 0 && selectedVariants[s.id]) {
-            const variant = s.variants.find(v => v.id === selectedVariants[s.id])
-            return sum + (variant ? variant.price_cents : s.price_cents || 0)
-          }
-          return sum + (s.price_cents || 0)
-        }, 0)
-        const totalAmount = totalAmountCents / 100
-        
-        const minDownpayment = totalAmount * 0.1
-        const parsedPaymentAmount = parseFloat(payment.amount)
-        const selectedPaymentType = payment.method === 'online'
-          ? (payment.paymentType === 'full' ? 'full' : 'downpayment')
-          : 'downpayment'
+          const minDownpayment = totalAmount * 0.1
+          const parsedPaymentAmount = parseFloat(payment.amount)
+          const selectedPaymentType = payment.method === 'online'
+            ? (payment.paymentType === 'full' ? 'full' : 'downpayment')
+            : 'downpayment'
 
-        // Calculate payment amount based on type
-        const paymentAmount = selectedPaymentType === 'full'
-          ? totalAmount
-          : (Number.isFinite(parsedPaymentAmount) ? parsedPaymentAmount : 0)
-        
-        // Final amount to be sent to backend
-        const effectivePaymentAmount = selectedPaymentType === 'full'
-          ? totalAmount
-          : (paymentAmount >= minDownpayment ? paymentAmount : minDownpayment)
-        
-        return (
-          <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
-            <h2 className="text-xl font-bold mb-4 text-gray-900">Confirm Booking</h2>
+          // Calculate payment amount based on type
+          const paymentAmount = selectedPaymentType === 'full'
+            ? totalAmount
+            : (Number.isFinite(parsedPaymentAmount) ? parsedPaymentAmount : 0)
 
-            {/* Payment Method Selection (moved from Step 2) */}
-            <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4 mb-4">
-              <h3 className="font-semibold mb-3 text-[#2C1338]">Payment Method</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  payment.method === 'on_hand' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value="on_hand"
-                    checked={payment.method === 'on_hand'}
-                    onChange={(e) => setPayment({
-                      ...payment,
-                      method: e.target.value,
-                      paymentType: 'downpayment',
-                      amount: '',
-                      proofFile: null,
-                      proofPreview: null,
-                    })}
-                    className="sr-only"
-                  />
-                  <div className="text-center">
-                    <div className="font-semibold text-[#2C1338]">Pay at Salon (Cash)</div>
-                    <div className="text-sm text-[#6f5b7e] mt-1">Pay in person after the service</div>
-                  </div>
-                </label>
-                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  payment.method === 'online' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value="online"
-                    checked={payment.method === 'online'}
-                    onChange={(e) => setPayment({
-                      ...payment,
-                      method: e.target.value,
-                      paymentType: 'downpayment',
-                      amount: '',
-                      proofFile: null,
-                      proofPreview: null,
-                    })}
-                    className="sr-only"
-                  />
-                  <div className="text-center">
-                    <div className="font-semibold text-[#2C1338]">GCash (Manual)</div>
-                    <div className="text-sm text-[#6f5b7e] mt-1">Scan QR, pay via GCash, then upload your receipt</div>
-                  </div>
-                </label>
-              </div>
-            </div>
+          // Final amount to be sent to backend
+          const effectivePaymentAmount = selectedPaymentType === 'full'
+            ? totalAmount
+            : (paymentAmount >= minDownpayment ? paymentAmount : minDownpayment)
 
-            <p className="text-sm text-[#8f7a6f] mb-4">
-              {payment.method === 'online'
-                ? (
-                  <>Payments are verified manually. Your booking will be marked as <strong>PENDING</strong> until the salon confirms the receipt.</>
-                )
-                : (
-                  <>Cash payments are verified manually. Your booking will be marked as <strong>PENDING</strong> until the salon confirms your deposit.</>
-                )}
-            </p>
-            
-            {/* Booking Summary */}
-            <div className="bg-[#f3f0ff] rounded-lg p-4 mb-6">
-              <h3 className="font-semibold mb-2 text-gray-900">Booking Summary</h3>
-              <div className="text-sm space-y-1 text-gray-700">
-                <div><strong>Total Amount:</strong> {currency(totalAmountCents)}</div>
-                <div><strong>Services:</strong> {selectedServicesSummaryItems.map(item => item.label).join(', ')}</div>
-                <div><strong>Date:</strong> {selectedDateLabel}</div>
-                {selectedSlot && (
-                  <div><strong>Time:</strong> {selectedTimeLabel}</div>
-                )}
-              </div>
-            </div>
+          return (
+            <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
+              <h2 className="text-xl font-bold mb-4 text-gray-900">Confirm Booking</h2>
 
-            {/* Payment Type */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2 text-gray-900">Payment Type *</label>
-              <div className={`grid gap-3 ${payment.method === 'online' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  selectedPaymentType === 'downpayment' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment_type"
-                    value="downpayment"
-                    checked={selectedPaymentType === 'downpayment'}
-                    onChange={() => setPayment({
-                      ...payment,
-                      paymentType: 'downpayment',
-                      amount: '',
-                    })}
-                    className="sr-only"
-                  />
-                  <div className="font-semibold text-gray-900">Downpayment</div>
-                  <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.1))}</div>
-                </label>
-
-                {payment.method === 'online' && (
-                  <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                    selectedPaymentType === 'full' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
-                  }`}>
+              {/* Payment Method Selection (moved from Step 2) */}
+              <div className="booking-panel bg-white rounded-2xl border border-[#ece6f4] shadow-[0_10px_24px_rgba(44,19,56,0.07)] p-4 mb-4">
+                <h3 className="font-semibold mb-3 text-[#2C1338]">Payment Method</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${payment.method === 'on_hand' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
+                    }`}>
                     <input
                       type="radio"
-                      name="payment_type"
-                      value="full"
-                      checked={selectedPaymentType === 'full'}
-                      onChange={() => setPayment({
+                      name="payment_method"
+                      value="on_hand"
+                      checked={payment.method === 'on_hand'}
+                      onChange={(e) => setPayment({
                         ...payment,
-                        paymentType: 'full',
-                        amount: totalAmount.toFixed(2),
+                        method: e.target.value,
+                        paymentType: 'downpayment',
+                        amount: '',
+                        proofFile: null,
+                        proofPreview: null,
                       })}
                       className="sr-only"
                     />
-                    <div className="font-semibold text-gray-900">Full Payment</div>
-                    <div className="text-sm text-[#8f7a6f] mt-1">Pay the full amount now via GCash</div>
+                    <div className="text-center">
+                      <div className="font-semibold text-[#2C1338]">Pay at Salon (Cash)</div>
+                      <div className="text-sm text-[#6f5b7e] mt-1">Pay in person after the service</div>
+                      <div className="text-xs text-[#8f7a6f] mt-1">Requires a 10% downpayment to reserve the appointment.</div>
+                    </div>
                   </label>
-                )}
-              </div>
-            </div>
-
-            {/* Payment Amount Input */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-1 text-gray-900">
-                {selectedPaymentType === 'full' ? 'Full Payment Amount (PHP) *' : 'Downpayment Amount (PHP) *'}
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                required
-                className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-[#7b5cf5] font-medium"
-                value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || '')}
-                readOnly={selectedPaymentType === 'full'}
-                onChange={(e) => {
-                  if (selectedPaymentType === 'full') {
-                    return
-                  }
-                  // Allow only numbers and one decimal point
-                  const val = e.target.value.replace(/[^0-9.]/g, '')
-                  const parts = val.split('.')
-                  if (parts.length > 2) return // Prevent multiple decimals
-                  
-                  setPayment({ ...payment, amount: val })
-                }}
-                placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.1)).replace('PHP ', '')}`}
-              />
-
-              <p className={`text-xs mt-1 ${selectedPaymentType === 'downpayment' && (parseFloat(payment.amount) < minDownpayment || !payment.amount) ? 'text-red-500 font-medium' : 'text-[#9b857a]'}`}>
-                {selectedPaymentType === 'full'
-                  ? <>Full payment selected | Remaining: {currency(0)}</>
-                  : <>Minimum: {currency(Math.round(totalAmountCents * 0.1))} | Remaining: {currency(Math.max(0, Math.round((totalAmount - (parseFloat(payment.amount) || 0)) * 100)))}</>}
-              </p>
-            </div>
-
-            {/* Payment Account Selection */}
-            {paymentAccounts.length > 0 && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium mb-2 text-gray-900">Select Payment Account *</label>
-                <div className="space-y-3">
-                  {paymentAccounts.map(account => (
-                    <label
-                      key={account.id}
-                      className={`border-2 rounded-xl p-3 cursor-pointer transition block ${
-                        payment.selectedAccount === account.id.toString() ? 'border-[#7b5cf5] bg-[#f8f5ff] shadow-sm' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment_account"
-                        value={account.id}
-                        checked={payment.selectedAccount === account.id.toString()}
-                        onChange={(e) => setPayment({ ...payment, selectedAccount: e.target.value })}
-                        className="sr-only"
-                      />
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex-1 w-full text-center sm:text-left">
-                          <div className="font-semibold text-gray-900 text-lg">{account.account_name}</div>
-                          <div className="text-base text-[#6f5b7e] font-medium">{account.account_number}</div>
-                          {account.instructions && (
-                            <div className="text-sm text-[#9b857a] mt-2 bg-white/60 p-2 rounded-lg inline-block border border-gray-100">{account.instructions}</div>
-                          )}
-                        </div>
-                        {resolveAssetUrl(account.qr_code_full_url || account.qr_code_url) && (
-                          <div 
-                            className="flex-shrink-0 bg-white p-1.5 border-2 border-gray-100 rounded-xl shadow-sm cursor-zoom-in hover:border-[#7b5cf5] transition group relative"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setEnlargedImage({ src: resolveAssetUrl(account.qr_code_full_url || account.qr_code_url), title: 'GCash QR Code' });
-                            }}
-                          >
-                            <img
-                              src={resolveAssetUrl(account.qr_code_full_url || account.qr_code_url)}
-                              alt="QR Code"
-                              className="w-16 h-16 sm:w-20 sm:h-20 object-contain group-hover:scale-[1.02] transition-transform"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl">
-                              <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#7b5cf5] shadow-sm">
-                                Enlarge
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  ))}
+                  <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${payment.method === 'online' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
+                    }`}>
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="online"
+                      checked={payment.method === 'online'}
+                      onChange={(e) => setPayment({
+                        ...payment,
+                        method: e.target.value,
+                        paymentType: 'downpayment',
+                        amount: '',
+                        proofFile: null,
+                        proofPreview: null,
+                      })}
+                      className="sr-only"
+                    />
+                    <div className="text-center">
+                      <div className="font-semibold text-[#2C1338]">GCash (Manual)</div>
+                      <div className="text-sm text-[#6f5b7e] mt-1">Scan QR, pay via GCash, then upload your receipt</div>
+                    </div>
+                  </label>
                 </div>
               </div>
-            )}
 
-            {/* Payment Proof Upload */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-1 text-gray-900">Payment Proof (Screenshot/Photo) *</label>
-              <input
-                type="file"
-                accept="image/*"
-                required
-                className="tap-safe w-full border rounded px-3 py-2 text-gray-900"
-                onChange={async (e) => {
+              <p className="text-sm text-[#8f7a6f] mb-4">
+                {payment.method === 'online'
+                  ? (
+                    <>Payments are verified manually. Your booking will be marked as <strong>PENDING</strong> until the salon confirms the receipt.</>
+                  )
+                  : (
+                    <>Cash payments are verified manually. A 10% downpayment is required, and your booking will be marked as <strong>PENDING</strong> until the salon confirms your deposit.</>
+                  )}
+              </p>
+
+              {/* Booking Summary */}
+              <div className="bg-[#f3f0ff] rounded-lg p-4 mb-6">
+                <h3 className="font-semibold mb-2 text-gray-900">Booking Summary</h3>
+                <div className="text-sm space-y-1 text-gray-700">
+                  <div><strong>Total Amount:</strong> {currency(totalAmountCents)}</div>
+                  <div><strong>Services:</strong> {selectedServicesSummaryItems.map(item => item.label).join(', ')}</div>
+                  <div><strong>Date:</strong> {selectedDateLabel}</div>
+                  {selectedSlot && (
+                    <div><strong>Time:</strong> {selectedTimeLabel}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Type */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2 text-gray-900">Payment Type *</label>
+                <div className={`grid gap-3 ${payment.method === 'online' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                  <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedPaymentType === 'downpayment' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
+                    }`}>
+                    <input
+                      type="radio"
+                      name="payment_type"
+                      value="downpayment"
+                      checked={selectedPaymentType === 'downpayment'}
+                      onChange={() => setPayment({
+                        ...payment,
+                        paymentType: 'downpayment',
+                        amount: '',
+                      })}
+                      className="sr-only"
+                    />
+                    <div className="font-semibold text-gray-900">Downpayment</div>
+                    <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.1))}</div>
+                  </label>
+
+                  {payment.method === 'online' && (
+                    <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedPaymentType === 'full' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
+                      }`}>
+                      <input
+                        type="radio"
+                        name="payment_type"
+                        value="full"
+                        checked={selectedPaymentType === 'full'}
+                        onChange={() => setPayment({
+                          ...payment,
+                          paymentType: 'full',
+                          amount: totalAmount.toFixed(2),
+                        })}
+                        className="sr-only"
+                      />
+                      <div className="font-semibold text-gray-900">Full Payment</div>
+                      <div className="text-sm text-[#8f7a6f] mt-1">Pay the full amount now via GCash</div>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Amount Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-1 text-gray-900">
+                  {selectedPaymentType === 'full' ? 'Full Payment Amount (PHP) *' : 'Downpayment Amount (10% Minimum) *'}
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  required
+                  className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-[#7b5cf5] font-medium"
+                  value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || '')}
+                  readOnly={selectedPaymentType === 'full'}
+                  onChange={(e) => {
+                    if (selectedPaymentType === 'full') {
+                      return
+                    }
+                    // Allow only numbers and one decimal point
+                    const val = e.target.value.replace(/[^0-9.]/g, '')
+                    const parts = val.split('.')
+                    if (parts.length > 2) return // Prevent multiple decimals
+
+                    setPayment({ ...payment, amount: val })
+                  }}
+                  placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.1)).replace('PHP ', '')}`}
+                />
+
+                <p className={`text-xs mt-1 ${selectedPaymentType === 'downpayment' && (parseFloat(payment.amount) < minDownpayment || !payment.amount) ? 'text-red-500 font-medium' : 'text-[#9b857a]'}`}>
+                  {selectedPaymentType === 'full'
+                    ? <>Full payment selected | Remaining: {currency(0)}</>
+                    : <>Minimum: {currency(Math.round(totalAmountCents * 0.1))} | Remaining: {currency(Math.max(0, Math.round((totalAmount - (parseFloat(payment.amount) || 0)) * 100)))}</>}
+                </p>
+              </div>
+
+              {/* Payment Account Selection */}
+              {paymentAccounts.length > 0 && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-2 text-gray-900">Select Payment Account *</label>
+                  <div className="space-y-3">
+                    {paymentAccounts.map(account => (
+                      <label
+                        key={account.id}
+                        className={`border-2 rounded-xl p-3 cursor-pointer transition block ${payment.selectedAccount === account.id.toString() ? 'border-[#7b5cf5] bg-[#f8f5ff] shadow-sm' : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                      >
+                        <input
+                          type="radio"
+                          name="payment_account"
+                          value={account.id}
+                          checked={payment.selectedAccount === account.id.toString()}
+                          onChange={(e) => setPayment({ ...payment, selectedAccount: e.target.value })}
+                          className="sr-only"
+                        />
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                          <div className="flex-1 w-full text-center sm:text-left">
+                            <div className="font-semibold text-gray-900 text-lg">{account.account_name}</div>
+                            <div className="text-base text-[#6f5b7e] font-medium">{account.account_number}</div>
+                            {account.instructions && (
+                              <div className="text-sm text-[#9b857a] mt-2 bg-white/60 p-2 rounded-lg inline-block border border-gray-100">{account.instructions}</div>
+                            )}
+                          </div>
+                          {resolveAssetUrl(account.qr_code_full_url || account.qr_code_url) && (
+                            <div
+                              className="flex-shrink-0 bg-white p-1.5 border-2 border-gray-100 rounded-xl shadow-sm cursor-zoom-in hover:border-[#7b5cf5] transition group relative"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEnlargedImage({ src: resolveAssetUrl(account.qr_code_full_url || account.qr_code_url), title: 'GCash QR Code' });
+                              }}
+                            >
+                              <img
+                                src={resolveAssetUrl(account.qr_code_full_url || account.qr_code_url)}
+                                alt="QR Code"
+                                className="w-16 h-16 sm:w-20 sm:h-20 object-contain group-hover:scale-[1.02] transition-transform"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl">
+                                <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#7b5cf5] shadow-sm">
+                                  Enlarge
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Proof Upload */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-1 text-gray-900">Payment Proof (Screenshot/Photo) *</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  required
+                  className="tap-safe w-full border rounded px-3 py-2 text-gray-900"
+                  onChange={async (e) => {
                     const file = e.target.files[0]
                     if (file) {
                       // Validate amount before allowing upload
@@ -3932,7 +3930,7 @@ const BookAppointment = () => {
                         toast.error('File size must be less than 15MB before compression')
                         return
                       }
-                      
+
                       try {
                         toast.info('Processing image...', { autoClose: 1500, toastId: 'compressing-img' })
                         const options = {
@@ -3942,9 +3940,9 @@ const BookAppointment = () => {
                           initialQuality: 0.8
                         }
                         const compressedFile = await imageCompression(file, options)
-                        
-                        setPayment({ 
-                          ...payment, 
+
+                        setPayment({
+                          ...payment,
                           proofFile: compressedFile,
                           proofPreview: URL.createObjectURL(compressedFile)
                         })
@@ -3954,157 +3952,157 @@ const BookAppointment = () => {
                       }
                     }
                   }}
-              />
-              {payment.proofPreview && (
-                <div className="mt-3 inline-block">
-                  <div 
-                    className="relative cursor-zoom-in group border-2 border-gray-100 rounded-xl p-1 bg-white shadow-sm hover:border-[#7b5cf5] transition"
-                    onClick={() => setEnlargedImage({ src: payment.proofPreview, title: 'Payment Proof' })}
-                  >
-                    <img src={payment.proofPreview} alt="Payment proof preview" className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg">
-                      <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#7b5cf5] shadow-sm">
-                        Enlarge
-                      </span>
+                />
+                {payment.proofPreview && (
+                  <div className="mt-3 inline-block">
+                    <div
+                      className="relative cursor-zoom-in group border-2 border-gray-100 rounded-xl p-1 bg-white shadow-sm hover:border-[#7b5cf5] transition"
+                      onClick={() => setEnlargedImage({ src: payment.proofPreview, title: 'Payment Proof' })}
+                    >
+                      <img src={payment.proofPreview} alt="Payment proof preview" className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg">
+                        <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#7b5cf5] shadow-sm">
+                          Enlarge
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-              <p className="text-xs text-[#9b857a] mt-1">
-                {payment.method === 'online'
-                  ? 'Upload a screenshot or photo of your payment transaction'
-                  : 'Upload a photo or receipt of your cash deposit'}
-              </p>
-            </div>
-
-            {/* Payment Summary */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
-                <span className="text-gray-700">Total Amount:</span>
-                <span className="font-bold text-lg text-gray-900">{currency(totalAmountCents)}</span>
-              </div>
-              <div className="flex flex-wrap justify-between items-center gap-2">
-                <span className="text-gray-700">{selectedPaymentType === 'full' ? 'Full Payment Amount:' : 'Downpayment Amount:'}</span>
-                <span className="font-bold text-lg text-green-600">{currency(Math.round(paymentAmount * 100))}</span>
-              </div>
-              <div className="flex flex-wrap justify-between items-center gap-2 mt-2 pt-2 border-t border-gray-300">
-                <span className="text-gray-700">Remaining Balance:</span>
-                <span className="font-semibold text-gray-900">{currency(Math.round((totalAmount - paymentAmount) * 100))}</span>
-              </div>
-            </div>
-
-            {/* Non-Refundable Payment Policy */}
-            <div className="mb-6">
-              <div className={`rounded-2xl border p-4 ${formErrors.paymentPolicy ? 'border-red-300 bg-red-50' : 'border-[#ece6f4] bg-[#faf8fd]'}`}>
-                <label className="flex items-start gap-3 text-sm leading-6 text-[#4e3b5b]">
-                  <input
-                    type="checkbox"
-                    required
-                    checked={payment.policyAgreed}
-                    onChange={(e) => {
-                      setPayment({ ...payment, policyAgreed: e.target.checked })
-                      setFormErrors((prev) => ({
-                        ...prev,
-                        paymentPolicy: e.target.checked ? '' : prev.paymentPolicy,
-                      }))
-                    }}
-                    className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
-                  />
-                  <span>
-                    I understand and agree that my payment is non-refundable and will serve as my reservation/payment for the selected salon appointment and services.
-                  </span>
-                </label>
-                <div className="mt-3 ml-7">
-                  <button 
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); setShowPaymentPolicyModal(true); }}
-                    className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 hover:text-[#6b4ae8] transition-colors text-left"
-                  >
-                    View Non-Refundable Payment Policy
-                  </button>
-                </div>
-              </div>
-              {formErrors.paymentPolicy && <p className="text-red-500 text-xs mt-1">{formErrors.paymentPolicy}</p>}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => setStep(3)}
-                className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleBook}
-                disabled={(
-                  bookingInProgress ||
-                  !payment.proofFile ||
-                  (paymentAccounts.length > 0 && !payment.selectedAccount)
                 )}
-                className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
-              >
-                {bookingInProgress
-                  ? 'Processing Booking...'
-                  : (payment.method === 'online' ? 'Confirm Booking & Pay' : 'Confirm Booking')}
-              </button>
+                <p className="text-xs text-[#9b857a] mt-1">
+                  {payment.method === 'online'
+                    ? 'Upload a screenshot or photo of your payment transaction'
+                    : 'Upload a photo or receipt of your cash deposit'}
+                </p>
+              </div>
+
+              {/* Payment Summary */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+                  <span className="text-gray-700">Total Amount:</span>
+                  <span className="font-bold text-lg text-gray-900">{currency(totalAmountCents)}</span>
+                </div>
+                <div className="flex flex-wrap justify-between items-center gap-2">
+                  <span className="text-gray-700">{selectedPaymentType === 'full' ? 'Full Payment Amount:' : 'Downpayment Amount:'}</span>
+                  <span className="font-bold text-lg text-green-600">{currency(Math.round(paymentAmount * 100))}</span>
+                </div>
+                <div className="flex flex-wrap justify-between items-center gap-2 mt-2 pt-2 border-t border-gray-300">
+                  <span className="text-gray-700">Remaining Balance:</span>
+                  <span className="font-semibold text-gray-900">{currency(Math.round((totalAmount - paymentAmount) * 100))}</span>
+                </div>
+              </div>
+
+              {/* Non-Refundable Payment Policy */}
+              <div className="mb-6">
+                <div className={`rounded-2xl border p-4 ${formErrors.paymentPolicy ? 'border-red-300 bg-red-50' : 'border-[#ece6f4] bg-[#faf8fd]'}`}>
+                  <label className="flex items-start gap-3 text-sm leading-6 text-[#4e3b5b]">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={payment.policyAgreed}
+                      onChange={(e) => {
+                        setPayment({ ...payment, policyAgreed: e.target.checked })
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          paymentPolicy: e.target.checked ? '' : prev.paymentPolicy,
+                        }))
+                      }}
+                      className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
+                    />
+                    <span>
+                      I understand and agree that my payment is non-refundable and will serve as my reservation/payment for the selected salon appointment and services.
+                    </span>
+                  </label>
+                  <div className="mt-3 ml-7">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setShowPaymentPolicyModal(true); }}
+                      className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 hover:text-[#6b4ae8] transition-colors text-left"
+                    >
+                      View Non-Refundable Payment Policy
+                    </button>
+                  </div>
+                </div>
+                {formErrors.paymentPolicy && <p className="text-red-500 text-xs mt-1">{formErrors.paymentPolicy}</p>}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setStep(3)}
+                  className="tap-safe booking-neutral-btn px-4 py-2.5 rounded-xl"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleBook}
+                  disabled={(
+                    bookingInProgress ||
+                    !payment.proofFile ||
+                    (paymentAccounts.length > 0 && !payment.selectedAccount)
+                  )}
+                  className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
+                >
+                  {bookingInProgress
+                    ? 'Processing Booking...'
+                    : (payment.method === 'online' ? 'Confirm Booking & Pay' : 'Confirm Booking')}
+                </button>
+              </div>
             </div>
-          </div>
-        )
-      })()}
+          )
+        })()}
 
-      {receipt && receipt.id && (
-        <ReceiptModal 
-          appointment={receipt}
-          isRescheduleReceipt={isRescheduleFlow}
-          onClose={() => {
-            clearBookingDraft()
-            localStorage.removeItem('customer_email')
-            localStorage.removeItem('customer_phone')
-            setReceipt(null)
-            setRescheduling(null)
-            setStep(1)
-            setSelectedSlot(null)
-            // Keep email/phone in form for easy re-booking, but clear other fields
-            setBooking({ name: '', email: booking.email, phone: booking.phone, address: '', privacyConsent: false })
-            setFormErrors({ email: '', phone: '', payment: '', privacy: '' })
-            window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-            navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start', { replace: true })
-          }} 
-        />
-      )}
+        {receipt && receipt.id && (
+          <ReceiptModal
+            appointment={receipt}
+            isRescheduleReceipt={isRescheduleFlow}
+            onClose={() => {
+              clearBookingDraft()
+              localStorage.removeItem('customer_email')
+              localStorage.removeItem('customer_phone')
+              setReceipt(null)
+              setRescheduling(null)
+              setStep(1)
+              setSelectedSlot(null)
+              // Keep email/phone in form for easy re-booking, but clear other fields
+              setBooking({ name: '', email: booking.email, phone: booking.phone, address: '', privacyConsent: false })
+              setFormErrors({ email: '', phone: '', payment: '', privacy: '' })
+              window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+              navigate(isManageBookingVerified() ? '/customer' : '/manage-booking/start', { replace: true })
+            }}
+          />
+        )}
 
-      {enlargedImage && (
-        <ImageModal 
-          src={enlargedImage.src} 
-          title={enlargedImage.title}
-          onClose={() => setEnlargedImage(null)} 
-        />
-      )}
+        {enlargedImage && (
+          <ImageModal
+            src={enlargedImage.src}
+            title={enlargedImage.title}
+            onClose={() => setEnlargedImage(null)}
+          />
+        )}
 
-      {showTermsModal && (
-        <PolicyModal
-          title="Terms and Conditions"
-          content={TERMS_AND_CONDITIONS_TEXT}
-          onClose={() => setShowTermsModal(false)}
-        />
-      )}
-      
-      {showPrivacyModal && (
-        <PolicyModal
-          title="Data Privacy Policy"
-          content={DATA_PRIVACY_POLICY_TEXT}
-          onClose={() => setShowPrivacyModal(false)}
-        />
-      )}
+        {showTermsModal && (
+          <PolicyModal
+            title="Terms and Conditions"
+            content={TERMS_AND_CONDITIONS_TEXT}
+            onClose={() => setShowTermsModal(false)}
+          />
+        )}
 
-      {showPaymentPolicyModal && (
-        <PolicyModal
-          title="Non-Refundable Payment Policy"
-          content={NON_REFUNDABLE_PAYMENT_POLICY_TEXT}
-          onClose={() => setShowPaymentPolicyModal(false)}
-        />
-      )}
+        {showPrivacyModal && (
+          <PolicyModal
+            title="Data Privacy Policy"
+            content={DATA_PRIVACY_POLICY_TEXT}
+            onClose={() => setShowPrivacyModal(false)}
+          />
+        )}
+
+        {showPaymentPolicyModal && (
+          <PolicyModal
+            title="Non-Refundable Payment Policy"
+            content={NON_REFUNDABLE_PAYMENT_POLICY_TEXT}
+            onClose={() => setShowPaymentPolicyModal(false)}
+          />
+        )}
       </div>
       <LandingFooter />
     </div>

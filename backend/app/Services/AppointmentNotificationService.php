@@ -105,10 +105,24 @@ class AppointmentNotificationService
         $email = $this->normalizedEmail($appointment->customer_email);
 
         if ($email === '' || !Setting::getValue('email_notifications_enabled', true)) {
+            \Illuminate\Support\Facades\Log::info('Skipping approval email: email is empty or notifications disabled.', [
+                'appointment_id' => $appointment->id,
+                'email' => $email,
+                'enabled' => Setting::getValue('email_notifications_enabled', true)
+            ]);
             return;
         }
 
+        \Illuminate\Support\Facades\Log::info('Attempting to send approval email.', [
+            'appointment_id' => $appointment->id,
+            'email' => $email
+        ]);
+
         Mail::to($email)->send(new AppointmentApprovedMail($appointment));
+
+        \Illuminate\Support\Facades\Log::info('Approval email sent successfully.', [
+            'appointment_id' => $appointment->id
+        ]);
 
         $appointment->forceFill([
             'approval_email_sent_at' => now(),

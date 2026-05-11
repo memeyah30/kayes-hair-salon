@@ -223,6 +223,21 @@ class ManageBookingController extends Controller
         ]);
     }
 
+    public function show(Request $request, int $id)
+    {
+        $email = $this->normalizeEmail((string) $request->attributes->get('customer_verified_email', ''));
+        $appointment = $this->findOwnedAppointment($id, $email);
+
+        if (!$appointment) {
+            return response()->json(['message' => 'Appointment not found.'], 404);
+        }
+
+        $appointment = $this->refreshMissedStatus($appointment);
+        $appointment->load(['service', 'services.variants']);
+
+        return $this->formatAppointmentForResponse($appointment);
+    }
+
     public function appointments(Request $request)
     {
         $this->syncMissedAppointments();

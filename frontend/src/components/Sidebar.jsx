@@ -41,7 +41,6 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       icon: 'settings',
       children: [
         { to: '/admin/settings', label: 'General' },
-        { to: '/admin/holidays', label: 'Holidays' },
         { to: '/admin/payment-accounts', label: 'Payments' },
       ]
     },
@@ -57,7 +56,6 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       icon: 'settings',
       children: [
         { to: '/admin/settings', label: 'General' },
-        { to: '/admin/holidays', label: 'Holidays' },
         { to: '/admin/payment-accounts', label: 'Payments' },
       ]
     },

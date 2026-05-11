@@ -393,12 +393,24 @@ const AdminSettings = () => {
                         label="Require Downpayment"
                         description="Customers must provide a deposit to secure their booking"
                       />
-                      <Toggle 
-                        enabled={settings?.payment?.allow_full_payment || false}
-                        onChange={(v) => handleInputChange('payment', 'allow_full_payment', v)}
-                        label="Enable Full Advance Payment"
-                        description="Let customers pay the total amount upfront via digital wallets"
-                      />
+                    </div>
+
+                    <div className="rounded-[32px] bg-gradient-to-br from-[#fdfbff] to-[#f7f2ff] border border-[#efe9ff] p-6 sm:p-8">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-black text-[#5f3eb4]">Manage Payment Accounts</h4>
+                          <p className="mt-1 text-xs text-[#8b77bc]">
+                            Open the payment accounts page to update GCash, PayMaya, bank transfer, and other payment methods.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/admin/payment-accounts')}
+                          className="inline-flex items-center justify-center rounded-2xl bg-[#5f3eb4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5f3eb4]/20 transition hover:bg-[#4d32a0]"
+                        >
+                          Open Payment Accounts
+                        </button>
+                      </div>
                     </div>
 
                     {settings?.payment?.require_downpayment && (
@@ -492,12 +504,6 @@ const AdminSettings = () => {
                         onChange={(v) => handleInputChange('notification', 'email_notifications_enabled', v)}
                         label="Master Email Switch"
                         description="Enable or disable all automated email alerts across the system"
-                      />
-                      <Toggle 
-                        enabled={settings?.notification?.enable_otp || false}
-                        onChange={(v) => handleInputChange('notification', 'enable_otp', v)}
-                        label="Two-Factor (OTP) for High-Value Services"
-                        description="Require customers to verify their identity via email OTP"
                       />
                     </div>
 

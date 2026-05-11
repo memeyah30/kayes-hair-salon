@@ -80,6 +80,7 @@ Route::middleware(StartSession::class)->group(function () {
 
     Route::middleware('customer.otp')->group(function () {
         Route::get('/manage-booking/appointments', [ManageBookingController::class, 'appointments']);
+        Route::get('/manage-booking/appointments/{id}', [ManageBookingController::class, 'show']);
         Route::post('/manage-booking/appointments/{id}/reschedule', [ManageBookingController::class, 'reschedule']);
         Route::post('/manage-booking/appointments/{id}/cancel', [ManageBookingController::class, 'cancel']);
         Route::post('/manage-booking/appointments/{id}/rate', [ManageBookingController::class, 'rate']);

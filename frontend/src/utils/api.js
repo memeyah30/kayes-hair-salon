@@ -90,6 +90,15 @@ api.interceptors.response.use(
               ? '/login/manager'
               : '/login'
 
+        // Skip redirect if we are on customer-facing routes where OTP is used instead of traditional login
+        const isCustomerRoute = window.location.pathname.startsWith('/customer') || 
+                               window.location.pathname.startsWith('/book') ||
+                               window.location.pathname.startsWith('/manage-booking')
+        
+        if (isCustomerRoute) {
+          return Promise.reject(error)
+        }
+
         clearAuthStorage()
         window.location.href = loginPath
       }
