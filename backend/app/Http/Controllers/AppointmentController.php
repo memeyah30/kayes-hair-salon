@@ -283,7 +283,7 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'At least one service is required'], 422);
         }
 
-        $serviceIds = array_unique(array_values(array_map('intval', $serviceIds)));
+        $serviceIds = array_values(array_map('intval', $serviceIds));
         sort($serviceIds);
 
         // Validate time is within business hours from settings
@@ -1074,11 +1074,6 @@ class AppointmentController extends Controller
 
     public function destroy(Appointment $appointment)
     {
-        // Delete any associated sales first
-        \App\Models\Sale::where('appointment_id', $appointment->id)
-            ->where('notes', 'like', 'Recorded from booking%')
-            ->delete();
-
         $appointment->delete();
         return response()->json(['message' => 'Appointment deleted successfully']);
     }
@@ -1392,6 +1387,17 @@ class AppointmentController extends Controller
         $salePaymentMethod = $this->normalizeSalePaymentMethod($paymentMethod ?? $appointment->payment_method ?? null);
         $salePaymentStatus = $this->normalizeSalePaymentStatus($paymentStatus ?? $appointment->payment_status ?? null, $appointment);
 
+        // Skip if already recorded
+        if (\App\Models\Sale::where('appointment_id', $appointment->id)->exists()) {
+            // But ensure existing sales have the correct payment status
+            \App\Models\Sale::where('appointment_id', $appointment->id)->update([
+                'payment_status' => $salePaymentStatus,
+                'payment_method' => $salePaymentMethod,
+                'created_at' => $appointment->created_at
+            ]);
+            return;
+        }
+
         // Ensure services are loaded with their variants
         if (!$appointment->relationLoaded('services')) {
             $appointment->load(['services.variants', 'service.variants']);
@@ -1402,64 +1408,6 @@ class AppointmentController extends Controller
             $appointmentServices = collect([$appointment->service]);
         }
 
-        // Deduplicate services to ensure we only record each unique service/variant once
-        $appointmentServices = $appointmentServices->unique(function ($service) {
-            $variantId = isset($service->pivot) ? $service->pivot->service_variant_id : null;
-            return $service->id . '-' . ($variantId ?? 'none');
-        });
-
-        $isCompleted = ($appointment->status === 'completed');
-        $expectedNote = $isCompleted ? 'Recorded from booking (Completed)' : 'Recorded from booking (' . $appointment->status . ')';
-
-        // Reconcile existing records: 
-        // We only skip if the count matches AND the recording logic (Completed vs Deposit) matches.
-        $existingSales = \App\Models\Sale::where('appointment_id', $appointment->id)->get();
-        
-        if ($existingSales->count() > 0 && $existingSales->count() === $appointmentServices->count() && $existingSales->first()->notes === $expectedNote) {
-            \App\Models\Sale::where('appointment_id', $appointment->id)->update([
-                'payment_status' => $salePaymentStatus,
-                'payment_method' => $salePaymentMethod,
-                'created_at' => $appointment->created_at,
-                'customer_name' => $appointment->customer_name,
-                'customer_phone' => $appointment->customer_phone,
-            ]);
-            return;
-        }
-
-        // If we are here, we either have no sales OR the wrong number of sales (duplicates/mismatches).
-        // Delete automated sales for this appointment to prepare for a clean sync.
-        \App\Models\Sale::where('appointment_id', $appointment->id)
-            ->where(function($q) {
-                $q->where('notes', 'Recorded from booking payment/confirmation')
-                  ->orWhere('notes', 'Recorded from booking payment'); // Backward compatibility
-            })
-            ->delete();
-
-        // NEW LOGIC: Only Completed appointments show the full service price.
-        // For everything else (Booked, Confirmed, Cancelled, Missed), only record the actual amount collected.
-        if ($appointment->status !== 'completed') {
-            $amountPaidCents = (int) $appointment->amount_paid_cents;
-            
-            // Even if 0, we might want to record it as a pending sale, but per user request, 
-            // we focus on including the downpayment.
-            \App\Models\Sale::create([
-                'appointment_id' => $appointment->id,
-                'transaction_type' => 'service',
-                'item_name' => 'Appointment Deposit/Payment - ' . $appointment->status,
-                'quantity' => 1,
-                'unit_price_cents' => $amountPaidCents,
-                'total_amount_cents' => $amountPaidCents,
-                'payment_method' => $salePaymentMethod,
-                'payment_status' => $salePaymentStatus,
-                'customer_name' => $appointment->customer_name,
-                'customer_phone' => $appointment->customer_phone,
-                'notes' => 'Recorded from booking (' . $appointment->status . ')',
-                'created_at' => $appointment->created_at,
-            ]);
-            return;
-        }
-
-        // For COMPLETED appointments, record each service at full price
         foreach ($appointmentServices as $service) {
             $variantId = null;
             if (isset($service->pivot)) {
@@ -1489,7 +1437,7 @@ class AppointmentController extends Controller
                 'payment_status' => $salePaymentStatus,
                 'customer_name' => $appointment->customer_name,
                 'customer_phone' => $appointment->customer_phone,
-                'notes' => 'Recorded from booking (Completed)',
+                'notes' => 'Recorded from booking payment/confirmation',
                 'created_at' => $appointment->created_at,
             ]);
         }

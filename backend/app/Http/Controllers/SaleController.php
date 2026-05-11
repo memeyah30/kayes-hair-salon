@@ -137,36 +137,16 @@ class SaleController extends Controller
      */
     private function syncMissingSales()
     {
-        // 1. Reconcile sales (ensure all valid appointments have exactly one sale record per unique service)
-        $validStatuses = ['booked', 'confirmed', 'completed', 'cancelled', 'missed'];
-        
-        \Illuminate\Support\Facades\DB::table('sales')
-            ->leftJoin('appointments', 'sales.appointment_id', '=', 'appointments.id')
-            ->whereNotNull('sales.appointment_id')
-            ->where(function($query) use ($validStatuses) {
-                $query->whereNull('appointments.id') // Only delete if appointment was physically DELETED from DB
-                      ->orWhereNotIn('appointments.status', $validStatuses); 
-            })
-            ->where('sales.notes', 'like', 'Recorded from booking%')
-            ->delete();
-
-        // 2. Include bookings that already collected money.
-        $appointments = \App\Models\Appointment::whereIn('status', $validStatuses)
+        // Include bookings that already collected money, even if they are still booked or confirmed.
+        $appointments = \App\Models\Appointment::whereIn('status', ['booked', 'confirmed', 'completed'])
             ->where(function ($query) {
                 $query->whereIn('payment_status', ['paid', 'downpayment', 'verified'])
                     ->orWhere('downpayment_amount_cents', '>', 0);
             })
-            ->where(function ($query) {
-                $query->whereNotExists(function ($q) {
-                    $q->select(DB::raw(1))
-                        ->from('sales')
-                        ->whereRaw('sales.appointment_id = appointments.id');
-                })
-                ->orWhere(function ($q) {
-                    // Also pick up appointments where the number of sales doesn't match the number of services
-                    // This fixes duplicates or missing items in the sales table.
-                    $q->whereRaw('(SELECT COUNT(*) FROM sales WHERE sales.appointment_id = appointments.id) != (SELECT COUNT(*) FROM appointment_services WHERE appointment_services.appointment_id = appointments.id)');
-                });
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('sales')
+                    ->whereRaw('sales.appointment_id = appointments.id');
             })
             ->get();
 
