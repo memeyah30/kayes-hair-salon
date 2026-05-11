@@ -1432,6 +1432,31 @@ class AppointmentController extends Controller
             })
             ->delete();
 
+        // NEW LOGIC: Only Completed appointments show the full service price.
+        // For everything else (Booked, Confirmed, Cancelled, Missed), only record the actual amount collected.
+        if ($appointment->status !== 'completed') {
+            $amountPaidCents = (int) $appointment->amount_paid_cents;
+            
+            // Even if 0, we might want to record it as a pending sale, but per user request, 
+            // we focus on including the downpayment.
+            \App\Models\Sale::create([
+                'appointment_id' => $appointment->id,
+                'transaction_type' => 'service',
+                'item_name' => 'Appointment Deposit/Payment - ' . $appointment->status,
+                'quantity' => 1,
+                'unit_price_cents' => $amountPaidCents,
+                'total_amount_cents' => $amountPaidCents,
+                'payment_method' => $salePaymentMethod,
+                'payment_status' => $salePaymentStatus,
+                'customer_name' => $appointment->customer_name,
+                'customer_phone' => $appointment->customer_phone,
+                'notes' => 'Recorded from booking (' . $appointment->status . ')',
+                'created_at' => $appointment->created_at,
+            ]);
+            return;
+        }
+
+        // For COMPLETED appointments, record each service at full price
         foreach ($appointmentServices as $service) {
             $variantId = null;
             if (isset($service->pivot)) {
@@ -1461,7 +1486,7 @@ class AppointmentController extends Controller
                 'payment_status' => $salePaymentStatus,
                 'customer_name' => $appointment->customer_name,
                 'customer_phone' => $appointment->customer_phone,
-                'notes' => 'Recorded from booking payment/confirmation',
+                'notes' => 'Recorded from booking (Completed)',
                 'created_at' => $appointment->created_at,
             ]);
         }
