@@ -145,6 +145,35 @@ class AdminPaginationTest extends TestCase
             ->assertJsonCount(2, 'data');
     }
 
+    public function test_sales_endpoint_filters_by_recorded_at_instead_of_booking_date(): void
+    {
+        $admin = $this->createAdmin();
+
+        Sale::create([
+            'transaction_type' => 'service',
+            'item_name' => 'Recorded Sale',
+            'quantity' => 1,
+            'unit_price_cents' => 20000,
+            'total_amount_cents' => 20000,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+            'customer_name' => 'Recorded Customer',
+            'customer_phone' => '09123456789',
+            'created_at' => Carbon::now('Asia/Manila')->subDays(3)->setTimezone('UTC'),
+            'updated_at' => Carbon::now('Asia/Manila')->subDays(1)->setTimezone('UTC'),
+            'recorded_at' => Carbon::now('Asia/Manila')->subDay()->setTimezone('UTC'),
+        ]);
+
+        $today = Carbon::now('Asia/Manila')->format('Y-m-d');
+        $yesterday = Carbon::now('Asia/Manila')->subDay()->format('Y-m-d');
+
+        $this->actingAs($admin, 'admin')
+            ->getJson("/sales?paginate=1&per_page=10&page=1&start_date={$yesterday}&end_date={$today}", ['X-User-Type' => 'admin'])
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.item_name', 'Recorded Sale');
+    }
+
     public function test_customer_endpoint_returns_paginated_customer_summaries(): void
     {
         $admin = $this->createAdmin();

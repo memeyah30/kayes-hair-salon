@@ -169,7 +169,7 @@
                 <th>Booking ID</th>
                 <th>Customer</th>
                 <th>Services</th>
-                <th>Appt. Date</th>
+                <th>Sale Date</th>
                 <th>Payment Method</th>
                 <th class="text-right">Total Amount</th>
                 <th class="text-right">Paid</th>
@@ -186,11 +186,7 @@
                         {{ $sale['items']->pluck('item_name')->join(', ') }}
                     </td>
                     <td>
-                        @if($sale['appointment'])
-                            {{ \Carbon\Carbon::parse($sale['appointment']['start_datetime_pht'] ?? $sale['appointment']['start_datetime'])->format('M d, Y') }}
-                        @else
-                            {{ \Carbon\Carbon::parse($sale['created_at'])->format('M d, Y') }}
-                        @endif
+                        {{ \Carbon\Carbon::parse($sale['recorded_at'] ?? $sale['created_at'])->format('M d, Y') }}
                     </td>
                     <td>{{ strtoupper($sale['payment_method']) }}</td>
                     <td class="text-right"><span class="currency">₱</span>{{ number_format($sale['total_amount_cents'] / 100, 2) }}</td>
@@ -214,11 +210,11 @@
         <div class="section-title">Sales Summary</div>
         <table class="summary-table">
             <tr>
-                <td>Total Sales</td>
+                <td>Gross Sales</td>
                 <td class="text-right"><span class="currency">₱</span>{{ number_format($total_sales_cents / 100, 2) }}</td>
             </tr>
             <tr>
-                <td>Total Amount Paid</td>
+                <td>Actual Sales</td>
                 <td class="text-right"><span class="currency">₱</span>{{ number_format($appointments_summary['total_collected_cents'] / 100, 2) }}</td>
             </tr>
             <tr>

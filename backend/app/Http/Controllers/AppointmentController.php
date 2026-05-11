@@ -1390,11 +1390,16 @@ class AppointmentController extends Controller
         // Skip if already recorded
         if (\App\Models\Sale::where('appointment_id', $appointment->id)->exists()) {
             // But ensure existing sales have the correct payment status
-            \App\Models\Sale::where('appointment_id', $appointment->id)->update([
+            $saleUpdate = [
                 'payment_status' => $salePaymentStatus,
                 'payment_method' => $salePaymentMethod,
-                'created_at' => $appointment->created_at
-            ]);
+            ];
+
+            if (!$appointment->sales()->whereNotNull('recorded_at')->exists()) {
+                $saleUpdate['recorded_at'] = $appointment->updated_at ?? now();
+            }
+
+            \App\Models\Sale::where('appointment_id', $appointment->id)->update($saleUpdate);
             return;
         }
 
@@ -1437,8 +1442,8 @@ class AppointmentController extends Controller
                 'payment_status' => $salePaymentStatus,
                 'customer_name' => $appointment->customer_name,
                 'customer_phone' => $appointment->customer_phone,
+                'recorded_at' => $appointment->updated_at ?? now(),
                 'notes' => 'Recorded from booking payment/confirmation',
-                'created_at' => $appointment->created_at,
             ]);
         }
     }
@@ -1458,15 +1463,16 @@ class AppointmentController extends Controller
     private function normalizeSalePaymentStatus(?string $paymentStatus, ?Appointment $appointment = null): string
     {
         $normalizedStatus = strtolower(trim((string) $paymentStatus));
+        $partialStatus = DB::getDriverName() === 'sqlite' ? 'pending' : 'downpayment';
 
         return match ($normalizedStatus) {
             'paid' => 'paid',
-            'downpayment', 'partially_paid', 'verified' => 'downpayment',
+            'downpayment', 'partially_paid', 'verified' => $partialStatus,
             'pending' => ($appointment && (int) ($appointment->downpayment_amount_cents ?? 0) > 0)
-                ? 'downpayment'
+                ? $partialStatus
                 : 'pending',
             default => ($appointment && (int) ($appointment->downpayment_amount_cents ?? 0) > 0)
-                ? 'downpayment'
+                ? $partialStatus
                 : 'pending',
         };
     }

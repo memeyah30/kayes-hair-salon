@@ -151,6 +151,11 @@ class Appointment extends Model
         return $this->hasMany(CustomerRating::class);
     }
 
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
+
     public function appointmentRating(): HasOne
     {
         return $this->hasOne(AppointmentRating::class);

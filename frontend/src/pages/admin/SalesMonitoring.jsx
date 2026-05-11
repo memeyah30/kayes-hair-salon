@@ -160,6 +160,8 @@ const SalesMonitoring = () => {
 
   const [selectedSale, setSelectedSale] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const actualSalesCents = stats?.actual_sales_cents ?? stats?.appointments_summary?.total_collected_cents ?? 0
+  const isPartialPayment = (status) => ['downpayment', 'partially_paid'].includes(status)
 
   const groupSalesByAppointment = (salesList) => {
     const grouped = {}
@@ -349,12 +351,12 @@ const SalesMonitoring = () => {
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Total Sales</div>
-                <div className="text-xl font-bold text-[#7B5CF5]">{currency(stats.total_sales_cents)}</div>
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Actual Sales</div>
+                <div className="text-xl font-bold text-[#7B5CF5]">{currency(actualSalesCents)}</div>
               </div>
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Total Collected</div>
-                <div className="text-xl font-bold text-[#22C55E]">{currency(stats.appointments_summary?.total_collected_cents || 0)}</div>
+                <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Gross Sales</div>
+                <div className="text-xl font-bold text-[#22C55E]">{currency(stats.total_sales_cents || 0)}</div>
               </div>
               <div className="rounded-[14px] border border-[#DDD6FE] bg-white p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
                 <div className="text-[10px] uppercase tracking-wider text-[#6B6B6B]">Remaining Balance</div>
@@ -457,10 +459,10 @@ const SalesMonitoring = () => {
                             <div className="flex items-center justify-end gap-1 mt-0.5">
                               <span className={`rounded-full px-1.5 py-0.5 text-[7px] font-bold uppercase ${
                                 (apt?.status === 'completed' || sale.payment_status === 'paid') ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                (apt?.remaining_balance_cents > 0 || sale.payment_status === 'downpayment') ? 'bg-[#FEF3C7] text-[#B45309]' :
+                                (apt?.remaining_balance_cents > 0 || isPartialPayment(sale.payment_status)) ? 'bg-[#FEF3C7] text-[#B45309]' :
                                 'bg-[#F3F4F6] text-[#6B6B6B]'
                               }`}>
-                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : (apt?.remaining_balance_cents > 0 || sale.payment_status === 'downpayment') ? 'Partial' : sale.payment_status}
+                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : (apt?.remaining_balance_cents > 0 || isPartialPayment(sale.payment_status)) ? 'Partial' : sale.payment_status}
                               </span>
                             </div>
                           </div>
@@ -478,7 +480,7 @@ const SalesMonitoring = () => {
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Booking ID</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Customer</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Services</th>
-                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Date</th>
+                        <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Sale Date</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">Payment Summary</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">P. Status</th>
                         <th className="p-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">A. Status</th>
@@ -507,7 +509,7 @@ const SalesMonitoring = () => {
                               </div>
                             </td>
                             <td className="p-3 text-[#6B6B6B]">
-                              {formatDate(sale.created_at)}
+                              {formatDate(sale.recorded_at || sale.created_at)}
                             </td>
                             <td className="p-3">
                               <div className="text-[10px] space-y-0.5 min-w-[120px]">
@@ -534,12 +536,12 @@ const SalesMonitoring = () => {
                               </div>
                             </td>
                             <td className="p-3">
-                               <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
+                              <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${
                                 (apt?.status === 'completed' || sale.payment_status === 'paid') ? 'bg-[#DCFCE7] text-[#15803D]' :
-                                (balance > 0 || sale.payment_status === 'downpayment') ? 'bg-[#FEF3C7] text-[#B45309]' :
+                                (balance > 0 || isPartialPayment(sale.payment_status)) ? 'bg-[#FEF3C7] text-[#B45309]' :
                                 'bg-[#F3F4F6] text-[#6B6B6B]'
                               }`}>
-                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : (balance > 0 || sale.payment_status === 'downpayment') ? 'Partially Paid' : sale.payment_status}
+                                {apt?.status === 'completed' || sale.payment_status === 'paid' ? 'Paid' : (balance > 0 || isPartialPayment(sale.payment_status)) ? 'Partially Paid' : sale.payment_status}
                               </span>
                             </td>
                             <td className="p-3">
@@ -605,8 +607,8 @@ const SalesMonitoring = () => {
                   <div className="text-sm font-semibold">#{selectedSale.appointment_id || 'N/A'}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Transaction Date</div>
-                  <div className="text-sm font-semibold">{formatDate(selectedSale.created_at)}</div>
+                  <div className="text-[10px] font-bold text-[#7B5CF5] uppercase">Sale Date</div>
+                    <div className="text-sm font-semibold">{formatDate(selectedSale.recorded_at || selectedSale.created_at)}</div>
                 </div>
               </div>
 
@@ -679,7 +681,3 @@ const SalesMonitoring = () => {
 }
 
 export default SalesMonitoring
-
-
-
-

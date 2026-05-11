@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\InteractsWithPagination;
+use App\Models\Appointment;
 use App\Models\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,20 +34,7 @@ class SaleController extends Controller
         $this->syncMissingSales();
 
         $query = Sale::with(['appointment']);
-
-        // Filter by date range
-        if ($request->filled('start_date')) {
-            $startUtc = Carbon::createFromFormat('Y-m-d', $request->start_date, $timezone)
-                ->startOfDay()
-                ->setTimezone('UTC');
-            $query->where('created_at', '>=', $startUtc);
-        }
-        if ($request->filled('end_date')) {
-            $endUtc = Carbon::createFromFormat('Y-m-d', $request->end_date, $timezone)
-                ->endOfDay()
-                ->setTimezone('UTC');
-            $query->where('created_at', '<=', $endUtc);
-        }
+        $this->applySaleDateRange($query, $request->start_date ?? null, $request->end_date ?? null, $timezone);
 
         // Filter by payment method
         if ($request->filled('payment_method')) {
@@ -73,7 +61,7 @@ class SaleController extends Controller
             });
         }
 
-        $query->orderBy('created_at', 'desc');
+        $query->orderByRaw($this->saleTimestampExpression() . ' desc');
 
         if ($this->shouldPaginate($request)) {
             return response()->json(
@@ -101,6 +89,7 @@ class SaleController extends Controller
 
         $data['total_amount_cents'] = $data['quantity'] * $data['unit_price_cents'];
         $data['payment_status'] = $data['payment_status'] ?? 'paid';
+        $data['recorded_at'] = $data['recorded_at'] ?? now();
 
         try {
             $sale = Sale::create($data);
@@ -196,7 +185,8 @@ class SaleController extends Controller
         $endUtc = $endManila->copy()->setTimezone('UTC');
 
         // Filter using Manila day boundaries converted to UTC to avoid date drift.
-        $baseQuery = Sale::whereBetween('created_at', [$startUtc, $endUtc]);
+        $baseQuery = Sale::query();
+        $this->applySaleDateRange($baseQuery, $startManila->toDateString(), $endManila->toDateString(), $timezone);
 
         // Apply filters identical to index()
         if ($request->filled('payment_method')) {
@@ -247,11 +237,11 @@ class SaleController extends Controller
 
         // Daily sales grouped in Manila timezone.
         $dailySales = (clone $baseQuery)
-            ->select(['created_at', 'total_amount_cents'])
-            ->orderBy('created_at')
+            ->selectRaw($this->saleTimestampExpression() . ' as sale_datetime, total_amount_cents')
+            ->orderByRaw($this->saleTimestampExpression())
             ->get()
             ->groupBy(function ($sale) use ($timezone) {
-                return Carbon::parse($sale->created_at)->setTimezone($timezone)->toDateString();
+                return Carbon::parse($sale->sale_datetime)->setTimezone($timezone)->toDateString();
             })
             ->map(function ($items, $date) {
                 return [
@@ -261,8 +251,14 @@ class SaleController extends Controller
             })
             ->values();
 
-        // Fetch appointments for the same period to get summary counts
-        $appointments = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc])->get();
+        $appointmentIds = (clone $baseQuery)
+            ->whereNotNull('appointment_id')
+            ->distinct()
+            ->pluck('appointment_id');
+
+        $appointments = Appointment::query()
+            ->whereIn('id', $appointmentIds)
+            ->get();
 
         $appointmentsSummary = [
             'total_downpayment_cents' => $appointments->where('mode_of_payment', 'downpayment')->sum('amount_paid_cents'),
@@ -282,6 +278,7 @@ class SaleController extends Controller
                 'end_date' => $endManila->toDateString(),
             ],
             'total_sales_cents' => $totalSales,
+            'actual_sales_cents' => $appointmentsSummary['total_collected_cents'],
             'sales_by_type' => $salesByType,
             'sales_by_payment_method' => $salesByPayment,
             'top_selling_items' => $topItems,
@@ -309,26 +306,21 @@ class SaleController extends Controller
 
         $query = Sale::with(['appointment']);
 
-        // Filter by date range
-        if ($request->filled('start_date')) {
-            $startUtc = Carbon::createFromFormat('Y-m-d', $request->start_date, $timezone)
-                ->startOfDay()
-                ->setTimezone('UTC');
-            $query->where('created_at', '>=', $startUtc);
-        } else {
-            $startUtc = Carbon::now($timezone)->startOfMonth()->setTimezone('UTC');
-            $query->where('created_at', '>=', $startUtc);
-        }
+        $startDate = $request->filled('start_date')
+            ? $request->start_date
+            : Carbon::now($timezone)->startOfMonth()->toDateString();
+        $endDate = $request->filled('end_date')
+            ? $request->end_date
+            : Carbon::now($timezone)->toDateString();
 
-        if ($request->filled('end_date')) {
-            $endUtc = Carbon::createFromFormat('Y-m-d', $request->end_date, $timezone)
-                ->endOfDay()
-                ->setTimezone('UTC');
-            $query->where('created_at', '<=', $endUtc);
-        } else {
-            $endUtc = Carbon::now($timezone)->endOfDay()->setTimezone('UTC');
-            $query->where('created_at', '<=', $endUtc);
-        }
+        $startUtc = Carbon::createFromFormat('Y-m-d', $startDate, $timezone)
+            ->startOfDay()
+            ->setTimezone('UTC');
+        $endUtc = Carbon::createFromFormat('Y-m-d', $endDate, $timezone)
+            ->endOfDay()
+            ->setTimezone('UTC');
+
+        $this->applySaleDateRange($query, $startDate, $endDate, $timezone);
 
         // Filter by payment method
         if ($request->filled('payment_method')) {
@@ -354,7 +346,7 @@ class SaleController extends Controller
             });
         }
 
-        $sales = $query->orderBy('created_at', 'desc')->get();
+        $sales = $query->orderByRaw($this->saleTimestampExpression() . ' desc')->get();
 
         // Group sales by appointment_id for the report
         $groupedSales = $sales->groupBy(function($sale) {
@@ -369,7 +361,7 @@ class SaleController extends Controller
                 'customer_name' => $first->customer_name,
                 'payment_method' => $first->payment_method,
                 'payment_status' => $first->payment_status,
-                'created_at' => $first->created_at,
+                'recorded_at' => $first->recorded_at ?? $first->created_at,
                 'appointment' => $appointment,
                 'items' => $items,
                 'total_amount_cents' => $appointment ? $appointment->total_amount_cents : $items->sum('total_amount_cents'),
@@ -381,15 +373,11 @@ class SaleController extends Controller
 
         // Calculate stats
         $totalSales = $sales->sum('total_amount_cents');
-        
-        // Fetch appointments for the same period to get summary counts
-        $appointmentsQuery = \App\Models\Appointment::whereBetween('created_at', [$startUtc, $endUtc]);
-        
-        if ($request->filled('appointment_status')) {
-            $appointmentsQuery->where('status', $request->appointment_status);
-        }
 
-        $appointments = $appointmentsQuery->get();
+        $appointmentIds = $sales->pluck('appointment_id')->filter()->unique()->values();
+        $appointments = Appointment::query()
+            ->whereIn('id', $appointmentIds)
+            ->get();
 
         $appointmentsSummary = [
             'total_downpayment_cents' => $appointments->where('mode_of_payment', 'downpayment')->sum('amount_paid_cents'),
@@ -407,8 +395,8 @@ class SaleController extends Controller
             'salon_name' => 'Kaye\'s Hair Salon and Spa',
             'generated_at' => Carbon::now($timezone)->format('M d, Y h:i A'),
             'generated_by' => $request->user() ? $request->user()->name : 'Admin',
-            'start_date' => $startUtc->setTimezone($timezone)->format('M d, Y'),
-            'end_date' => $endUtc->setTimezone($timezone)->format('M d, Y'),
+            'start_date' => $startUtc->copy()->setTimezone($timezone)->format('M d, Y'),
+            'end_date' => $endUtc->copy()->setTimezone($timezone)->format('M d, Y'),
             'filters' => [
                 'payment_method' => $request->payment_method,
                 'payment_status' => $request->payment_status,
@@ -417,6 +405,7 @@ class SaleController extends Controller
             ],
             'sales' => $groupedSales,
             'total_sales_cents' => $totalSales,
+            'actual_sales_cents' => $appointmentsSummary['total_collected_cents'],
             'appointments_summary' => $appointmentsSummary,
         ];
 
@@ -436,10 +425,41 @@ class SaleController extends Controller
         }
 
         if (in_array($status, ['downpayment', 'partially_paid'], true)) {
-            $query->whereIn('payment_status', ['downpayment', 'partially_paid']);
+            $query->where(function ($subQuery) {
+                $subQuery->whereIn('payment_status', ['downpayment', 'partially_paid'])
+                    ->orWhereHas('appointment', function ($appointmentQuery) {
+                        $appointmentQuery->where('downpayment_amount_cents', '>', 0);
+                    });
+            });
             return;
         }
 
         $query->where('payment_status', $status);
+    }
+
+    private function saleTimestampExpression(): string
+    {
+        return 'COALESCE(recorded_at, created_at)';
+    }
+
+    private function applySaleDateRange($query, ?string $startDate, ?string $endDate, string $timezone): void
+    {
+        if (!$startDate && !$endDate) {
+            return;
+        }
+
+        if ($startDate) {
+            $startUtc = Carbon::createFromFormat('Y-m-d', $startDate, $timezone)
+                ->startOfDay()
+                ->setTimezone('UTC');
+            $query->whereRaw($this->saleTimestampExpression() . ' >= ?', [$startUtc]);
+        }
+
+        if ($endDate) {
+            $endUtc = Carbon::createFromFormat('Y-m-d', $endDate, $timezone)
+                ->endOfDay()
+                ->setTimezone('UTC');
+            $query->whereRaw($this->saleTimestampExpression() . ' <= ?', [$endUtc]);
+        }
     }
 }

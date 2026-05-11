@@ -21,6 +21,7 @@ class Sale extends Model
         'payment_status',
         'customer_name',
         'customer_phone',
+        'recorded_at',
         'notes',
     ];
 
@@ -28,6 +29,7 @@ class Sale extends Model
         'quantity' => 'integer',
         'unit_price_cents' => 'integer',
         'total_amount_cents' => 'integer',
+        'recorded_at' => 'datetime',
     ];
 
     public function appointment(): BelongsTo
