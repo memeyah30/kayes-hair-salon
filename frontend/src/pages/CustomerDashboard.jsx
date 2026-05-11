@@ -16,7 +16,7 @@ import {
 
 const primaryActionButtonClass = 'tap-safe rounded-[30px] bg-[#7b5cf5] px-4 sm:px-5 py-2 sm:py-2.5 text-[13px] sm:text-sm font-semibold text-white shadow-[0_14px_30px_rgba(40,28,110,0.3)] transition hover:-translate-y-px hover:bg-[#8a6cf8] disabled:opacity-60'
 const secondaryActionButtonClass = 'tap-safe rounded-[30px] border border-[#ddd3ee] bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-[13px] sm:text-sm font-semibold text-[#5c4b68] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#cfc0ec] hover:bg-[#faf6fd]'
-const logoutActionButtonClass = 'tap-safe rounded-[30px] border border-[#efd5df] bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-[13px] sm:text-sm font-semibold text-[#a24f69] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#e8c6d2] hover:bg-[#fff5f8] disabled:opacity-60'
+const logoutActionButtonClass = 'tap-safe rounded-[30px] border border-[#ddd3ee] bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-[13px] sm:text-sm font-semibold text-[#654abf] shadow-[0_10px_26px_rgba(44,19,56,0.08)] transition hover:-translate-y-px hover:border-[#cfc0ec] hover:bg-[#faf6fd] disabled:opacity-60'
 const backButtonClass = 'tap-safe w-fit rounded-2xl border border-white/36 bg-white/82 px-2.5 py-1.5 sm:px-3 sm:py-2 text-base sm:text-lg font-bold text-[#654abf] shadow-[0_14px_28px_rgba(43,20,97,0.12)] hover:bg-white'
 const customerPanelClass = 'rounded-[24px] sm:rounded-[28px] border border-white/40 bg-white/82 shadow-[0_14px_32px_rgba(59,31,114,0.12)] backdrop-blur-md'
 

@@ -3439,8 +3439,8 @@ const BookAppointment = () => {
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-[#f5d6e4] bg-[#fff6fa] px-3 py-2.5">
-                      <div className="text-[11px] uppercase tracking-wide text-[#8f5170]">Total Price</div>
+                    <div className="rounded-xl border border-[#ddd3ee] bg-[#faf8fd] px-3 py-2.5">
+                      <div className="text-[11px] uppercase tracking-wide text-[#654abf]">Total Price</div>
                       <div className="text-lg font-semibold text-[#2C1338]">{currency(totalPriceForSummary)}</div>
                     </div>
 
@@ -3760,7 +3760,7 @@ const BookAppointment = () => {
             </p>
             
             {/* Booking Summary */}
-            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+            <div className="bg-[#f3f0ff] rounded-lg p-4 mb-6">
               <h3 className="font-semibold mb-2 text-gray-900">Booking Summary</h3>
               <div className="text-sm space-y-1 text-gray-700">
                 <div><strong>Total Amount:</strong> {currency(totalAmountCents)}</div>
@@ -3777,7 +3777,7 @@ const BookAppointment = () => {
               <label className="block text-sm font-medium mb-2 text-gray-900">Payment Type *</label>
               <div className={`grid gap-3 ${payment.method === 'online' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                 <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  selectedPaymentType === 'downpayment' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                  selectedPaymentType === 'downpayment' ? 'border-[#6d4de6] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
                 }`}>
                   <input
                     type="radio"
@@ -3797,7 +3797,7 @@ const BookAppointment = () => {
 
                 {payment.method === 'online' && (
                   <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                    selectedPaymentType === 'full' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                    selectedPaymentType === 'full' ? 'border-[#6d4de6] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
                   }`}>
                     <input
                       type="radio"
@@ -3827,7 +3827,7 @@ const BookAppointment = () => {
                 type="text"
                 inputMode="decimal"
                 required
-                className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-blue-500 font-medium"
+                className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-[#7b5cf5] font-medium"
                 value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || '')}
                 readOnly={selectedPaymentType === 'full'}
                 onChange={(e) => {
