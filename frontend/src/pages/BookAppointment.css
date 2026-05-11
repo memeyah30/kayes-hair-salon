@@ -1,6 +1,6 @@
 .booking-page {
-  --booking-primary-start: #7d63ff;
-  --booking-primary-end: #5f47e7;
+  --booking-primary-start: #7b5cf5;
+  --booking-primary-end: #6b4ae8;
   --booking-primary-start-hover: #8a73ff;
   --booking-primary-end-hover: #6d57ee;
   --booking-primary-shadow: rgba(45, 31, 122, 0.35);
@@ -222,15 +222,15 @@
 .booking-primary-btn {
   border: none;
   color: #fff;
-  background: linear-gradient(90deg, var(--booking-primary-start) 0%, var(--booking-primary-end) 100%);
-  box-shadow: 0 10px 18px var(--booking-primary-shadow);
+  background: #7b5cf5;
+  box-shadow: 0 10px 18px rgba(123, 92, 245, 0.3);
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .booking-primary-btn:hover {
   transform: translateY(-1px);
-  background: linear-gradient(90deg, var(--booking-primary-start-hover) 0%, var(--booking-primary-end-hover) 100%);
-  box-shadow: 0 14px 22px rgba(45, 31, 122, 0.4);
+  background: #6b4ae8;
+  box-shadow: 0 14px 22px rgba(123, 92, 245, 0.4);
   filter: none;
 }
 

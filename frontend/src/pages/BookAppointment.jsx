@@ -404,7 +404,7 @@ const Calendar = ({
                   : isClosed
                     ? 'border-red-200 bg-red-50 text-red-600 cursor-not-allowed'
                   : isSelected 
-                    ? 'bg-[#6d4de6] text-white border-[#6d4de6]' 
+                    ? 'bg-[#7b5cf5] text-white border-[#7b5cf5]' 
                     : 'hover:border-[#c9bcf1] hover:bg-[#f3efff]'
               }`}
             >
@@ -531,7 +531,7 @@ const SlotList = ({ slots, selected, onSelect, loading = false, ready = true }) 
                     isDisabled
                       ? 'bg-[#f7f1ec] text-gray-400 border-gray-300 cursor-not-allowed line-through'
                       : isSelected
-                        ? 'bg-[#6d4de6] text-white border-[#6d4de6]'
+                        ? 'bg-[#7b5cf5] text-white border-[#7b5cf5]'
                         : 'hover:border-[#c9bcf1] hover:bg-[#f3efff]'
                   }`}
                   title={tooltipMessage}
@@ -593,7 +593,7 @@ const ImageModal = ({ src, title = "Image Preview", onClose }) => {
           <p className="text-[#2C1338] font-semibold text-lg">{title}</p>
           <button 
             onClick={onClose}
-            className="w-full bg-[#6d4de6] text-white font-bold py-3 rounded-xl hover:bg-[#5b3cc4] transition shadow-lg"
+            className="w-full bg-[#7b5cf5] text-white font-bold py-3 rounded-xl hover:bg-[#6b4ae8] transition shadow-lg"
           >
             Close Preview
           </button>
@@ -665,7 +665,7 @@ const PolicyModal = ({ title, content, onClose }) => {
         <div className="mt-6 pt-4 border-t border-gray-100">
           <button 
             onClick={onClose}
-            className="w-full bg-[#6d4de6] text-white font-bold py-3.5 rounded-xl hover:bg-[#5b3cc4] transition shadow"
+            className="w-full bg-[#7b5cf5] text-white font-bold py-3.5 rounded-xl hover:bg-[#6b4ae8] transition shadow"
           >
             Close
           </button>
@@ -2364,12 +2364,12 @@ const BookAppointment = () => {
 
       {/* Step 1: Email-first customer identification for new and returning bookings */}
       {step === 1 && (
-        <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
+        <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
           <button
             onClick={() => navigate(-1)}
-            className="mb-6 flex items-center gap-2 text-sm font-semibold text-[#6d4de6] hover:text-[#5b3cc4] transition-colors group"
+            className="mb-6 flex items-center gap-2 text-sm font-semibold text-[#7b5cf5] hover:text-[#6b4ae8] transition-colors group"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f3efff] group-hover:bg-[#ebe4ff] transition-colors">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f3efff] group-hover:bg-[#f3f0ff] transition-colors">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
@@ -2411,7 +2411,7 @@ const BookAppointment = () => {
                   isReturningCustomerVerified
                     ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
                     : isReturningCustomerPendingVerification
-                      ? 'border-[#d8ccff] bg-[#f6f1ff] text-[#4c1d95]'
+                      ? 'border-[#ddd3ee] bg-[#f6f1ff] text-[#4c1d95]'
                       : customerLookupState === 'new_customer'
                         ? 'border-sky-200 bg-sky-50 text-sky-800'
                         : 'border-[#ece6f4] bg-[#faf8fd] text-[#4e3b5b]'
@@ -2422,7 +2422,7 @@ const BookAppointment = () => {
             )}
 
             {['verification_required', 'sending_otp', 'verifying_otp'].includes(customerLookupState) && (
-              <div className="rounded-2xl border border-[#d8ccff] bg-[#faf7ff] p-4 text-sm text-[#4c1d95] space-y-3">
+              <div className="rounded-2xl border border-[#ddd3ee] bg-[#faf6fd] p-4 text-sm text-[#4c1d95] space-y-3">
                 <p>
                   Enter the 6-digit verification code sent to{' '}
                   <span className="font-semibold">{booking.email}</span>.
@@ -2454,14 +2454,14 @@ const BookAppointment = () => {
                     type="button"
                     onClick={handleResendReturningOtp}
                     disabled={customerLookupState === 'sending_otp' || customerLookupState === 'verifying_otp'}
-                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff] disabled:opacity-60"
+                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd] disabled:opacity-60"
                   >
                     {customerLookupState === 'sending_otp' ? 'Sending Code...' : 'Resend Code'}
                   </button>
                   <button
                     type="button"
                     onClick={handleUseDifferentEmail}
-                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
                   >
                     Use a Different Email
                   </button>
@@ -2495,14 +2495,14 @@ const BookAppointment = () => {
                   <button
                     type="button"
                     onClick={() => setReturningCustomerEditMode(true)}
-                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
                   >
                     Update My Information
                   </button>
                   <button
                     type="button"
                     onClick={handleUseDifferentEmail}
-                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
                   >
                     Use a Different Email
                   </button>
@@ -2577,14 +2577,14 @@ const BookAppointment = () => {
                       }))
                     }
                   }}
-                  className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                  className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
                 >
                   Use Saved Information
                 </button>
                 <button
                   type="button"
                   onClick={handleUseDifferentEmail}
-                  className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3 text-sm font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                  className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3 text-sm font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
                 >
                   Use a Different Email
                 </button>
@@ -2607,7 +2607,7 @@ const BookAppointment = () => {
                           privacy: e.target.checked ? '' : prev.privacy,
                         }))
                       }}
-                      className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#6d4de6] focus:ring-[#c9bcf1]"
+                      className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
                     />
                     <span>
                       I have read and agree to the Terms and Conditions and Data Privacy Policy of Kaye's Hair Salon and Spa.
@@ -2617,14 +2617,14 @@ const BookAppointment = () => {
                     <button 
                       type="button"
                       onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }}
-                      className="text-sm font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2 text-left hover:text-[#5b3cc4] transition-colors"
+                      className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 text-left hover:text-[#6b4ae8] transition-colors"
                     >
                       View Terms and Conditions
                     </button>
                     <button 
                       type="button"
                       onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }}
-                      className="text-sm font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2 text-left hover:text-[#5b3cc4] transition-colors"
+                      className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 text-left hover:text-[#6b4ae8] transition-colors"
                     >
                       View Data Privacy Policy
                     </button>
@@ -2640,7 +2640,7 @@ const BookAppointment = () => {
                   <button
                     type="button"
                     onClick={handleUseDifferentEmail}
-                    className="tap-safe flex-1 rounded-xl border border-[#d8ccff] bg-white px-5 py-3.5 text-base font-semibold text-[#6d4de6] hover:bg-[#faf7ff]"
+                    className="tap-safe flex-1 rounded-xl border border-[#ddd3ee] bg-white px-5 py-3.5 text-base font-semibold text-[#7b5cf5] hover:bg-[#faf6fd]"
                   >
                     Use a Different Email
                   </button>
@@ -2666,7 +2666,7 @@ const BookAppointment = () => {
 
       {/* Step 1: Customer Information */}
       {false && step === 1 && (
-        <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
+        <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_18px_36px_rgba(94,64,102,0.12)] p-5 sm:p-8 md:p-10 max-w-5xl mx-auto w-full">
           <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Customer Information</h2>
           <p className="text-base md:text-lg text-gray-700 mb-7">
             Please provide your information to proceed with booking
@@ -2757,7 +2757,7 @@ const BookAppointment = () => {
                         privacy: e.target.checked ? '' : prev.privacy,
                       }))
                     }}
-                    className="mt-1 h-4 w-4 rounded border-[#c9bcf1] text-[#6d4de6] focus:ring-[#c9bcf1]"
+                    className="mt-1 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
                   />
                   <span>
                     I agree to the{' '}
@@ -2765,7 +2765,7 @@ const BookAppointment = () => {
                       href="/privacy-policy"
                       target="_blank"
                       rel="noreferrer"
-                      className="font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2"
+                      className="font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2"
                     >
                       Data Privacy Policy
                     </a>{' '}
@@ -2789,7 +2789,7 @@ const BookAppointment = () => {
       {/* Step 2: Select Service */}
       {step === 2 && (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)] items-start">
-          <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
+          <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
             <h2 className="text-2xl font-bold text-[#2C1338]">Select Service</h2>
             <p className="mt-2 text-sm text-[#6f5b7e]">Choose one or more services before you pick an appointment schedule.</p>
 
@@ -2802,7 +2802,7 @@ const BookAppointment = () => {
                   <label
                     key={s.id}
                     className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
-                      isSelected ? 'bg-[#f3efff] border-[#6d4de6]' : 'border-[#ece6f4] hover:border-[#d8ccff] hover:bg-[#faf7ff]'
+                      isSelected ? 'bg-[#f3efff] border-[#7b5cf5]' : 'border-[#ece6f4] hover:border-[#ddd3ee] hover:bg-[#faf6fd]'
                     }`}
                   >
                     <input
@@ -2824,13 +2824,13 @@ const BookAppointment = () => {
                         }
                         setSelectedSlot(null)
                       }}
-                      className="w-5 h-5 text-[#6d4de6] rounded"
+                      className="w-5 h-5 text-[#7b5cf5] rounded"
                     />
                     <div className="flex-1">
                       <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
                       {s.variants && s.variants.length > 0 ? (
                         <div className="text-sm text-[#5a4767] mt-1">
-                          <div className="font-medium text-[#6d4de6] mb-1.5">
+                          <div className="font-medium text-[#7b5cf5] mb-1.5">
                             {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
                           </div>
                           {isSelected && (
@@ -2852,7 +2852,7 @@ const BookAppointment = () => {
                                       })
                                       setSelectedSlot(null)
                                     }}
-                                    className="w-3 h-3 text-[#6d4de6]"
+                                    className="w-3 h-3 text-[#7b5cf5]"
                                   />
                                   <span className="text-sm text-[#4a3756]">
                                     {variant.name} - {currency(variant.price_cents)}
@@ -2874,7 +2874,7 @@ const BookAppointment = () => {
             </div>
 
             {selectedServices.length > 0 && (
-              <div className="text-sm font-semibold text-[#6d4de6] mt-3">
+              <div className="text-sm font-semibold text-[#7b5cf5] mt-3">
                 {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected | Total: {currency(totalPriceForSummary)}
               </div>
             )}
@@ -2939,7 +2939,7 @@ const BookAppointment = () => {
       {step === 3 && (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)] items-start">
           <div className="space-y-4">
-            <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
+            <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
               <h2 className="text-2xl font-bold text-[#2C1338]">
                 {isRescheduleFlow ? 'Select New Date & Time' : 'Select Date & Time'}
               </h2>
@@ -3120,12 +3120,12 @@ const BookAppointment = () => {
       {/* Legacy combined booking step kept disabled to preserve old markup during transition */}
       {false && step === 2 && (
         <>
-          <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
+          <div className="booking-step-card booking-step2-shell bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_14px_30px_rgba(94,64,102,0.1)] p-5 md:p-6">
             <div className="booking-step2-layout">
               <div className="booking-step2-column">
                 <div>
                   <label className="text-sm text-[#2C1338] font-semibold tracking-wide">Stylist Selection *</label>
-                  <div className="mt-1 text-xs font-medium text-[#6d4de6]">{stylistListHeading}</div>
+                  <div className="mt-1 text-xs font-medium text-[#7b5cf5]">{stylistListHeading}</div>
                 </div>
                 {/* Keep select in DOM for compatibility with existing state shape and fallback behavior */}
                 <select
@@ -3148,7 +3148,7 @@ const BookAppointment = () => {
                     value={stylistSearch}
                     onChange={(e) => setStylistSearch(e.target.value)}
                     placeholder="Search stylist, role, specialty..."
-                    className="w-full border border-[#e7e1ef] rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#d9ceff] focus:border-[#6d4de6]"
+                    className="w-full border border-[#e7e1ef] rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#d9ceff] focus:border-[#7b5cf5]"
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
                     {stylistFilterOptions.map((option) => (
@@ -3158,7 +3158,7 @@ const BookAppointment = () => {
                         onClick={() => setStylistFilter(option.key)}
                         className={`px-3 py-1.5 rounded-full text-xs border transition ${
                           stylistFilter === option.key
-                            ? 'bg-gradient-to-r from-[#6d4de6] to-[#7b5cf5] text-white border-[#6d4de6] shadow-[0_8px_18px_rgba(109,77,230,0.18)]'
+                            ? 'bg-gradient-to-r from-[#7b5cf5] to-[#7b5cf5] text-white border-[#7b5cf5] shadow-[0_8px_18px_rgba(109,77,230,0.18)]'
                             : 'bg-[#faf8fd] text-[#5f4a70] border-[#e9e2f2] hover:bg-[#f3edf9]'
                         }`}
                       >
@@ -3173,12 +3173,12 @@ const BookAppointment = () => {
                       onClick={() => setSelectedStylist(AUTO_STYLIST_VALUE)}
                       className={`w-full rounded-lg border px-4 py-4 text-left transition ${
                         isAutoStylistSelected
-                          ? 'border-[#6d4de6] bg-[#f3efff]'
+                          ? 'border-[#7b5cf5] bg-[#f3efff]'
                           : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="h-12 w-12 rounded-full bg-[#ede7ff] text-[#5b3cc4] flex items-center justify-center text-lg">
+                        <div className="h-12 w-12 rounded-full bg-[#ede7ff] text-[#6b4ae8] flex items-center justify-center text-lg">
                           Ã¢Â­Â
                         </div>
                         <div className="flex-1 min-w-0">
@@ -3186,7 +3186,7 @@ const BookAppointment = () => {
                           <div className="text-sm text-[#6f5b7e] mt-1">The system will choose an available stylist for your selected schedule.</div>
                         </div>
                         <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
-                          isAutoStylistSelected ? 'border-[#6d4de6] bg-[#6d4de6]' : 'border-[#c9bcf1]'
+                          isAutoStylistSelected ? 'border-[#7b5cf5] bg-[#7b5cf5]' : 'border-[#c9bcf1]'
                         }`}>
                           {isAutoStylistSelected && <span className="h-2 w-2 rounded-full bg-white" />}
                         </div>
@@ -3238,7 +3238,7 @@ const BookAppointment = () => {
                             isDisabled
                               ? 'opacity-60 cursor-not-allowed bg-[#f8f4ef] border-[#eadfd5]'
                               : isSelected
-                                ? 'border-[#6d4de6] bg-[#f3efff]'
+                                ? 'border-[#7b5cf5] bg-[#f3efff]'
                                 : 'border-[#e9e2f2] bg-white hover:bg-[#faf8fd]'
                           }`}
                         >
@@ -3278,7 +3278,7 @@ const BookAppointment = () => {
                               </div>
                             </div>
                             <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
-                              isSelected ? 'border-[#6d4de6] bg-[#6d4de6]' : 'border-[#c9bcf1]'
+                              isSelected ? 'border-[#7b5cf5] bg-[#7b5cf5]' : 'border-[#c9bcf1]'
                             }`}>
                               {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
                             </div>
@@ -3300,7 +3300,7 @@ const BookAppointment = () => {
                       <label
                         key={s.id}
                         className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
-                          isSelected ? 'bg-[#f3efff] border-[#6d4de6]' : 'border-[#ece6f4] hover:border-[#d8ccff] hover:bg-[#faf7ff]'
+                          isSelected ? 'bg-[#f3efff] border-[#7b5cf5]' : 'border-[#ece6f4] hover:border-[#ddd3ee] hover:bg-[#faf6fd]'
                         }`}
                       >
                         <input
@@ -3326,13 +3326,13 @@ const BookAppointment = () => {
                             }
                             setSelectedSlot(null) // Reset slot when services change
                           }}
-                          className="w-5 h-5 text-[#6d4de6] rounded"
+                          className="w-5 h-5 text-[#7b5cf5] rounded"
                         />
                         <div className="flex-1">
                           <div className="font-semibold text-[#2C1338] text-lg leading-tight">{s.name}</div>
                           {s.variants && s.variants.length > 0 ? (
                             <div className="text-sm text-[#5a4767] mt-1">
-                              <div className="font-medium text-[#6d4de6] mb-1.5">
+                              <div className="font-medium text-[#7b5cf5] mb-1.5">
                                 {s.variants.length} variant{s.variants.length > 1 ? 's' : ''} available
                               </div>
                               {isSelected && (
@@ -3354,7 +3354,7 @@ const BookAppointment = () => {
                                           })
                                           setSelectedSlot(null) // Reset slot when variant changes
                                         }}
-                                        className="w-3 h-3 text-[#6d4de6]"
+                                        className="w-3 h-3 text-[#7b5cf5]"
                                       />
                                       <span className="text-sm text-[#4a3756]">
                                         {variant.name} - {currency(variant.price_cents)}
@@ -3385,7 +3385,7 @@ const BookAppointment = () => {
                     return sum + s.price_cents
                   }, 0)
                   return (
-                    <div className="text-sm font-semibold text-[#6d4de6] mt-3">
+                    <div className="text-sm font-semibold text-[#7b5cf5] mt-3">
                       {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected |
                       Total: {currency(totalPrice)}
                     </div>
@@ -3630,7 +3630,7 @@ const BookAppointment = () => {
       )}
 
       {step === 4 && rescheduling && (
-        <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
+        <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
           <h2 className="text-2xl font-bold mb-4 text-gray-900">Confirm Reschedule</h2>
           <div className="bg-blue-50 rounded-lg p-4 mb-6">
             <h3 className="font-semibold mb-2 text-gray-900">Appointment Details</h3>
@@ -3693,7 +3693,7 @@ const BookAppointment = () => {
           : (paymentAmount >= minDownpayment ? paymentAmount : minDownpayment)
         
         return (
-          <div className="booking-step-card bg-white rounded-3xl border border-[#f0dbe8] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
+          <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
             <h2 className="text-xl font-bold mb-4 text-gray-900">Confirm Booking</h2>
 
             {/* Payment Method Selection (moved from Step 2) */}
@@ -3701,7 +3701,7 @@ const BookAppointment = () => {
               <h3 className="font-semibold mb-3 text-[#2C1338]">Payment Method</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  payment.method === 'on_hand' ? 'border-[#6d4de6] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
+                  payment.method === 'on_hand' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
                 }`}>
                   <input
                     type="radio"
@@ -3724,7 +3724,7 @@ const BookAppointment = () => {
                   </div>
                 </label>
                 <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  payment.method === 'online' ? 'border-[#6d4de6] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
+                  payment.method === 'online' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
                 }`}>
                   <input
                     type="radio"
@@ -3777,7 +3777,7 @@ const BookAppointment = () => {
               <label className="block text-sm font-medium mb-2 text-gray-900">Payment Type *</label>
               <div className={`grid gap-3 ${payment.method === 'online' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                 <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                  selectedPaymentType === 'downpayment' ? 'border-[#6d4de6] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
+                  selectedPaymentType === 'downpayment' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
                 }`}>
                   <input
                     type="radio"
@@ -3797,7 +3797,7 @@ const BookAppointment = () => {
 
                 {payment.method === 'online' && (
                   <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                    selectedPaymentType === 'full' ? 'border-[#6d4de6] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
+                    selectedPaymentType === 'full' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
                   }`}>
                     <input
                       type="radio"
@@ -3860,7 +3860,7 @@ const BookAppointment = () => {
                     <label
                       key={account.id}
                       className={`border-2 rounded-xl p-3 cursor-pointer transition block ${
-                        payment.selectedAccount === account.id.toString() ? 'border-[#6d4de6] bg-[#f8f5ff] shadow-sm' : 'border-gray-200 hover:border-gray-300'
+                        payment.selectedAccount === account.id.toString() ? 'border-[#7b5cf5] bg-[#f8f5ff] shadow-sm' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <input
@@ -3881,7 +3881,7 @@ const BookAppointment = () => {
                         </div>
                         {resolveAssetUrl(account.qr_code_full_url || account.qr_code_url) && (
                           <div 
-                            className="flex-shrink-0 bg-white p-1.5 border-2 border-gray-100 rounded-xl shadow-sm cursor-zoom-in hover:border-[#6d4de6] transition group relative"
+                            className="flex-shrink-0 bg-white p-1.5 border-2 border-gray-100 rounded-xl shadow-sm cursor-zoom-in hover:border-[#7b5cf5] transition group relative"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -3894,7 +3894,7 @@ const BookAppointment = () => {
                               className="w-16 h-16 sm:w-20 sm:h-20 object-contain group-hover:scale-[1.02] transition-transform"
                             />
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl">
-                              <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#6d4de6] shadow-sm">
+                              <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#7b5cf5] shadow-sm">
                                 Enlarge
                               </span>
                             </div>
@@ -3958,12 +3958,12 @@ const BookAppointment = () => {
               {payment.proofPreview && (
                 <div className="mt-3 inline-block">
                   <div 
-                    className="relative cursor-zoom-in group border-2 border-gray-100 rounded-xl p-1 bg-white shadow-sm hover:border-[#6d4de6] transition"
+                    className="relative cursor-zoom-in group border-2 border-gray-100 rounded-xl p-1 bg-white shadow-sm hover:border-[#7b5cf5] transition"
                     onClick={() => setEnlargedImage({ src: payment.proofPreview, title: 'Payment Proof' })}
                   >
                     <img src={payment.proofPreview} alt="Payment proof preview" className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg">
-                      <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#6d4de6] shadow-sm">
+                      <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#7b5cf5] shadow-sm">
                         Enlarge
                       </span>
                     </div>
@@ -4008,7 +4008,7 @@ const BookAppointment = () => {
                         paymentPolicy: e.target.checked ? '' : prev.paymentPolicy,
                       }))
                     }}
-                    className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#6d4de6] focus:ring-[#c9bcf1]"
+                    className="mt-1 flex-shrink-0 h-4 w-4 rounded border-[#c9bcf1] text-[#7b5cf5] focus:ring-[#c9bcf1]"
                   />
                   <span>
                     I understand and agree that my payment is non-refundable and will serve as my reservation/payment for the selected salon appointment and services.
@@ -4018,7 +4018,7 @@ const BookAppointment = () => {
                   <button 
                     type="button"
                     onClick={(e) => { e.preventDefault(); setShowPaymentPolicyModal(true); }}
-                    className="text-sm font-medium text-[#6d4de6] underline decoration-[#6d4de6]/60 underline-offset-2 hover:text-[#5b3cc4] transition-colors text-left"
+                    className="text-sm font-medium text-[#7b5cf5] underline decoration-[#7b5cf5]/60 underline-offset-2 hover:text-[#6b4ae8] transition-colors text-left"
                   >
                     View Non-Refundable Payment Policy
                   </button>

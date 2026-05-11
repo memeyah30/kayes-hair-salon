@@ -42,9 +42,9 @@ const ManageBookingEmail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#e9e2ff,#d8ccff)] px-4 py-8 sm:py-12">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#e9e2ff,#ddd3ee)] px-4 py-8 sm:py-12">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl items-center justify-center">
-        <div className="w-full max-w-md rounded-[22px] border border-[#d8ccff] bg-white px-6 py-7 shadow-[0_18px_40px_rgba(91,60,196,0.16)] sm:px-7">
+        <div className="w-full max-w-md rounded-[22px] border border-[#ddd3ee] bg-white px-6 py-7 shadow-[0_18px_40px_rgba(91,60,196,0.16)] sm:px-7">
           <h1 className="mb-2 text-3xl font-semibold text-[#2d2d2d]">Manage My Booking</h1>
           <p className="mb-5 text-sm leading-6 text-[#6b6b6b]">
             Enter the same email you used when booking. We&apos;ll send a 6-digit OTP.
@@ -62,7 +62,7 @@ const ManageBookingEmail = () => {
                 name="manage_booking_email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="tap-safe w-full rounded-[10px] border border-[#d8ccff] px-4 py-3 text-[#2d2d2d] outline-none transition focus:border-[#7b5cf5] focus:ring-4 focus:ring-[#7b5cf522]"
+                className="tap-safe w-full rounded-[10px] border border-[#ddd3ee] px-4 py-3 text-[#2d2d2d] outline-none transition focus:border-[#7b5cf5] focus:ring-4 focus:ring-[#7b5cf522]"
                 placeholder="your@email.com"
                 required
                 autoComplete="off"
@@ -72,7 +72,7 @@ const ManageBookingEmail = () => {
             <button
               type="submit"
               disabled={sending}
-              className="tap-safe w-full rounded-[10px] bg-gradient-to-r from-[#6d4de6] to-[#7b5cf5] px-4 py-3 font-semibold text-white transition hover:from-[#5b3cc4] hover:to-[#6846e8] disabled:cursor-not-allowed disabled:opacity-60"
+              className="tap-safe w-full rounded-[10px] bg-gradient-to-r from-[#7b5cf5] to-[#7b5cf5] px-4 py-3 font-semibold text-white transition hover:from-[#6b4ae8] hover:to-[#6846e8] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {sending ? 'Sending OTP...' : 'Send OTP'}
             </button>
@@ -80,7 +80,7 @@ const ManageBookingEmail = () => {
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="tap-safe w-full rounded-[10px] border border-[#d8ccff] bg-white px-4 py-3 font-semibold text-[#6d4de6] transition hover:bg-[#faf7ff]"
+              className="tap-safe w-full rounded-[10px] border border-[#ddd3ee] bg-white px-4 py-3 font-semibold text-[#7b5cf5] transition hover:bg-[#faf6fd]"
             >
               Back to Home
             </button>
