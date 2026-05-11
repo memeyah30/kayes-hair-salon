@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import AdminLayout from '../../components/AdminLayout'
 import api from '../../utils/api'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState(null)
@@ -12,12 +12,24 @@ const AdminSettings = () => {
   const [isDirty, setIsDirty] = useState(false)
   
   const navigate = useNavigate()
+  const location = useLocation()
   const storedUserType = (sessionStorage.getItem('userType') || localStorage.getItem('userType')) || 'admin'
   const loginPath = storedUserType === 'manager' ? '/login/manager' : '/login/admin'
 
   useEffect(() => {
     fetchSettings()
   }, [])
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '')
+    if (hash === 'booking-logic') {
+      setActiveTab('appointment')
+    } else if (hash === 'alerts') {
+      setActiveTab('notification')
+    } else if (hash === 'general') {
+      setActiveTab('general')
+    }
+  }, [location.hash])
 
   const fetchSettings = async () => {
     try {
@@ -97,15 +109,6 @@ const AdminSettings = () => {
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      )
-    },
-    { 
-      id: 'payment', 
-      label: 'Payments', 
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
         </svg>
       )
     },
@@ -219,34 +222,27 @@ const AdminSettings = () => {
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-          {/* Enhanced Navigation Sidebar */}
-          <nav className="w-full lg:w-72 shrink-0 flex lg:flex-col overflow-x-auto lg:overflow-visible no-scrollbar gap-2 p-1 bg-white/40 backdrop-blur-sm rounded-[28px] border border-white/60 sticky top-4 z-20">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-sm font-bold transition-all duration-300 whitespace-nowrap lg:w-full ${
-                  activeTab === tab.id
-                    ? 'bg-[#5f3eb4] text-white shadow-lg shadow-[#5f3eb4]/25 translate-x-1'
-                    : 'text-[#6b5b95] hover:bg-[#efe9ff] hover:text-[#5f3eb4]'
-                }`}
-              >
-                <span className={activeTab === tab.id ? 'text-white' : 'text-[#8b77bc]'}>
-                  {tab.icon}
-                </span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Main Settings Card */}
-          <main className="flex-1 w-full animate-slideInRight">
+        <div className="w-full animate-slideInRight">
+          <main className="w-full">
             <div className="rounded-[36px] bg-white border border-white shadow-[0_20px_50px_rgba(70,45,130,0.08)] overflow-hidden">
-              <div className="bg-[#fcfaff] border-b border-[#f3efff] px-8 py-6">
+              <div className="bg-[#fcfaff] border-b border-[#f3efff] px-8 py-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-xl font-black text-[#2d1f4f]">
                   {tabs.find((t) => t.id === activeTab).label} Settings
                 </h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#8b77bc]">Section</span>
+                  <select
+                    value={activeTab}
+                    onChange={(e) => setActiveTab(e.target.value)}
+                    className="min-w-[220px] rounded-2xl border-2 border-[#f0eaff] bg-white px-4 py-3 text-sm font-bold text-[#2d1f4f] outline-none focus:border-[#5f3eb4]"
+                  >
+                    {tabs.map((tab) => (
+                      <option key={tab.id} value={tab.id}>
+                        {tab.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               
               <div className="p-8 sm:p-10">
@@ -378,6 +374,34 @@ const AdminSettings = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                           </svg>
                         </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-[#f3efff]">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-black text-[#5f3eb4] border-b border-[#f3efff] pb-2">Downpayment Policy</h4>
+                        <Toggle 
+                          enabled={settings?.payment?.require_downpayment}
+                          onChange={(v) => handleInputChange('payment', 'require_downpayment', v)}
+                          label="Require Downpayment"
+                          description="Customers must provide a deposit to secure their booking"
+                        />
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-black text-[#5f3eb4] border-b border-[#f3efff] pb-2">Payment Accounts</h4>
+                        <div className="rounded-[28px] bg-[#fbf9ff] border border-[#efe9ff] p-5">
+                          <p className="text-xs text-[#8b77bc]">
+                            Payment accounts are managed separately and shown to customers during booking.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/admin/payment-accounts')}
+                            className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[#5f3eb4] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#5f3eb4]/20 transition hover:bg-[#4d32a0]"
+                          >
+                            Open Payment Accounts
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
