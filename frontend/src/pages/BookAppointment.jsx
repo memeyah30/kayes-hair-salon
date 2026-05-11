@@ -1931,7 +1931,7 @@ const BookAppointment = () => {
     }
     
     // Use selectedServices if available, otherwise fall back to selectedService
-    const serviceIds = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : [])
+    const serviceIds = [...new Set(selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : []))]
     if (serviceIds.length === 0) {
       toast.warn('Please select at least one service')
       return

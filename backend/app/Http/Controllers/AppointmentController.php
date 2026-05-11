@@ -283,7 +283,7 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'At least one service is required'], 422);
         }
 
-        $serviceIds = array_values(array_map('intval', $serviceIds));
+        $serviceIds = array_unique(array_values(array_map('intval', $serviceIds)));
         sort($serviceIds);
 
         // Validate time is within business hours from settings
