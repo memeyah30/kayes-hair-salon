@@ -1387,17 +1387,6 @@ class AppointmentController extends Controller
         $salePaymentMethod = $this->normalizeSalePaymentMethod($paymentMethod ?? $appointment->payment_method ?? null);
         $salePaymentStatus = $this->normalizeSalePaymentStatus($paymentStatus ?? $appointment->payment_status ?? null, $appointment);
 
-        // Skip if already recorded
-        if (\App\Models\Sale::where('appointment_id', $appointment->id)->exists()) {
-            // But ensure existing sales have the correct payment status
-            \App\Models\Sale::where('appointment_id', $appointment->id)->update([
-                'payment_status' => $salePaymentStatus,
-                'payment_method' => $salePaymentMethod,
-                'created_at' => $appointment->created_at
-            ]);
-            return;
-        }
-
         // Ensure services are loaded with their variants
         if (!$appointment->relationLoaded('services')) {
             $appointment->load(['services.variants', 'service.variants']);
@@ -1407,6 +1396,36 @@ class AppointmentController extends Controller
         if ($appointmentServices->isEmpty() && $appointment->service) {
             $appointmentServices = collect([$appointment->service]);
         }
+
+        // Deduplicate services to ensure we only record each unique service/variant once
+        $appointmentServices = $appointmentServices->unique(function ($service) {
+            $variantId = isset($service->pivot) ? $service->pivot->service_variant_id : null;
+            return $service->id . '-' . ($variantId ?? 'none');
+        });
+
+        // Reconcile existing records: If the count matches, just update the status/method.
+        // If the count is different (e.g. duplicates), we delete and re-sync.
+        $existingSalesCount = \App\Models\Sale::where('appointment_id', $appointment->id)->count();
+        
+        if ($existingSalesCount > 0 && $existingSalesCount === $appointmentServices->count()) {
+            \App\Models\Sale::where('appointment_id', $appointment->id)->update([
+                'payment_status' => $salePaymentStatus,
+                'payment_method' => $salePaymentMethod,
+                'created_at' => $appointment->created_at,
+                'customer_name' => $appointment->customer_name,
+                'customer_phone' => $appointment->customer_phone,
+            ]);
+            return;
+        }
+
+        // If we are here, we either have no sales OR the wrong number of sales (duplicates/mismatches).
+        // Delete automated sales for this appointment to prepare for a clean sync.
+        \App\Models\Sale::where('appointment_id', $appointment->id)
+            ->where(function($q) {
+                $q->where('notes', 'Recorded from booking payment/confirmation')
+                  ->orWhere('notes', 'Recorded from booking payment'); // Backward compatibility
+            })
+            ->delete();
 
         foreach ($appointmentServices as $service) {
             $variantId = null;

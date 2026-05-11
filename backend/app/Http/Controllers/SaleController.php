@@ -143,10 +143,17 @@ class SaleController extends Controller
                 $query->whereIn('payment_status', ['paid', 'downpayment', 'verified'])
                     ->orWhere('downpayment_amount_cents', '>', 0);
             })
-            ->whereNotExists(function ($query) {
-                $query->select(DB::raw(1))
-                    ->from('sales')
-                    ->whereRaw('sales.appointment_id = appointments.id');
+            ->where(function ($query) {
+                $query->whereNotExists(function ($q) {
+                    $q->select(DB::raw(1))
+                        ->from('sales')
+                        ->whereRaw('sales.appointment_id = appointments.id');
+                })
+                ->orWhere(function ($q) {
+                    // Also pick up appointments where the number of sales doesn't match the number of services
+                    // This fixes duplicates or missing items in the sales table.
+                    $q->whereRaw('(SELECT COUNT(*) FROM sales WHERE sales.appointment_id = appointments.id) != (SELECT COUNT(*) FROM appointment_service WHERE appointment_service.appointment_id = appointments.id)');
+                });
             })
             ->get();
 
