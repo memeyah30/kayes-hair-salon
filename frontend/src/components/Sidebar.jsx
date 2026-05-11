@@ -52,7 +52,15 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
     { to: '/admin/appointments', label: 'Appointments', icon: 'appointments' },
     { to: '/admin/customers', label: 'Customers', icon: 'customers' },
     { to: '/admin/ratings', label: 'Reviews', icon: 'reviews' },
-    { to: '/admin/holidays', label: 'Holidays', icon: 'calendar' },
+    { 
+      label: 'Settings', 
+      icon: 'settings',
+      children: [
+        { to: '/admin/settings', label: 'General' },
+        { to: '/admin/holidays', label: 'Holidays' },
+        { to: '/admin/payment-accounts', label: 'Payments' },
+      ]
+    },
   ]
 
   const customerLinks = [

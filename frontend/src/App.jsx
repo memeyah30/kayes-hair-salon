@@ -136,7 +136,7 @@ const App = () => {
         <Route
           path="/admin/payment-accounts"
           element={
-            <ProtectedRoute allowedTypes={['admin']}>
+            <ProtectedRoute allowedTypes={['admin', 'manager']}>
               <ManagePaymentAccounts />
             </ProtectedRoute>
           }
@@ -154,7 +154,7 @@ const App = () => {
         <Route
           path="/admin/settings"
           element={
-            <ProtectedRoute allowedTypes={['admin']}>
+            <ProtectedRoute allowedTypes={['admin', 'manager']}>
               <AdminSettings />
             </ProtectedRoute>
           }

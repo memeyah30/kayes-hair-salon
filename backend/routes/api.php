@@ -128,26 +128,10 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     Route::patch('/service-variants/{serviceVariant}', [ServiceVariantController::class, 'update']);
     Route::delete('/service-variants/{serviceVariant}', [ServiceVariantController::class, 'destroy']);
 
-    // Holidays management
-    Route::get('/holidays', [HolidayController::class, 'index']);
-    Route::post('/holidays', [HolidayController::class, 'store']);
-    Route::patch('/holidays/{holiday}', [HolidayController::class, 'update']);
-    Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy']);
-
-    // Payment accounts management
-    Route::get('/payment-accounts/all', [PaymentAccountController::class, 'index']);
-    Route::post('/payment-accounts', [PaymentAccountController::class, 'store']);
-    Route::patch('/payment-accounts/{paymentAccount}', [PaymentAccountController::class, 'update']);
-    Route::delete('/payment-accounts/{paymentAccount}', [PaymentAccountController::class, 'destroy']);
-
-    // Locations management
-    Route::get('/locations/all', [LocationController::class, 'index']);
-    Route::post('/locations', [LocationController::class, 'store']);
-    Route::patch('/locations/{location}', [LocationController::class, 'update']);
-    Route::delete('/locations/{location}', [LocationController::class, 'destroy']);
-
     // Ratings management (delete remains admin-only)
     Route::delete('/ratings/{customerRating}', [CustomerRatingController::class, 'destroy']);
+
+
 
     // Sales management
     Route::get('/sales', [SaleController::class, 'index']);
@@ -158,9 +142,7 @@ Route::middleware(['auth.any', 'userType:admin'])->group(function () {
     Route::patch('/sales/{sale}', [SaleController::class, 'update']);
     Route::delete('/sales/{sale}', [SaleController::class, 'destroy']);
 
-    // Settings management
-    Route::get('/settings', [\App\Http\Controllers\SettingController::class, 'index']);
-    Route::post('/settings', [\App\Http\Controllers\SettingController::class, 'update']);
+
 });
 
 // Admin + Manager dashboard stats
@@ -192,6 +174,21 @@ Route::middleware(['auth.any', 'userType:admin,manager'])->group(function () {
     Route::patch('/holidays/{holiday}', [HolidayController::class, 'update']);
     Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy']);
 
+    // Payment accounts management (admin and manager)
+    Route::get('/payment-accounts/all', [PaymentAccountController::class, 'index']);
+    Route::post('/payment-accounts', [PaymentAccountController::class, 'store']);
+    Route::patch('/payment-accounts/{paymentAccount}', [PaymentAccountController::class, 'update']);
+    Route::delete('/payment-accounts/{paymentAccount}', [PaymentAccountController::class, 'destroy']);
+
+    // Locations management (admin and manager)
+    Route::get('/locations/all', [LocationController::class, 'index']);
+    Route::post('/locations', [LocationController::class, 'store']);
+    Route::patch('/locations/{location}', [LocationController::class, 'update']);
+    Route::delete('/locations/{location}', [LocationController::class, 'destroy']);
+
+    // Settings management (admin and manager)
+    Route::get('/settings', [\App\Http\Controllers\SettingController::class, 'index']);
+    Route::post('/settings', [\App\Http\Controllers\SettingController::class, 'update']);
 });
 
 // Verified customer stats
