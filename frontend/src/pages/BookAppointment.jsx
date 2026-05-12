@@ -688,8 +688,11 @@ const BookAppointment = () => {
     : new URLSearchParams()
   const entrySource = initialSearchParams.get('source') || ''
   const initialEntryAppointmentId = initialSearchParams.get('reschedule') || initialSearchParams.get('appointment')
-  const initialManageBookingVerifiedEmail = entrySource === 'customer-dashboard' && isManageBookingVerified()
-    ? getManageBookingVerifiedEmail()
+  const initialEntryToken = (initialSearchParams.get('token') || '').trim()
+  const initialEntryEmail = normalizeEmailValue(initialSearchParams.get('email') || '')
+  const hasEntryManageBookingSession = Boolean(initialEntryToken && initialEntryEmail)
+  const initialManageBookingVerifiedEmail = entrySource === 'customer-dashboard' && (isManageBookingVerified() || hasEntryManageBookingSession)
+    ? (initialEntryEmail || getManageBookingVerifiedEmail())
     : ''
   const canFastTrackCustomerDashboardBooking = Boolean(initialManageBookingVerifiedEmail)
     && entrySource === 'customer-dashboard'
@@ -1051,6 +1054,17 @@ const BookAppointment = () => {
       setStep(3)
     }
   }, [rescheduling, step])
+
+  useEffect(() => {
+    if (entrySource !== 'customer-dashboard' || !initialEntryToken || !initialEntryEmail) {
+      return
+    }
+
+    persistManageBookingVerification({
+      email: initialEntryEmail,
+      token: initialEntryToken,
+    })
+  }, [entrySource, initialEntryEmail, initialEntryToken])
 
 
   useEffect(() => {

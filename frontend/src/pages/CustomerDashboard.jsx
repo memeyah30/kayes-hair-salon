@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import AdminLayout from '../components/AdminLayout'
 import RatingModal from '../components/RatingModal'
-import manageBookingApi from '../utils/manageBookingApi'
+import manageBookingApi, { CUSTOMER_BOOKING_TOKEN_KEY } from '../utils/manageBookingApi'
 import ReceiptModal from '../components/ReceiptModal'
 import {
   clearManageBookingVerification,
@@ -308,6 +308,14 @@ const CustomerDashboard = () => {
 
   const openReschedule = (appointment) => {
     setOpenActionForId(null)
+    const verifiedEmail = getManageBookingVerifiedEmail()
+    const verifiedToken = (typeof window !== 'undefined' ? window.localStorage.getItem(CUSTOMER_BOOKING_TOKEN_KEY) : '') || ''
+
+    if (verifiedEmail && verifiedToken) {
+      navigate(`/book?reschedule=${appointment.id}&source=customer-dashboard&email=${encodeURIComponent(verifiedEmail)}&token=${encodeURIComponent(verifiedToken)}`)
+      return
+    }
+
     navigate(`/book?reschedule=${appointment.id}&source=customer-dashboard`)
   }
 
