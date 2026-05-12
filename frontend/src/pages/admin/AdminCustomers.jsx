@@ -376,12 +376,9 @@ const AdminCustomers = () => {
                                 timeZone: 'Asia/Manila'
                               })} PHT
                             </div>
-                            <div className="text-sm text-[#9b857a] mb-1">
-                              Team: {apt.team_name || 'Salon Team'}
-                            </div>
-                            <div className="text-sm font-medium text-green-600">
-                              {appointmentServices.length > 1 ? 'Total Price: ' : 'Price: '}{currency(totalPrice)}
-                            </div>
+                              <div className="text-sm font-medium text-green-600">
+                                {appointmentServices.length > 1 ? 'Total Price: ' : 'Price: '}{currency(totalPrice)}
+                              </div>
                             <div className="text-xs text-gray-400 mt-1">
                               Booking ID: APT-{String(apt.id).padStart(6, '0')}
                             </div>
@@ -427,4 +424,3 @@ const AdminCustomers = () => {
 }
 
 export default AdminCustomers
-

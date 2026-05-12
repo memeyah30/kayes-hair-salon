@@ -183,10 +183,7 @@ const CustomerDashboard = () => {
     [appointments]
   )
 
-  const successfulAppointmentsCount = useMemo(
-    () => appointments.filter((appointment) => ['pending', 'confirmed', 'booked', 'completed'].includes(appointment.status)).length,
-    [appointments]
-  )
+  const totalAppointmentsCount = useMemo(() => appointments.length, [appointments])
 
   const syncCustomerIdentity = (nextName) => {
     const normalizedName = String(nextName || '').trim().replace(/\s+/g, ' ')
@@ -464,7 +461,6 @@ const CustomerDashboard = () => {
                 )}
               </div>
             )}
-            <div className="text-sm text-[#7c688f] mt-1">with {appointment.team_name || 'Salon Team'}</div>
             <div className="text-sm font-medium text-green-600 mt-2">
               Total: {formatCurrency(appointment.total_amount)}
             </div>
@@ -636,7 +632,7 @@ const CustomerDashboard = () => {
               }`}
             >
               <div className="text-[#7c688f] text-sm">Total Booked Appointments</div>
-              <div className="mt-2 text-2xl font-bold text-[#7b5cf5]">{successfulAppointmentsCount}</div>
+              <div className="mt-2 text-2xl font-bold text-[#7b5cf5]">{totalAppointmentsCount}</div>
               <div className="text-sm text-[#6f5b7e] mt-2">
                 {historyAppointments.length > 0
                   ? 'Click to view booking history'
