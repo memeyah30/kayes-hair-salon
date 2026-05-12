@@ -9,6 +9,7 @@ use App\Models\AppointmentRating;
 use App\Models\CustomerRating;
 use App\Models\CustomerOtp;
 use App\Services\CustomerOtpSessionService;
+use App\Services\MissedAppointmentService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -656,5 +657,18 @@ class ManageBookingController extends Controller
     private function syncMissedAppointments(): void
     {
         app(\App\Services\MissedAppointmentService::class)->markOverdueAppointmentsAsMissed();
+    }
+
+    private function formatAppointmentForResponse($appointment)
+    {
+        $appointment->is_rescheduled = !empty($appointment->getRawOriginal('rescheduled_at'));
+        $appointment->team_name = 'Salon Team';
+
+        return $appointment;
+    }
+
+    private function refreshMissedStatus(Appointment $appointment): Appointment
+    {
+        return app(MissedAppointmentService::class)->refreshAppointmentStatus($appointment);
     }
 }
