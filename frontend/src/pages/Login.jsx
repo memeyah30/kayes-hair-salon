@@ -342,7 +342,7 @@ const Login = () => {
                 <p className="mt-1 text-xs font-medium text-[#6b589b] sm:mt-2 sm:text-sm">Access your administrative dashboard</p>
               </motion.div>
 
-              <motion.form onSubmit={handleSubmit} className="mt-9 space-y-5" variants={staggerChildren}>
+              <motion.form onSubmit={handleSubmit} className="mt-9 space-y-5" variants={staggerChildren} autoComplete="off">
                 <motion.div variants={fadeUp}>
                   <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-[#6b589b]">{loginLabel}</label>
                   <div className="relative group">
@@ -355,6 +355,7 @@ const Login = () => {
                     <input
                       type="text"
                       required
+                      autoComplete="off"
                       className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-4 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:text-base"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -375,6 +376,7 @@ const Login = () => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
+                      autoComplete="off"
                       className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-11 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:pr-12 sm:text-base"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
