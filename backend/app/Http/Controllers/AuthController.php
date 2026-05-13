@@ -74,7 +74,11 @@ class AuthController extends Controller
             $type = 'admin';
         } else {
             // 2. If not an Admin, try to find a Manager
-            $user = Manager::where('username', $identifier)->where('active', true)->first();
+            $user = Manager::where(function($query) use ($identifier) {
+                $query->where('username', $identifier)
+                      ->orWhere('email', $identifier);
+            })->where('active', true)->first();
+            
             if ($user && PasswordHash::matches($request->password, $user->password)) {
                 $type = 'manager';
             } else {

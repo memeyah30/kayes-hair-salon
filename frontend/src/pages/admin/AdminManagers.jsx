@@ -16,6 +16,7 @@ const AdminManagers = () => {
   const [currentManager, setCurrentManager] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     phone: '',
     address: '',
@@ -65,7 +66,7 @@ const AdminManagers = () => {
   const openAddModal = () => {
     setModalMode('add')
     setCurrentManager(null)
-    setFormData({ name: '', email: '', phone: '', address: '', password: '' })
+    setFormData({ name: '', username: '', email: '', phone: '', address: '', password: '' })
     setFormErrors({})
     setIsModalOpen(true)
   }
@@ -75,6 +76,7 @@ const AdminManagers = () => {
     setCurrentManager(manager)
     setFormData({
       name: manager.name || '',
+      username: manager.username || '',
       email: manager.email || '',
       phone: manager.phone || '',
       address: manager.address || '',
@@ -87,6 +89,7 @@ const AdminManagers = () => {
   const validateForm = () => {
     const errors = {}
     if (!formData.name) errors.name = 'Full Name is required'
+    if (!formData.username) errors.username = 'Username is required'
     if (!formData.email) errors.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Email is invalid'
     if (!formData.phone) errors.phone = 'Contact Number is required'
@@ -360,16 +363,29 @@ const AdminManagers = () => {
             
             <form onSubmit={handleSave} className="p-6">
               <div className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-[#57476e]">Full Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition focus:border-[#6d4de6] focus:ring-2 focus:ring-[#6d4de6]/20 ${formErrors.name ? 'border-rose-300 bg-rose-50' : 'border-[#DDD6FE]'}`}
-                    placeholder="e.g. John Doe"
-                  />
-                  {formErrors.name && <p className="mt-1 text-xs text-rose-500">{formErrors.name}</p>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-[#57476e]">Full Name *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition focus:border-[#6d4de6] focus:ring-2 focus:ring-[#6d4de6]/20 ${formErrors.name ? 'border-rose-300 bg-rose-50' : 'border-[#DDD6FE]'}`}
+                      placeholder="e.g. John Doe"
+                    />
+                    {formErrors.name && <p className="mt-1 text-xs text-rose-500">{formErrors.name}</p>}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-[#57476e]">Username *</label>
+                    <input
+                      type="text"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition focus:border-[#6d4de6] focus:ring-2 focus:ring-[#6d4de6]/20 ${formErrors.username ? 'border-rose-300 bg-rose-50' : 'border-[#DDD6FE]'}`}
+                      placeholder="e.g. johndoe123"
+                    />
+                    {formErrors.username && <p className="mt-1 text-xs text-rose-500">{formErrors.username}</p>}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -421,7 +437,7 @@ const AdminManagers = () => {
                   />
                   {formErrors.password && <p className="mt-1 text-xs text-rose-500">{formErrors.password}</p>}
                   {modalMode === 'add' && !formErrors.password && (
-                    <p className="mt-1 text-xs text-[#7a6794]">Minimum 6 characters. They will use their email to login.</p>
+                    <p className="mt-1 text-xs text-[#7a6794]">Minimum 6 characters. They will use their email or username to login.</p>
                   )}
                 </div>
               </div>
