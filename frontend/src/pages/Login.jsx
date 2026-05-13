@@ -12,9 +12,18 @@ const SESSION_CONFIRMATION_DELAY_MS = 250
 const pause = (ms) => new Promise((resolve) => {
   window.setTimeout(resolve, ms)
 })
-const Login = () => {
+const Login = ({ userType = 'admin' }) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+
+  // Force reset on mount and when userType changes to clear browser auto-fill
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setEmail('')
+      setPassword('')
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [userType])
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -355,6 +364,8 @@ const Login = () => {
                     <input
                       type="text"
                       required
+                      name={`${userType}_identifier`}
+                      id={`${userType}_identifier`}
                       autoComplete="off"
                       className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-4 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:text-base"
                       value={email}
@@ -376,6 +387,8 @@ const Login = () => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
+                      name={`${userType}_password`}
+                      id={`${userType}_password`}
                       autoComplete="off"
                       className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-11 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:pr-12 sm:text-base"
                       value={password}
