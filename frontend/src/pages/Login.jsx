@@ -15,15 +15,40 @@ const pause = (ms) => new Promise((resolve) => {
 const Login = ({ userType = 'admin' }) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isReady, setIsReady] = useState(false)
+  const [fieldId] = useState(() => Math.random().toString(36).substring(7))
 
-  // Force reset on mount and when userType changes to clear browser auto-fill
+  // Very aggressive reset to fight persistent browser auto-fill
   useEffect(() => {
+    // 1. Immediate clear
+    setEmail('')
+    setPassword('')
+    
+    // 2. Periodic clear for the first second to catch late auto-fills
+    let attempts = 0
+    const interval = setInterval(() => {
+      if (attempts < 10 && !isReady) {
+        setEmail('')
+        setPassword('')
+        attempts++
+      } else {
+        clearInterval(interval)
+      }
+    }, 100)
+
+    // 3. Final clear after 1.5s
     const timer = setTimeout(() => {
-      setEmail('')
-      setPassword('')
-    }, 150)
-    return () => clearTimeout(timer)
-  }, [userType])
+      if (!isReady) {
+        setEmail('')
+        setPassword('')
+      }
+    }, 1500)
+
+    return () => {
+      clearInterval(interval)
+      clearTimeout(timer)
+    }
+  }, [userType, isReady])
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -364,9 +389,12 @@ const Login = ({ userType = 'admin' }) => {
                     <input
                       type="text"
                       required
-                      name={`${userType}_identifier`}
-                      id={`${userType}_identifier`}
-                      autoComplete="off"
+                      name={`identifier_${fieldId}`}
+                      id={`identifier_${fieldId}`}
+                      autoComplete="one-time-code"
+                      readOnly={!isReady}
+                      onFocus={() => setIsReady(true)}
+                      onClick={() => setIsReady(true)}
                       className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-4 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:text-base"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -387,9 +415,12 @@ const Login = ({ userType = 'admin' }) => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
-                      name={`${userType}_password`}
-                      id={`${userType}_password`}
-                      autoComplete="off"
+                      name={`password_${fieldId}`}
+                      id={`password_${fieldId}`}
+                      autoComplete="new-password"
+                      readOnly={!isReady}
+                      onFocus={() => setIsReady(true)}
+                      onClick={() => setIsReady(true)}
                       className="tap-safe w-full rounded-2xl border-2 border-[#e4d6fd] bg-[#f8f6ff] py-3.5 pl-11 pr-11 text-sm text-[#2d1f4f] placeholder-[#90a0c8] outline-none transition-all focus:border-[#7B5CF5] focus:bg-white focus:ring-4 focus:ring-[#7B5CF5]/10 sm:py-4 sm:pl-12 sm:pr-12 sm:text-base"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
