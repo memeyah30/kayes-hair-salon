@@ -160,7 +160,7 @@ const CustomerDashboard = () => {
   const [submittingCancelId, setSubmittingCancelId] = useState(null)
   const [ratingAppointment, setRatingAppointment] = useState(null)
   const [submittingRating, setSubmittingRating] = useState(false)
-  const [showBookingHistory, setShowBookingHistory] = useState(false)
+  const [showBookingHistory, setShowBookingHistory] = useState(params.get('view') === 'history')
   const [openActionForId, setOpenActionForId] = useState(null)
   const [customerName, setCustomerName] = useState(getManageBookingVerifiedName())
   const [logoutModalOpen, setLogoutModalOpen] = useState(false)
@@ -174,12 +174,16 @@ const CustomerDashboard = () => {
     : '/book?fresh=1'
 
   const upcomingAppointments = useMemo(
-    () => appointments.filter((appointment) => ['pending', 'confirmed', 'booked'].includes(appointment.status)),
+    () => appointments.filter((appointment) => 
+      ['pending', 'confirmed', 'booked', 'rescheduled'].includes(appointment.status)
+    ),
     [appointments]
   )
 
   const historyAppointments = useMemo(
-    () => appointments.filter((appointment) => !['pending', 'confirmed', 'booked'].includes(appointment.status)),
+    () => appointments.filter((appointment) => 
+      !['pending', 'confirmed', 'booked', 'rescheduled'].includes(appointment.status)
+    ),
     [appointments]
   )
 
@@ -248,8 +252,13 @@ const CustomerDashboard = () => {
       token: queryToken,
     })
 
-    navigate('/customer', { replace: true })
-  }, [navigate, queryEmail, queryToken])
+    // Keep view param if it exists
+    const view = params.get('view')
+    const appointmentId = params.get('appointment_id')
+    const nextPath = view ? `/customer?view=${view}${appointmentId ? `&appointment_id=${appointmentId}` : ''}` : '/customer'
+
+    navigate(nextPath, { replace: true })
+  }, [navigate, queryEmail, queryToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!hasVerifiedAccess) {
@@ -268,8 +277,20 @@ const CustomerDashboard = () => {
 
   useEffect(() => {
     if (historyAppointments.length > 0) return
-    setShowBookingHistory(false)
-  }, [historyAppointments.length])
+    if (showBookingHistory) {
+      setShowBookingHistory(false)
+    }
+  }, [historyAppointments.length, showBookingHistory])
+
+  // Handle manual URL view toggling
+  useEffect(() => {
+    const view = params.get('view')
+    if (view === 'history' && historyAppointments.length > 0) {
+      setShowBookingHistory(true)
+    } else if (view === 'upcoming') {
+      setShowBookingHistory(false)
+    }
+  }, [location.search, historyAppointments.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleDocumentClick = (event) => {
