@@ -187,10 +187,8 @@ const Login = ({ userType = 'admin' }) => {
       // If on dev server, redirect to Laravel backend
       // Preserve the hostname (localhost or 127.0.0.1) to maintain cookie domain consistency
       // Otherwise, use relative path (will stay on same origin)
+      // Stay on the same origin (dev server) to preserve localStorage and session cookies
       let finalRedirectPath = redirectPath
-      if (isDevServer) {
-        finalRedirectPath = `${resolveBackendOrigin()}${redirectPath}`
-      }
 
       console.log('Current origin:', currentOrigin)
       console.log('Is dev server:', isDevServer)

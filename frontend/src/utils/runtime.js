@@ -16,6 +16,16 @@ export const resolveAssetUrl = (path) => {
   if (!path) return null
 
   if (/^https?:\/\//i.test(path)) {
+    // If it's an external cloud storage URL (like ImgBB or AWS S3), do not rewrite it
+    try {
+      const urlObj = new URL(path)
+      if (!/127\.0\.0\.1|localhost/i.test(urlObj.hostname)) {
+        return path
+      }
+    } catch {
+      // Fallback in case of invalid URL
+    }
+
     const normalizedAbsolutePath = extractPathname(path).replace(/^\/+/, '')
     if (isBackendHostedAssetPath(normalizedAbsolutePath)) {
       if (import.meta.env.DEV) {

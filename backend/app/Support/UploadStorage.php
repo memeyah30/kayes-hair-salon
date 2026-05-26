@@ -15,6 +15,24 @@ class UploadStorage
 
     public static function store(UploadedFile $file, string $directory): string
     {
+        $imgbbKey = env('IMGBB_API_KEY');
+        if (!empty($imgbbKey)) {
+            try {
+                $response = \Illuminate\Support\Facades\Http::asMultipart()->post('https://api.imgbb.com/1/upload', [
+                    'key' => $imgbbKey,
+                    'image' => base64_encode(file_get_contents($file->path())),
+                ]);
+
+                if ($response->successful() && $response->json('data.url')) {
+                    return $response->json('data.url');
+                } else {
+                    \Illuminate\Support\Facades\Log::error('ImgBB upload response error: ' . $response->body());
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('ImgBB upload failed: ' . $e->getMessage());
+            }
+        }
+
         return Storage::disk(self::diskName())->putFile(trim($directory, '/'), $file);
     }
 
