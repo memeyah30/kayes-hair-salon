@@ -10,6 +10,7 @@ const ManagePaymentAccounts = () => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [accountToDelete, setAccountToDelete] = useState(null)
   const [formData, setFormData] = useState({
     account_name: '',
     account_number: '',
@@ -102,17 +103,17 @@ const ManagePaymentAccounts = () => {
     setShowModal(true)
   }
 
-  const handleDelete = async (accountId) => {
-    if (!window.confirm('Are you sure you want to delete this payment account? This action cannot be undone.')) {
-      return
-    }
+  const handleConfirmDelete = async () => {
+    if (!accountToDelete) return
 
     try {
-      await api.delete(`/payment-accounts/${accountId}`)
+      await api.delete(`/payment-accounts/${accountToDelete}`)
       toast.success('Payment account deleted successfully')
       loadAccounts()
     } catch (e) {
       toast.error('Failed to delete payment account')
+    } finally {
+      setAccountToDelete(null)
     }
   }
 
@@ -263,7 +264,7 @@ const ManagePaymentAccounts = () => {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(account.id)}
+                    onClick={() => setAccountToDelete(account.id)}
                     className="flex-1 text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
                   >
                     Delete
@@ -419,6 +420,43 @@ const ManagePaymentAccounts = () => {
                   </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Confirmation Modal for Deletion */}
+          {accountToDelete !== null && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] backdrop-blur-sm transition-all duration-300">
+              <div className="bg-white/95 rounded-2xl border border-[#eadfd5] shadow-[0_24px_48px_rgba(92,64,51,0.18)] p-6 w-full max-w-md transform transition-all scale-100">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Confirm Deletion</h3>
+                    <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                      Are you certain you wish to delete this payment account? Please note that this action is permanent and cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAccountToDelete(null)}
+                    className="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDelete}
+                    className="w-full sm:w-auto px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-[0_4px_12px_rgba(220,38,38,0.2)] hover:shadow-[0_4px_16px_rgba(220,38,38,0.3)] transition duration-150"
+                  >
+                    Yes, Delete
+                  </button>
+                </div>
               </div>
             </div>
           )}
