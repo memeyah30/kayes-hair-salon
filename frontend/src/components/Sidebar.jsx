@@ -40,7 +40,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       label: 'Settings', 
       icon: 'settings',
       children: [
-        { to: '/admin/settings', label: 'General' },
+        { to: '/admin/settings', label: 'Salon Info' },
         { to: '/admin/settings#booking-logic', label: 'Booking Logic' },
         { to: '/admin/settings#alerts', label: 'Alerts' },
       ]
@@ -56,7 +56,7 @@ const Sidebar = ({ userType = 'customer', onLogout }) => {
       label: 'Settings', 
       icon: 'settings',
       children: [
-        { to: '/admin/settings', label: 'General' },
+        { to: '/admin/settings', label: 'Salon Info' },
         { to: '/admin/settings#booking-logic', label: 'Booking Logic' },
         { to: '/admin/settings#alerts', label: 'Alerts' },
       ]
