@@ -15,13 +15,22 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         
-        Admin::firstOrCreate(
-            ['email' => 'admin'],
-            [
+        $adminUsername = env('ADMIN_LOGIN', 'admin');
+        $adminPassword = env('ADMIN_PASSWORD', 'admin123');
+
+        $admin = Admin::first();
+        if ($admin) {
+            $admin->update([
+                'email' => $adminUsername,
+                'password' => $adminPassword,
+            ]);
+        } else {
+            Admin::create([
                 'name' => 'Admin User',
-                'password' => 'admin123', 
-            ]
-        );
+                'email' => $adminUsername,
+                'password' => $adminPassword,
+            ]);
+        }
 
     
 
