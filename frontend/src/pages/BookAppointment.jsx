@@ -2333,7 +2333,24 @@ const BookAppointment = () => {
     <div className="booking-page min-h-screen app-panel-bg">
       {/* Header */}
       <header className="booking-nav px-4 md:px-6">
-        <div className="max-w-[1700px] mx-auto py-3 flex items-center justify-center">
+        <div className="max-w-[1700px] mx-auto py-3 flex items-center justify-between">
+          <div className="flex-1 flex justify-start">
+            {entrySource === 'customer-dashboard' && (
+              <button
+                onClick={() => navigate('/customer')}
+                className="flex items-center gap-2 text-xs md:text-sm font-semibold text-[#7b5cf5] hover:text-[#6b4ae8] transition-colors group"
+                title="Back to Customer Dashboard"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f3efff] group-hover:bg-[#f3f0ff] transition-colors">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </div>
+                <span className="hidden sm:inline">Back to Dashboard</span>
+                <span className="sm:hidden">Dashboard</span>
+              </button>
+            )}
+          </div>
           <button
             onClick={() => navigate('/')}
             className="booking-brand flex items-center gap-3 min-w-0"
@@ -2347,6 +2364,7 @@ const BookAppointment = () => {
             </span>
             <span className="truncate text-base md:text-lg font-semibold text-[#2C1338]">Kaye&apos;s Hair Salon and Spa</span>
           </button>
+          <div className="flex-1 flex justify-end" />
         </div>
       </header>
 
