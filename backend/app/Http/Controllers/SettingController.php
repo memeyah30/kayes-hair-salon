@@ -28,8 +28,8 @@ class SettingController extends Controller
      */
     public function publicIndex()
     {
-        // Only return General and Appointment logic groups (excluding sensitive info)
-        $publicGroups = ['general', 'appointment'];
+        // Only return non-sensitive groups needed by the public booking flow.
+        $publicGroups = ['general', 'appointment', 'payment'];
         
         $settings = Setting::whereIn('group', $publicGroups)->get();
         

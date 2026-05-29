@@ -715,6 +715,7 @@ const BookAppointment = () => {
   const [stylists, setStylists] = useState([])
   const [services, setServices] = useState([])
   const [paymentAccounts, setPaymentAccounts] = useState([])
+  const [bookingSettings, setBookingSettings] = useState(null)
   const [availability, setAvailability] = useState([])
   const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -828,6 +829,23 @@ const BookAppointment = () => {
   const [prefillVariantId, setPrefillVariantId] = useState('')
   const [hasAppliedServicePrefill, setHasAppliedServicePrefill] = useState(false)
   const [bookingInProgress, setBookingInProgress] = useState(false)
+  const paymentSettings = bookingSettings?.payment || null
+  const requireDownpayment = paymentSettings ? paymentSettings.require_downpayment !== false : true
+  const downpaymentType = paymentSettings?.downpayment_type === 'fixed' ? 'fixed' : 'percentage'
+  const downpaymentValue = Number.isFinite(Number(paymentSettings?.downpayment_value))
+    ? Number(paymentSettings.downpayment_value)
+    : 10
+  const getMinimumDepositCents = (totalAmountCents) => {
+    if (!requireDownpayment) {
+      return 0
+    }
+
+    if (downpaymentType === 'fixed') {
+      return Math.max(0, Math.round(downpaymentValue * 100))
+    }
+
+    return Math.max(0, Math.round(totalAmountCents * (downpaymentValue / 100)))
+  }
   const navigate = useNavigate()
   const location = useLocation()
   const activeStylists = stylists.filter((stylist) => stylist?.active !== false)
@@ -1521,15 +1539,17 @@ const BookAppointment = () => {
 
   const refreshData = async () => {
     try {
-      const [svcRes, paymentRes] = await Promise.all([
+      const [svcRes, paymentRes, settingsRes] = await Promise.all([
         api.get('/api/services'),
         api.get('/payment-accounts').catch(() => ({ data: [] })), // Don't fail if payment accounts fail
+        api.get('/public/settings').catch(() => ({ data: {} })),
       ])
       setStylists([])
       // Show ALL services from all stylists
       setServices(svcRes.data)
       // Set payment accounts
       setPaymentAccounts(paymentRes.data || [])
+      setBookingSettings(settingsRes.data || {})
       if (paymentRes.data && paymentRes.data.length > 0) {
         setPayment(prev => ({ ...prev, selectedAccount: paymentRes.data[0].id.toString() }))
       }
@@ -2034,34 +2054,45 @@ const BookAppointment = () => {
       const normalizedPaymentType = payment.method === 'online'
         ? (payment.paymentType === 'full' ? 'full' : 'downpayment')
         : 'downpayment'
+      const minimumDepositCents = getMinimumDepositCents(totalAmountCents)
 
       if (payment.method === 'online') {
         if (normalizedPaymentType === 'full') {
           paymentAmountCents = totalAmountCents
         } else {
-          // Use entered amount, or fallback to 10% minimum if empty
-          paymentAmountCents = payment.amount
+          const enteredAmountCents = payment.amount
             ? Math.round(parseFloat(payment.amount) * 100)
-            : Math.round(totalAmountCents * 0.1)
+            : 0
 
-          const minDepositCents = Math.round(totalAmountCents * 0.1)
-          if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
-            toast.warn(`Minimum GCash downpayment is ${currency(minDepositCents)}`)
+          if (!Number.isFinite(enteredAmountCents) || enteredAmountCents <= 0) {
+            toast.warn('Please enter a payment amount before continuing.')
             return
           }
+
+          if (requireDownpayment && enteredAmountCents < minimumDepositCents) {
+            toast.warn(`Minimum GCash downpayment is ${currency(minimumDepositCents)}`)
+            return
+          }
+
+          paymentAmountCents = enteredAmountCents
         }
       } else if (payment.method === 'on_hand') {
-        // For cash, use entered amount, fallback to 10% minimum
-        paymentAmountCents = payment.amount
-          ? Math.round(parseFloat(payment.amount) * 100)
-          : Math.round(totalAmountCents * 0.1)
+        if (requireDownpayment) {
+          // For cash, use entered amount, fallback to minimum deposit
+          paymentAmountCents = payment.amount
+            ? Math.round(parseFloat(payment.amount) * 100)
+            : minimumDepositCents
 
-        const minDepositCents = Math.round(totalAmountCents * 0.1)
-        if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minDepositCents) {
-          toast.warn(`Minimum cash deposit is ${currency(minDepositCents)}`)
-          return
+          if (!Number.isFinite(paymentAmountCents) || paymentAmountCents < minimumDepositCents) {
+            toast.warn(`Minimum cash deposit is ${currency(minimumDepositCents)}`)
+            return
+          }
+
+          paymentStatus = paymentAmountCents >= totalAmountCents ? 'paid' : 'downpayment'
+        } else {
+          paymentAmountCents = 0
+          paymentStatus = 'unpaid'
         }
-        paymentStatus = paymentAmountCents >= totalAmountCents ? 'paid' : 'downpayment'
       }
 
       // Create FormData for file upload
@@ -3710,21 +3741,19 @@ const BookAppointment = () => {
           }, 0)
           const totalAmount = totalAmountCents / 100
 
-          const minDownpayment = totalAmount * 0.1
+          const minimumDepositCents = getMinimumDepositCents(totalAmountCents)
+          const minimumDepositLabel = currency(minimumDepositCents)
           const parsedPaymentAmount = parseFloat(payment.amount)
           const selectedPaymentType = payment.method === 'online'
             ? (payment.paymentType === 'full' ? 'full' : 'downpayment')
             : 'downpayment'
+          const shouldShowPaymentTypeOptions = payment.method === 'online' || requireDownpayment
+          const requiresPaymentProof = payment.method === 'online' || (payment.method === 'on_hand' && requireDownpayment)
 
           // Calculate payment amount based on type
           const paymentAmount = selectedPaymentType === 'full'
             ? totalAmount
             : (Number.isFinite(parsedPaymentAmount) ? parsedPaymentAmount : 0)
-
-          // Final amount to be sent to backend
-          const effectivePaymentAmount = selectedPaymentType === 'full'
-            ? totalAmount
-            : (paymentAmount >= minDownpayment ? paymentAmount : minDownpayment)
 
           return (
             <div className="booking-step-card bg-white rounded-3xl border border-[#ddd3ee] shadow-[0_16px_34px_rgba(94,64,102,0.12)] p-6 max-w-3xl mx-auto">
@@ -3754,7 +3783,11 @@ const BookAppointment = () => {
                     <div className="text-center">
                       <div className="font-semibold text-[#2C1338]">Pay at Salon (Cash)</div>
                       <div className="text-sm text-[#6f5b7e] mt-1">Pay in person after the service</div>
-                      <div className="text-xs text-[#8f7a6f] mt-1">Requires a 10% downpayment to reserve the appointment.</div>
+                      <div className="text-xs text-[#8f7a6f] mt-1">
+                        {requireDownpayment
+                          ? `Requires a ${minimumDepositLabel} downpayment to reserve the appointment.`
+                          : 'No downpayment required. Your booking will be secured without an upfront deposit.'}
+                      </div>
                     </div>
                   </label>
                   <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${payment.method === 'online' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-[#e4dced] hover:border-[#c9bcf1]'
@@ -3787,9 +3820,13 @@ const BookAppointment = () => {
                   ? (
                     <>Payments are verified manually. Your booking will be marked as <strong>PENDING</strong> until the salon confirms the receipt.</>
                   )
-                  : (
-                    <>Cash payments are verified manually. A 10% downpayment is required, and your booking will be marked as <strong>PENDING</strong> until the salon confirms your deposit.</>
-                  )}
+                  : requireDownpayment
+                    ? (
+                      <>Cash payments are verified manually. A {minimumDepositLabel} downpayment is required, and your booking will be marked as <strong>PENDING</strong> until the salon confirms your deposit.</>
+                    )
+                    : (
+                      <>Cash bookings do not require a downpayment. Your appointment can be confirmed without an upfront deposit and you can pay at the salon on the appointment date.</>
+                    )}
               </p>
 
               {/* Booking Summary */}
@@ -3806,84 +3843,110 @@ const BookAppointment = () => {
               </div>
 
               {/* Payment Type */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium mb-2 text-gray-900">Payment Type *</label>
-                <div className={`grid gap-3 ${payment.method === 'online' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                  <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedPaymentType === 'downpayment' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
-                    }`}>
-                    <input
-                      type="radio"
-                      name="payment_type"
-                      value="downpayment"
-                      checked={selectedPaymentType === 'downpayment'}
-                      onChange={() => setPayment({
-                        ...payment,
-                        paymentType: 'downpayment',
-                        amount: '',
-                      })}
-                      className="sr-only"
-                    />
-                    <div className="font-semibold text-gray-900">Downpayment</div>
-                    <div className="text-sm text-[#8f7a6f] mt-1">Minimum: {currency(Math.round(totalAmountCents * 0.1))}</div>
+              {shouldShowPaymentTypeOptions ? (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-2 text-gray-900">
+                    {payment.method === 'online' ? 'Payment Type *' : 'Payment Type'}
                   </label>
-
-                  {payment.method === 'online' && (
-                    <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedPaymentType === 'full' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
+                  <div className={`grid gap-3 ${payment.method === 'online' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                    <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedPaymentType === 'downpayment' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
                       }`}>
                       <input
                         type="radio"
                         name="payment_type"
-                        value="full"
-                        checked={selectedPaymentType === 'full'}
+                        value="downpayment"
+                        checked={selectedPaymentType === 'downpayment'}
                         onChange={() => setPayment({
                           ...payment,
-                          paymentType: 'full',
-                          amount: totalAmount.toFixed(2),
+                          paymentType: 'downpayment',
+                          amount: '',
                         })}
                         className="sr-only"
                       />
-                      <div className="font-semibold text-gray-900">Full Payment</div>
-                      <div className="text-sm text-[#8f7a6f] mt-1">Pay the full amount now via GCash</div>
+                      <div className="font-semibold text-gray-900">Downpayment</div>
+                      <div className="text-sm text-[#8f7a6f] mt-1">
+                        {requireDownpayment
+                          ? `Minimum: ${minimumDepositLabel}`
+                          : 'No minimum deposit required'}
+                      </div>
                     </label>
-                  )}
+
+                    {payment.method === 'online' && (
+                      <label className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedPaymentType === 'full' ? 'border-[#7b5cf5] bg-[#f3efff]' : 'border-gray-300 hover:border-gray-400'
+                        }`}>
+                        <input
+                          type="radio"
+                          name="payment_type"
+                          value="full"
+                          checked={selectedPaymentType === 'full'}
+                          onChange={() => setPayment({
+                            ...payment,
+                            paymentType: 'full',
+                            amount: totalAmount.toFixed(2),
+                          })}
+                          className="sr-only"
+                        />
+                        <div className="font-semibold text-gray-900">Full Payment</div>
+                        <div className="text-sm text-[#8f7a6f] mt-1">Pay the full amount now via GCash</div>
+                      </label>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="mb-6 rounded-2xl border border-[#ece6f4] bg-[#faf8fd] p-4 text-sm text-[#6f5b7e]">
+                  No downpayment is required for cash bookings. You can confirm now and pay at the salon on your appointment date.
+                </div>
+              )}
 
               {/* Payment Amount Input */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium mb-1 text-gray-900">
-                  {selectedPaymentType === 'full' ? 'Full Payment Amount (PHP) *' : 'Downpayment Amount (10% Minimum) *'}
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-[#7b5cf5] font-medium"
-                  value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || '')}
-                  readOnly={selectedPaymentType === 'full'}
-                  onChange={(e) => {
-                    if (selectedPaymentType === 'full') {
-                      return
+              {(payment.method === 'online' || requireDownpayment) ? (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-1 text-gray-900">
+                    {selectedPaymentType === 'full'
+                      ? 'Full Payment Amount (PHP) *'
+                      : (requireDownpayment ? `Downpayment Amount (${minimumDepositLabel} Minimum) *` : 'Payment Amount (PHP) *')}
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    className="tap-safe w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:ring-[#7b5cf5] font-medium"
+                    value={selectedPaymentType === 'full' ? totalAmount.toFixed(2) : (payment.amount || '')}
+                    readOnly={selectedPaymentType === 'full'}
+                    onChange={(e) => {
+                      if (selectedPaymentType === 'full') {
+                        return
+                      }
+                      // Allow only numbers and one decimal point
+                      const val = e.target.value.replace(/[^0-9.]/g, '')
+                      const parts = val.split('.')
+                      if (parts.length > 2) return // Prevent multiple decimals
+
+                      setPayment({ ...payment, amount: val })
+                    }}
+                    placeholder={
+                      selectedPaymentType === 'full'
+                        ? totalAmount.toFixed(2)
+                        : (requireDownpayment ? `Minimum: ${minimumDepositLabel.replace('PHP ', '')}` : 'Enter amount')
                     }
-                    // Allow only numbers and one decimal point
-                    const val = e.target.value.replace(/[^0-9.]/g, '')
-                    const parts = val.split('.')
-                    if (parts.length > 2) return // Prevent multiple decimals
+                  />
 
-                    setPayment({ ...payment, amount: val })
-                  }}
-                  placeholder={`Minimum: ${currency(Math.round(totalAmountCents * 0.1)).replace('PHP ', '')}`}
-                />
-
-                <p className={`text-xs mt-1 ${selectedPaymentType === 'downpayment' && (parseFloat(payment.amount) < minDownpayment || !payment.amount) ? 'text-red-500 font-medium' : 'text-[#9b857a]'}`}>
-                  {selectedPaymentType === 'full'
-                    ? <>Full payment selected | Remaining: {currency(0)}</>
-                    : <>Minimum: {currency(Math.round(totalAmountCents * 0.1))} | Remaining: {currency(Math.max(0, Math.round((totalAmount - (parseFloat(payment.amount) || 0)) * 100)))}</>}
-                </p>
-              </div>
+                  <p className={`text-xs mt-1 ${selectedPaymentType === 'downpayment' && (requireDownpayment ? (parseFloat(payment.amount) < minimumDepositCents / 100 || !payment.amount) : !payment.amount) ? 'text-red-500 font-medium' : 'text-[#9b857a]'}`}>
+                    {selectedPaymentType === 'full'
+                      ? <>Full payment selected | Remaining: {currency(0)}</>
+                      : requireDownpayment
+                        ? <>Minimum: {minimumDepositLabel} | Remaining: {currency(Math.max(0, Math.round((totalAmount - (parseFloat(payment.amount) || 0)) * 100)))}</>
+                        : <>Enter any payment amount to continue | Remaining: {currency(Math.max(0, Math.round((totalAmount - (parseFloat(payment.amount) || 0)) * 100)))}</>}
+                  </p>
+                </div>
+              ) : (
+                <div className="mb-6 rounded-2xl border border-dashed border-[#ece6f4] bg-[#faf8fd] p-4 text-sm text-[#6f5b7e]">
+                  No payment amount is required now. Your cash booking will be created without a deposit.
+                </div>
+              )}
 
               {/* Payment Account Selection */}
-              {paymentAccounts.length > 0 && (
+              {requiresPaymentProof && paymentAccounts.length > 0 && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium mb-2 text-gray-900">Select Payment Account *</label>
                   <div className="space-y-3">
@@ -3938,74 +4001,88 @@ const BookAppointment = () => {
               )}
 
               {/* Payment Proof Upload */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium mb-1 text-gray-900">Payment Proof (Screenshot/Photo) *</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  required
-                  className="tap-safe w-full border rounded px-3 py-2 text-gray-900"
-                  onChange={async (e) => {
-                    const file = e.target.files[0]
-                    if (file) {
-                      // Validate amount before allowing upload
-                      const currentAmount = parseFloat(payment.amount)
-                      if (selectedPaymentType === 'downpayment' && (isNaN(currentAmount) || currentAmount < minDownpayment)) {
-                        toast.error(`Please enter at least the minimum deposit requirement of ${currency(Math.round(totalAmountCents * 0.1))} before uploading payment proof.`, {
-                          toastId: 'min-deposit-error'
-                        })
-                        e.target.value = '' // Clear the file input
-                        return
-                      }
-
-                      if (file.size > 15 * 1024 * 1024) {
-                        toast.error('File size must be less than 15MB before compression')
-                        return
-                      }
-
-                      try {
-                        toast.info('Processing image...', { autoClose: 1500, toastId: 'compressing-img' })
-                        const options = {
-                          maxSizeMB: 1, // Compress to max 1MB
-                          maxWidthOrHeight: 1200,
-                          useWebWorker: true,
-                          initialQuality: 0.8
+              {requiresPaymentProof ? (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-1 text-gray-900">Payment Proof (Screenshot/Photo) *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    required
+                    className="tap-safe w-full border rounded px-3 py-2 text-gray-900"
+                    onChange={async (e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        // Validate amount before allowing upload
+                        const currentAmount = parseFloat(payment.amount)
+                        if (payment.method === 'online' && selectedPaymentType === 'downpayment' && (!Number.isFinite(currentAmount) || currentAmount <= 0)) {
+                          toast.error('Please enter a payment amount before uploading payment proof.', {
+                            toastId: 'min-deposit-error'
+                          })
+                          e.target.value = '' // Clear the file input
+                          return
                         }
-                        const compressedFile = await imageCompression(file, options)
 
-                        setPayment({
-                          ...payment,
-                          proofFile: compressedFile,
-                          proofPreview: URL.createObjectURL(compressedFile)
-                        })
-                      } catch (error) {
-                        console.error('Image compression error:', error)
-                        toast.error('Failed to process image. Please try another one.')
+                        if (requireDownpayment && selectedPaymentType === 'downpayment' && (!Number.isFinite(currentAmount) || currentAmount * 100 < minimumDepositCents)) {
+                          toast.error(`Please enter at least the minimum deposit requirement of ${minimumDepositLabel} before uploading payment proof.`, {
+                            toastId: 'min-deposit-error'
+                          })
+                          e.target.value = '' // Clear the file input
+                          return
+                        }
+
+                        if (file.size > 15 * 1024 * 1024) {
+                          toast.error('File size must be less than 15MB before compression')
+                          return
+                        }
+
+                        try {
+                          toast.info('Processing image...', { autoClose: 1500, toastId: 'compressing-img' })
+                          const options = {
+                            maxSizeMB: 1, // Compress to max 1MB
+                            maxWidthOrHeight: 1200,
+                            useWebWorker: true,
+                            initialQuality: 0.8
+                          }
+                          const compressedFile = await imageCompression(file, options)
+
+                          setPayment({
+                            ...payment,
+                            proofFile: compressedFile,
+                            proofPreview: URL.createObjectURL(compressedFile)
+                          })
+                        } catch (error) {
+                          console.error('Image compression error:', error)
+                          toast.error('Failed to process image. Please try another one.')
+                        }
                       }
-                    }
-                  }}
-                />
-                {payment.proofPreview && (
-                  <div className="mt-3 inline-block">
-                    <div
-                      className="relative cursor-zoom-in group border-2 border-gray-100 rounded-xl p-1 bg-white shadow-sm hover:border-[#7b5cf5] transition"
-                      onClick={() => setEnlargedImage({ src: payment.proofPreview, title: 'Payment Proof' })}
-                    >
-                      <img src={payment.proofPreview} alt="Payment proof preview" className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg">
-                        <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#7b5cf5] shadow-sm">
-                          Enlarge
-                        </span>
+                    }}
+                  />
+                  {payment.proofPreview && (
+                    <div className="mt-3 inline-block">
+                      <div
+                        className="relative cursor-zoom-in group border-2 border-gray-100 rounded-xl p-1 bg-white shadow-sm hover:border-[#7b5cf5] transition"
+                        onClick={() => setEnlargedImage({ src: payment.proofPreview, title: 'Payment Proof' })}
+                      >
+                        <img src={payment.proofPreview} alt="Payment proof preview" className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg">
+                          <span className="bg-white/90 px-2 py-1 rounded-md text-[10px] font-bold text-[#7b5cf5] shadow-sm">
+                            Enlarge
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                <p className="text-xs text-[#9b857a] mt-1">
-                  {payment.method === 'online'
-                    ? 'Upload a screenshot or photo of your payment transaction'
-                    : 'Upload a photo or receipt of your cash deposit'}
-                </p>
-              </div>
+                  )}
+                  <p className="text-xs text-[#9b857a] mt-1">
+                    {payment.method === 'online'
+                      ? 'Upload a screenshot or photo of your payment transaction'
+                      : 'Upload a photo or receipt of your cash deposit'}
+                  </p>
+                </div>
+              ) : (
+                <div className="mb-6 rounded-2xl border border-dashed border-[#ece6f4] bg-[#faf8fd] p-4 text-sm text-[#6f5b7e]">
+                  No payment proof is required for cash bookings without a downpayment.
+                </div>
+              )}
 
               {/* Payment Summary */}
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -4014,7 +4091,11 @@ const BookAppointment = () => {
                   <span className="font-bold text-lg text-gray-900">{currency(totalAmountCents)}</span>
                 </div>
                 <div className="flex flex-wrap justify-between items-center gap-2">
-                  <span className="text-gray-700">{selectedPaymentType === 'full' ? 'Full Payment Amount:' : 'Downpayment Amount:'}</span>
+                  <span className="text-gray-700">
+                    {selectedPaymentType === 'full'
+                      ? 'Full Payment Amount:'
+                      : (requireDownpayment ? 'Downpayment Amount:' : 'Amount Due Today:')}
+                  </span>
                   <span className="font-bold text-lg text-green-600">{currency(Math.round(paymentAmount * 100))}</span>
                 </div>
                 <div className="flex flex-wrap justify-between items-center gap-2 mt-2 pt-2 border-t border-gray-300">
@@ -4069,8 +4150,8 @@ const BookAppointment = () => {
                   onClick={handleBook}
                   disabled={(
                     bookingInProgress ||
-                    !payment.proofFile ||
-                    (paymentAccounts.length > 0 && !payment.selectedAccount)
+                    (requiresPaymentProof && !payment.proofFile) ||
+                    (requiresPaymentProof && paymentAccounts.length > 0 && !payment.selectedAccount)
                   )}
                   className="tap-safe booking-primary-btn flex-1 px-4 py-2.5 rounded-xl disabled:opacity-50"
                 >
